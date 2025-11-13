@@ -27,7 +27,7 @@ This Replit workspace is the centralized development environment for all homelab
 - Ubuntu 25.10 desktop homelab with Twingate VPN and dynamic DNS (ZoneEdit)
 - Manages domains: rig-city.com, evindrake.net, scarletredjoker.com
 - All projects stored in: `/home/evin/contain/` (production) and Replit (development)
-- Development workflow: Edit on Replit → Git commit → Deploy to Ubuntu
+- Development workflow: **Edit on Replit → Agent makes changes → Auto-sync to Ubuntu every 5 minutes**
 - Services to manage:
   - Discord Ticket Bot (bot.rig-city.com) - Custom support bot with PostgreSQL
   - Stream Bot / SnappleBotAI (stream.rig-city.com) - AI Snapple facts for Twitch/Kick
@@ -125,6 +125,12 @@ HomeLabHub/                      ← Replit Workspace Root
 - `ensure-databases.sh` safely creates/fixes databases without data loss.
 - `update-service.sh` - Update individual services to latest Docker images
 - `update-n8n.sh` - Quick shortcut for updating n8n automation platform
+
+**Automated Replit → Ubuntu Sync:**
+- `deployment/sync-from-replit.sh` - Manual sync script (pull latest changes and auto-deploy affected services)
+- `deployment/install-auto-sync.sh` - Install systemd timer for automatic syncing every 5 minutes
+- `deployment/manual-sync.sh` - Quick manual sync shortcut
+- `.gitignore` updated to exclude service logs/data and prevent sync conflicts
 
 ### Feature Specifications
 

@@ -47,3 +47,22 @@ src/static/uploads/*
 # Attached Assets (generated files, user uploads, embed images)
 attached_assets/
 **/attached_assets/
+
+# Service data and logs (prevent sync conflicts)
+services/plex/config/
+services/dashboard/logs/
+services/discord-bot/logs/
+services/stream-bot/logs/
+services/n8n/data/
+
+# Docker volumes and runtime data
+postgres_data/
+caddy_data/
+caddy_config/
+*.log
+*.db-shm
+*.db-wal
+
+# Sync script logs and state
+var/log/
+var/state/

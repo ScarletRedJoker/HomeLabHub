@@ -52,11 +52,31 @@ docker exec discord-bot-db psql -U streambot -d streambot -f /tmp/init-streambot
 ./homelab-manager.sh
 ```
 
+### Automated Replit Sync
+
+**Install automatic sync (recommended):**
+```bash
+./deployment/install-auto-sync.sh
+```
+
+**Manual sync when needed:**
+```bash
+./deployment/manual-sync.sh
+```
+
+**View sync logs:**
+```bash
+journalctl -u replit-sync.service -f
+```
+
 ## Scripts Overview
 
 | Script | Purpose |
 |--------|---------|
 | `homelab-manager.sh` | **Main interface** - Interactive menu for all operations |
+| `sync-from-replit.sh` | **Auto-sync** - Pull latest Replit changes and deploy |
+| `install-auto-sync.sh` | **Setup** - Install 5-minute auto-sync timer |
+| `manual-sync.sh` | **Quick sync** - Manually sync from Replit now |
 | `update-service.sh` | Update any service to latest Docker image |
 | `update-n8n.sh` | Quick n8n update shortcut |
 | `deploy-unified.sh` | Full deployment of all services |
@@ -91,3 +111,72 @@ When you update a service:
 6. Health check confirms successful restart
 
 **Data Safety:** All persistent data (databases, configurations, media) is stored in Docker volumes and is never deleted during updates.
+
+## Automated Replit → Ubuntu Sync
+
+### How It Works
+
+When the Replit Agent makes code changes, those changes exist only in the Replit workspace. The sync system automatically:
+
+1. **Detects Changes**: Checks git remote every 5 minutes
+2. **Pulls Code**: Downloads latest changes from Replit
+3. **Smart Rebuild**: Only rebuilds services with changed files
+4. **Auto-Deploy**: Restarts affected containers automatically
+
+### Setup Auto-Sync
+
+```bash
+cd /home/evin/contain/HomeLabHub
+chmod +x deployment/install-auto-sync.sh
+./deployment/install-auto-sync.sh
+```
+
+This installs a systemd timer that syncs every 5 minutes.
+
+### Manual Sync
+
+```bash
+./deployment/manual-sync.sh
+```
+
+### Monitoring
+
+```bash
+# Check auto-sync status
+sudo systemctl status replit-sync.timer
+
+# View sync logs in real-time
+journalctl -u replit-sync.service -f
+
+# View sync history
+tail -f var/log/replit-sync.log
+```
+
+### Disable/Enable Auto-Sync
+
+```bash
+# Disable
+sudo systemctl stop replit-sync.timer
+sudo systemctl disable replit-sync.timer
+
+# Re-enable
+sudo systemctl enable replit-sync.timer
+sudo systemctl start replit-sync.timer
+```
+
+### Troubleshooting Sync
+
+**Problem:** "Already up to date" but changes aren't syncing
+
+**Solution:** Changes in Replit workspace weren't pushed to git. The agent will create files on Replit, and you need to manually copy them or push them to the git remote.
+
+**Problem:** Plex logs causing conflicts
+
+**Solution:** Now ignored in `.gitignore`. Run `git reset HEAD services/plex/config/` if needed.
+
+### Log Locations
+
+Sync logs are stored in the project directory:
+- Detailed log: `var/log/replit-sync.log`
+- Systemd journal: `journalctl -u replit-sync.service -f`
+- State file: `var/state/.last_sync_commit`
