@@ -90,6 +90,21 @@ Terminal=false
 Categories=Network;WebBrowser;
 EOF
 
+cat > "${USER_HOME}/Desktop/VLC.desktop" << 'EOF'
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=VLC Media Player
+GenericName=Media Player
+Comment=Read, capture, broadcast your multimedia streams
+Exec=vlc --no-video-title-show %U
+Icon=vlc
+Terminal=false
+Categories=AudioVideo;Player;Recorder;
+MimeType=video/dv;video/mpeg;video/x-mpeg;video/msvideo;video/quicktime;video/x-anim;video/x-avi;video/x-ms-asf;video/x-ms-wmv;video/x-msvideo;video/x-nsv;video/x-flc;video/x-fli;application/ogg;application/x-ogg;video/x-theora+ogg;audio/x-vorbis+ogg;audio/x-flac+ogg;audio/x-speex+ogg;video/x-ogm+ogg;audio/x-shorten;audio/x-ape;audio/x-wavpack;audio/x-tta;audio/AMR;audio/ac3;audio/eac3;audio/flac;audio/x-it;audio/midi;audio/x-mod;audio/mp4;audio/mpeg;audio/x-mpegurl;audio/x-ms-asx;audio/x-ms-wma;application/vnd.rn-realmedia;audio/x-pn-realaudio;audio/x-pn-realaudio-plugin;audio/x-realaudio;audio/x-s3m;audio/x-scpls;audio/x-stm;audio/x-voc;audio/x-wav;audio/x-adpcm;audio/x-xm;application/x-shockwave-flash;application/x-flash-video;misc/ultravox;image/vnd.rn-realpix;audio/x-it;audio/x-mod;audio/x-s3m;audio/x-xm;
+StartupNotify=true
+EOF
+
 if [ -d "${USER_HOME}/host-projects" ]; then
     cat > "${USER_HOME}/Desktop/Projects.desktop" << EOF
 [Desktop Entry]
@@ -206,6 +221,16 @@ Plugin {
     CenterText=0
   }
 }
+EOF
+
+echo "Configuring VLC for Docker environment..."
+mkdir -p "${USER_HOME}/.config/vlc"
+cat > "${USER_HOME}/.config/vlc/vlcrc" << 'EOF'
+# VLC Configuration for Docker Containers
+# Disable hardware acceleration (not available in containers)
+avcodec-hw=none
+vout=x11
+no-video-title-show=1
 EOF
 
 echo "Fixing permissions (if running as root)..."

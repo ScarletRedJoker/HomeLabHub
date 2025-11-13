@@ -86,6 +86,13 @@ RUN if [ "$INSTALL_STEAM" = "true" ]; then \
         rm -rf /var/lib/apt/lists/*; \
     fi
 
+# Configure VLC for Docker containers (disable hardware acceleration)
+RUN mkdir -p /root/.config/vlc && \
+    echo '# VLC Docker Configuration - Disable hardware acceleration' > /root/.config/vlc/vlcrc && \
+    echo 'avcodec-hw=none' >> /root/.config/vlc/vlcrc && \
+    echo 'vout=x11' >> /root/.config/vlc/vlcrc && \
+    echo 'no-video-title-show=1' >> /root/.config/vlc/vlcrc
+
 # Create user
 RUN groupadd -g ${USER_GID} ${VNC_USER} || true && \
     useradd -m -u ${USER_UID} -g ${USER_GID} -s /bin/bash ${VNC_USER} || usermod -l ${VNC_USER} ubuntu
