@@ -2,7 +2,7 @@
 # Do not edit manually - run ./setup-caddy.sh instead
 
 {
-    email YOUR_EMAIL_HERE
+    email evin@evindrake.net
 }
 
 bot.rig-city.com {
