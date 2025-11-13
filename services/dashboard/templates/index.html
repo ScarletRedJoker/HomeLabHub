@@ -169,12 +169,15 @@ async function loadStats() {
 
 async function loadContainers() {
     try {
-        const response = await fetch('/api/containers');
-        const containers = await response.json();
+        const response = await fetch('/api/containers', {
+            credentials: 'include'
+        });
+        const result = await response.json();
         
-        if (Array.isArray(containers)) {
+        if (result.success && Array.isArray(result.data)) {
+            const containers = result.data;
             const total = containers.length;
-            const running = containers.filter(c => c.status.includes('Up')).length;
+            const running = containers.filter(c => c.status && c.status.includes('Up')).length;
             
             document.getElementById('container-count').textContent = total;
             document.getElementById('running-count').textContent = running;

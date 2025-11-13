@@ -22,10 +22,19 @@
 <script>
 async function loadContainers() {
     try {
-        const response = await fetch('/api/containers');
-        const containers = await response.json();
+        const response = await fetch('/api/containers', {
+            credentials: 'include'
+        });
+        const result = await response.json();
         
         const containerList = document.getElementById('container-list');
+        
+        if (!result.success) {
+            containerList.innerHTML = `<div class="alert alert-danger">${result.message || 'Failed to load containers'}</div>`;
+            return;
+        }
+        
+        const containers = result.data || [];
         
         if (!Array.isArray(containers) || containers.length === 0) {
             containerList.innerHTML = '<p style="padding: 20px; text-align: center; color: var(--text-secondary);">No containers found</p>';

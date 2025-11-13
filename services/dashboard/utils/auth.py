@@ -6,21 +6,30 @@ import secrets
 def generate_api_key():
     return secrets.token_urlsafe(32)
 
+def make_api_response(success=True, data=None, message=None, status_code=200):
+    """Standardized API response format"""
+    response = {
+        'success': success,
+        'data': data,
+        'message': message
+    }
+    return jsonify(response), status_code
+
 def require_auth(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        api_key = request.headers.get('X-API-Key')
         session_authenticated = session.get('authenticated', False)
         
-        valid_api_key = os.environ.get('DASHBOARD_API_KEY')
-        
-        if not valid_api_key:
-            return jsonify({'success': False, 'message': 'API key not configured on server'}), 500
-        
-        if api_key == valid_api_key or session_authenticated:
+        if session_authenticated:
             return f(*args, **kwargs)
         
-        return jsonify({'success': False, 'message': 'Unauthorized - API key required'}), 401
+        api_key = request.headers.get('X-API-Key')
+        valid_api_key = os.environ.get('DASHBOARD_API_KEY')
+        
+        if api_key and valid_api_key and api_key == valid_api_key:
+            return f(*args, **kwargs)
+        
+        return jsonify({'success': False, 'message': 'Unauthorized - Please log in'}), 401
     
     return decorated_function
 

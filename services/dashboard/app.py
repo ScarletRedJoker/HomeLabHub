@@ -25,6 +25,9 @@ app = Flask(__name__,
 
 app.config.from_object(Config)
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=12)
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_HTTPONLY'] = True
 
 # Only show API key warning in development, not in production
 # (Production deployment via deploy.sh automatically generates the key)
@@ -35,7 +38,15 @@ if not os.environ.get('DASHBOARD_API_KEY') and os.environ.get('FLASK_ENV') != 'p
     logger.warning("For manual setup, generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))'")
     logger.warning("=" * 60)
 
-CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
+CORS(app, resources={r"/api/*": {
+    "origins": [
+        "https://host.evindrake.net",
+        "http://localhost:5000",
+        "http://127.0.0.1:5000"
+    ],
+    "supports_credentials": True,
+    "allow_headers": ["Content-Type", "X-API-Key"]
+}})
 
 app.register_blueprint(api_bp)
 app.register_blueprint(web_bp)
