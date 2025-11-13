@@ -6,6 +6,7 @@
     <title>{% block title %}Homelab Dashboard{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/spaceship.css') }}">
     <style>
         :root[data-theme="dark"] {
             --bg-primary: #0a0e1a;
@@ -437,6 +438,35 @@
                 <i class="bi bi-moon-stars" id="theme-icon"></i>
                 <span id="theme-text">Dark Mode</span>
             </button>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-group">
+                <span class="status-led online blink" id="system-led"></span>
+                <span class="led-label">SYSTEM</span>
+            </div>
+            <div class="status-group">
+                <span class="status-led online" id="network-led"></span>
+                <span class="led-label">NETWORK</span>
+            </div>
+            <div class="status-group">
+                <span class="status-led active blink" id="api-led"></span>
+                <span class="led-label">API</span>
+            </div>
+            <div class="status-group">
+                <span class="hex-led" id="docker-led"></span>
+                <span class="led-label">DOCKER</span>
+            </div>
+            <div class="status-group">
+                <span class="hex-led" id="services-led"></span>
+                <span class="led-label">SERVICES</span>
+            </div>
+            <div class="status-group" style="margin-left: auto;">
+                <div class="activity-indicator">
+                    <span class="activity-dot"></span>
+                    <span>MONITORING ACTIVE</span>
+                </div>
+            </div>
         </div>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
