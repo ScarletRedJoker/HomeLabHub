@@ -117,14 +117,18 @@ HomeLabHub/                      ← Replit Workspace Root
 - `fix-existing-deployment.sh` is used to add the `streambot` database to existing volumes.
 
 **Unified Deployment System:**
-- `homelab-manager.sh` - Interactive menu for all operations (primary interface)
-- `docker-compose.unified.yml` orchestrates all 8 services.
-- Caddy reverse proxy with automatic SSL via Let's Encrypt.
-- `generate-unified-env.sh` interactively collects all environment variables.
-- `deploy-unified.sh` handles complete deployment.
-- `ensure-databases.sh` safely creates/fixes databases without data loss.
-- `update-service.sh` - Update individual services to latest Docker images
-- `update-n8n.sh` - Quick shortcut for updating n8n automation platform
+- `homelab-manager.sh` - **ONE UNIFIED CONTROL PANEL** for all operations (primary interface):
+  - Full deployment, restart, rebuild options
+  - Service control (start, stop, restart individual services)
+  - Database management (ensure databases exist, check status)
+  - Configuration (generate/edit .env, view current config)
+  - Troubleshooting (logs, health checks, full diagnostics)
+  - **Code Sync** (sync from Replit, install auto-sync, check sync status)
+  - Updates (pull latest Docker images)
+  - Information (container details, service URLs)
+- `docker-compose.unified.yml` orchestrates all 8 services
+- Caddy reverse proxy with automatic SSL via Let's Encrypt
+- All deployment scripts now accessible via unified menu (no need to remember separate commands)
 
 **Automated Replit → Ubuntu Sync:**
 - `deployment/sync-from-replit.sh` - Manual sync script (pull latest changes and auto-deploy affected services)
