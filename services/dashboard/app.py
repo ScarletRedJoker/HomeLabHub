@@ -35,7 +35,7 @@ if not os.environ.get('DASHBOARD_API_KEY') and os.environ.get('FLASK_ENV') != 'p
     logger.warning("For manual setup, generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))'")
     logger.warning("=" * 60)
 
-CORS(app, origins=['http://localhost:5000', 'http://127.0.0.1:5000'])
+CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
 app.register_blueprint(api_bp)
 app.register_blueprint(web_bp)
