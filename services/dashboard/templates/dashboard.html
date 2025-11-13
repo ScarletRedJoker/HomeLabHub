@@ -148,8 +148,17 @@ function initChart() {
 
 async function updateStats() {
     try {
-        const response = await fetch('/api/system/stats');
-        const data = await response.json();
+        const response = await fetch('/api/system/stats', {
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        if (!result.success || !result.data) {
+            console.error('Error loading stats:', result.message);
+            return;
+        }
+        
+        const data = result.data;
         
         document.getElementById('cpu-percent').textContent = data.cpu_percent.toFixed(1) + '%';
         document.getElementById('mem-percent').textContent = data.memory_percent.toFixed(1) + '%';
@@ -182,12 +191,21 @@ async function updateStats() {
 
 async function loadDiskInfo() {
     try {
-        const response = await fetch('/api/system/disk');
-        const disks = await response.json();
+        const response = await fetch('/api/system/disk', {
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        if (!result.success) {
+            console.error('Error loading disks:', result.message);
+            return;
+        }
+        
+        const disks = result.data || [];
         
         let html = '<div style="padding: 20px;">';
         
-        if (Array.isArray(disks)) {
+        if (Array.isArray(disks) && disks.length > 0) {
             disks.forEach(disk => {
                 const percent = disk.percent || 0;
                 let barColor = 'var(--accent-green)';
@@ -204,6 +222,8 @@ async function loadDiskInfo() {
                 html += `</div>`;
                 html += `</div>`;
             });
+        } else {
+            html += '<p style="color: var(--text-secondary);">No disk information available</p>';
         }
         
         html += '</div>';
