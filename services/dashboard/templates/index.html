@@ -6,13 +6,13 @@
 {% block content %}
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card" style="background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); border: none;">
-            <div style="padding: 40px; text-align: center; color: white;">
-                <h1 style="font-size: 2.5rem; margin-bottom: 15px;">
-                    <i class="bi bi-server"></i> Homelab Dashboard
+        <div class="card" style="background: linear-gradient(135deg, rgba(88, 166, 255, 0.15), rgba(188, 140, 255, 0.15)); border: 1px solid var(--border-color);">
+            <div style="padding: 30px; text-align: center;">
+                <h1 style="font-size: 2rem; margin-bottom: 10px; color: var(--text-primary);">
+                    <i class="bi bi-hdd-rack"></i> Homelab Control Center
                 </h1>
-                <p style="font-size: 1.2rem; opacity: 0.9;">
-                    Centralized control and monitoring for all your homelab services
+                <p style="font-size: 1rem; color: var(--text-secondary);">
+                    Monitor and manage all your services from one place
                 </p>
             </div>
         </div>
@@ -21,31 +21,31 @@
 
 <div class="row mb-4">
     <div class="col-md-3 mb-3">
-        <div class="stat-card">
-            <i class="bi bi-box-seam" style="font-size: 2rem; color: var(--accent-blue);"></i>
-            <div class="stat-value" id="container-count">-</div>
-            <div class="stat-label">Containers</div>
+        <div class="stat-card" style="background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 20px; border-radius: 8px;">
+            <i class="bi bi-box-seam" style="font-size: 1.8rem; color: var(--accent-blue); opacity: 0.8;"></i>
+            <div class="stat-value" id="container-count" style="font-size: 2rem; font-weight: 600; margin: 10px 0; color: var(--text-primary);">-</div>
+            <div class="stat-label" style="font-size: 0.875rem; color: var(--text-secondary);">Total Containers</div>
         </div>
     </div>
     <div class="col-md-3 mb-3">
-        <div class="stat-card">
-            <i class="bi bi-check-circle" style="font-size: 2rem; color: var(--accent-green);"></i>
-            <div class="stat-value" id="running-count">-</div>
-            <div class="stat-label">Running</div>
+        <div class="stat-card" style="background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 20px; border-radius: 8px;">
+            <i class="bi bi-play-circle-fill" style="font-size: 1.8rem; color: var(--accent-green); opacity: 0.8;"></i>
+            <div class="stat-value" id="running-count" style="font-size: 2rem; font-weight: 600; margin: 10px 0; color: var(--text-primary);">-</div>
+            <div class="stat-label" style="font-size: 0.875rem; color: var(--text-secondary);">Currently Running</div>
         </div>
     </div>
     <div class="col-md-3 mb-3">
-        <div class="stat-card">
-            <i class="bi bi-cpu" style="font-size: 2rem; color: var(--accent-yellow);"></i>
-            <div class="stat-value" id="cpu-usage">-</div>
-            <div class="stat-label">CPU Usage</div>
+        <div class="stat-card" style="background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 20px; border-radius: 8px;">
+            <i class="bi bi-globe" style="font-size: 1.8rem; color: var(--accent-purple); opacity: 0.8;"></i>
+            <div class="stat-value" style="font-size: 2rem; font-weight: 600; margin: 10px 0; color: var(--text-primary);">3</div>
+            <div class="stat-label" style="font-size: 0.875rem; color: var(--text-secondary);">Active Domains</div>
         </div>
     </div>
     <div class="col-md-3 mb-3">
-        <div class="stat-card">
-            <i class="bi bi-memory" style="font-size: 2rem; color: var(--accent-purple);"></i>
-            <div class="stat-value" id="mem-usage">-</div>
-            <div class="stat-label">Memory Usage</div>
+        <div class="stat-card" style="background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 20px; border-radius: 8px;">
+            <i class="bi bi-check2-circle" style="font-size: 1.8rem; color: var(--accent-green); opacity: 0.8;"></i>
+            <div class="stat-value" id="services-online" style="font-size: 2rem; font-weight: 600; margin: 10px 0; color: var(--text-primary);">6</div>
+            <div class="stat-label" style="font-size: 0.875rem; color: var(--text-secondary);">Services Online</div>
         </div>
     </div>
 </div>
@@ -141,36 +141,6 @@
 
 {% block extra_js %}
 <script>
-async function loadStats() {
-    try {
-        const response = await fetch('/api/system/stats', {
-            credentials: 'include'
-        });
-        const result = await response.json();
-        
-        if (!result.success || !result.data) {
-            console.error('Error loading stats:', result.message);
-            return;
-        }
-        
-        const data = result.data;
-        
-        document.getElementById('cpu-usage').textContent = data.cpu_percent.toFixed(1) + '%';
-        document.getElementById('mem-usage').textContent = data.memory_percent.toFixed(1) + '%';
-        
-        document.getElementById('hostname').textContent = data.hostname || 'Unknown';
-        document.getElementById('platform').textContent = data.platform || 'Unknown';
-        document.getElementById('arch').textContent = data.architecture || 'Unknown';
-        
-        const uptimeHours = Math.floor(data.uptime / 3600);
-        const uptimeDays = Math.floor(uptimeHours / 24);
-        document.getElementById('uptime').textContent = uptimeDays + 'd ' + (uptimeHours % 24) + 'h';
-        
-    } catch (error) {
-        console.error('Failed to load stats:', error);
-    }
-}
-
 async function loadContainers() {
     try {
         const response = await fetch('/api/containers', {
@@ -188,15 +158,14 @@ async function loadContainers() {
         }
     } catch (error) {
         console.error('Failed to load containers:', error);
+        document.getElementById('container-count').textContent = '0';
+        document.getElementById('running-count').textContent = '0';
     }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    loadStats();
     loadContainers();
-    
-    setInterval(loadStats, 5000);
-    setInterval(loadContainers, 10000);
+    setInterval(loadContainers, 15000);
 });
 </script>
 {% endblock %}
