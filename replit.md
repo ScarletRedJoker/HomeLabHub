@@ -1,37 +1,7 @@
 # Homelab Dashboard Project
 
 ## Overview
-This Replit workspace is the centralized development environment for all homelab services. It provides a comprehensive web-based dashboard for managing a Ubuntu 25.10 homelab server, plus all source code for production services. The workspace structure allows for easy development, testing, and deployment. The business vision is to provide a unified, user-friendly interface for managing complex homelab setups, reducing operational overhead, and enhancing server reliability through intelligent automation and monitoring. Key capabilities include one-click database deployments, game streaming integration, and robust domain health monitoring.
-
-## Recent Production Fixes & Features (Nov 13, 2025)
-
-### Latest Updates
-- 🔒 **CRITICAL SECURITY FIX**: Removed insecure default dashboard credentials - now requires WEB_USERNAME and WEB_PASSWORD environment variables (dashboard refuses to start if not set)
-- ✅ **VNC Desktop Enhanced**: Added 30+ new applications (Steam, OBS Studio, Audacity, Glances, KeePassXC, Remmina, build-essential, tmux, gedit) - complete development and gaming environment
-- ✅ **Comprehensive Improvement Plan**: Created docs/IMPROVEMENT_PLAN.md with strategic plan for code unification, script consolidation, documentation cleanup, and shared component libraries
-- ✅ **game.evindrake.net Fixed**: Added proper cache-control headers to prevent SSL errors and caching issues
-- ✅ **VNC Desktop Production Ready**: Complete custom Ubuntu desktop with Firefox, Chromium, LibreOffice, GIMP, VLC, development tools - healthcheck fixed (port 6079), auto-sync configured for automatic rebuilds, bootstrap provisioning successful
-- ✅ **Auto-Sync System Fixed**: Updated systemd service with correct paths (/home/evin/contain/HomeLabHub), added vnc-desktop to service map for automatic rebuilds on code changes
-- ✅ **Cloud Gaming Infrastructure**: Complete Moonlight/Sunshine game streaming setup with Windows 11 KVM (RTX 3060 GPU passthrough) accessible at game.evindrake.net - prioritizes direct Twingate/LAN connection for <5ms latency
-- ✅ **Game Streaming Landing Page**: Professional connection guide at game.evindrake.net with Windows KVM specs, Moonlight client downloads, Twingate VPN instructions, and performance optimization tips
-- ✅ **Activity Logging System**: Real-time activity feed on Mission Control dashboard showing container operations, system events, and user actions with color-coded severity levels
-- ✅ **Route Caching Fix**: Added cache-control headers to /dashboard and /system routes to prevent Caddy from caching and serving wrong pages (fixes "same page" bug)
-- ✅ **Unified Control Panel Complete**: All homelab operations (deployment, sync, troubleshooting) accessible from single homelab-manager.sh menu with Code Sync section (options 17-19)
-- 🔧 **Dashboard Docker Subprocess Fix**: Rewrote Docker operations to use subprocess calls instead of docker-py SDK to fix persistent urllib3 incompatibility issues in containerized environments (ready for deployment)
-- ✅ **Stream Notification Web Dashboard**: Complete web UI for managing stream notifications with channel selection, custom message templates (@user mentions, {game}, {platform} tokens), and tracked user management
-- ✅ **Discord Stream Notifications**: Complete presence-based go-live detection system with rich embeds, slash commands, and per-user customization
-- ✅ **Twitch OAuth Integration**: Complete PKCE-secured OAuth flow with encrypted token storage and auto-refresh
-- ✅ **Multi-Platform Streaming**: Stream bot now supports Twitch, Kick, and YouTube with unified OAuth management
-- ✅ **Dashboard Database API Fix**: Fixed connection examples endpoint to correctly extract credentials from container metadata
-- ✅ **Security Hardening**: Rotated Discord bot secrets after leak detection, made repository private, cleaned Git history
-
-### Previous Fixes
-- ✅ **scarletredjoker.com 403 Error**: Fixed file permissions (chmod -R go+rX) - nginx can now read static files
-- ✅ **Stream Bot Database**: Created complete PostgreSQL schema (users, platform_connections, bot_configs, bot_instances, message_history)
-- ✅ **Stream Bot Crash Loop**: Replaced Neon WebSocket driver with node-postgres for local PostgreSQL compatibility
-- ✅ **Discord Bot OAuth**: Verified database connection and session management - login working at https://bot.rig-city.com
-- ✅ **n8n Update System**: Added update scripts for easy service updates (update-service.sh, update-n8n.sh)
-- ✅ **All Services Healthy**: Discord bot, static site, VNC desktop, and reverse proxy all operational
+This project provides a comprehensive web-based dashboard for managing a Ubuntu 25.10 homelab server, offering a unified, user-friendly interface to reduce operational overhead and enhance server reliability. It includes all source code for production services, enabling easy development, testing, and deployment. The vision is to provide intelligent automation and monitoring for complex homelab setups, with capabilities such as one-click database deployments, game streaming integration, and robust domain health monitoring.
 
 ## User Preferences
 - User: Evin
@@ -75,131 +45,52 @@ HomeLabHub/                      ← Replit Workspace Root
 
 ### Technical Implementations
 
-**Dashboard (services/dashboard/)**
+**Homelab Dashboard (services/dashboard/)**
 - **Stack**: Flask, Python, Bootstrap 5, Chart.js
 - **Purpose**: Web UI for managing all homelab services
-- **Features**: Docker management, system monitoring, AI assistant, network analytics, domain health checks
-- **Security**: Username/password web login, API key for programmatic access
+- **Features**: Docker management, system monitoring, AI assistant, network analytics, domain health checks, one-click database deployments (PostgreSQL, MySQL, MongoDB, Redis), game streaming integration (Moonlight/Sunshine setup).
+- **Security**: Username/password web login, API key for programmatic access.
 
 **Discord Ticket Bot (services/discord-bot/)**
 - **Stack**: TypeScript, React, Express, Discord.js, Drizzle ORM, PostgreSQL
-- **Purpose**: Support ticket system for Discord servers with web dashboard, plus streamer go-live notifications
-- **Features**: 
-  - Ticket management with Discord OAuth and web UI
-  - Stream go-live notifications: Detect when tracked users start streaming (Twitch, YouTube, Kick) and post rich embeds
-  - Admin commands: /stream-setup (configure channel), /stream-track (add users), /stream-untrack (remove), /stream-list (view settings)
-  - **NEW: Web Dashboard for Stream Notifications** - Admin-only UI with:
-    - Channel selection for go-live notifications
-    - Custom message templates with @user mentions and {game}, {platform}, {server} tokens
-    - Add/remove tracked streamers with per-user custom messages
-    - Enable/disable notifications toggle
-    - RESTful API at /api/stream-notifications/* with authentication and server access checks
-  - Per-user custom messages and notification tracking
-- **Build**: Vite (frontend) + esbuild (backend), Docker deployment
+- **Purpose**: Support ticket system for Discord servers with web dashboard, plus multi-platform streamer go-live notifications.
+- **Features**: Ticket management, stream go-live detection for Twitch, YouTube, Kick with rich embeds, admin commands, and a web dashboard for managing stream notification settings, custom message templates, and tracked streamers.
 
 **Stream Bot (services/stream-bot/)**
-- **Stack**: TypeScript, React, Express, tmi.js (Twitch), @retconned/kick-js, OpenAI API, Spotify Web API
-- **Purpose**: AI-powered Snapple facts bot for Twitch and Kick streams with Spotify "now playing" OBS overlay
-- **Features**: Multi-platform streaming, OpenAI-powered fact generation, Spotify "now playing" OBS overlay, web dashboard
-- **Integrations**: Replit Spotify connector for seamless OAuth
-- **Build**: Vite (frontend) + esbuild (backend), Docker deployment
+- **Stack**: TypeScript, React, Express, tmi.js, @retconned/kick-js, OpenAI API, Spotify Web API
+- **Purpose**: AI-powered Snapple facts bot for Twitch and Kick streams with Spotify "now playing" OBS overlay.
+- **Features**: Multi-platform streaming, OpenAI fact generation, Spotify integration, web dashboard for configuration.
 
 **Static Site (services/static-site/)**
 - **Stack**: HTML, CSS, JavaScript
-- **Purpose**: Personal portfolio website (scarletredjoker.com)
-- **Deployment**: Served via Nginx/Caddy
+- **Purpose**: Personal portfolio website.
 
 **n8n (services/n8n/)**
 - **Stack**: Node.js workflow automation platform
-- **Purpose**: Automate tasks across services
-- **Deployment**: Docker container with persistent volume
+- **Purpose**: Automate tasks across services.
 
 **Plex (services/plex/)**
 - **Stack**: Plex Media Server
-- **Purpose**: Media streaming (movies, TV, music, photos)
-- **Storage**: Large media library on Ubuntu server
+- **Purpose**: Media streaming.
+
+**VNC Desktop (services/vnc-desktop/)**
+- **Stack**: Custom Ubuntu desktop environment (LXDE/LXQt) via Docker.
+- **Features**: Pre-installed applications for development and productivity, persistent storage, selective host mounting, and security via VNC password and HTTPS.
 
 ### Database Architecture
+A single PostgreSQL container (`discord-bot-db`) hosts multiple databases (`ticketbot`, `streambot`). Init scripts auto-configure databases and users.
 
-**Single PostgreSQL Container** (`discord-bot-db`) hosts multiple databases:
-- `ticketbot` database (Discord Bot)
-- `streambot` database (Stream Bot)
-
-**Auto-Configuration System:**
-- Init scripts in `config/postgres-init/` create databases and users on first container startup.
-- `fix-existing-deployment.sh` is used to add the `streambot` database to existing volumes.
-
-**Unified Deployment System:**
-- `homelab-manager.sh` - **ONE UNIFIED CONTROL PANEL** for all operations (primary interface):
-  - Full deployment, restart, rebuild options
-  - Service control (start, stop, restart individual services)
-  - Database management (ensure databases exist, check status)
-  - Configuration (generate/edit .env, view current config)
-  - Troubleshooting (logs, health checks, full diagnostics)
-  - **Code Sync** (sync from Replit, install auto-sync, check sync status)
-  - Updates (pull latest Docker images)
-  - Information (container details, service URLs)
-- `docker-compose.unified.yml` orchestrates all 8 services
-- Caddy reverse proxy with automatic SSL via Let's Encrypt
-- All deployment scripts now accessible via unified menu (no need to remember separate commands)
-
-**Automated Replit → Ubuntu Sync:**
-- `deployment/sync-from-replit.sh` - Manual sync script (pull latest changes and auto-deploy affected services)
-- `deployment/install-auto-sync.sh` - Install systemd timer for automatic syncing every 5 minutes
-- `deployment/manual-sync.sh` - Quick manual sync shortcut
-- `.gitignore` updated to exclude service logs/data and prevent sync conflicts
-
-### Feature Specifications
-
-**Dashboard Features:**
-- Docker container management (start, stop, restart, logs, stats)
-- Real-time system monitoring (CPU, RAM, disk, network)
-- Network management (bandwidth, connections, ports)
-- Domain monitoring (uptime, SSL certificates, DNS)
-- AI Assistant (OpenAI integration for log analysis)
-- Remote script execution via SSH
-- Database management (one-click PostgreSQL, MySQL, MongoDB, Redis deployment)
-  - DatabaseService implementation complete with container deployment, backup, and connection string generation
-  - Supports PostgreSQL 16, MySQL 8.0, MongoDB 7, Redis 7
-  - Automatic volume management and secure password generation
-  - Multi-language connection examples (Python, Node.js, Docker internal)
-- Game streaming integration (Moonlight/Sunshine setup)
-  - Complete connection guide at game.evindrake.net
-  - Windows 11 KVM with RTX 3060 GPU passthrough support
-  - Direct Twingate/LAN connection (best latency)
-  - Moonlight client download links for all platforms
-
-**VNC Desktop Features:**
-- Custom Ubuntu desktop environment (LXDE/LXQt)
-- Pre-installed applications:
-  - Web browsers: Firefox, Chromium
-  - Development: Git, Python3, Node.js, npm, Vim, Nano
-  - Productivity: LibreOffice suite
-  - Media: VLC, GIMP
-  - System: htop, neofetch, Thunar, Mousepad, GNOME Terminal
-- Desktop shortcuts and panel configuration
-- Persistent storage with vnc_home volume
-- Selective host mounting (projects read-only, downloads read-write)
-- Bootstrap script for automatic provisioning
-- Security: VNC password protected, HTTPS via Caddy, internal Docker network only
-
-**Stream Bot Features:**
-- Multi-platform streaming (Twitch, Kick, YouTube) with OAuth integration
-- OpenAI-powered Snapple fact generation
-- Automated fact delivery to streams
-- Web dashboard for configuration
-- Multi-user Twitch OAuth for automated chat posting
-- Multi-user Spotify OAuth for "now playing" overlays
-- Multi-user YouTube OAuth for livestream integration
-- Signed overlay tokens with encrypted storage and auto-refresh
-- PKCE-secured OAuth flows for all platforms
+### Unified Deployment System
+- `homelab-manager.sh`: A single control panel for all operations including deployment, service control, database management, configuration, troubleshooting, code syncing, and updates.
+- `docker-compose.unified.yml`: Orchestrates all 8 services.
+- Caddy reverse proxy: Provides automatic SSL via Let's Encrypt.
+- Automated Replit → Ubuntu Sync: Scripts (`sync-from-replit.sh`, `install-auto-sync.sh`) facilitate automatic code synchronization every 5 minutes.
 
 ## External Dependencies
 
 **Dashboard:**
 - Flask, Flask-CORS, docker (SDK), psutil, dnspython, paramiko, openai, tenacity
 - Bootstrap 5, Chart.js
-- Services: docker_service, system_service, ai_service, ssh_service, database_service, network_service, domain_service, deployment_service, caddy_manager, compose_manager, env_manager
 
 **Discord Bot:**
 - discord.js, express, drizzle-orm, pg, passport-discord
@@ -212,6 +103,6 @@ HomeLabHub/                      ← Replit Workspace Root
 
 **Infrastructure:**
 - Caddy (reverse proxy with automatic HTTPS)
-- PostgreSQL 16 Alpine (shared database container)
+- PostgreSQL 16 Alpine
 - Docker & Docker Compose
-- Let's Encrypt (SSL certificates via Caddy)
+- Let's Encrypt
