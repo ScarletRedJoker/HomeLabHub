@@ -241,7 +241,7 @@ services:
       - /home/${SERVICE_USER:-evin}/Downloads:/home/evin/host-downloads
     shm_size: '2gb'
     healthcheck:
-      test: ["CMD-SHELL", "wget --spider -q http://localhost:6080 || curl -f http://localhost:6080 || exit 1"]
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:6079 || curl -f http://localhost:6079 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

@@ -6,6 +6,8 @@ This Replit workspace is the centralized development environment for all homelab
 ## Recent Production Fixes & Features (Nov 13, 2025)
 
 ### Latest Updates
+- ✅ **VNC Desktop Production Ready**: Complete custom Ubuntu desktop with Firefox, Chromium, LibreOffice, GIMP, VLC, development tools - healthcheck fixed (port 6079), auto-sync configured for automatic rebuilds, bootstrap provisioning successful
+- ✅ **Auto-Sync System Fixed**: Updated systemd service with correct paths (/home/evin/contain/HomeLabHub), added vnc-desktop to service map for automatic rebuilds on code changes
 - ✅ **Enhanced VNC Desktop**: Custom Ubuntu desktop with pre-installed apps (Firefox, Chromium, LibreOffice, GIMP, VLC, dev tools), persistent storage, and curated desktop shortcuts - built as custom Docker image extending dorowu/ubuntu-desktop-lxde-vnc
 - ✅ **Cloud Gaming Infrastructure**: Complete Moonlight/Sunshine game streaming setup with Windows 11 KVM (RTX 3060 GPU passthrough) accessible at game.evindrake.net - prioritizes direct Twingate/LAN connection for <5ms latency
 - ✅ **Game Streaming Landing Page**: Professional connection guide at game.evindrake.net with Windows KVM specs, Moonlight client downloads, Twingate VPN instructions, and performance optimization tips

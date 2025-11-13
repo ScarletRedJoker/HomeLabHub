@@ -137,6 +137,7 @@ declare -A SERVICE_MAP=(
     ["services/discord-bot/"]="discord-bot"
     ["services/stream-bot/"]="stream-bot"
     ["services/static-site/"]="static-site"
+    ["services/vnc-desktop/"]="vnc-desktop"
     ["Caddyfile"]="caddy"
 )
 
