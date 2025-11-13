@@ -224,9 +224,41 @@
 {% endblock %}
 
 {% block content %}
+<div class="led-panel mb-4">
+    <div class="led-group">
+        <div class="led-label">PWR</div>
+        <span class="status-led online blink"></span>
+    </div>
+    <div class="led-group">
+        <div class="led-label">CPU</div>
+        <span class="status-led online" id="led-cpu"></span>
+    </div>
+    <div class="led-group">
+        <div class="led-label">MEM</div>
+        <span class="status-led warning" id="led-mem"></span>
+    </div>
+    <div class="led-group">
+        <div class="led-label">DISK</div>
+        <span class="status-led online" id="led-disk"></span>
+    </div>
+    <div class="led-group">
+        <div class="led-label">NET</div>
+        <span class="status-led active blink"></span>
+    </div>
+    <div class="led-group">
+        <div class="led-label">DOCKER</div>
+        <span class="hex-led"></span>
+    </div>
+    <div class="led-group">
+        <div class="led-label">API</div>
+        <span class="hex-led"></span>
+    </div>
+</div>
+
 <!-- Top Row - Critical Metrics -->
 <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom: 24px;">
     <div class="widget" style="text-align: center;">
+        <span class="status-led online blink" style="margin-bottom: 12px;"></span>
         <div class="metric-display" style="flex-direction: column; align-items: center;">
             <div class="metric-value glow-text" id="cpu-gauge">-</div>
             <div class="metric-label">CPU Load</div>
@@ -247,6 +279,7 @@
     </div>
     
     <div class="widget" style="text-align: center;">
+        <span class="status-led warning" style="margin-bottom: 12px;"></span>
         <div class="metric-display" style="flex-direction: column; align-items: center;">
             <div class="metric-value glow-text" id="mem-gauge">-</div>
             <div class="metric-label">Memory</div>
@@ -261,6 +294,7 @@
     </div>
     
     <div class="widget" style="text-align: center;">
+        <span class="status-led online" style="margin-bottom: 12px;"></span>
         <div class="metric-display" style="flex-direction: column; align-items: center;">
             <div class="metric-value glow-text" id="disk-gauge">-</div>
             <div class="metric-label">Disk Usage</div>
@@ -275,12 +309,13 @@
     </div>
     
     <div class="widget" style="text-align: center;">
+        <span class="hex-led" style="margin-bottom: 12px;"></span>
         <div class="metric-display" style="flex-direction: column; align-items: center;">
             <div class="metric-value glow-text" id="container-count">-</div>
             <div class="metric-label">Active Containers</div>
         </div>
         <div style="margin-top: 20px;">
-            <span class="status-indicator status-online pulse"></span>
+            <span class="status-led online blink"></span>
             <span style="font-size: 0.875rem; color: var(--text-secondary);" id="running-containers">- Running</span>
         </div>
     </div>
@@ -291,6 +326,7 @@
     <!-- System Performance Chart -->
     <div class="widget" style="grid-column: span 2;">
         <div class="widget-header">
+            <span class="status-led active blink"></span>
             <div class="widget-icon" style="background: linear-gradient(135deg, rgba(96, 165, 250, 0.2), rgba(167, 139, 250, 0.2));">
                 <i class="bi bi-activity" style="color: var(--accent-blue);"></i>
             </div>
@@ -304,6 +340,7 @@
     <!-- Container Status -->
     <div class="widget">
         <div class="widget-header">
+            <span class="hex-led"></span>
             <div class="widget-icon" style="background: linear-gradient(135deg, rgba(52, 211, 153, 0.2), rgba(34, 197, 94, 0.2));">
                 <i class="bi bi-box-seam" style="color: var(--accent-green);"></i>
             </div>
@@ -321,6 +358,7 @@
     <!-- Network Activity -->
     <div class="widget">
         <div class="widget-header">
+            <span class="status-led active blink"></span>
             <div class="widget-icon" style="background: linear-gradient(135deg, rgba(167, 139, 250, 0.2), rgba(139, 92, 246, 0.2));">
                 <i class="bi bi-diagram-3" style="color: var(--accent-purple);"></i>
             </div>
@@ -334,6 +372,7 @@
     <!-- Service Health -->
     <div class="widget">
         <div class="widget-header">
+            <span class="hex-led"></span>
             <div class="widget-icon" style="background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(22, 163, 74, 0.2));">
                 <i class="bi bi-heart-pulse" style="color: var(--accent-green);"></i>
             </div>
@@ -346,7 +385,7 @@
                     <div style="font-weight: 500;">Discord Bot</div>
                     <div style="font-size: 0.75rem; color: var(--text-secondary);">bot.rig-city.com</div>
                 </div>
-                <span class="status-indicator status-online pulse" style="margin-left: auto;"></span>
+                <span class="status-led online blink" style="margin-left: auto;"></span>
             </div>
             <div class="activity-item">
                 <div class="activity-icon"><i class="bi bi-camera-video"></i></div>
@@ -354,7 +393,7 @@
                     <div style="font-weight: 500;">Stream Bot</div>
                     <div style="font-size: 0.75rem; color: var(--text-secondary);">stream.rig-city.com</div>
                 </div>
-                <span class="status-indicator status-online pulse" style="margin-left: auto;"></span>
+                <span class="status-led online blink" style="margin-left: auto;"></span>
             </div>
             <div class="activity-item">
                 <div class="activity-icon"><i class="bi bi-film"></i></div>
@@ -362,7 +401,7 @@
                     <div style="font-weight: 500;">Plex Server</div>
                     <div style="font-size: 0.75rem; color: var(--text-secondary);">plex.evindrake.net</div>
                 </div>
-                <span class="status-indicator status-online pulse" style="margin-left: auto;"></span>
+                <span class="status-led online blink" style="margin-left: auto;"></span>
             </div>
         </div>
     </div>
@@ -370,6 +409,7 @@
     <!-- Recent Activity -->
     <div class="widget">
         <div class="widget-header">
+            <span class="status-led warning"></span>
             <div class="widget-icon" style="background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(245, 158, 11, 0.2));">
                 <i class="bi bi-clock-history" style="color: var(--accent-yellow);"></i>
             </div>
