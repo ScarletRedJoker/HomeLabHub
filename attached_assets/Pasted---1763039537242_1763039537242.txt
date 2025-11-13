@@ -1,0 +1,137 @@
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║        🏠 HOMELAB DEPLOYMENT MANAGER 🚀                    ║
+║                                                                ║
+║        Unified Control Panel for All Services              ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+
+━━━ Container Status ━━━
+  ✗ No services running (0/8)
+
+━━━ What would you like to do? ━━━
+
+  Deployment:
+    1) 🚀 Full Deploy (build and start all services)
+    2) 🔄 Quick Restart (restart without rebuilding)
+    3) ⚡ Rebuild & Deploy (force rebuild + restart)
+
+  Service Control:
+    4) ▶️  Start All Services
+    5) ⏸️  Stop All Services
+    6) 🔄 Restart Specific Service
+
+  Database:
+    7) 🗄️  Ensure Databases Exist (fix DB issues)
+    8) 📊 Check Database Status
+
+  Configuration:
+    9) ⚙️  Generate/Edit .env File
+    10) 📋 View Current Configuration
+
+  Troubleshooting:
+    11) 🔍 View Service Logs
+    12) 🏥 Health Check (all services)
+    13) 🔧 Full Troubleshoot Mode
+
+  Updates:
+    16) 📦 Update Service (pull latest image)
+
+  Information:
+    14) 📊 Show Container Details
+    15) 🌐 Show Service URLs
+
+    0) 🚪 Exit
+
+Enter your choice: 3
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ⚡ REBUILD & DEPLOY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Stopping services...
+
+Building containers (no cache)...
+[+] Building 24.5s (32/51)                                                                                                    
+ => [internal] load local bake definitions                                                                               0.0s
+ => => reading from stdin 1.65kB                                                                                         0.0s
+ => [stream-bot internal] load build definition from Dockerfile                                                          0.0s
+ => => transferring dockerfile: 1.81kB                                                                                   0.0s
+ => [homelab-dashboard internal] load build definition from Dockerfile                                                   0.0s
+ => => transferring dockerfile: 695B                                                                                     0.0s
+ => [discord-bot internal] load build definition from Dockerfile                                                         0.0s
+ => => transferring dockerfile: 2.83kB                                                                                   0.0s
+ => [homelab-dashboard internal] load metadata for docker.io/library/python:3.11-slim                                    0.2s
+ => [stream-bot internal] load metadata for docker.io/library/node:20-alpine                                             0.3s
+ => [discord-bot internal] load metadata for docker.io/library/node:20-slim                                              0.2s
+ => [homelab-dashboard internal] load .dockerignore                                                                      0.0s
+ => => transferring context: 2B                                                                                          0.0s
+ => [discord-bot internal] load .dockerignore                                                                            0.0s
+ => => transferring context: 2B                                                                                          0.0s
+ => [stream-bot internal] load .dockerignore                                                                             0.0s
+ => => transferring context: 2B                                                                                          0.0s
+ => [homelab-dashboard 1/7] FROM docker.io/library/python:3.11-slim@sha256:e4676722fba839e2e5cdb844a52262b43e90e56dbd55  0.0s
+ => [homelab-dashboard internal] load build context                                                                      0.0s
+ => => transferring context: 2.16kB                                                                                      0.0s
+ => CACHED [homelab-dashboard 2/7] WORKDIR /app                                                                          0.0s
+ => [homelab-dashboard 3/7] RUN apt-get update && apt-get install -y     gcc     && rm -rf /var/lib/apt/lists/*         10.0s
+ => [discord-bot internal] load build context                                                                            0.0s
+ => => transferring context: 8.58kB                                                                                      0.0s
+ => CACHED [discord-bot builder 1/7] FROM docker.io/library/node:20-slim@sha256:12541e65a3777c6035245518eb43006ed08ca8c  0.0s
+ => CANCELED [discord-bot builder 2/7] RUN apt-get update && apt-get install -y     python3     make     g++     libca  24.2s
+ => CANCELED [discord-bot stage-1  2/11] RUN apt-get update && apt-get install -y     ffmpeg     python3     python3-p  24.0s
+ => [stream-bot internal] load build context                                                                             0.0s
+ => => transferring context: 8.62kB                                                                                      0.0s
+ => CACHED [stream-bot builder 1/6] FROM docker.io/library/node:20-alpine@sha256:6178e78b972f79c335df281f4b7674a2d85071  0.0s
+ => CACHED [stream-bot builder 2/6] WORKDIR /app                                                                         0.0s
+ => [stream-bot stage-1 2/9] RUN apk add --no-cache dumb-init                                                            1.0s
+ => [stream-bot builder 3/6] COPY package*.json ./                                                                       0.0s
+ => [stream-bot builder 4/6] RUN npm ci                                                                                 21.5s
+ => [stream-bot stage-1 3/9] RUN addgroup -g 1001 -S nodejs &&     adduser -S streambot -u 1001                          0.2s
+ => [stream-bot stage-1 4/9] WORKDIR /app                                                                                0.0s
+ => [stream-bot stage-1 5/9] COPY package*.json ./                                                                       0.0s
+ => [stream-bot stage-1 6/9] RUN npm ci --only=production && npm cache clean --force                                    19.0s
+ => [homelab-dashboard 4/7] COPY requirements.txt .                                                                      0.0s
+ => CANCELED [homelab-dashboard 5/7] RUN pip install --no-cache-dir -r requirements.txt gunicorn                        13.8s
+ => [stream-bot builder 5/6] COPY . .                                                                                    0.0s
+ => ERROR [stream-bot builder 6/6] RUN npm run build &&     echo "Build completed. Checking output..." &&     ls -la di  2.1s
+------                                                                                                                        
+ > [stream-bot builder 6/6] RUN npm run build &&     echo "Build completed. Checking output..." &&     ls -la dist/ &&     echo "Build verification successful!":                                                                                           
+0.246                                                                                                                         
+0.246 > rest-express@1.0.0 build                                                                                              
+0.246 > vite build && node esbuild.config.mjs                                                                                 
+0.246                                                                                                                         
+0.445 vite v5.4.20 building for production...                                                                                 
+0.755 transforming...                                                                                                         
+1.520                                                                                                                         
+1.520 A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.                                                                                                                           
+1.933 ✓ 95 modules transformed.                                                                                               
+1.937 x Build failed in 1.47s                                                                                                 
+1.937 error during build:                                                                                                     
+1.937 [vite:load-fallback] Could not load /app/client/src/lib/utils (imported by client/src/components/ui/tooltip.tsx): ENOENT: no such file or directory, open '/app/client/src/lib/utils'
+1.937     at async open (node:internal/fs/promises:639:25)
+1.937     at async Object.readFile (node:internal/fs/promises:1246:14)
+1.937     at async Object.load (file:///app/node_modules/vite/dist/node/chunks/dep-D_zLpgQd.js:65356:25)
+1.937     at async PluginDriver.hookFirstAndGetPlugin (file:///app/node_modules/rollup/dist/es/shared/node-entry.js:20689:28)
+1.937     at async file:///app/node_modules/rollup/dist/es/shared/node-entry.js:19809:33
+1.937     at async Queue.work (file:///app/node_modules/rollup/dist/es/shared/node-entry.js:20899:32)
+------
+Dockerfile:19
+
+--------------------
+
+  18 |     # Backend builds to: dist/index.js
+
+  19 | >>> RUN npm run build && \
+
+  20 | >>>     echo "Build completed. Checking output..." && \
+
+  21 | >>>     ls -la dist/ && \
+
+  22 | >>>     echo "Build verification successful!"
+
+  23 |     
+
+--------------------
+
+target stream-bot: failed to solve: process "/bin/sh -c npm run build &&     echo \"Build completed. Checking output...\" &&     ls -la dist/ &&     echo \"Build verification successful!\"" did not complete successfully: exit code: 1
