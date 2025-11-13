@@ -2,7 +2,7 @@
 
 **Centralized development environment for all homelab services**
 
-This Replit workspace serves as your development environment for managing 7 production services across 3 domains. Edit code here, test changes, then deploy to your Ubuntu 25.10 homelab server.
+This Repo serves as your development environment for managing 7 production services across 3 domains. Edit code here, test changes, then deploy to your Ubuntu 25.10 homelab server.
 
 ---
 
