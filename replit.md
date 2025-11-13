@@ -6,9 +6,12 @@ This Replit workspace is the centralized development environment for all homelab
 ## Recent Production Fixes & Features (Nov 13, 2025)
 
 ### Latest Updates
+- 🔒 **CRITICAL SECURITY FIX**: Removed insecure default dashboard credentials - now requires WEB_USERNAME and WEB_PASSWORD environment variables (dashboard refuses to start if not set)
+- ✅ **VNC Desktop Enhanced**: Added 30+ new applications (Steam, OBS Studio, Audacity, Glances, KeePassXC, Remmina, build-essential, tmux, gedit) - complete development and gaming environment
+- ✅ **Comprehensive Improvement Plan**: Created docs/IMPROVEMENT_PLAN.md with strategic plan for code unification, script consolidation, documentation cleanup, and shared component libraries
+- ✅ **game.evindrake.net Fixed**: Added proper cache-control headers to prevent SSL errors and caching issues
 - ✅ **VNC Desktop Production Ready**: Complete custom Ubuntu desktop with Firefox, Chromium, LibreOffice, GIMP, VLC, development tools - healthcheck fixed (port 6079), auto-sync configured for automatic rebuilds, bootstrap provisioning successful
 - ✅ **Auto-Sync System Fixed**: Updated systemd service with correct paths (/home/evin/contain/HomeLabHub), added vnc-desktop to service map for automatic rebuilds on code changes
-- ✅ **Enhanced VNC Desktop**: Custom Ubuntu desktop with pre-installed apps (Firefox, Chromium, LibreOffice, GIMP, VLC, dev tools), persistent storage, and curated desktop shortcuts - built as custom Docker image extending dorowu/ubuntu-desktop-lxde-vnc
 - ✅ **Cloud Gaming Infrastructure**: Complete Moonlight/Sunshine game streaming setup with Windows 11 KVM (RTX 3060 GPU passthrough) accessible at game.evindrake.net - prioritizes direct Twingate/LAN connection for <5ms latency
 - ✅ **Game Streaming Landing Page**: Professional connection guide at game.evindrake.net with Windows KVM specs, Moonlight client downloads, Twingate VPN instructions, and performance optimization tips
 - ✅ **Activity Logging System**: Real-time activity feed on Mission Control dashboard showing container operations, system events, and user actions with color-coded severity levels
