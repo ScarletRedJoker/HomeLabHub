@@ -1,0 +1,472 @@
+{% extends "base.html" %}
+
+{% block title %}Database Management - Homelab{% endblock %}
+
+{% block extra_css %}
+<style>
+        .db-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            border-left: 4px solid #0d6efd;
+        }
+        .db-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .db-card.postgresql { border-left-color: #336791; }
+        .db-card.mysql { border-left-color: #4479A1; }
+        .db-card.mariadb { border-left-color: #003545; }
+        .db-card.mongodb { border-left-color: #47A248; }
+        .db-card.redis { border-left-color: #DC382D; }
+        
+        .db-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        .db-icon.postgresql { color: #336791; }
+        .db-icon.mysql { color: #4479A1; }
+        .db-icon.mariadb { color: #003545; }
+        .db-icon.mongodb { color: #47A248; }
+        .db-icon.redis { color: #DC382D; }
+        
+        .connection-string {
+            font-family: 'Courier New', monospace;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            word-break: break-all;
+        }
+        
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="container-fluid mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="bi bi-database"></i> Database Management</h1>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createDatabaseModal">
+                <i class="bi bi-plus-circle"></i> Create Database
+            </button>
+        </div>
+
+        <!-- Database Templates Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-box-seam"></i> Quick Deploy Database</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row" id="dbTemplates">
+                            <div class="col-md-2 col-sm-4 mb-3">
+                                <div class="card text-center db-template" data-type="postgresql" onclick="quickCreate('postgresql')">
+                                    <div class="card-body">
+                                        <i class="bi bi-database db-icon postgresql"></i>
+                                        <h6>PostgreSQL</h6>
+                                        <small class="text-muted">16-alpine</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-2 col-sm-4 mb-3">
+                                <div class="card text-center db-template" data-type="mysql" onclick="quickCreate('mysql')">
+                                    <div class="card-body">
+                                        <i class="bi bi-database db-icon mysql"></i>
+                                        <h6>MySQL</h6>
+                                        <small class="text-muted">8.0</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-2 col-sm-4 mb-3">
+                                <div class="card text-center db-template" data-type="mariadb" onclick="quickCreate('mariadb')">
+                                    <div class="card-body">
+                                        <i class="bi bi-database db-icon mariadb"></i>
+                                        <h6>MariaDB</h6>
+                                        <small class="text-muted">11</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-2 col-sm-4 mb-3">
+                                <div class="card text-center db-template" data-type="mongodb" onclick="quickCreate('mongodb')">
+                                    <div class="card-body">
+                                        <i class="bi bi-database db-icon mongodb"></i>
+                                        <h6>MongoDB</h6>
+                                        <small class="text-muted">7</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-2 col-sm-4 mb-3">
+                                <div class="card text-center db-template" data-type="redis" onclick="quickCreate('redis')">
+                                    <div class="card-body">
+                                        <i class="bi bi-database db-icon redis"></i>
+                                        <h6>Redis</h6>
+                                        <small class="text-muted">7-alpine</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Databases List -->
+        <div class="row" id="databasesList">
+            <div class="col-12">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading databases...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Database Modal -->
+    <div class="modal fade" id="createDatabaseModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create New Database</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createDatabaseForm">
+                        <div class="mb-3">
+                            <label class="form-label">Database Type</label>
+                            <select class="form-select" id="dbType" required>
+                                <option value="">Select database type...</option>
+                                <option value="postgresql">PostgreSQL 16</option>
+                                <option value="mysql">MySQL 8.0</option>
+                                <option value="mariadb">MariaDB 11</option>
+                                <option value="mongodb">MongoDB 7</option>
+                                <option value="redis">Redis 7</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Container Name</label>
+                            <input type="text" class="form-control" id="containerName" 
+                                   placeholder="my-database (leave empty for auto-generated)" pattern="[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}">
+                            <small class="text-muted">Optional: Custom container name</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Database Name</label>
+                            <input type="text" class="form-control" id="databaseName" 
+                                   placeholder="mydb" value="mydb">
+                            <small class="text-muted">The default database to create</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Username</label>
+                            <input type="text" class="form-control" id="username" 
+                                   placeholder="admin" value="admin">
+                            <small class="text-muted">Database admin username</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password (optional)</label>
+                            <input type="password" class="form-control" id="password" 
+                                   placeholder="Leave empty for auto-generated password">
+                            <small class="text-muted">Auto-generated if empty</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="createDatabase()">Create Database</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Database Info Modal -->
+    <div class="modal fade" id="databaseInfoModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="dbInfoTitle">Database Information</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="databaseInfoContent">
+                    <!-- Content loaded dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+        const API_KEY = localStorage.getItem('api_key') || '';
+
+        async function fetchAPI(url, options = {}) {
+            const headers = {
+                'X-API-Key': API_KEY,
+                'Content-Type': 'application/json',
+                ...options.headers
+            };
+            
+            const response = await fetch(url, { ...options, headers });
+            return response.json();
+        }
+
+        async function loadDatabases() {
+            try {
+                const result = await fetchAPI('/api/databases');
+                
+                const container = document.getElementById('databasesList');
+                
+                if (!result.success || result.data.length === 0) {
+                    container.innerHTML = `
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i> No databases created yet. 
+                                Click the quick deploy buttons above or use "Create Database" to get started.
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = result.data.map(db => `
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card db-card ${db.db_type}" onclick="showDatabaseInfo('${db.name}')">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h5 class="card-title"><i class="bi bi-database"></i> ${db.name}</h5>
+                                    <span class="badge ${db.status === 'running' ? 'bg-success' : 'bg-secondary'}">
+                                        ${db.status}
+                                    </span>
+                                </div>
+                                <p class="mb-1"><strong>Type:</strong> ${db.db_type}</p>
+                                <p class="mb-1"><strong>Host Port:</strong> ${db.host_port}</p>
+                                <p class="mb-1"><strong>Database:</strong> ${db.database_name || 'N/A'}</p>
+                                <p class="mb-1"><strong>User:</strong> ${db.username || 'N/A'}</p>
+                                ${db.password ? `<p class="mb-0"><small class="text-muted">Password: ${db.password.substring(0, 4)}...</small></p>` : ''}
+                                <hr>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteDatabase('${db.name}')">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                    <button class="btn btn-sm btn-warning" onclick="event.stopPropagation(); backupDatabase('${db.name}')">
+                                        <i class="bi bi-download"></i> Backup
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading databases:', error);
+                document.getElementById('databasesList').innerHTML = `
+                    <div class="col-12">
+                        <div class="alert alert-danger">
+                            <i class="bi bi-exclamation-triangle"></i> Error loading databases: ${error.message}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function quickCreate(dbType) {
+            document.getElementById('dbType').value = dbType;
+            new bootstrap.Modal(document.getElementById('createDatabaseModal')).show();
+        }
+
+        async function createDatabase() {
+            const dbType = document.getElementById('dbType').value;
+            const name = document.getElementById('containerName').value;
+            const databaseName = document.getElementById('databaseName').value;
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            if (!dbType) {
+                alert('Please select a database type');
+                return;
+            }
+
+            try {
+                const result = await fetchAPI('/api/databases', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        db_type: dbType,
+                        name: name,
+                        database_name: databaseName,
+                        username: username,
+                        password: password || null
+                    })
+                });
+
+                if (result.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('createDatabaseModal')).hide();
+                    
+                    let message = `✅ Database created successfully!\n\n` +
+                                `Container: ${result.container_name}\n` +
+                                `Database: ${result.database_name}\n` +
+                                `Username: ${result.username}\n` +
+                                `Password: ${result.password}\n` +
+                                ${result.root_password ? `Root Password: ${result.root_password}\n` : ''} +
+                                `\n📡 HOST CONNECTION (from your computer):\n${result.connection_string}\n\n` +
+                                `🐳 DOCKER CONNECTION (from other containers):\n${result.docker_connection}\n\n` +
+                                `💡 The credentials are saved and can be viewed anytime by clicking the database card.`;
+                    
+                    alert(message);
+                    
+                    document.getElementById('createDatabaseForm').reset();
+                    loadDatabases();
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                alert('Error creating database: ' + error.message);
+            }
+        }
+
+        async function showDatabaseInfo(containerName) {
+            try {
+                const [infoResult, examplesResult] = await Promise.all([
+                    fetchAPI(`/api/databases/${containerName}`),
+                    fetchAPI(`/api/databases/${containerName}/connection-examples`)
+                ]);
+
+                if (!infoResult.success) {
+                    alert('Error: ' + infoResult.message);
+                    return;
+                }
+
+                const db = infoResult.data;
+                const examples = examplesResult.data || {};
+
+                document.getElementById('dbInfoTitle').textContent = `${db.name} - ${db.db_type}`;
+                document.getElementById('databaseInfoContent').innerHTML = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Database Information</h6>
+                            <table class="table table-sm">
+                                <tr><th>Status:</th><td><span class="badge bg-${db.status === 'running' ? 'success' : 'secondary'}">${db.status}</span></td></tr>
+                                <tr><th>Type:</th><td>${db.db_type}</td></tr>
+                                <tr><th>Container:</th><td>${db.name}</td></tr>
+                                <tr><th>Host Port:</th><td>${db.host_port}</td></tr>
+                                <tr><th>Database:</th><td>${db.database_name}</td></tr>
+                                <tr><th>Username:</th><td>${db.username}</td></tr>
+                                <tr><th>Password:</th><td><code>${db.password}</code></td></tr>
+                                ${db.root_password ? `<tr><th>Root Password:</th><td><code>${db.root_password}</code></td></tr>` : ''}
+                                <tr><th>Memory Usage:</th><td>${db.memory_usage} (${db.memory_percent})</td></tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Connection Strings</h6>
+                            <p><strong>From Host Machine:</strong></p>
+                            <div class="connection-string mb-3">
+                                ${db.connection_string}
+                            </div>
+                            <p><strong>From Docker Containers:</strong></p>
+                            <div class="connection-string mb-3">
+                                ${db.docker_connection}
+                            </div>
+                            <small class="text-muted">✅ Passwords are stored and auto-filled</small>
+                        </div>
+                    </div>
+
+                    ${examples.python ? `
+                    <hr>
+                    <h6>Connection Examples</h6>
+                    
+                    <ul class="nav nav-tabs mb-3" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#host-tab">Host Connection</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#docker-tab">Docker Connection</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#python-tab">Python</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#node-tab">Node.js</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#env-tab">Docker ENV</button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="host-tab">
+                            <p><strong>Connect from your computer:</strong></p>
+                            <pre class="code-block">${examples.host_connection}</pre>
+                        </div>
+                        <div class="tab-pane fade" id="docker-tab">
+                            <p><strong>Connect from other containers on the homelab network:</strong></p>
+                            <pre class="code-block">${examples.docker_connection}</pre>
+                        </div>
+                        <div class="tab-pane fade" id="python-tab">
+                            <pre class="code-block">${examples.python}</pre>
+                        </div>
+                        <div class="tab-pane fade" id="node-tab">
+                            <pre class="code-block">${examples.node}</pre>
+                        </div>
+                        <div class="tab-pane fade" id="env-tab">
+                            <pre class="code-block">${examples.docker_env}</pre>
+                        </div>
+                    </div>
+                    ` : ''}
+                `;
+
+                new bootstrap.Modal(document.getElementById('databaseInfoModal')).show();
+            } catch (error) {
+                alert('Error loading database info: ' + error.message);
+            }
+        }
+
+        async function deleteDatabase(containerName) {
+            if (!confirm(`Are you sure you want to delete database "${containerName}"?\n\nThis will stop and remove the container. The data volume will be preserved unless you choose to delete it.`)) {
+                return;
+            }
+
+            const deleteVolume = confirm('Do you also want to delete the data volume?\n\nClick OK to delete all data permanently.\nClick Cancel to keep the data for potential recovery.');
+
+            try {
+                const result = await fetchAPI(`/api/databases/${containerName}?delete_volume=${deleteVolume}`, {
+                    method: 'DELETE'
+                });
+
+                if (result.success) {
+                    alert(result.message);
+                    loadDatabases();
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                alert('Error deleting database: ' + error.message);
+            }
+        }
+
+        async function backupDatabase(containerName) {
+            try {
+                const result = await fetchAPI(`/api/databases/${containerName}/backup`, {
+                    method: 'POST',
+                    body: JSON.stringify({ backup_path: '/tmp' })
+                });
+
+                if (result.success) {
+                    alert(`Backup created!\n\nLocation: ${result.backup_file || result.backup_location}\n${result.message}`);
+                } else {
+                    alert('Backup note: ' + result.message);
+                }
+            } catch (error) {
+                alert('Error creating backup: ' + error.message);
+            }
+        }
+
+        loadDatabases();
+        setInterval(loadDatabases, 30000);
+    </script>
+{% endblock %}

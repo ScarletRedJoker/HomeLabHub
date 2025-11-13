@@ -1,0 +1,152 @@
+networks:
+  homelab:
+    name: homelab
+    driver: bridge
+
+services:
+  # Traefik Reverse Proxy
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    restart: unless-stopped
+    networks:
+      - homelab
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Dashboard - comment out for production
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/traefik.yml:ro
+      - ./traefik/acme.json:/acme.json
+      - ./traefik/config:/config:ro
+    environment:
+      - CF_API_EMAIL=${CF_API_EMAIL:-}
+      - CF_API_KEY=${CF_API_KEY:-}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.evindrake.net`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+
+  # Homelab Dashboard
+  homelab-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: homelab-dashboard
+    restart: unless-stopped
+    networks:
+      - homelab
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./logs:/app/logs
+      - ./.env:/app/.env:ro
+    environment:
+      - FLASK_ENV=production
+      - DASHBOARD_API_KEY=${DASHBOARD_API_KEY}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`host.evindrake.net`)"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
+      - "traefik.http.services.dashboard.loadbalancer.server.port=5000"
+
+  # Discord Ticket Bot
+  discord-bot:
+    image: ${DISCORD_BOT_IMAGE:-ghcr.io/yourrepo/discord-bot:latest}
+    container_name: discordticketbot
+    restart: unless-stopped
+    networks:
+      - homelab
+    volumes:
+      - /home/evin/contain/DiscordTicketBot:/app/data
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - BOT_PREFIX=${BOT_PREFIX:-!}
+    profiles:
+      - all
+      - discord
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.discordbot.rule=Host(`bot.rig-city.com`)"
+      - "traefik.http.routers.discordbot.entrypoints=websecure"
+      - "traefik.http.routers.discordbot.tls.certresolver=letsencrypt"
+      - "traefik.http.services.discordbot.loadbalancer.server.port=80"
+
+  # Plex Media Server
+  plex:
+    image: plexinc/pms-docker:latest
+    container_name: plex-server
+    restart: unless-stopped
+    networks:
+      - homelab
+    ports:
+      - "32400:32400"  # Required for Plex apps
+    volumes:
+      - /home/evin/contain/plex-server/config:/config
+      - /home/evin/contain/plex-server/media:/media
+      - /home/evin/contain/plex-server/transcode:/transcode
+    environment:
+      - TZ=America/New_York
+      - PLEX_CLAIM=${PLEX_CLAIM:-}
+      - ADVERTISE_IP=https://plex.evindrake.net:443
+    profiles:
+      - all
+      - plex
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.plex.rule=Host(`plex.evindrake.net`)"
+      - "traefik.http.routers.plex.entrypoints=websecure"
+      - "traefik.http.routers.plex.tls.certresolver=letsencrypt"
+      - "traefik.http.services.plex.loadbalancer.server.port=32400"
+
+  # n8n Automation Platform
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    networks:
+      - homelab
+    volumes:
+      - /home/evin/contain/n8n:/home/node/.n8n
+    environment:
+      - N8N_HOST=n8n.evindrake.net
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - WEBHOOK_URL=https://n8n.evindrake.net/
+      - GENERIC_TIMEZONE=America/New_York
+    profiles:
+      - all
+      - n8n
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.n8n.rule=Host(`n8n.evindrake.net`)"
+      - "traefik.http.routers.n8n.entrypoints=websecure"
+      - "traefik.http.routers.n8n.tls.certresolver=letsencrypt"
+      - "traefik.http.services.n8n.loadbalancer.server.port=5678"
+
+  # Static Website (Nginx)
+  scarletredjoker-web:
+    image: nginx:alpine
+    container_name: scarletredjoker-web
+    restart: unless-stopped
+    networks:
+      - homelab
+    volumes:
+      - /var/www/scarletredjoker:/usr/share/nginx/html:ro
+    profiles:
+      - all
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.scarlet.rule=Host(`scarletredjoker.com`) || Host(`www.scarletredjoker.com`)"
+      - "traefik.http.routers.scarlet.entrypoints=websecure"
+      - "traefik.http.routers.scarlet.tls.certresolver=letsencrypt"
+      - "traefik.http.services.scarlet.loadbalancer.server.port=80"
+      - "traefik.http.middlewares.scarlet-redirect.redirectregex.regex=^https://www\\.scarletredjoker\\.com/(.*)"
+      - "traefik.http.middlewares.scarlet-redirect.redirectregex.replacement=https://scarletredjoker.com/$${1}"
+      - "traefik.http.routers.scarlet.middlewares=scarlet-redirect"

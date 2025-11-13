@@ -1,0 +1,55 @@
+2025-11-11 12:37:15,947 (7c27d5c25808) :  INFO (core:349) - Starting framework core - Version: 2.6.3, Build: f737b82 (Thu Sep 18 14:18:49 UTC 2025)
+2025-11-11 12:37:15,947 (7c27d5c25808) :  DEBUG (core:361) - Using the standard policy
+2025-11-11 12:37:15,947 (7c27d5c25808) :  DEBUG (core:450) - Starting runtime component.
+2025-11-11 12:37:15,948 (7c27d5c25808) :  DEBUG (core:450) - Starting caching component.
+2025-11-11 12:37:15,948 (7c27d5c25808) :  DEBUG (core:450) - Starting data component.
+2025-11-11 12:37:15,948 (7c27d5c25808) :  DEBUG (core:450) - Starting networking component.
+2025-11-11 12:37:15,948 (7c27d5c25808) :  DEBUG (networking:266) - No cookie jar found
+2025-11-11 12:37:15,948 (7c27d5c25808) :  DEBUG (networking:434) - Setting the default network timeout to 20.0
+2025-11-11 12:37:15,949 (7c27d5c25808) :  DEBUG (core:450) - Starting localization component.
+2025-11-11 12:37:15,949 (7c27d5c25808) :  INFO (localization:409) - Setting the default locale to en-us
+2025-11-11 12:37:15,949 (7c27d5c25808) :  DEBUG (core:450) - Starting messaging component.
+2025-11-11 12:37:15,949 (7c27d5c25808) :  DEBUG (core:450) - Starting debugging component.
+2025-11-11 12:37:15,949 (7c27d5c25808) :  DEBUG (core:450) - Starting services component.
+2025-11-11 12:37:15,949 (7c27d5c25808) :  DEBUG (core:450) - Starting myplex component.
+2025-11-11 12:37:15,949 (7c27d5c25808) :  DEBUG (core:450) - Starting notifications component.
+2025-11-11 12:37:15,950 (7c27d280db38) :  DEBUG (networking:144) - Requesting 'http://127.0.0.1:32400/system/messaging/clear_events/com.plexapp.agents.movieposterdb'
+2025-11-11 12:37:16,006 (7c27d5c25808) :  DEBUG (accessor:68) - Creating a new model access point for provider com.plexapp.agents.movieposterdb in namespace 'metadata'
+2025-11-11 12:37:16,008 (7c27d5c25808) :  DEBUG (networking:144) - Requesting 'http://127.0.0.1:32400/:/plugins/com.plexapp.system/resourceHashes'
+2025-11-11 12:37:16,011 (7c27d5c25808) :  ERROR (networking:197) - Error opening URL 'http://127.0.0.1:32400/:/plugins/com.plexapp.system/resourceHashes'
+2025-11-11 12:37:16,012 (7c27d5c25808) :  CRITICAL (runtime:1299) - Exception getting hosted resource hashes (most recent call last):
+  File "/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/runtime.py", line 1293, in get_resource_hashes
+    json = self._core.networking.http_request("http://127.0.0.1:32400/:/plugins/com.plexapp.system/resourceHashes", timeout=10).content
+  File "/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/networking.py", line 243, in content
+    return self.__str__()
+  File "/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/networking.py", line 221, in __str__
+    self.load()
+  File "/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/networking.py", line 159, in load
+    f = self._opener.open(req, timeout=self._timeout)
+  File "/usr/lib/plexmediaserver/Resources/Python/python27.zip/urllib2.py", line 435, in open
+    response = meth(req, response)
+  File "/usr/lib/plexmediaserver/Resources/Python/python27.zip/urllib2.py", line 548, in http_response
+    'http', request, response, code, msg, hdrs)
+  File "/usr/lib/plexmediaserver/Resources/Python/python27.zip/urllib2.py", line 473, in error
+    return self._call_chain(*args)
+  File "/usr/lib/plexmediaserver/Resources/Python/python27.zip/urllib2.py", line 407, in _call_chain
+    result = func(*args)
+  File "/usr/lib/plexmediaserver/Resources/Python/python27.zip/urllib2.py", line 556, in http_error_default
+    raise HTTPError(req.get_full_url(), code, msg, hdrs, fp)
+HTTPError: HTTP Error 404: Not Found
+
+2025-11-11 12:37:16,016 (7c27d5c25808) :  DEBUG (runtime:1117) - Created a thread named 'load_all_services'
+2025-11-11 12:37:16,016 (7c27d25c9b38) :  DEBUG (services:265) - Plug-in is not daemonized - loading services from system
+2025-11-11 12:37:16,017 (7c27d5c25808) :  DEBUG (runtime:1117) - Created a thread named 'get_server_info'
+2025-11-11 12:37:16,017 (7c27d25c9b38) :  DEBUG (networking:144) - Requesting 'http://127.0.0.1:32400/:/plugins/com.plexapp.system/messaging/function/X0J1bmRsZVNlcnZpY2U6QWxsU2VydmljZXM_/Y2VyZWFsMQoxCmxpc3QKMApyMAo_/Y2VyZWFsMQoxCmRpY3QKMApyMAo_'
+2025-11-11 12:37:16,017 (7c27d2583b38) :  DEBUG (networking:144) - Requesting 'http://127.0.0.1:32400'
+2025-11-11 12:37:16,018 (7c27d5c25808) :  DEBUG (core:150) - Finished starting framework core
+2025-11-11 12:37:16,018 (7c27d5c25808) :  DEBUG (core:560) - Loading plug-in code
+2025-11-11 12:37:16,020 (7c27d2583b38) :  DEBUG (core:538) - Machine identifier is 691a598f8c6a16eccb4d8ebfae9ef3568f2b38af
+2025-11-11 12:37:16,021 (7c27d2583b38) :  DEBUG (core:539) - Server version is 1.42.2.10156-f737b826c
+2025-11-11 12:37:16,021 (7c27d25c9b38) :  DEBUG (services:362) - Loaded services
+2025-11-11 12:37:16,024 (7c27d25a6b38) :  DEBUG (services:438) - No shared code to load
+2025-11-11 12:37:16,029 (7c27d5c25808) :  DEBUG (core:566) - Finished loading plug-in code
+2025-11-11 12:37:16,029 (7c27d5c25808) :  DEBUG (agentkit:1132) - Creating new agent class called CineMaterialAgent
+2025-11-11 12:37:16,029 (7c27d5c25808) :  DEBUG (agentkit:937) - Updating agent information: [{'media_types': ['Movie'], 'accepts_from': None, 'fallback_agent': None, 'contributes_to': ['com.plexapp.agents.imdb'], 'languages': ['xn'], 'persist_stored_files': True, 'version': 0, 'primary_provider': False, 'prefs': False, 'name': 'CineMaterial'}]
+2025-11-11 12:37:16,030 (7c27d5c25808) :  DEBUG (networking:144) - Requesting 'http://127.0.0.1:32400/:/plugins/com.plexapp.system/messaging/function/X0FnZW50U2VydmljZTpVcGRhdGVJbmZv/Y2VyZWFsMQoxCmxpc3QKMApyMAo_/Y2VyZWFsMQo2CmRpY3QKbGlzdApkaWN0Cmxpc3QKbGlzdApsaXN0CjIKczMyCmNvbS5wbGV4YXBwLmFnZW50cy5tb3ZpZXBvc3RlcmRiczEwCmlkZW50aWZpZXJyMQpzMTAKYWdlbnRfaW5mbzEKcjIKMTAKcjMKczExCm1lZGlhX3R5cGVzbnMxMgphY2NlcHRzX2Zyb21uczE0CmZhbGxiYWNrX2FnZW50cjQKczE0CmNvbnRyaWJ1dGVzX3RvcjUKczkKbGFuZ3VhZ2VzYjFzMjAKcGVyc2lzdF9zdG9yZWRfZmlsZXNpMApzNwp2ZXJzaW9uYjBzMTYKcHJpbWFyeV9wcm92aWRlcmIwczUKcHJlZnNzMTIKQ2luZU1hdGVyaWFsczQKbmFtZTEKczUKTW92aWUxCnMyMwpjb20ucGxleGFwcC5hZ2VudHMuaW1kYjEKczIKeG5yMAo_'

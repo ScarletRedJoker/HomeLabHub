@@ -1,0 +1,78 @@
+evin@host:~/contain/HomeLabHub$ # 1. Discard all the Plex runtime files (they're just logs)
+git restore services/plex/
+
+# 2. Check what changed in the stream-bot files
+git diff services/stream-bot/Dockerfile
+git diff services/stream-bot/esbuild.config.mjs
+
+# If those changes are important, stash them:
+git stash push services/stream-bot/Dockerfile services/stream-bot/esbuild.config.mjs -m "stream-bot local changes"
+
+# Or if you don't need them, discard them:
+# git restore services/stream-bot/Dockerfile services/stream-bot/esbuild.config.mjs
+
+# 3. Now pull cleanly
+git pull
+
+# 4. If you stashed, reapply your changes:
+# git stash pop
+
+# 5. Prevent Plex files from being tracked in future
+echo "services/plex/config/" >> .gitignore
+git add .gitignore
+git commit -m "Ignore Plex runtime files"
+diff --git a/services/stream-bot/Dockerfile b/services/stream-bot/Dockerfile
+index 1c1bb4bf..faf0a4ba 100644
+--- a/services/stream-bot/Dockerfile
++++ b/services/stream-bot/Dockerfile
+@@ -41,8 +41,8 @@ RUN npm ci --only=production && npm cache clean --force
+ # Both frontend (dist/public/) and backend (dist/index.js) are in dist/
+ COPY --from=builder --chown=streambot:nodejs /app/dist ./dist
+ 
+-# Copy drizzle configuration for potential migrations
+-COPY --chown=streambot:nodejs drizzle.config.ts ./
++# Copy connect-pg-simple table.sql to dist/ for session store
++COPY --from=builder --chown=streambot:nodejs /app/node_modules/connect-pg-simple/table.sql ./dist/table.sql
+ 
+ # Switch to non-root user
+ USER streambot
+diff --git a/services/stream-bot/esbuild.config.mjs b/services/stream-bot/esbuild.config.mjs
+index b1d23d18..16c4df32 100644
+--- a/services/stream-bot/esbuild.config.mjs
++++ b/services/stream-bot/esbuild.config.mjs
+@@ -28,11 +28,13 @@ await build({
+   plugins: [
+     {
+       name: 'resolve-shared-alias',
+-      setup(build) {
+-        // Resolve @shared/* path alias to ./shared/*
+-        build.onResolve({ filter: /^@shared\// }, (args) => ({
+-          path: resolve(__dirname, args.path.replace('@shared/', 'shared/'))
+-        }));
++            setup(build) {
++        // Resolve @shared/* path alias to ./shared/*.ts
++        build.onResolve({ filter: /^@shared\// }, (args) => {
++          const pathWithoutAlias = args.path.replace('@shared/', 'shared/');
++          const resolvedPath = resolve(__dirname, pathWithoutAlias + '.ts');
++          return { path: resolvedPath };
++        });
+       }
+     },
+     {
+Saved working directory and index state On main: stream-bot local changes
+Already up to date.
+[main 32b22516] Ignore Plex runtime files
+ Committer: evin <evin@host.evindrake.net>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly. Run the
+following command and follow the instructions in your editor to edit
+your configuration file:
+
+    git config --global --edit
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 1 file changed, 1 insertion(+)

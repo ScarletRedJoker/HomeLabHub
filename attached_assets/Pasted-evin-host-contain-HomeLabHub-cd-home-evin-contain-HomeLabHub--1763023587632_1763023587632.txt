@@ -1,0 +1,477 @@
+evin@host:~/contain/HomeLabHub$ cd /home/evin/contain/HomeLabHub
+
+# ====================================
+# Step 1: Create the SQL file directly
+# ====================================
+cat > /tmp/init-streambot-schema.sql << 'EOFSCHEMA'
+-- Stream Bot Database Schema
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+CREATE TABLE IF NOT EXISTS users (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'user',
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS platform_connections (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  user_id VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  platform TEXT NOT NULL,
+  platform_user_id TEXT,
+  platform_username TEXT,
+  access_token TEXT,
+  refresh_token TEXT,
+  token_expires_at TIMESTAMP,
+  channel_id TEXT,
+  is_connected BOOLEAN NOT NULL DEFAULT false,
+  last_connected_at TIMESTAMP,
+  connection_data JSONB,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS platform_connections_user_id_platform_unique 
+ON platform_connections(user_id, platform);
+
+CREATE TABLE IF NOT EXISTS bot_configs (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  user_id VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+  interval_mode TEXT NOT NULL DEFAULT 'manual',
+  fixed_interval_minutes INTEGER,
+  random_min_minutes INTEGER,
+  random_max_minutes INTEGER,
+  ai_model TEXT NOT NULL DEFAULT 'gpt-5-mini',
+  ai_prompt_template TEXT,
+  ai_temperature INTEGER DEFAULT 1,
+  enable_chat_triggers BOOLEAN NOT NULL DEFAULT true,
+  chat_keywords TEXT[] NOT NULL DEFAULT ARRAY['!snapple', '!fact']::text[],
+  active_platforms TEXT[] NOT NULL DEFAULT ARRAY[]::text[],
+  is_active BOOLEAN NOT NULL DEFAULT false,
+  last_fact_posted_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS bot_instances (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  user_id VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+  status TEXT NOT NULL DEFAULT 'stopped',
+  last_heartbeat TIMESTAMP,
+  error_message TEXT,
+  started_at TIMESTAMP,
+  stopped_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS message_history (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  user_id VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  platform TEXT NOT NULL,
+  trigger_type TEXT NOT NULL,
+  trigger_user TEXT,
+curl -I https://vnc.evindrake.net 2>&1 | head -5}" | grep stream-botinit-streambot-schema.sql
+CREATE EXTENSION
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+GRANT
+GRANT
+
+=== Tables Created ===
+                 List of relations
+ Schema |         Name         | Type  |   Owner   
+--------+----------------------+-------+-----------
+ public | bot_configs          | table | streambot
+ public | bot_instances        | table | streambot
+ public | message_history      | table | streambot
+ public | platform_connections | table | streambot
+ public | users                | table | streambot
+(5 rows)
+
+
+Restarting stream-bot...
+stream-bot
+
+=== Stream Bot Status ===
+stream-bot            Restarting (1) 1 second ago
+    _redirects: 0,
+    _autoPong: true,
+    _url: 'wss://discord-bot-db/v2',
+    _req: null,
+    [Symbol(shapeMode)]: false,
+    [Symbol(kCapture)]: false
+  },
+  [Symbol(kType)]: 'error',
+  [Symbol(kError)]: Error: connect ECONNREFUSED 172.23.0.4:443
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1611:16) {
+    errno: -111,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '172.23.0.4',
+    port: 443
+  },
+  [Symbol(kMessage)]: 'connect ECONNREFUSED 172.23.0.4:443'
+}
+
+Node.js v20.19.5
+
+=== Fixing VNC (restarting Caddy) ===
+caddy
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+HTTP/2 502 
+alt-svc: h3=":443"; ma=2592000
+evin@host:~/contain/HomeLabHub$ cd /home/evin/contain/HomeLabHub
+evin@host:~/contain/HomeLabHub$ cd services/stream-bot
+npm install
+npm WARN deprecated @esbuild-kit/esm-loader@2.6.5: Merged into tsx: https://tsx.is
+npm WARN deprecated @esbuild-kit/core-utils@3.3.2: Merged into tsx: https://tsx.is
+npm WARN deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm WARN deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+npm WARN deprecated puppeteer@23.11.1: < 24.15.0 is no longer supported
+npm WARN deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+npm WARN deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+
+added 662 packages, and audited 663 packages in 19s
+
+83 packages are looking for funding
+  run `npm fund` for details
+
+8 vulnerabilities (3 low, 5 moderate)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+evin@host:~/contain/HomeLabHub/services/stream-bot$ cd ../..
+docker-compose -f docker-compose.unified.yml build stream-bot
+[+] Building 40.0s (16/18)                                                                                          
+ => [internal] load local bake definitions                                                                     0.0s
+ => => reading from stdin 573B                                                                                 0.0s
+ => [internal] load build definition from Dockerfile                                                           0.0s
+ => => transferring dockerfile: 1.64kB                                                                         0.0s
+ => [internal] load metadata for docker.io/library/node:20-alpine                                              2.1s
+ => [internal] load .dockerignore                                                                              0.0s
+ => => transferring context: 2B                                                                                0.0s
+ => [builder 1/6] FROM docker.io/library/node:20-alpine@sha256:6178e78b972f79c335df281f4b7674a2d85071aae2af02  0.0s
+ => [internal] load build context                                                                              3.4s
+ => => transferring context: 575.61MB                                                                          3.3s
+ => CACHED [stage-1 2/8] RUN apk add --no-cache dumb-init                                                      0.0s
+ => CACHED [stage-1 3/8] RUN addgroup -g 1001 -S nodejs &&     adduser -S streambot -u 1001                    0.0s
+ => CACHED [stage-1 4/8] WORKDIR /app                                                                          0.0s
+ => [stage-1 5/8] COPY package*.json ./                                                                        0.4s
+ => CACHED [builder 2/6] WORKDIR /app                                                                          0.0s
+ => [builder 3/6] COPY package*.json ./                                                                        0.4s
+ => [stage-1 6/8] RUN npm ci --only=production && npm cache clean --force                                     18.9s
+ => [builder 4/6] RUN npm ci                                                                                  21.0s
+ => [builder 5/6] COPY . .                                                                                     8.4s 
+ => ERROR [builder 6/6] RUN npm run build &&     echo "Build completed. Checking output..." &&     ls -la dis  4.5s 
+------                                                                                                              
+ > [builder 6/6] RUN npm run build &&     echo "Build completed. Checking output..." &&     ls -la dist/ &&     echo "Build verification successful!":                                                                                  
+0.224                                                                                                               
+0.224 > rest-express@1.0.0 build                                                                                    
+0.224 > vite build && node esbuild.config.mjs                                                                       
+0.224                                                                                                               
+0.398 vite v5.4.20 building for production...                                                                       
+0.439 transforming...                                                                                               
+1.238                                                                                                               
+1.238 A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+3.531 ✓ 1771 modules transformed.
+3.761 rendering chunks...
+3.767 computing gzip size...
+3.781 ../dist/public/index.html                   1.01 kB │ gzip:   0.55 kB
+3.781 ../dist/public/assets/index-DUJ6WM3L.css   75.86 kB │ gzip:  12.17 kB
+3.781 ../dist/public/assets/index-Dsn_9HmS.js   537.08 kB │ gzip: 158.84 kB
+3.781 
+3.781 (!) Some chunks are larger than 500 kB after minification. Consider:
+3.781 - Using dynamic import() to code-split the application
+3.781 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+3.781 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+3.781 ✓ built in 3.37s
+3.894 ✘ [ERROR] Could not resolve "@shared/schema"
+3.894 
+3.894     server/db.ts:5:24:
+3.894       5 │ import * as schema from "@shared/schema";
+3.894         ╵                         ~~~~~~~~~~~~~~~~
+3.894 
+3.894   You can mark the path "@shared/schema" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+3.894 
+3.894 ✘ [ERROR] Could not resolve "@shared/schema"
+3.894 
+3.894     server/routes.ts:7:38:
+3.894       7 │ import { updateBotConfigSchema } from "@shared/schema";
+3.894         ╵                                       ~~~~~~~~~~~~~~~~
+3.894 
+3.894   You can mark the path "@shared/schema" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+3.894 
+3.894 ✘ [ERROR] Could not resolve "@shared/schema"
+3.894 
+3.894     server/auth/passport-config.ts:5:22:
+3.894       5 │ import { users } from "@shared/schema";
+3.894         ╵                       ~~~~~~~~~~~~~~~~
+3.894 
+3.894   You can mark the path "@shared/schema" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+3.894 
+3.904 ✘ [ERROR] Could not resolve "@shared/schema"
+3.904 
+3.904     server/storage.ts:14:7:
+3.904       14 │ } from "@shared/schema";
+3.904          ╵        ~~~~~~~~~~~~~~~~
+3.904 
+3.904   You can mark the path "@shared/schema" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+3.904 
+3.912 ✘ [ERROR] Could not resolve "@shared/schema"
+3.912 
+3.912     server/auth/routes.ts:5:48:
+3.912       5 │ import { users, botConfigs, botInstances } from "@shared/schema";
+3.912         ╵                                                 ~~~~~~~~~~~~~~~~
+3.912 
+3.912   You can mark the path "@shared/schema" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+3.912 
+3.912 ✘ [ERROR] Could not resolve "@shared/schema"
+3.912 
+3.912     server/bot-manager.ts:5:29:
+3.912       5 │ import { botInstances } from "@shared/schema";
+3.912         ╵                              ~~~~~~~~~~~~~~~~
+3.912 
+3.912   You can mark the path "@shared/schema" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+3.912 
+4.390 /app/node_modules/esbuild/lib/main.js:1467
+4.390   let error = new Error(text);
+4.390               ^
+4.390 
+4.390 Error: Build failed with 6 errors:
+4.390 server/auth/passport-config.ts:5:22: ERROR: Could not resolve "@shared/schema"
+4.390 server/auth/routes.ts:5:48: ERROR: Could not resolve "@shared/schema"
+4.390 server/bot-manager.ts:5:29: ERROR: Could not resolve "@shared/schema"
+4.390 server/db.ts:5:24: ERROR: Could not resolve "@shared/schema"
+4.390 server/routes.ts:7:38: ERROR: Could not resolve "@shared/schema"
+4.390 ...
+4.390     at failureErrorWithLog (/app/node_modules/esbuild/lib/main.js:1467:15)
+4.390     at /app/node_modules/esbuild/lib/main.js:926:25
+4.390     at runOnEndCallbacks (/app/node_modules/esbuild/lib/main.js:1307:45)
+4.390     at buildResponseToResult (/app/node_modules/esbuild/lib/main.js:924:7)
+4.390     at /app/node_modules/esbuild/lib/main.js:951:16
+4.390     at responseCallbacks.<computed> (/app/node_modules/esbuild/lib/main.js:603:9)
+4.390     at handleIncomingPacket (/app/node_modules/esbuild/lib/main.js:658:12)
+4.390     at Socket.readFromStdout (/app/node_modules/esbuild/lib/main.js:581:7)
+4.390     at Socket.emit (node:events:524:28)
+4.390     at addChunk (node:internal/streams/readable:561:12) {
+4.390   errors: [Getter/Setter],
+4.390   warnings: [Getter/Setter]
+4.390 }
+4.390 
+4.390 Node.js v20.19.5
+------
+Dockerfile:19
+
+--------------------
+
+  18 |     # Backend builds to: dist/index.js
+
+  19 | >>> RUN npm run build && \
+
+  20 | >>>     echo "Build completed. Checking output..." && \
+
+  21 | >>>     ls -la dist/ && \
+
+  22 | >>>     echo "Build verification successful!"
+
+  23 |     
+
+--------------------
+
+failed to solve: process "/bin/sh -c npm run build &&     echo \"Build completed. Checking output...\" &&     ls -la dist/ &&     echo \"Build verification successful!\"" did not complete successfully: exit code: 1
+
+evin@host:~/contain/HomeLabHub$ cd /home/evin/contain/HomeLabHub
+git pull
+docker-compose -f docker-compose.unified.yml build stream-bot
+docker-compose -f docker-compose.unified.yml up -d stream-bot
+docker logs stream-bot --tail 30
+Username for 'https://github.com': ScarletRedJoker
+Password for 'https://ScarletRedJoker@github.com': 
+remote: Invalid username or token. Password authentication is not supported for Git operations.
+fatal: Authentication failed for 'https://github.com/ScarletRedJoker/HomeLabHub/'
+[+] Building 5.5s (16/18)                                                                                           
+ => [internal] load local bake definitions                                                                     0.0s
+ => => reading from stdin 573B                                                                                 0.0s
+ => [internal] load build definition from Dockerfile                                                           0.0s
+ => => transferring dockerfile: 1.64kB                                                                         0.0s
+ => [internal] load metadata for docker.io/library/node:20-alpine                                              0.4s
+ => [internal] load .dockerignore                                                                              0.0s
+ => => transferring context: 2B                                                                                0.0s
+ => [builder 1/6] FROM docker.io/library/node:20-alpine@sha256:6178e78b972f79c335df281f4b7674a2d85071aae2af02  0.0s
+ => [internal] load build context                                                                              0.7s
+ => => transferring context: 2.48MB                                                                            0.7s
+ => CACHED [builder 2/6] WORKDIR /app                                                                          0.0s
+ => CACHED [builder 3/6] COPY package*.json ./                                                                 0.0s
+ => CACHED [builder 4/6] RUN npm ci                                                                            0.0s
+ => CACHED [builder 5/6] COPY . .                                                                              0.0s
+ => ERROR [builder 6/6] RUN npm run build &&     echo "Build completed. Checking output..." &&     ls -la dis  4.3s
+ => CACHED [stage-1 2/8] RUN apk add --no-cache dumb-init                                                      0.0s
+ => CACHED [stage-1 3/8] RUN addgroup -g 1001 -S nodejs &&     adduser -S streambot -u 1001                    0.0s
+ => CACHED [stage-1 4/8] WORKDIR /app                                                                          0.0s
+ => CACHED [stage-1 5/8] COPY package*.json ./                                                                 0.0s
+ => CACHED [stage-1 6/8] RUN npm ci --only=production && npm cache clean --force                               0.0s
+------                                                                                                              
+ > [builder 6/6] RUN npm run build &&     echo "Build completed. Checking output..." &&     ls -la dist/ &&     echo "Build verification successful!":                                                                                  
+0.224                                                                                                               
+0.224 > rest-express@1.0.0 build                                                                                    
+0.224 > vite build && node esbuild.config.mjs                                                                       
+0.224 
+0.391 vite v5.4.20 building for production...
+0.629 transforming...
+1.203 
+1.203 A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+3.340 ✓ 1771 modules transformed.
+3.542 rendering chunks...
+3.548 computing gzip size...
+3.562 ../dist/public/index.html                   1.01 kB │ gzip:   0.55 kB
+3.562 ../dist/public/assets/index-DUJ6WM3L.css   75.86 kB │ gzip:  12.17 kB
+3.562 ../dist/public/assets/index-Dsn_9HmS.js   537.08 kB │ gzip: 158.84 kB
+3.563 
+3.563 (!) Some chunks are larger than 500 kB after minification. Consider:
+3.563 - Using dynamic import() to code-split the application
+3.563 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+3.563 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+3.563 ✓ built in 3.15s
+3.682 ✘ [ERROR] Could not resolve "@shared/schema"
+3.682 
+3.682     server/db.ts:5:24:
+3.682       5 │ import * as schema from "@shared/schema";
+3.682         ╵                         ~~~~~~~~~~~~~~~~
+3.682 
+3.682   You can mark the path "@shared/schema" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+3.682 
+3.684 ✘ [ERROR] Could not resolve "@shared/schema"
+3.684 
+3.684     server/auth/passport-config.ts:5:22:
+3.684       5 │ import { users } from "@shared/schema";
+3.684         ╵                       ~~~~~~~~~~~~~~~~
+3.684 
+3.684   You can mark the path "@shared/schema" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+3.684 
+3.684 ✘ [ERROR] Could not resolve "@shared/schema"
+3.684 
+3.684     server/routes.ts:7:38:
+3.684       7 │ import { updateBotConfigSchema } from "@shared/schema";
+3.684         ╵                                       ~~~~~~~~~~~~~~~~
+3.684 
+3.684   You can mark the path "@shared/schema" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+3.684 
+3.705 ✘ [ERROR] Could not resolve "@shared/schema"
+3.705 
+3.705     server/storage.ts:14:7:
+3.705       14 │ } from "@shared/schema";
+3.705          ╵        ~~~~~~~~~~~~~~~~
+3.705 
+3.705   You can mark the path "@shared/schema" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+3.705 
+3.717 ✘ [ERROR] Could not resolve "@shared/schema"
+3.717 
+3.717     server/bot-manager.ts:5:29:
+3.717       5 │ import { botInstances } from "@shared/schema";
+3.717         ╵                              ~~~~~~~~~~~~~~~~
+3.717 
+3.717   You can mark the path "@shared/schema" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+3.717 
+3.717 ✘ [ERROR] Could not resolve "@shared/schema"
+3.717 
+3.717     server/auth/routes.ts:5:48:
+3.717       5 │ import { users, botConfigs, botInstances } from "@shared/schema";
+3.717         ╵                                                 ~~~~~~~~~~~~~~~~
+3.717 
+3.717   You can mark the path "@shared/schema" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+3.717 
+4.189 /app/node_modules/esbuild/lib/main.js:1467
+4.189   let error = new Error(text);
+4.189               ^
+4.189 
+4.189 Error: Build failed with 6 errors:
+4.189 server/auth/passport-config.ts:5:22: ERROR: Could not resolve "@shared/schema"
+4.189 server/auth/routes.ts:5:48: ERROR: Could not resolve "@shared/schema"
+4.189 server/bot-manager.ts:5:29: ERROR: Could not resolve "@shared/schema"
+4.189 server/db.ts:5:24: ERROR: Could not resolve "@shared/schema"
+4.189 server/routes.ts:7:38: ERROR: Could not resolve "@shared/schema"
+4.189 ...
+4.189     at failureErrorWithLog (/app/node_modules/esbuild/lib/main.js:1467:15)
+4.189     at /app/node_modules/esbuild/lib/main.js:926:25
+4.189     at runOnEndCallbacks (/app/node_modules/esbuild/lib/main.js:1307:45)
+4.189     at buildResponseToResult (/app/node_modules/esbuild/lib/main.js:924:7)
+4.189     at /app/node_modules/esbuild/lib/main.js:951:16
+4.189     at responseCallbacks.<computed> (/app/node_modules/esbuild/lib/main.js:603:9)
+4.189     at handleIncomingPacket (/app/node_modules/esbuild/lib/main.js:658:12)
+4.189     at Socket.readFromStdout (/app/node_modules/esbuild/lib/main.js:581:7)
+4.189     at Socket.emit (node:events:524:28)
+4.189     at addChunk (node:internal/streams/readable:561:12) {
+4.189   errors: [Getter/Setter],
+4.189   warnings: [Getter/Setter]
+4.189 }
+4.189 
+4.189 Node.js v20.19.5
+------
+Dockerfile:19
+
+--------------------
+
+  18 |     # Backend builds to: dist/index.js
+
+  19 | >>> RUN npm run build && \
+
+  20 | >>>     echo "Build completed. Checking output..." && \
+
+  21 | >>>     ls -la dist/ && \
+
+  22 | >>>     echo "Build verification successful!"
+
+  23 |     
+
+--------------------
+
+failed to solve: process "/bin/sh -c npm run build &&     echo \"Build completed. Checking output...\" &&     ls -la dist/ &&     echo \"Build verification successful!\"" did not complete successfully: exit code: 1
+
+[+] Running 2/2
+ ✔ Container discord-bot-db  Healthy                                                                           0.5s 
+ ✔ Container stream-bot      Started                                                                           0.0s 
+    _errorEmitted: true,
+    _extensions: {},
+    _paused: false,
+    _protocol: '',
+    _readyState: 3,
+    _receiver: null,
+    _sender: null,
+    _socket: null,
+    _bufferedAmount: 0,
+    _isServer: false,
+    _redirects: 0,
+    _autoPong: true,
+    _url: 'wss://discord-bot-db/v2',
+    _req: null,
+    [Symbol(shapeMode)]: false,
+    [Symbol(kCapture)]: false
+  },
+  [Symbol(kType)]: 'error',
+  [Symbol(kError)]: Error: connect ECONNREFUSED 172.23.0.4:443
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1611:16) {
+    errno: -111,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '172.23.0.4',
+    port: 443
+  },
+  [Symbol(kMessage)]: 'connect ECONNREFUSED 172.23.0.4:443'
+}
+
+Node.js v20.19.5

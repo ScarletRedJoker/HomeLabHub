@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Domain Status - Homelab Dashboard{% endblock %}
+
+{% block content %}
+        <div class="row">
+            <div class="col-12">
+                <h2><i class="fas fa-globe text-primary"></i> Domain Status Monitoring</h2>
+                <p class="text-muted">Monitor your homelab domains, SSL certificates, and service health</p>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-server fa-3x text-primary"></i>
+                        <h3 id="total-domains" class="mt-3">0</h3>
+                        <small class="text-muted">Total Domains</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-check-circle fa-3x text-success"></i>
+                        <h3 id="online-domains" class="mt-3">0</h3>
+                        <small class="text-muted">Online</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-exclamation-circle fa-3x text-danger"></i>
+                        <h3 id="offline-domains" class="mt-3">0</h3>
+                        <small class="text-muted">Offline</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-clock fa-3x text-info"></i>
+                        <h3 id="avg-response-time" class="mt-3">0 ms</h3>
+                        <small class="text-muted">Avg Response Time</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-list"></i> Domain Health Status</h5>
+                        <button class="btn btn-light btn-sm" onclick="refreshDomains()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="domains-list">
+                            <div class="text-center py-4">
+                                <i class="fas fa-spinner fa-spin fa-2x"></i>
+                                <p class="mt-2">Loading domain status...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0"><i class="fas fa-certificate"></i> SSL Certificate Monitor</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Domain</th>
+                                    <th>Status</th>
+                                    <th>Expires</th>
+                                    <th>Days Remaining</th>
+                                    <th>Issuer</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ssl-certificates">
+                                <tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{{ url_for('static', filename='js/domains.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,65 @@
+evin@host:~/contain/HomeLabHub$ # Stop and restart the bot cleanly
+docker-compose -f docker-compose.unified.yml restart discord-bot
+
+# Wait 5 seconds for startup
+sleep 5
+
+# Check if it's running
+docker ps | grep discord-bot
+
+# Check logs for errors
+docker logs discord-bot --tail 50
+[+] Restarting 1/1
+ ✔ Container discord-bot  Started                                                                              0.7s 
+1e35d3a70af4   homelabhub-discord-bot                  "/usr/local/bin/dock…"   8 minutes ago    Up 5 seconds (health: starting)   5000/tcp                                                                                                                                                                                                                                                                                                                                                                      discord-bot
+2a2c744e4481   postgres:16-alpine                      "docker-entrypoint.s…"   20 minutes ago   Up 20 minutes (healthy)           5432/tcp                                                                                                                                                                                                                                                                                                                                                                      discord-bot-db
+[Bot] Starting ticket system safeguard background jobs...
+[Safeguards] Starting background jobs...
+[Safeguards] Background jobs started successfully.
+[Safeguards] - Channel reconciliation: every 15 minutes
+[Safeguards] - Auto-close check: every 60 minutes
+[Stream Notifications] Initializing stream tracking...
+[Stream Notifications] Initialized tracking for 0 server(s)
+Discord OAuth redirect initiated with callback: https://bot.rig-city.com/auth/discord/callback
+[Safeguards] Starting ticket channel reconciliation...
+[Safeguards] Checking 0 open tickets with Discord channels
+[Safeguards] Reconciliation complete. Marked 0 tickets as orphaned.
+[Safeguards] Starting auto-close check for inactive tickets...
+[Safeguards] Auto-close check complete.
+[Discord] Scheduled refresh of ticket mappings...
+[Discord] Loading ticket-channel mappings from database...
+[Discord] ✅ Successfully loaded 0 ticket-channel mappings
+npm error path /app
+npm error command failed
+npm error signal SIGTERM
+npm error command sh -c NODE_ENV=production node dist/index.js
+npm error A complete log of this run can be found in: /root/.npm/_logs/2025-11-13T11_24_35_153Z-debug-0.log
+Starting Discord Bot deployment...
+Waiting for PostgreSQL to be ready...
+Extracted PostgreSQL host from DATABASE_URL: discord-bot-db
+Checking PostgreSQL connection at discord-bot-db:5432...
+PostgreSQL port is accessible!
+PostgreSQL is ready!
+Initializing database schema...
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '/app/drizzle.config.ts'
+Using 'pg' driver for database querying
+[⣷] Pulling schema from database...
+[⣯] Pulling schema from database...
+[⣟] Pulling schema from database...
+[⡿] Pulling schema from database...
+[✓] Pulling schema from database...
+[✓] Changes applied
+Database initialization complete!
+Starting application...
+
+> rest-express@1.0.0 start
+> NODE_ENV=production node dist/index.js
+
+[Database] Detected local/Docker PostgreSQL, using standard pg driver
+[Discord] Registered developer commands: dev-dm, dev-announce, dev-stats, dev-refresh, dev-ticket
+[Database] Creating read-only PostgreSQL connection for developer queries
+Setting up Discord authentication strategy
+Discord OAuth callback URL: https://bot.rig-city.com/auth/discord/callback
+Attempting to start Discord bot...
+Successfully registered application commands globally

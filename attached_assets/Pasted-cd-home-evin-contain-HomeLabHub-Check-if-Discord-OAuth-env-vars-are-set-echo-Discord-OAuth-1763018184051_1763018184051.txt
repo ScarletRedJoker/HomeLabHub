@@ -1,0 +1,57 @@
+cd /home/evin/contain/HomeLabHub/
+
+# Check if Discord OAuth env vars are set
+echo "=== Discord OAuth Configuration ==="
+grep -E "DISCORD_CLIENT_ID|DISCORD_CLIENT_SECRET|DISCORD_CALLBACK" .env | sed 's/=.*/=***HIDDEN***/'
+
+# Check Discord bot container logs for auth errors
+echo ""
+echo "=== Discord Bot Logs (looking for auth errors) ==="
+docker logs discord-bot 2>&1 | grep -i "discord.*auth\|callback\|oauth\|session" | tail -20
+
+# Check if the bot is actually running
+echo ""
+echo "=== Discord Bot Status ==="
+docker ps --format "table {{.Names}}\t{{.Status}}" | grep discord-bot
+
+# Try accessing the auth endpoint
+echo ""
+echo "=== Testing Discord OAuth Endpoint ==="
+curl -I https://bot.rig-city.com/auth/discord 2>&1 | head -5
+=== Discord OAuth Configuration ===
+DISCORD_CLIENT_ID=***HIDDEN***
+DISCORD_CLIENT_SECRET=***HIDDEN***
+VITE_DISCORD_CLIENT_ID=***HIDDEN***
+
+=== Discord Bot Logs (looking for auth errors) ===
+    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+[Discord] ❌ Loading ticket mappings failed after 5 attempts: error: password authentication failed for user "ticketbot"
+    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+[Discord] ❌ Loading ticket mappings failed after 5 attempts: error: password authentication failed for user "ticketbot"
+    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+[Discord] ❌ Loading ticket mappings failed after 5 attempts: error: password authentication failed for user "ticketbot"
+    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+[Discord] ❌ Loading ticket mappings failed after 5 attempts: error: password authentication failed for user "ticketbot"
+    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+Discord OAuth redirect initiated with callback: https://bot.rig-city.com/auth/discord/callback
+    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+[Discord] ❌ Loading ticket mappings failed after 5 attempts: error: password authentication failed for user "ticketbot"
+    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+[Discord] ❌ Loading ticket mappings failed after 5 attempts: error: password authentication failed for user "ticketbot"
+    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+Setting up Discord authentication strategy
+Discord OAuth callback URL: https://bot.rig-city.com/auth/discord/callback
+Discord OAuth redirect initiated with callback: https://bot.rig-city.com/auth/discord/callback
+Discord OAuth redirect initiated with callback: https://bot.rig-city.com/auth/discord/callback
+
+=== Discord Bot Status ===
+discord-bot-db        Up About an hour (healthy)
+discord-bot           Up 33 minutes (healthy)
+
+=== Testing Discord OAuth Endpoint ===
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0   207    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+HTTP/2 302 
+alt-svc: h3=":443"; ma=2592000

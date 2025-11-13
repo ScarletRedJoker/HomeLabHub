@@ -1,0 +1,113 @@
+# ========================================================================
+# Discord Bot Fix for Unified Docker Compose
+# ========================================================================
+# Add this to your docker-compose.unified.yml or merge with existing config
+#
+# KEY FIXES:
+# 1. Ensure postgres service exists
+# 2. Put discord-bot and postgres on same network
+# 3. Add health check dependency
+# ========================================================================
+
+services:
+  # PostgreSQL Database (if not already defined)
+  postgres:
+    image: postgres:16-alpine
+    container_name: discord-bot-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ticketbot
+      POSTGRES_USER: ticketbot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - discord_postgres_data:/var/lib/postgresql/data
+    networks:
+      - homelab-network  # IMPORTANT: Use your main network name
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ticketbot -d ticketbot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    labels:
+      - "homelabhub.enable=true"
+      - "homelabhub.group=discord-bot"
+      - "homelabhub.name=Discord Bot Database"
+      - "homelabhub.description=PostgreSQL database for Discord ticket bot"
+      - "homelabhub.icon=database"
+      - "homelabhub.category=database"
+      - "homelabhub.importance=critical"
+
+  # Discord Bot Application
+  discord-bot:
+    build:
+      context: ./discord-ticket-bot  # Path to your bot directory
+      dockerfile: Dockerfile
+    container_name: discord-bot-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy  # CRITICAL: Wait for postgres to be healthy
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    environment:
+      # Database - MUST match postgres service name
+      DATABASE_URL: "postgresql://ticketbot:${POSTGRES_PASSWORD}@postgres:5432/ticketbot"
+      
+      # Discord Configuration
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
+      DISCORD_APP_ID: ${DISCORD_APP_ID}
+      
+      # OAuth and Domain
+      DISCORD_CALLBACK_URL: ${DISCORD_CALLBACK_URL}
+      PUBLIC_DOMAIN: ${PUBLIC_DOMAIN}
+      
+      # Session and Security
+      SESSION_SECRET: ${SESSION_SECRET}
+      HOMELABHUB_API_KEY: ${HOMELABHUB_API_KEY}
+      
+      # Application Settings
+      NODE_ENV: production
+      PORT: 5000
+    volumes:
+      - ./discord-ticket-bot/attached_assets:/app/attached_assets
+      - ./discord-ticket-bot/logs:/app/logs
+    networks:
+      - homelab-network  # IMPORTANT: Same network as postgres
+    ports:
+      - "5000:5000"  # Change if port conflict
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "homelabhub.enable=true"
+      - "homelabhub.group=discord-bot"
+      - "homelabhub.name=Discord Ticket Bot"
+      - "homelabhub.description=Discord bot for support ticket management"
+      - "homelabhub.icon=discord"
+      - "homelabhub.category=application"
+      - "homelabhub.importance=critical"
+      - "homelabhub.web.url=https://bot.rig-city.com"
+      - "homelabhub.web.port=5000"
+      - "homelabhub.web.protocol=https"
+      - "homelabhub.health.endpoint=/health"
+      - "homelabhub.metrics.endpoint=/api/homelabhub/metrics"
+      - "homelabhub.control.endpoint=/api/homelabhub/control"
+      - "homelabhub.display.status=online"
+      - "homelabhub.display.version=1.0.0"
+
+networks:
+  homelab-network:  # Replace with your actual network name
+    external: true  # If using existing network
+    # OR
+    # driver: bridge  # If creating new network
+
+volumes:
+  discord_postgres_data:
+    driver: local

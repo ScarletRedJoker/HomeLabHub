@@ -1,0 +1,721 @@
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║        🏠 HOMELAB DEPLOYMENT MANAGER 🚀                    ║
+║                                                                ║
+║        Unified Control Panel for All Services              ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+
+━━━ Container Status ━━━
+  ⚠ Partial deployment (2/8 services running)
+
+━━━ What would you like to do? ━━━
+
+  Deployment:
+    1) 🚀 Full Deploy (build and start all services)
+    2) 🔄 Quick Restart (restart without rebuilding)
+    3) ⚡ Rebuild & Deploy (force rebuild + restart)
+
+  Service Control:
+    4) ▶️  Start All Services
+    5) ⏸️  Stop All Services
+    6) 🔄 Restart Specific Service
+
+  Database:
+    7) 🗄️  Ensure Databases Exist (fix DB issues)
+    8) 📊 Check Database Status
+
+  Configuration:
+    9) ⚙️  Generate/Edit .env File
+    10) 📋 View Current Configuration
+
+  Troubleshooting:
+    11) 🔍 View Service Logs
+    12) 🏥 Health Check (all services)
+    13) 🔧 Full Troubleshoot Mode
+
+  Updates:
+    16) 📦 Update Service (pull latest image)
+
+  Information:
+    14) 📊 Show Container Details
+    15) 🌐 Show Service URLs
+
+    0) 🚪 Exit
+
+Enter your choice: 1
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  🚀 FULL DEPLOYMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+╔═══════════════════════════════════════╗
+║   Unified Homelab Deployment         ║
+║   All Services with Auto SSL         ║
+╚═══════════════════════════════════════╝
+
+
+========================================
+Checking System Requirements
+========================================
+
+✓ Docker 29.0.0 installed
+✓ Docker Compose v2.40.3 installed
+✓ User evin is in docker group
+✓ Docker daemon is running
+
+========================================
+Checking Container Directories
+========================================
+
+✓ Found: /home/evin/contain/HomeLabHub
+✓ Workspace structure verified
+
+========================================
+Setting Up Directories
+========================================
+
+✓ /var/www/scarletredjoker already exists
+✓ Service directories created
+
+========================================
+Setting Up Environment Variables
+========================================
+
+⚠ .env file already exists
+Keep existing .env? (Y/n) y
+✓ Keeping existing .env file
+
+========================================
+Generating Caddyfile
+========================================
+
+✓ Caddyfile generated with email: evindrake11@gmail.com
+✓ Caddyfile validation passed
+
+========================================
+Port Forwarding Check
+========================================
+
+For automatic SSL to work, your router must forward these ports:
+  Port 80  (HTTP)  → This server
+  Port 443 (HTTPS) → This server
+
+Have you set up port forwarding? (y/N) y
+
+========================================
+Building and Starting Services
+========================================
+
+⚠ Building custom containers (may take a few minutes)...
+
+--progress is a global compose flag, better use `docker compose --progress xx build ...
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.58kB done
+#1 DONE 0.0s
+
+#2 [homelab-dashboard internal] load build definition from Dockerfile
+#2 transferring dockerfile: 695B done
+#2 DONE 0.0s
+
+#3 [discord-bot internal] load build definition from Dockerfile
+#3 transferring dockerfile: 2.83kB done
+#3 DONE 0.0s
+
+#4 [stream-bot internal] load build definition from Dockerfile
+#4 transferring dockerfile: 1.70kB done
+#4 DONE 0.0s
+
+#5 [stream-bot internal] load metadata for docker.io/library/node:20-alpine
+#5 ...
+
+#6 [discord-bot internal] load metadata for docker.io/library/node:20-slim
+#6 DONE 0.2s
+
+#7 [homelab-dashboard internal] load metadata for docker.io/library/python:3.11-slim
+#7 DONE 0.2s
+
+#5 [stream-bot internal] load metadata for docker.io/library/node:20-alpine
+#5 DONE 0.2s
+
+#8 [discord-bot internal] load .dockerignore
+#8 transferring context: 2B done
+#8 DONE 0.0s
+
+#9 [homelab-dashboard internal] load .dockerignore
+#9 transferring context: 2B done
+#9 DONE 0.0s
+
+#10 [stream-bot internal] load .dockerignore
+#10 transferring context: 2B done
+#10 DONE 0.0s
+
+#11 [discord-bot builder 1/7] FROM docker.io/library/node:20-slim@sha256:12541e65a3777c6035245518eb43006ed08ca8c684e68cd04ecb4653bdf6cfe1
+#11 DONE 0.0s
+
+#12 [homelab-dashboard 1/7] FROM docker.io/library/python:3.11-slim@sha256:e4676722fba839e2e5cdb844a52262b43e90e56dbd55b7ad953ee3615ad7534f
+#12 DONE 0.0s
+
+#13 [stream-bot builder 1/6] FROM docker.io/library/node:20-alpine@sha256:6178e78b972f79c335df281f4b7674a2d85071aae2af020ffa39f0a770265435
+#13 DONE 0.0s
+
+#14 [homelab-dashboard internal] load build context
+#14 transferring context: 3.22kB done
+#14 DONE 0.0s
+
+#15 [discord-bot internal] load build context
+#15 transferring context: 9.09kB done
+#15 DONE 0.0s
+
+#16 [homelab-dashboard 6/7] COPY . .
+#16 CACHED
+
+#17 [homelab-dashboard 3/7] RUN apt-get update && apt-get install -y     gcc     && rm -rf /var/lib/apt/lists/*
+#17 CACHED
+
+#18 [homelab-dashboard 5/7] RUN pip install --no-cache-dir -r requirements.txt gunicorn
+#18 CACHED
+
+#19 [homelab-dashboard 2/7] WORKDIR /app
+#19 CACHED
+
+#20 [homelab-dashboard 4/7] COPY requirements.txt .
+#20 CACHED
+
+#21 [homelab-dashboard 7/7] RUN mkdir -p /app/logs
+#21 CACHED
+
+#22 [discord-bot stage-1  5/11] RUN npm ci --omit=dev && npm install drizzle-kit --save-dev
+#22 CACHED
+
+#23 [discord-bot stage-1  8/11] COPY --from=builder /app/shared ./shared
+#23 CACHED
+
+#24 [discord-bot builder 5/7] RUN npm ci --include=dev
+#24 CACHED
+
+#25 [discord-bot builder 3/7] WORKDIR /app
+#25 CACHED
+
+#26 [discord-bot stage-1  6/11] COPY --from=builder /app/dist ./dist
+#26 CACHED
+
+#27 [discord-bot stage-1  7/11] COPY --from=builder /app/drizzle.config.ts ./
+#27 CACHED
+
+#28 [discord-bot stage-1  9/11] COPY docker-entrypoint.sh /usr/local/bin/
+#28 CACHED
+
+#29 [discord-bot builder 6/7] COPY . .
+#29 CACHED
+
+#30 [discord-bot builder 4/7] COPY package*.json ./
+#30 CACHED
+
+#31 [discord-bot stage-1  4/11] COPY package*.json ./
+#31 CACHED
+
+#32 [discord-bot builder 7/7] RUN npm run build
+#32 CACHED
+
+#33 [discord-bot stage-1  3/11] WORKDIR /app
+#33 CACHED
+
+#34 [discord-bot stage-1  2/11] RUN apt-get update && apt-get install -y     ffmpeg     python3     python3-pip     libcairo2     libjpeg62-turbo     libpango-1.0-0     libgif7     libsodium23     libc6     postgresql-client     curl     wget     ca-certificates     && rm -rf /var/lib/apt/lists/*     && python3 -m pip install --no-cache-dir --upgrade pip --break-system-packages     && python3 -m pip install --no-cache-dir --upgrade --force-reinstall yt-dlp --break-system-packages     && which psql || (echo "ERROR: psql not found after installing postgresql-client" && exit 1)
+#34 CACHED
+
+#35 [discord-bot stage-1 10/11] RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+#35 CACHED
+
+#36 [discord-bot builder 2/7] RUN apt-get update && apt-get install -y     python3     make     g++     libcairo2-dev     libjpeg-dev     libpango1.0-dev     libgif-dev     && rm -rf /var/lib/apt/lists/*
+#36 CACHED
+
+#37 [discord-bot stage-1 11/11] RUN mkdir -p attached_assets logs
+#37 CACHED
+
+#38 [homelab-dashboard] exporting to image
+#38 exporting layers done
+#38 writing image sha256:52a4d3c4bfa402e5fe6ddfae8eea127c4922d1dc8bfa30ca4eb5fb267880f8d5 done
+#38 naming to docker.io/library/homelabhub-homelab-dashboard done
+#38 DONE 0.0s
+
+#39 [discord-bot] exporting to image
+#39 exporting layers done
+#39 writing image sha256:b6a793ec4ed5a50cf913716c55212539299ec16ff849bccbe67b23dded73a014 done
+#39 naming to docker.io/library/homelabhub-discord-bot done
+#39 DONE 0.0s
+
+#40 [homelab-dashboard] resolving provenance for metadata file
+#40 DONE 0.0s
+
+#41 [discord-bot] resolving provenance for metadata file
+#41 DONE 0.0s
+
+#42 [stream-bot internal] load build context
+#42 transferring context: 2.48MB 0.7s done
+#42 DONE 0.7s
+
+#43 [stream-bot builder 2/6] WORKDIR /app
+#43 CACHED
+
+#44 [stream-bot builder 3/6] COPY package*.json ./
+#44 CACHED
+
+#45 [stream-bot builder 4/6] RUN npm ci
+#45 CACHED
+
+#46 [stream-bot builder 5/6] COPY . .
+#46 DONE 7.6s
+
+#47 [stream-bot builder 6/6] RUN npm run build &&     echo "Build completed. Checking output..." &&     ls -la dist/ &&     echo "Build verification successful!"
+#47 0.224 
+#47 0.224 > rest-express@1.0.0 build
+#47 0.224 > vite build && node esbuild.config.mjs
+#47 0.224 
+#47 0.388 vite v5.4.20 building for production...
+#47 0.431 transforming...
+#47 1.260 
+#47 1.260 A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+#47 3.531 ✓ 1771 modules transformed.
+#47 3.741 rendering chunks...
+#47 3.748 computing gzip size...
+#47 3.760 ../dist/public/index.html                   1.01 kB │ gzip:   0.55 kB
+#47 3.760 ../dist/public/assets/index-DUJ6WM3L.css   75.86 kB │ gzip:  12.17 kB
+#47 3.760 ../dist/public/assets/index-Dsn_9HmS.js   537.08 kB │ gzip: 158.84 kB
+#47 3.761 
+#47 3.761 (!) Some chunks are larger than 500 kB after minification. Consider:
+#47 3.761 - Using dynamic import() to code-split the application
+#47 3.761 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+#47 3.761 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+#47 3.761 ✓ built in 3.35s
+#47 5.046 ✓ Server build complete
+#47 5.058 Build completed. Checking output...
+#47 5.058 total 123348
+#47 5.058 drwxr-xr-x    3 root     root          4096 Nov 13 11:14 .
+#47 5.058 drwxr-xr-x    1 root     root          4096 Nov 13 11:14 ..
+#47 5.058 -rw-r--r--    1 root     root      47946942 Nov 13 11:14 index.js
+#47 5.058 -rw-r--r--    1 root     root      78346616 Nov 13 11:14 index.js.map
+#47 5.058 drwxr-xr-x    3 root     root          4096 Nov 13 11:14 public
+#47 5.058 Build verification successful!
+#47 DONE 5.2s
+
+#48 [stream-bot stage-1 4/8] WORKDIR /app
+#48 CACHED
+
+#49 [stream-bot stage-1 2/8] RUN apk add --no-cache dumb-init
+#49 CACHED
+
+#50 [stream-bot stage-1 3/8] RUN addgroup -g 1001 -S nodejs &&     adduser -S streambot -u 1001
+#50 CACHED
+
+#51 [stream-bot stage-1 5/8] COPY package*.json ./
+#51 CACHED
+
+#52 [stream-bot stage-1 6/8] RUN npm ci --only=production && npm cache clean --force
+#52 CACHED
+
+#53 [stream-bot stage-1 7/8] COPY --from=builder --chown=streambot:nodejs /app/dist ./dist
+#53 CACHED
+
+#54 [stream-bot stage-1 8/8] COPY --from=builder --chown=streambot:nodejs /app/node_modules/connect-pg-simple/table.sql ./dist/table.sql
+#54 CACHED
+
+#55 [stream-bot] exporting to image
+#55 exporting layers done
+#55 writing image sha256:eb3829f57a302d6d0ff31f2ef97b592f2d8e17bcce596799e0129793151ef4ed done
+#55 naming to docker.io/library/homelabhub-stream-bot done
+#55 DONE 0.0s
+
+#56 [stream-bot] resolving provenance for metadata file
+#56 DONE 0.0s
+ homelabhub-discord-bot  Built
+ homelabhub-homelab-dashboard  Built
+ homelabhub-stream-bot  Built
+✓ All containers built successfully
+
+⚠ Starting services...
+[+] Running 9/9
+ ✔ Container discord-bot-db       Healthy                                                                      0.5s 
+ ✔ Container homelab-dashboard    Started                                                                      0.5s 
+ ✔ Container vnc-desktop          Started                                                                      0.5s 
+ ✔ Container n8n                  Started                                                                      0.2s 
+ ✔ Container caddy                Started                                                                      0.5s 
+ ✔ Container scarletredjoker-web  Started                                                                      0.2s 
+ ✔ Container stream-bot           Started                                                                      0.7s 
+ ✔ Container discord-bot          Running                                                                      0.0s 
+ ✔ Container plex-server          Started                                                                      0.5s 
+
+========================================
+Checking Service Health
+========================================
+
+Waiting for containers to initialize...
+
+Container Status:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+NAME                  IMAGE                                   COMMAND                  SERVICE               CREATED         STATUS                            PORTS
+caddy                 caddy:2-alpine                          "caddy run --config …"   caddy                 9 seconds ago   Up 8 seconds                      0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:443->443/tcp, [::]:443->443/tcp, 0.0.0.0:443->443/udp, [::]:443->443/udp, 2019/tcp
+discord-bot           homelabhub-discord-bot                  "/usr/local/bin/dock…"   discord-bot           2 minutes ago   Up 2 minutes (healthy)            5000/tcp
+discord-bot-db        postgres:16-alpine                      "docker-entrypoint.s…"   discord-bot-db        2 minutes ago   Up 2 minutes (healthy)            5432/tcp
+homelab-dashboard     homelabhub-homelab-dashboard            "gunicorn --bind 0.0…"   homelab-dashboard     9 seconds ago   Up 8 seconds                      5000/tcp
+n8n                   docker.n8n.io/n8nio/n8n:latest          "tini -- /docker-ent…"   n8n                   9 seconds ago   Up 8 seconds                      5678/tcp
+plex-server           lscr.io/linuxserver/plex:latest         "/init"                  plex                  9 seconds ago   Up 8 seconds                      0.0.0.0:3005->3005/tcp, [::]:3005->3005/tcp, 0.0.0.0:8324->8324/tcp, [::]:8324->8324/tcp, 0.0.0.0:1900->1900/udp, [::]:1900->1900/udp, 0.0.0.0:32410->32410/udp, [::]:32410->32410/udp, 0.0.0.0:32400->32400/tcp, [::]:32400->32400/tcp, 0.0.0.0:32412-32414->32412-32414/udp, [::]:32412-32414->32412-32414/udp, 0.0.0.0:32469->32469/tcp, [::]:32469->32469/tcp, 5353/udp
+scarletredjoker-web   nginx:alpine                            "/docker-entrypoint.…"   scarletredjoker-web   9 seconds ago   Up 8 seconds                      80/tcp
+stream-bot            homelabhub-stream-bot                   "dumb-init -- node d…"   stream-bot            9 seconds ago   Up 8 seconds (health: starting)   5000/tcp
+vnc-desktop           dorowu/ubuntu-desktop-lxde-vnc:latest   "/startup.sh"            vnc-desktop           9 seconds ago   Up 8 seconds (health: starting)   80/tcp
+
+✓ All 9 containers are running!
+
+========================================
+SSL Certificate Status
+========================================
+
+Checking Caddy for SSL certificate acquisition...
+
+✓ Caddy is running and will automatically obtain SSL certificates
+  Certificates will be requested on first HTTPS access
+
+========================================
+Service Logs Preview
+========================================
+
+Showing last 5 lines from each service:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+▶ caddy
+  {"level":"info","ts":1763032456.1963294,"logger":"http.log","msg":"server running","name":"remaining_auto_https_redirects","protocols":["h1","h2","h3"]}
+  {"level":"info","ts":1763032456.1963344,"logger":"http","msg":"enabling automatic TLS certificate management","domains":["bot.rig-city.com","www.scarletredjoker.com","stream.rig-city.com","scarletredjoker.com","plex.evindrake.net","host.evindrake.net","n8n.evindrake.net","vnc.evindrake.net"]}
+  {"level":"info","ts":1763032456.196394,"logger":"tls","msg":"finished cleaning storage units"}
+  {"level":"info","ts":1763032456.20372,"msg":"autosaved config (load with --resume flag)","file":"/config/caddy/autosave.json"}
+  {"level":"info","ts":1763032456.2037392,"msg":"serving initial configuration"}
+
+▶ homelab-dashboard
+  Caddyfile not found: Caddyfile
+  .env file not found: .env
+  Compose file not found: docker-compose.unified.yml
+  Caddyfile not found: Caddyfile
+  .env file not found: .env
+
+▶ discord-bot
+  [Safeguards] Starting ticket channel reconciliation...
+  [Safeguards] Checking 0 open tickets with Discord channels
+  [Safeguards] Reconciliation complete. Marked 0 tickets as orphaned.
+  [Safeguards] Starting auto-close check for inactive tickets...
+  [Safeguards] Auto-close check complete.
+
+▶ stream-bot
+  [BotManager] Bootstrapping...
+  [BotManager] Found 0 active bot instances
+  [BotManager] Bootstrap complete
+  11:14:17 AM [express] serving on port 5000
+
+▶ n8n
+  Registered runner "JS Task Runner" (0dLT-rKE4xZASWx4ZAixZ) 
+  Version: 1.118.2
+  
+  Editor is now accessible via:
+  https://n8n.evindrake.net
+
+▶ plex-server
+  Docker is used for versioning skip update check
+  [custom-init] No custom files found, skipping...
+  Starting Plex Media Server. . . (you can ignore the libusb_init error)
+  Connection to localhost (::1) 32400 port [tcp/*] succeeded!
+  [ls.io-init] done.
+
+
+========================================
+Deployment Complete!
+========================================
+
+
+✓ All services deployed successfully!
+
+Your services are accessible at:
+
+  🎛️  Dashboard:       https://host.evindrake.net
+  🎫  Discord Bot:     https://bot.rig-city.com
+  🎬  Stream Bot:      https://stream.rig-city.com
+  📺  Plex Server:     https://plex.evindrake.net
+  🤖  n8n Automation:  https://n8n.evindrake.net
+  🌐  Static Website:  https://scarletredjoker.com
+  🖥️  VNC Desktop:     https://vnc.evindrake.net
+
+⚠ Important Next Steps:
+
+1. Dashboard Login Credentials:
+   Username: evin
+   Password: homelab
+   ⚠️  CHANGE THESE in .env (WEB_USERNAME, WEB_PASSWORD) for security!
+
+2. Edit .env and add your API keys/tokens:
+   nano .env
+
+3. Required credentials:
+   - OPENAI_API_KEY (for dashboard AI and stream bot)
+   - DISCORD_BOT_TOKEN, DISCORD_CLIENT_ID, etc.
+   - TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET, TWITCH_CHANNEL
+   - PLEX_CLAIM (from https://www.plex.tv/claim/)
+
+4. After updating .env, restart services:
+   docker compose -f docker-compose.unified.yml restart
+
+5. Upload your static website files to:
+   /var/www/scarletredjoker/
+
+6. Monitor all logs in real-time:
+   docker compose -f docker-compose.unified.yml logs -f
+
+7. Check specific service logs:
+   docker logs caddy -f              # SSL certificate status
+   docker logs homelab-dashboard -f  # Dashboard logs
+   docker logs discord-bot -f        # Discord bot logs
+
+8. Read ARCHITECTURE.md for how services are structured
+
+⚠ SSL Certificates:
+  Caddy will automatically request Let's Encrypt certificates
+  This requires port 80 and 443 to be accessible from the internet
+  Watch certificate acquisition: docker logs caddy -f
+
+✓ Deployment finished! Your homelab is now online! 🚀
+
+Would you like to watch live logs now? (y/N) y
+
+⚠ Following logs from all services (Ctrl+C to exit)...
+
+discord-bot-db     | 
+discord-bot        | Starting Discord Bot deployment...
+caddy              | {"level":"info","ts":1763032456.1841388,"msg":"maxprocs: Leaving GOMAXPROCS=16: CPU quota undefined"}
+discord-bot        | Waiting for PostgreSQL to be ready...
+caddy              | {"level":"info","ts":1763032456.1846912,"msg":"GOMEMLIMIT is updated","package":"github.com/KimMachineGun/automemlimit/memlimit","GOMEMLIMIT":29249033011,"previous":9223372036854775807}
+homelab-dashboard  | [2025-11-13 11:14:16 +0000] [1] [INFO] Starting gunicorn 21.2.0
+homelab-dashboard  | [2025-11-13 11:14:16 +0000] [1] [INFO] Listening at: http://0.0.0.0:5000 (1)
+caddy              | {"level":"info","ts":1763032456.185114,"msg":"using config from file","file":"/etc/caddy/Caddyfile"}
+caddy              | {"level":"info","ts":1763032456.1883779,"msg":"adapted config to JSON","adapter":"caddyfile"}
+caddy              | {"level":"warn","ts":1763032456.1883879,"msg":"Caddyfile input is not formatted; run 'caddy fmt --overwrite' to fix inconsistencies","adapter":"caddyfile","file":"/etc/caddy/Caddyfile","line":2}
+caddy              | {"level":"info","ts":1763032456.1898122,"logger":"admin","msg":"admin endpoint started","address":"localhost:2019","enforce_origin":false,"origins":["//127.0.0.1:2019","//localhost:2019","//[::1]:2019"]}
+caddy              | {"level":"info","ts":1763032456.1911926,"logger":"http.auto_https","msg":"server is listening only on the HTTPS port but has no TLS connection policies; adding one to enable TLS","server_name":"srv0","https_port":443}
+discord-bot-db     | PostgreSQL Database directory appears to contain a database; Skipping initialization
+caddy              | {"level":"info","ts":1763032456.1912062,"logger":"http.auto_https","msg":"enabling automatic HTTP->HTTPS redirects","server_name":"srv0"}
+caddy              | {"level":"info","ts":1763032456.1913173,"logger":"tls.cache.maintenance","msg":"started background certificate maintenance","cache":"0xc000635280"}
+caddy              | {"level":"info","ts":1763032456.1944141,"logger":"http","msg":"enabling HTTP/3 listener","addr":":443"}
+caddy              | {"level":"info","ts":1763032456.194739,"msg":"failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 7168 kiB, got: 416 kiB). See https://github.com/quic-go/quic-go/wiki/UDP-Buffer-Sizes for details."}
+caddy              | {"level":"info","ts":1763032456.1962252,"logger":"http.log","msg":"server running","name":"srv0","protocols":["h1","h2","h3"]}
+homelab-dashboard  | [2025-11-13 11:14:16 +0000] [1] [INFO] Using worker: sync
+discord-bot        | Extracted PostgreSQL host from DATABASE_URL: discord-bot-db
+discord-bot        | Checking PostgreSQL connection at discord-bot-db:5432...
+discord-bot        | PostgreSQL port is accessible!
+discord-bot        | PostgreSQL is ready!
+discord-bot        | Initializing database schema...
+discord-bot        | No config path provided, using default 'drizzle.config.ts'
+discord-bot        | Reading config file '/app/drizzle.config.ts'
+vnc-desktop        | stored passwd in file: /.password2
+vnc-desktop        | * enable custom user: evin
+vnc-desktop        | cp: cannot stat '/root/.config': No such file or directory
+vnc-desktop        | 2025-11-13 11:14:16,211 CRIT Supervisor is running as root.  Privileges were not dropped because no user is specified in the config file.  If you intend to run as root, you can set user=root in the config file to avoid this message.
+vnc-desktop        | 2025-11-13 11:14:16,211 INFO Included extra file "/etc/supervisor/conf.d/supervisord.conf" during parsing
+vnc-desktop        | 2025-11-13 11:14:16,217 INFO RPC interface 'supervisor' initialized
+vnc-desktop        | 2025-11-13 11:14:16,217 CRIT Server 'unix_http_server' running without any HTTP authentication checking
+vnc-desktop        | 2025-11-13 11:14:16,217 INFO supervisord started with pid 32
+vnc-desktop        | 2025-11-13 11:14:17,218 INFO spawned: 'nginx' with pid 34
+vnc-desktop        | 2025-11-13 11:14:17,220 INFO spawned: 'web' with pid 35
+vnc-desktop        | 2025-11-13 11:14:17,221 INFO spawned: 'xvfb' with pid 36
+vnc-desktop        | 2025-11-13 11:14:17,222 INFO spawned: 'wm' with pid 37
+vnc-desktop        | 2025-11-13 11:14:17,224 INFO spawned: 'lxpanel' with pid 38
+vnc-desktop        | 2025-11-13 11:14:17,225 INFO spawned: 'pcmanfm' with pid 39
+discord-bot        | Using 'pg' driver for database querying
+caddy              | {"level":"info","ts":1763032456.1963058,"logger":"tls","msg":"storage cleaning happened too recently; skipping for now","storage":"FileStorage:/data/caddy","instance":"13fca5f7-ca3a-45b6-9f5a-dcca9f82ada1","try_again":1763118856.1963046,"try_again_in":86399.999999639}
+vnc-desktop        | 2025-11-13 11:14:17,227 INFO spawned: 'x11vnc' with pid 40
+vnc-desktop        | 2025-11-13 11:14:17,228 INFO spawned: 'novnc' with pid 41
+discord-bot-db     | 
+discord-bot-db     | 2025-11-13 11:12:06.803 UTC [1] LOG:  starting PostgreSQL 16.10 on x86_64-pc-linux-musl, compiled by gcc (Alpine 14.2.0) 14.2.0, 64-bit
+discord-bot-db     | 2025-11-13 11:12:06.803 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+discord-bot-db     | 2025-11-13 11:12:06.803 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+discord-bot-db     | 2025-11-13 11:12:06.804 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+discord-bot-db     | 2025-11-13 11:12:06.807 UTC [29] LOG:  database system was shut down at 2025-11-13 11:09:36 UTC
+discord-bot-db     | 2025-11-13 11:12:06.814 UTC [1] LOG:  database system is ready to accept connections
+homelab-dashboard  | [2025-11-13 11:14:16 +0000] [7] [INFO] Booting worker with pid: 7
+discord-bot-db     | 2025-11-13 11:12:12.329 UTC [40] LOG:  incomplete startup packet
+discord-bot        | [⣷] Pulling schema from database...
+caddy              | {"level":"warn","ts":1763032456.1963172,"logger":"http","msg":"HTTP/2 skipped because it requires TLS","network":"tcp","addr":":80"}
+caddy              | {"level":"warn","ts":1763032456.1963224,"logger":"http","msg":"HTTP/3 skipped because it requires TLS","network":"tcp","addr":":80"}
+caddy              | {"level":"info","ts":1763032456.1963294,"logger":"http.log","msg":"server running","name":"remaining_auto_https_redirects","protocols":["h1","h2","h3"]}
+scarletredjoker-web  | /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+[⣯] Pulling schema from database...
+homelab-dashboard  | [2025-11-13 11:14:16 +0000] [8] [INFO] Booting worker with pid: 8
+[⣟] Pulling schema from database...
+caddy                | {"level":"info","ts":1763032456.1963344,"logger":"http","msg":"enabling automatic TLS certificate management","domains":["bot.rig-city.com","www.scarletredjoker.com","stream.rig-city.com","scarletredjoker.com","plex.evindrake.net","host.evindrake.net","n8n.evindrake.net","vnc.evindrake.net"]}
+caddy                | {"level":"info","ts":1763032456.196394,"logger":"tls","msg":"finished cleaning storage units"}
+[⡿] Pulling schema from database...
+[✓] Pulling schema from database...
+discord-bot          | [✓] Changes applied
+discord-bot          | Database initialization complete!
+discord-bot          | Starting application...
+discord-bot          | 
+discord-bot          | > rest-express@1.0.0 start
+discord-bot          | > NODE_ENV=production node dist/index.js
+discord-bot          | 
+discord-bot          | [Database] Detected local/Docker PostgreSQL, using standard pg driver
+discord-bot          | [Discord] Registered developer commands: dev-dm, dev-announce, dev-stats, dev-refresh, dev-ticket
+discord-bot          | [Database] Creating read-only PostgreSQL connection for developer queries
+discord-bot          | Setting up Discord authentication strategy
+discord-bot          | Discord OAuth callback URL: https://bot.rig-city.com/auth/discord/callback
+homelab-dashboard    | [2025-11-13 11:14:16 +0000] [9] [INFO] Booting worker with pid: 9
+caddy                | {"level":"info","ts":1763032456.20372,"msg":"autosaved config (load with --resume flag)","file":"/config/caddy/autosave.json"}
+caddy                | {"level":"info","ts":1763032456.2037392,"msg":"serving initial configuration"}
+stream-bot         | [BotManager] Bootstrapping...
+stream-bot           | [BotManager] Found 0 active bot instances
+stream-bot           | [BotManager] Bootstrap complete
+stream-bot           | 11:14:17 AM [express] serving on port 5000
+stream-bot           | [WebSocket] Rejecting unauthenticated connection
+homelab-dashboard    | /usr/local/lib/python3.11/site-packages/paramiko/pkey.py:100: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+homelab-dashboard    |   "cipher": algorithms.TripleDES,
+homelab-dashboard    | /usr/local/lib/python3.11/site-packages/paramiko/pkey.py:100: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+homelab-dashboard    |   "cipher": algorithms.TripleDES,
+homelab-dashboard    | /usr/local/lib/python3.11/site-packages/paramiko/transport.py:259: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+homelab-dashboard    |   "class": algorithms.TripleDES,
+homelab-dashboard    | /usr/local/lib/python3.11/site-packages/paramiko/transport.py:259: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+homelab-dashboard    |   "class": algorithms.TripleDES,
+homelab-dashboard    | /usr/local/lib/python3.11/site-packages/paramiko/pkey.py:100: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+homelab-dashboard    |   "cipher": algorithms.TripleDES,
+homelab-dashboard    | /usr/local/lib/python3.11/site-packages/paramiko/transport.py:259: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+homelab-dashboard    |   "class": algorithms.TripleDES,
+homelab-dashboard    | Failed to connect to Docker: Error while fetching server API version: Not supported URL scheme http+docker
+homelab-dashboard    | Failed to connect to Docker: Error while fetching server API version: Not supported URL scheme http+docker
+homelab-dashboard    | Failed to connect to Docker: Error while fetching server API version: Not supported URL scheme http+docker
+homelab-dashboard    | Failed to connect to Docker: Error while fetching server API version: Not supported URL scheme http+docker
+homelab-dashboard    | Failed to connect to Docker: Error while fetching server API version: Not supported URL scheme http+docker
+homelab-dashboard    | Failed to connect to Docker: Error while fetching server API version: Not supported URL scheme http+docker
+homelab-dashboard    | Compose file not found: docker-compose.unified.yml
+plex-server          | [migrations] started
+plex-server          | [migrations] no migrations found
+plex-server          | ───────────────────────────────────────
+plex-server          | 
+plex-server          |       ██╗     ███████╗██╗ ██████╗
+plex-server          |       ██║     ██╔════╝██║██╔═══██╗
+plex-server          |       ██║     ███████╗██║██║   ██║
+plex-server          |       ██║     ╚════██║██║██║   ██║
+plex-server          |       ███████╗███████║██║╚██████╔╝
+homelab-dashboard    | Caddyfile not found: Caddyfile
+homelab-dashboard    | .env file not found: .env
+homelab-dashboard    | Compose file not found: docker-compose.unified.yml
+homelab-dashboard    | Caddyfile not found: Caddyfile
+homelab-dashboard    | .env file not found: .env
+homelab-dashboard    | Compose file not found: docker-compose.unified.yml
+homelab-dashboard    | Caddyfile not found: Caddyfile
+homelab-dashboard    | .env file not found: .env
+vnc-desktop        | 2025-11-13 11:14:17,235 INFO exited: x11vnc (exit status 1; not expected)
+vnc-desktop        | 2025-11-13 11:14:17,375 INFO  Listening on http://localhost:6079 (run.py:87)
+vnc-desktop        | 2025-11-13 11:14:18,243 INFO success: nginx entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop        | 2025-11-13 11:14:18,243 INFO success: web entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop        | 2025-11-13 11:14:18,243 INFO success: xvfb entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop        | 2025-11-13 11:14:18,243 INFO success: wm entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop        | 2025-11-13 11:14:18,243 INFO success: lxpanel entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop        | 2025-11-13 11:14:18,243 INFO success: pcmanfm entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop        | 2025-11-13 11:14:18,244 INFO spawned: 'x11vnc' with pid 110
+vnc-desktop        | 2025-11-13 11:14:18,244 INFO success: novnc entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop        | 2025-11-13 11:14:19,280 INFO success: x11vnc entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+scarletredjoker-web  | /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+scarletredjoker-web  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+scarletredjoker-web  | 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+scarletredjoker-web  | 10-listen-on-ipv6-by-default.sh: info: Enabled listen on IPv6 in /etc/nginx/conf.d/default.conf
+scarletredjoker-web  | /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+scarletredjoker-web  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+scarletredjoker-web  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+scarletredjoker-web  | /docker-entrypoint.sh: Configuration complete; ready for start up
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: using the "epoll" event method
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: nginx/1.29.3
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: built by gcc 14.2.0 (Alpine 14.2.0) 
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: OS: Linux 6.17.0-6-generic
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1024:524288
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker processes
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 30
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 31
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 32
+discord-bot          | Attempting to start Discord bot...
+discord-bot          | Successfully registered application commands globally
+discord-bot          | 11:12:18 AM [express] serving on port 5000
+discord-bot          | Discord bot ready! Logged in as Rig City Ticket Tool#8919
+discord-bot          | 
+discord-bot          | === Bot Server Status ===
+discord-bot          | Connected to 2 server(s):
+discord-bot          |   - Joker's Evil Headquarters (ID: 623281252451221515) | 14 members
+discord-bot          |   - Rig City (ID: 692850100795473920) | 445 members
+discord-bot          | ========================
+discord-bot          | 
+discord-bot          | [Discord] Loading ticket-channel mappings from database...
+discord-bot          | [Discord] ✅ Successfully loaded 0 ticket-channel mappings
+discord-bot          | [Discord] Scheduled ticket mapping refresh every 5 minutes
+discord-bot          | [Bot] Starting ticket system safeguard background jobs...
+discord-bot          | [Safeguards] Starting background jobs...
+discord-bot          | [Safeguards] Background jobs started successfully.
+discord-bot          | [Safeguards] - Channel reconciliation: every 15 minutes
+discord-bot          | [Safeguards] - Auto-close check: every 60 minutes
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 33
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 34
+discord-bot          | [Stream Notifications] Initializing stream tracking...
+discord-bot          | [Stream Notifications] Initialized tracking for 0 server(s)
+discord-bot          | (node:61) Warning: Supplying "ephemeral" for interaction response options is deprecated. Utilize flags instead.
+discord-bot          | (Use `node --trace-warnings ...` to show where the warning was created)
+discord-bot          | [Safeguards] Starting ticket channel reconciliation...
+discord-bot          | [Safeguards] Checking 0 open tickets with Discord channels
+discord-bot          | [Safeguards] Reconciliation complete. Marked 0 tickets as orphaned.
+discord-bot          | [Safeguards] Starting auto-close check for inactive tickets...
+discord-bot          | [Safeguards] Auto-close check complete.
+n8n                  | Initializing n8n process
+n8n                  | n8n ready on ::, port 5678
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 35
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 36
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 37
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 38
+plex-server          |       ╚══════╝╚══════╝╚═╝ ╚═════╝
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 39
+n8n                  | n8n Task Broker ready on 127.0.0.1, port 5679
+n8n                  | 
+n8n                  | There are deprecations related to your environment variables. Please take the recommended actions to update your configuration:
+n8n                  |  - DB_SQLITE_POOL_SIZE -> Running SQLite without a pool of read connections is deprecated. Please set `DB_SQLITE_POOL_SIZE` to a value higher than zero. See: https://docs.n8n.io/hosting/configuration/environment-variables/database/#sqlite
+n8n                  |  - N8N_BLOCK_ENV_ACCESS_IN_NODE -> The default value of N8N_BLOCK_ENV_ACCESS_IN_NODE will be changed from false to true in a future version. If you need to access environment variables from the Code Node or from expressions, please set N8N_BLOCK_ENV_ACCESS_IN_NODE=false. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/security/
+n8n                  |  - N8N_GIT_NODE_DISABLE_BARE_REPOS -> Support for bare repositories in the Git Node will be removed in a future version due to security concerns. If you are not using bare repositories in the Git Node, please set N8N_GIT_NODE_DISABLE_BARE_REPOS=true. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/security/
+n8n                  | 
+n8n                  | [license SDK] Skipping renewal on init: license cert is not initialized
+n8n                  | Registered runner "JS Task Runner" (0dLT-rKE4xZASWx4ZAixZ) 
+n8n                  | Version: 1.118.2
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 40
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 41
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 42
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 43
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 44
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 45
+n8n                  | 
+n8n                  | Editor is now accessible via:
+n8n                  | https://n8n.evindrake.net
+plex-server          | 
+plex-server          |    Brought to you by linuxserver.io
+plex-server          | ───────────────────────────────────────
+plex-server          | 
+plex-server          | To support LSIO projects visit:
+plex-server          | https://www.linuxserver.io/donate/
+plex-server          | 
+plex-server          | ───────────────────────────────────────
+plex-server          | GID/UID
+plex-server          | ───────────────────────────────────────
+plex-server          | 
+plex-server          | User UID:    1000
+plex-server          | User GID:    1000
+plex-server          | ───────────────────────────────────────
+plex-server          | Linuxserver.io version: 1.42.2.10156-f737b826c-ls285
+plex-server          | Build-date: 2025-11-10T09:30:56+00:00
+plex-server          | ───────────────────────────────────────
+plex-server          |     
+plex-server          | **** Server already claimed ****
+plex-server          | **** creating video group videoh18b with id 991 ****
+plex-server          | **** adding /dev/dri/renderD128 to video group videoh18b with id 991 ****
+plex-server          | **** adding /dev/dri/card1 to video group video with id 44 ****
+plex-server          | Docker is used for versioning skip update check
+plex-server          | [custom-init] No custom files found, skipping...
+plex-server          | Starting Plex Media Server. . . (you can ignore the libusb_init error)
+plex-server          | Connection to localhost (::1) 32400 port [tcp/*] succeeded!
+plex-server          | [ls.io-init] done.
+plex-server          | Critical: libusb_init failed

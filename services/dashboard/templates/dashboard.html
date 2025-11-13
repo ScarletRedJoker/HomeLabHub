@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Homelab Dashboard{% endblock %}
+{% block page_title %}<i class="bi bi-speedometer2"></i> System Dashboard{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="stat-card">
+            <i class="bi bi-cpu" style="font-size: 2rem; color: var(--accent-blue);"></i>
+            <div class="stat-value" id="cpu-percent">-</div>
+            <div class="stat-label">CPU Usage</div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="stat-card">
+            <i class="bi bi-memory" style="font-size: 2rem; color: var(--accent-green);"></i>
+            <div class="stat-value" id="mem-percent">-</div>
+            <div class="stat-label">Memory</div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="stat-card">
+            <i class="bi bi-device-hdd" style="font-size: 2rem; color: var(--accent-yellow);"></i>
+            <div class="stat-value" id="disk-percent">-</div>
+            <div class="stat-label">Disk Usage</div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="stat-card">
+            <i class="bi bi-diagram-3" style="font-size: 2rem; color: var(--accent-purple);"></i>
+            <div class="stat-value" id="network-speed">-</div>
+            <div class="stat-label">Network</div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-graph-up"></i>
+                CPU & Memory Usage
+            </div>
+            <canvas id="cpuMemChart" style="max-height: 300px;"></canvas>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-hdd"></i>
+                Disk Usage by Mount
+            </div>
+            <div id="disk-info">
+                <div class="loading">
+                    <div class="spinner-border"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-clock-history"></i>
+                Recent Activity
+            </div>
+            <div id="activity-log">
+                <p style="padding: 20px; text-align: center; color: var(--text-secondary);">Activity logging coming soon...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let cpuMemChart;
+const cpuData = [];
+const memData = [];
+const labels = [];
+const maxDataPoints = 20;
+
+function initChart() {
+    const ctx = document.getElementById('cpuMemChart').getContext('2d');
+    
+    cpuMemChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'CPU %',
+                    data: cpuData,
+                    borderColor: 'rgb(88, 166, 255)',
+                    backgroundColor: 'rgba(88, 166, 255, 0.1)',
+                    tension: 0.4
+                },
+                {
+                    label: 'Memory %',
+                    data: memData,
+                    borderColor: 'rgb(63, 185, 80)',
+                    backgroundColor: 'rgba(63, 185, 80, 0.1)',
+                    tension: 0.4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: 'rgb(201, 209, 217)'
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        color: 'rgb(139, 148, 158)'
+                    },
+                    grid: {
+                        color: 'rgba(48, 54, 61, 0.5)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: 'rgb(139, 148, 158)'
+                    },
+                    grid: {
+                        color: 'rgba(48, 54, 61, 0.5)'
+                    }
+                }
+            }
+        }
+    });
+}
+
+async function updateStats() {
+    try {
+        const response = await fetch('/api/system/stats');
+        const data = await response.json();
+        
+        document.getElementById('cpu-percent').textContent = data.cpu_percent.toFixed(1) + '%';
+        document.getElementById('mem-percent').textContent = data.memory_percent.toFixed(1) + '%';
+        document.getElementById('disk-percent').textContent = data.disk_percent.toFixed(1) + '%';
+        
+        const netSpeedMB = (data.network_sent_mb || 0) + (data.network_recv_mb || 0);
+        document.getElementById('network-speed').textContent = netSpeedMB.toFixed(2) + ' MB/s';
+        
+        const now = new Date();
+        const timeLabel = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
+        
+        labels.push(timeLabel);
+        cpuData.push(data.cpu_percent);
+        memData.push(data.memory_percent);
+        
+        if (labels.length > maxDataPoints) {
+            labels.shift();
+            cpuData.shift();
+            memData.shift();
+        }
+        
+        if (cpuMemChart) {
+            cpuMemChart.update();
+        }
+        
+    } catch (error) {
+        console.error('Failed to update stats:', error);
+    }
+}
+
+async function loadDiskInfo() {
+    try {
+        const response = await fetch('/api/system/disk');
+        const disks = await response.json();
+        
+        let html = '<div style="padding: 20px;">';
+        
+        if (Array.isArray(disks)) {
+            disks.forEach(disk => {
+                const percent = disk.percent || 0;
+                let barColor = 'var(--accent-green)';
+                if (percent > 80) barColor = 'var(--accent-red)';
+                else if (percent > 60) barColor = 'var(--accent-yellow)';
+                
+                html += `<div style="margin-bottom: 20px;">`;
+                html += `<div style="display: flex; justify-content: space-between; margin-bottom: 5px;">`;
+                html += `<span><strong>${disk.mountpoint}</strong></span>`;
+                html += `<span>${percent.toFixed(1)}% (${disk.used_gb}GB / ${disk.total_gb}GB)</span>`;
+                html += `</div>`;
+                html += `<div style="background: var(--bg-tertiary); border-radius: 10px; height: 10px; overflow: hidden;">`;
+                html += `<div style="width: ${percent}%; background: ${barColor}; height: 100%;"></div>`;
+                html += `</div>`;
+                html += `</div>`;
+            });
+        }
+        
+        html += '</div>';
+        document.getElementById('disk-info').innerHTML = html;
+        
+    } catch (error) {
+        console.error('Failed to load disk info:', error);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    initChart();
+    updateStats();
+    loadDiskInfo();
+    
+    setInterval(updateStats, 3000);
+    setInterval(loadDiskInfo, 30000);
+});
+</script>
+{% endblock %}

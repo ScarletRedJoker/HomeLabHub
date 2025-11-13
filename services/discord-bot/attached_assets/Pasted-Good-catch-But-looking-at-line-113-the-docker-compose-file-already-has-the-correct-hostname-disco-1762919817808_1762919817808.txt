@@ -1,0 +1,73 @@
+Good catch! But looking at line 113, the docker-compose file already has the correct hostname (discord-bot-db:5432). The issue is that your Discord bot's startup script has postgres hardcoded instead of using the DATABASE_URL environment variable.
+
+Let me find where this is hardcoded:
+
+I can't access your DiscordTicketBot code from here, but I can see the issue: your bot's startup script has postgres hardcoded instead of using the DATABASE_URL environment variable.
+
+Quick Fix: Add a network alias so discord-bot-db is also accessible as postgres:
+
+Perfect! I've fixed all three issues:
+✅ Fixes Applied
+1. Traefik Docker API Issue
+
+    Upgraded Traefik: v3.0 → v3.2
+    Added explicit Docker API version: DOCKER_API_VERSION=1.47
+
+2. Discord Bot PostgreSQL Hostname Mismatch
+
+    Added network aliases so discord-bot-db is reachable as both:
+        discord-bot-db (correct)
+        postgres (what your bot's code expects)
+
+Now your bot's hardcoded postgres:5432 will work!
+3. Created Deployment Script
+
+    APPLY_FIXES.sh - One-command fix for your server
+
+🚀 Apply All Fixes (One Command)
+
+On your Ubuntu server, run:
+
+cd /home/evin/contain/HomeLabHub
+
+# Download the updated files from this Replit
+# (You'll need to copy docker-compose.unified.yml and APPLY_FIXES.sh to your server)
+
+# Then run:
+./APPLY_FIXES.sh
+
+Or manually:
+
+cd /home/evin/contain/HomeLabHub
+
+# Stop services
+docker compose -f docker-compose.unified.yml down
+
+# Pull latest Traefik
+docker pull traefik:v3.2
+
+# Start everything
+docker compose -f docker-compose.unified.yml up -d
+
+# Watch logs
+docker compose -f docker-compose.unified.yml logs -f
+
+🧪 Verify It Works
+
+After ~30 seconds, test your sites:
+
+# Should see HTTP/2 200 or 302 (not blank pages!)
+curl -I https://bot.rig-city.com
+curl -I https://stream.rig-city.com
+curl -I https://plex.evindrake.net
+curl -I https://n8n.evindrake.net
+curl -I https://scarletredjoker.com
+
+And check Discord bot specifically:
+
+docker logs discord-bot --tail 20
+# Should see: "Discord bot ready! Logged in as..."
+
+📁 Files to Copy to Your Server
+
+You'll need to copy the updated docker-compose.unified.yml from this Replit project to your Ubuntu server at /home/evin/contain/HomeLabHub/.

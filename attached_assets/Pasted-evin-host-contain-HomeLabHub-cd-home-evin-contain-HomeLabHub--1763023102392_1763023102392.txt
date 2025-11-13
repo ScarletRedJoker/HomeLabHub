@@ -1,0 +1,157 @@
+evin@host:~/contain/HomeLabHub$ cd /home/evin/contain/HomeLabHub
+
+# ====================================
+# Step 1: Create the SQL file directly
+# ====================================
+cat > /tmp/init-streambot-schema.sql << 'EOFSCHEMA'
+-- Stream Bot Database Schema
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+CREATE TABLE IF NOT EXISTS users (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'user',
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS platform_connections (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  user_id VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  platform TEXT NOT NULL,
+  platform_user_id TEXT,
+  platform_username TEXT,
+  access_token TEXT,
+  refresh_token TEXT,
+  token_expires_at TIMESTAMP,
+  channel_id TEXT,
+  is_connected BOOLEAN NOT NULL DEFAULT false,
+  last_connected_at TIMESTAMP,
+  connection_data JSONB,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS platform_connections_user_id_platform_unique 
+ON platform_connections(user_id, platform);
+
+CREATE TABLE IF NOT EXISTS bot_configs (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  user_id VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+  interval_mode TEXT NOT NULL DEFAULT 'manual',
+  fixed_interval_minutes INTEGER,
+  random_min_minutes INTEGER,
+  random_max_minutes INTEGER,
+  ai_model TEXT NOT NULL DEFAULT 'gpt-5-mini',
+  ai_prompt_template TEXT,
+  ai_temperature INTEGER DEFAULT 1,
+  enable_chat_triggers BOOLEAN NOT NULL DEFAULT true,
+  chat_keywords TEXT[] NOT NULL DEFAULT ARRAY['!snapple', '!fact']::text[],
+  active_platforms TEXT[] NOT NULL DEFAULT ARRAY[]::text[],
+  is_active BOOLEAN NOT NULL DEFAULT false,
+  last_fact_posted_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS bot_instances (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  user_id VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+  status TEXT NOT NULL DEFAULT 'stopped',
+  last_heartbeat TIMESTAMP,
+  error_message TEXT,
+  started_at TIMESTAMP,
+  stopped_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS message_history (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  user_id VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  platform TEXT NOT NULL,
+  trigger_type TEXT NOT NULL,
+  trigger_user TEXT,
+curl -I https://vnc.evindrake.net 2>&1 | head -5}" | grep stream-botinit-streambot-schema.sql
+CREATE EXTENSION
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+GRANT
+GRANT
+
+=== Tables Created ===
+                 List of relations
+ Schema |         Name         | Type  |   Owner   
+--------+----------------------+-------+-----------
+ public | bot_configs          | table | streambot
+ public | bot_instances        | table | streambot
+ public | message_history      | table | streambot
+ public | platform_connections | table | streambot
+ public | users                | table | streambot
+(5 rows)
+
+
+Restarting stream-bot...
+stream-bot
+
+=== Stream Bot Status ===
+stream-bot            Restarting (1) 1 second ago
+    _redirects: 0,
+    _autoPong: true,
+    _url: 'wss://discord-bot-db/v2',
+    _req: null,
+    [Symbol(shapeMode)]: false,
+    [Symbol(kCapture)]: false
+  },
+  [Symbol(kType)]: 'error',
+  [Symbol(kError)]: Error: connect ECONNREFUSED 172.23.0.4:443
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1611:16) {
+    errno: -111,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '172.23.0.4',
+    port: 443
+  },
+  [Symbol(kMessage)]: 'connect ECONNREFUSED 172.23.0.4:443'
+}
+
+Node.js v20.19.5
+
+=== Fixing VNC (restarting Caddy) ===
+caddy
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+HTTP/2 502 
+alt-svc: h3=":443"; ma=2592000
+evin@host:~/contain/HomeLabHub$ cd /home/evin/contain/HomeLabHub
+evin@host:~/contain/HomeLabHub$ cd services/stream-bot
+npm install
+npm WARN deprecated @esbuild-kit/esm-loader@2.6.5: Merged into tsx: https://tsx.is
+npm WARN deprecated @esbuild-kit/core-utils@3.3.2: Merged into tsx: https://tsx.is
+npm WARN deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm WARN deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+npm WARN deprecated puppeteer@23.11.1: < 24.15.0 is no longer supported
+npm WARN deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+npm WARN deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+
+added 662 packages, and audited 663 packages in 19s
+
+83 packages are looking for funding
+  run `npm fund` for details
+
+8 vulnerabilities (3 low, 5 moderate)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.

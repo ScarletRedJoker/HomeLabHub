@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 47.4% 11.2%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 47.4% 11.2%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --primary: 240 70% 65%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 210 40% 98%;
+    --ring: 240 70% 65%;
+    --radius: 0.5rem;
+
+    /* Discord UI colors (light mode) */
+    --discord-sidebar: 220 13% 95%;
+    --discord-primary: 235 86% 65%;
+    --discord-success: 160 100% 40%;
+    --discord-warning: 38 95% 50%;
+    --discord-danger: 359 100% 59%;
+    --discord-text: 215 8% 47%;
+    --discord-muted: 212 8% 64%;
+    --discord-bg: 0 0% 100%;
+    --discord-dark: 210 10% 90%;
+    --discord-highlight: 235 86% 94%;
+  }
+ 
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --primary: 240 70% 65%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+    --ring: 240 70% 65%;
+
+    /* Discord UI colors (dark mode) */
+    --discord-sidebar: 220 8% 23%;
+    --discord-primary: 235 86% 65%;
+    --discord-success: 160 86% 42%;
+    --discord-warning: 38 95% 50%;
+    --discord-danger: 359 82% 59%;
+    --discord-text: 210 9% 87%;
+    --discord-muted: 214 8% 64%;
+    --discord-bg: 220 7% 18%;
+    --discord-dark: 220 6% 13%;
+    --discord-highlight: 235 86% 75%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}

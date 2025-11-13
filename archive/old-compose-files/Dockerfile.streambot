@@ -1,0 +1,66 @@
+# ===================================
+# Generic Stream Bot Dockerfile
+# Works with most Node.js bot projects
+# ===================================
+
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Build if there's a build script, otherwise skip
+RUN npm run build || echo "No build script found, using source files directly"
+
+# ===================================
+# Production stage
+# ===================================
+FROM node:20-alpine
+
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S streambot -u 1001
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install production dependencies only
+RUN npm ci --only=production && \
+    npm cache clean --force
+
+# Copy built files or source files
+COPY --from=builder --chown=streambot:nodejs /app/dist ./dist 2>/dev/null || \
+     COPY --from=builder --chown=streambot:nodejs /app/src ./src || \
+     COPY --from=builder --chown=streambot:nodejs /app/*.js ./
+
+# Copy any config files
+COPY --from=builder --chown=streambot:nodejs /app/*.json ./
+COPY --from=builder --chown=streambot:nodejs /app/*.ts ./ 2>/dev/null || true
+
+# Create logs directory
+RUN mkdir -p logs && chown -R streambot:nodejs logs
+
+# Switch to non-root user
+USER streambot
+
+# Health check (adjust port if needed)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 0
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start the bot
+CMD ["node", "dist/index.js"]

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Scripts - Homelab{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-code-square"></i> Remote Script Execution</h2>
+        <p class="text-muted">Execute monitoring and Docker commands on your server remotely</p>
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> <strong>Security:</strong> Only safe monitoring and Docker management commands are permitted.
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5>Execute Command</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="commandInput" class="form-label">Command</label>
+                    <input type="text" class="form-control font-monospace" id="commandInput" 
+                           placeholder="docker ps -a">
+                    <div class="form-text">Only monitoring and Docker commands are allowed for security</div>
+                </div>
+                <button class="btn btn-primary" onclick="executeCommand()">
+                    <i class="bi bi-play-fill"></i> Execute
+                </button>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>Output</h5>
+            </div>
+            <div class="card-body">
+                <pre id="commandOutput" class="logs-container">No output yet...</pre>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Allowed Commands</h5>
+            </div>
+            <div class="card-body">
+                <h6>Docker Commands</h6>
+                <div class="list-group mb-3">
+                    <button class="list-group-item list-group-item-action" onclick="setCommand('docker ps -a')">
+                        docker ps -a<br><small class="text-muted">List all containers</small>
+                    </button>
+                    <button class="list-group-item list-group-item-action" onclick="setCommand('docker ps')">
+                        docker ps<br><small class="text-muted">List running containers</small>
+                    </button>
+                    <button class="list-group-item list-group-item-action" onclick="setCommand('docker images')">
+                        docker images<br><small class="text-muted">List images</small>
+                    </button>
+                    <button class="list-group-item list-group-item-action" onclick="setCommand('docker stats --no-stream')">
+                        docker stats --no-stream<br><small class="text-muted">Container stats</small>
+                    </button>
+                    <button class="list-group-item list-group-item-action" onclick="setCommand('docker system df')">
+                        docker system df<br><small class="text-muted">Disk usage</small>
+                    </button>
+                    <button class="list-group-item list-group-item-action" onclick="setCommand('docker system prune -f')">
+                        docker system prune -f<br><small class="text-muted">Clean up unused data</small>
+                    </button>
+                </div>
+                
+                <div class="alert alert-warning small">
+                    <i class="bi bi-shield-lock"></i> <strong>Security:</strong> Only these exact commands are permitted. docker exec, docker run, and other privileged operations are blocked.
+                </div>
+
+                <h6>System Monitoring</h6>
+                <div class="list-group mb-3">
+                    <button class="list-group-item list-group-item-action" onclick="setCommand('df -h')">
+                        df -h<br><small class="text-muted">Disk usage</small>
+                    </button>
+                    <button class="list-group-item list-group-item-action" onclick="setCommand('free -h')">
+                        free -h<br><small class="text-muted">Memory usage</small>
+                    </button>
+                    <button class="list-group-item list-group-item-action" onclick="setCommand('uptime')">
+                        uptime<br><small class="text-muted">System uptime</small>
+                    </button>
+                    <button class="list-group-item list-group-item-action" onclick="setCommand('systemctl status docker')">
+                        systemctl status docker<br><small class="text-muted">Docker status</small>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+{% endblock %}

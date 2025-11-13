@@ -1,0 +1,102 @@
+networks:
+  homelab:
+    driver: bridge
+
+services:
+  # Homelab Dashboard
+  homelab-dashboard:
+    build: .
+    container_name: homelab-dashboard
+    restart: unless-stopped
+    networks:
+      - homelab
+    ports:
+      - "5000:8000"  # Access at http://localhost:5000
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./logs:/app/logs
+      - /home/${SERVICE_USER:-evin}/contain:/home/${SERVICE_USER:-evin}/contain:ro
+    env_file:
+      - .env
+    environment:
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Discord Bot (optional)
+  discord-bot:
+    image: ${DISCORD_BOT_IMAGE:-placeholder}
+    container_name: discordticketbot
+    restart: unless-stopped
+    networks:
+      - homelab
+    ports:
+      - "5001:80"  # Access at http://localhost:5001
+    volumes:
+      - /home/${SERVICE_USER:-evin}/contain/DiscordTicketBot:/app/data
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - BOT_PREFIX=${BOT_PREFIX:-!}
+    profiles:
+      - discord
+
+  # Plex Media Server (optional)
+  plex:
+    image: plexinc/pms-docker:latest
+    container_name: plex-server
+    restart: unless-stopped
+    networks:
+      - homelab
+    ports:
+      - "32400:32400"  # Standard Plex port
+      - "5002:32400"   # Also accessible at http://localhost:5002/web
+    volumes:
+      - /home/${SERVICE_USER:-evin}/contain/plex-server/config:/config
+      - /home/${SERVICE_USER:-evin}/contain/plex-server/media:/media
+      - /home/${SERVICE_USER:-evin}/contain/plex-server/transcode:/transcode
+    environment:
+      - PLEX_CLAIM=${PLEX_CLAIM:-}
+      - PLEX_UID=1000
+      - PLEX_GID=1000
+    profiles:
+      - plex
+
+  # n8n Automation (optional)
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    networks:
+      - homelab
+    ports:
+      - "5003:5678"  # Access at http://localhost:5003
+    volumes:
+      - /home/${SERVICE_USER:-evin}/contain/n8n:/home/node/.n8n
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=changeme
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+    profiles:
+      - n8n
+
+  # Static Website (optional)
+  scarletredjoker-web:
+    image: nginx:alpine
+    container_name: scarletredjoker-web
+    restart: unless-stopped
+    networks:
+      - homelab
+    ports:
+      - "5004:80"  # Access at http://localhost:5004
+    volumes:
+      - /var/www/scarletredjoker:/usr/share/nginx/html:ro
+    profiles:
+      - web

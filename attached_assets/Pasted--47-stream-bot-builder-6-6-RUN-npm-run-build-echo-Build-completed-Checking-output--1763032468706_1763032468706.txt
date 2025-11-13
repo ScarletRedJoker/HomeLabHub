@@ -1,0 +1,65 @@
+#47 [stream-bot builder 6/6] RUN npm run build &&     echo "Build completed. Checking output..." &&     ls -la dist/ &&     echo "Build verification successful!"
+#47 0.224 
+#47 0.224 > rest-express@1.0.0 build
+#47 0.224 > vite build && node esbuild.config.mjs
+#47 0.224 
+#47 0.388 vite v5.4.20 building for production...
+#47 0.431 transforming...
+#47 1.260 
+#47 1.260 A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+#47 3.531 ✓ 1771 modules transformed.
+#47 3.741 rendering chunks...
+#47 3.748 computing gzip size...
+#47 3.760 ../dist/public/index.html                   1.01 kB │ gzip:   0.55 kB
+#47 3.760 ../dist/public/assets/index-DUJ6WM3L.css   75.86 kB │ gzip:  12.17 kB
+#47 3.760 ../dist/public/assets/index-Dsn_9HmS.js   537.08 kB │ gzip: 158.84 kB
+#47 3.761 
+#47 3.761 (!) Some chunks are larger than 500 kB after minification. Consider:
+#47 3.761 - Using dynamic import() to code-split the application
+#47 3.761 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+#47 3.761 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+#47 3.761 ✓ built in 3.35s
+#47 5.046 ✓ Server build complete
+#47 5.058 Build completed. Checking output...
+#47 5.058 total 123348
+#47 5.058 drwxr-xr-x    3 root     root          4096 Nov 13 11:14 .
+#47 5.058 drwxr-xr-x    1 root     root          4096 Nov 13 11:14 ..
+#47 5.058 -rw-r--r--    1 root     root      47946942 Nov 13 11:14 index.js
+#47 5.058 -rw-r--r--    1 root     root      78346616 Nov 13 11:14 index.js.map
+#47 5.058 drwxr-xr-x    3 root     root          4096 Nov 13 11:14 public
+#47 5.058 Build verification successful!
+#47 DONE 5.2s
+
+#48 [stream-bot stage-1 4/8] WORKDIR /app
+#48 CACHED
+
+#49 [stream-bot stage-1 2/8] RUN apk add --no-cache dumb-init
+#49 CACHED
+
+#50 [stream-bot stage-1 3/8] RUN addgroup -g 1001 -S nodejs &&     adduser -S streambot -u 1001
+#50 CACHED
+
+#51 [stream-bot stage-1 5/8] COPY package*.json ./
+#51 CACHED
+
+#52 [stream-bot stage-1 6/8] RUN npm ci --only=production && npm cache clean --force
+#52 CACHED
+
+#53 [stream-bot stage-1 7/8] COPY --from=builder --chown=streambot:nodejs /app/dist ./dist
+#53 CACHED
+
+#54 [stream-bot stage-1 8/8] COPY --from=builder --chown=streambot:nodejs /app/node_modules/connect-pg-simple/table.sql ./dist/table.sql
+#54 CACHED
+
+#55 [stream-bot] exporting to image
+#55 exporting layers done
+#55 writing image sha256:eb3829f57a302d6d0ff31f2ef97b592f2d8e17bcce596799e0129793151ef4ed done
+#55 naming to docker.io/library/homelabhub-stream-bot done
+#55 DONE 0.0s
+
+#56 [stream-bot] resolving provenance for metadata file
+#56 DONE 0.0s
+ homelabhub-discord-bot  Built
+ homelabhub-homelab-dashboard  Built
+ homelabhub-stream-bot  Built
+✓ All containers built successfully

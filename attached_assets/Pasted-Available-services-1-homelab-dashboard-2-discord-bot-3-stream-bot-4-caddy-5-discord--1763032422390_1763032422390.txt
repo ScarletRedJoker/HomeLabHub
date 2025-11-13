@@ -1,0 +1,74 @@
+Available services:
+  1) homelab-dashboard
+  2) discord-bot
+  3) stream-bot
+  4) caddy
+  5) discord-bot-db
+  6) All services
+
+Enter service number: 6
+discord-bot-db  | 
+discord-bot-db  | PostgreSQL Database directory appears to contain a database; Skipping initialization
+discord-bot-db  | 
+discord-bot-db  | 2025-11-13 11:12:06.803 UTC [1] LOG:  starting PostgreSQL 16.10 on x86_64-pc-linux-musl, compiled by gcc (Alpine 14.2.0) 14.2.0, 64-bit
+discord-bot-db  | 2025-11-13 11:12:06.803 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+discord-bot-db  | 2025-11-13 11:12:06.803 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+discord-bot-db  | 2025-11-13 11:12:06.804 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+discord-bot-db  | 2025-11-13 11:12:06.807 UTC [29] LOG:  database system was shut down at 2025-11-13 11:09:36 UTC
+discord-bot-db  | 2025-11-13 11:12:06.814 UTC [1] LOG:  database system is ready to accept connections
+discord-bot-db  | 2025-11-13 11:12:12.329 UTC [40] LOG:  incomplete startup packet
+discord-bot     | Starting Discord Bot deployment...
+discord-bot     | Waiting for PostgreSQL to be ready...
+discord-bot     | Extracted PostgreSQL host from DATABASE_URL: discord-bot-db
+discord-bot     | Checking PostgreSQL connection at discord-bot-db:5432...
+discord-bot     | PostgreSQL port is accessible!
+discord-bot     | PostgreSQL is ready!
+discord-bot     | Initializing database schema...
+discord-bot     | No config path provided, using default 'drizzle.config.ts'
+discord-bot     | Reading config file '/app/drizzle.config.ts'
+discord-bot     | Using 'pg' driver for database querying
+discord-bot     | [⣷] Pulling schema from database...
+[⣯] Pulling schema from database...
+[⣟] Pulling schema from database...
+[⡿] Pulling schema from database...
+[✓] Pulling schema from database...
+discord-bot     | [✓] Changes applied
+discord-bot     | Database initialization complete!
+discord-bot     | Starting application...
+discord-bot     | 
+discord-bot     | > rest-express@1.0.0 start
+discord-bot     | > NODE_ENV=production node dist/index.js
+discord-bot     | 
+discord-bot     | [Database] Detected local/Docker PostgreSQL, using standard pg driver
+discord-bot     | [Discord] Registered developer commands: dev-dm, dev-announce, dev-stats, dev-refresh, dev-ticket
+discord-bot     | [Database] Creating read-only PostgreSQL connection for developer queries
+discord-bot     | Setting up Discord authentication strategy
+discord-bot     | Discord OAuth callback URL: https://bot.rig-city.com/auth/discord/callback
+discord-bot     | Attempting to start Discord bot...
+discord-bot     | Successfully registered application commands globally
+discord-bot     | 11:12:18 AM [express] serving on port 5000
+discord-bot     | Discord bot ready! Logged in as Rig City Ticket Tool#8919
+discord-bot     | 
+discord-bot     | === Bot Server Status ===
+discord-bot     | Connected to 2 server(s):
+discord-bot     |   - Joker's Evil Headquarters (ID: 623281252451221515) | 14 members
+discord-bot     |   - Rig City (ID: 692850100795473920) | 445 members
+discord-bot     | ========================
+discord-bot     | 
+discord-bot     | [Discord] Loading ticket-channel mappings from database...
+discord-bot     | [Discord] ✅ Successfully loaded 0 ticket-channel mappings
+discord-bot     | [Discord] Scheduled ticket mapping refresh every 5 minutes
+discord-bot     | [Bot] Starting ticket system safeguard background jobs...
+discord-bot     | [Safeguards] Starting background jobs...
+discord-bot     | [Safeguards] Background jobs started successfully.
+discord-bot     | [Safeguards] - Channel reconciliation: every 15 minutes
+discord-bot     | [Safeguards] - Auto-close check: every 60 minutes
+discord-bot     | [Stream Notifications] Initializing stream tracking...
+discord-bot     | [Stream Notifications] Initialized tracking for 0 server(s)
+discord-bot     | (node:61) Warning: Supplying "ephemeral" for interaction response options is deprecated. Utilize flags instead.
+discord-bot     | (Use `node --trace-warnings ...` to show where the warning was created)
+discord-bot     | [Safeguards] Starting ticket channel reconciliation...
+discord-bot     | [Safeguards] Checking 0 open tickets with Discord channels
+discord-bot     | [Safeguards] Reconciliation complete. Marked 0 tickets as orphaned.
+discord-bot     | [Safeguards] Starting auto-close check for inactive tickets...
+discord-bot     | [Safeguards] Auto-close check complete.

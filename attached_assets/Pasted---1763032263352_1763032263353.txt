@@ -1,0 +1,189 @@
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║        🏠 HOMELAB DEPLOYMENT MANAGER 🚀                    ║
+║                                                                ║
+║        Unified Control Panel for All Services              ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+
+━━━ Container Status ━━━
+  ⚠ Partial deployment (9/8 services running)
+
+━━━ What would you like to do? ━━━
+
+  Deployment:
+    1) 🚀 Full Deploy (build and start all services)
+    2) 🔄 Quick Restart (restart without rebuilding)
+    3) ⚡ Rebuild & Deploy (force rebuild + restart)
+
+  Service Control:
+    4) ▶️  Start All Services
+    5) ⏸️  Stop All Services
+    6) 🔄 Restart Specific Service
+
+  Database:
+    7) 🗄️  Ensure Databases Exist (fix DB issues)
+    8) 📊 Check Database Status
+
+  Configuration:
+    9) ⚙️  Generate/Edit .env File
+    10) 📋 View Current Configuration
+
+  Troubleshooting:
+    11) 🔍 View Service Logs
+    12) 🏥 Health Check (all services)
+    13) 🔧 Full Troubleshoot Mode
+
+  Updates:
+    16) 📦 Update Service (pull latest image)
+
+  Information:
+    14) 📊 Show Container Details
+    15) 🌐 Show Service URLs
+
+    0) 🚪 Exit
+
+Enter your choice: 3
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ⚡ REBUILD & DEPLOY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Stopping services...
+[+] Running 10/10
+ ✔ Container stream-bot           Removed                                                                      0.3s 
+ ✔ Container n8n                  Removed                                                                      0.3s 
+ ✔ Container plex-server          Removed                                                                      3.4s 
+ ✔ Container vnc-desktop          Removed                                                                      4.2s 
+ ✔ Container caddy                Removed                                                                      0.2s 
+ ✔ Container discord-bot          Removed                                                                      0.6s 
+ ✔ Container homelab-dashboard    Removed                                                                      0.3s 
+ ✔ Container scarletredjoker-web  Removed                                                                      0.3s 
+ ✔ Container discord-bot-db       Removed                                                                      0.1s 
+ ✔ Network homelabhub_homelab     Removed                                                                      0.1s 
+
+Building containers (no cache)...
+[+] Building 39.6s (40/52)                                                                                          
+ => [internal] load local bake definitions                                                                     0.0s
+ => => reading from stdin 1.65kB                                                                               0.0s
+ => [stream-bot internal] load build definition from Dockerfile                                                0.0s
+ => => transferring dockerfile: 1.64kB                                                                         0.0s
+ => [discord-bot internal] load build definition from Dockerfile                                               0.0s
+ => => transferring dockerfile: 2.83kB                                                                         0.0s
+ => [homelab-dashboard internal] load build definition from Dockerfile                                         0.0s
+ => => transferring dockerfile: 695B                                                                           0.0s
+ => [stream-bot internal] load metadata for docker.io/library/node:20-alpine                                   0.3s
+ => [discord-bot internal] load metadata for docker.io/library/node:20-slim                                    0.3s
+ => [homelab-dashboard internal] load metadata for docker.io/library/python:3.11-slim                          0.3s
+ => [homelab-dashboard internal] load .dockerignore                                                            0.0s
+ => => transferring context: 2B                                                                                0.0s
+ => [homelab-dashboard 1/7] FROM docker.io/library/python:3.11-slim@sha256:e4676722fba839e2e5cdb844a52262b43e  0.0s
+ => [homelab-dashboard internal] load build context                                                            0.0s
+ => => transferring context: 3.22kB                                                                            0.0s
+ => CACHED [homelab-dashboard 2/7] WORKDIR /app                                                                0.0s
+ => [homelab-dashboard 3/7] RUN apt-get update && apt-get install -y     gcc     && rm -rf /var/lib/apt/lists  9.2s
+ => [discord-bot internal] load .dockerignore                                                                  0.0s
+ => => transferring context: 2B                                                                                0.0s
+ => CACHED [discord-bot builder 1/7] FROM docker.io/library/node:20-slim@sha256:12541e65a3777c6035245518eb430  0.0s
+ => [discord-bot internal] load build context                                                                  0.0s
+ => => transferring context: 296.08kB                                                                          0.0s
+ => [discord-bot builder 2/7] RUN apt-get update && apt-get install -y     python3     make     g++     libc  27.0s
+ => CANCELED [discord-bot stage-1  2/11] RUN apt-get update && apt-get install -y     ffmpeg     python3      39.2s
+ => [stream-bot internal] load .dockerignore                                                                   0.0s
+ => => transferring context: 2B                                                                                0.0s
+ => [stream-bot internal] load build context                                                                   0.8s
+ => => transferring context: 2.48MB                                                                            0.8s
+ => CACHED [stream-bot builder 1/6] FROM docker.io/library/node:20-alpine@sha256:6178e78b972f79c335df281f4b76  0.0s
+ => [stream-bot stage-1 2/8] RUN apk add --no-cache dumb-init                                                  1.1s
+ => CACHED [stream-bot builder 2/6] WORKDIR /app                                                               0.0s
+ => [stream-bot builder 3/6] COPY package*.json ./                                                             0.2s
+ => [stream-bot builder 4/6] RUN npm ci                                                                       20.0s
+ => [stream-bot stage-1 3/8] RUN addgroup -g 1001 -S nodejs &&     adduser -S streambot -u 1001                0.2s
+ => [stream-bot stage-1 4/8] WORKDIR /app                                                                      0.0s
+ => [stream-bot stage-1 5/8] COPY package*.json ./                                                             0.2s
+ => [stream-bot stage-1 6/8] RUN npm ci --only=production && npm cache clean --force                          17.6s
+ => [homelab-dashboard 4/7] COPY requirements.txt .                                                            0.0s
+ => [homelab-dashboard 5/7] RUN pip install --no-cache-dir -r requirements.txt gunicorn                       16.6s
+ => [stream-bot builder 5/6] COPY . .                                                                         11.9s
+ => [homelab-dashboard 6/7] COPY . .                                                                           0.0s
+ => [homelab-dashboard 7/7] RUN mkdir -p /app/logs                                                             0.2s
+ => [homelab-dashboard] exporting to image                                                                     0.9s
+ => => exporting layers                                                                                        0.9s
+ => => writing image sha256:52a4d3c4bfa402e5fe6ddfae8eea127c4922d1dc8bfa30ca4eb5fb267880f8d5                   0.0s
+ => => naming to docker.io/library/homelabhub-homelab-dashboard                                                0.0s
+ => [homelab-dashboard] resolving provenance for metadata file                                                 0.0s
+ => [discord-bot builder 3/7] WORKDIR /app                                                                     0.0s
+ => [discord-bot builder 4/7] COPY package*.json ./                                                            0.0s
+ => [discord-bot builder 5/7] RUN npm ci --include=dev                                                        11.8s
+ => ERROR [stream-bot builder 6/6] RUN npm run build &&     echo "Build completed. Checking output..." &&      5.9s
+ => CANCELED [discord-bot builder 6/7] COPY . .                                                                0.0s
+------                                                                                                              
+ > [stream-bot builder 6/6] RUN npm run build &&     echo "Build completed. Checking output..." &&     ls -la dist/ &&     echo "Build verification successful!":                                                                       
+0.335                                                                                                               
+0.335 > rest-express@1.0.0 build                                                                                    
+0.335 > vite build && node esbuild.config.mjs                                                                       
+0.335                                                                                                               
+0.536 vite v5.4.20 building for production...                                                                       
+0.583 transforming...                                                                                               
+1.542                                                                                                               
+1.542 A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.                                                                                             
+4.520 ✓ 1771 modules transformed.                                                                                   
+4.774 rendering chunks...                                                                                           
+4.783 computing gzip size...                                                                                        
+4.799 ../dist/public/index.html                   1.01 kB │ gzip:   0.55 kB                                         
+4.799 ../dist/public/assets/index-DUJ6WM3L.css   75.86 kB │ gzip:  12.17 kB
+4.799 ../dist/public/assets/index-Dsn_9HmS.js   537.08 kB │ gzip: 158.84 kB
+4.799 
+4.799 (!) Some chunks are larger than 500 kB after minification. Consider:
+4.799 - Using dynamic import() to code-split the application
+4.799 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+4.799 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+4.799 ✓ built in 4.24s
+4.939 ✘ [ERROR] Cannot read file: /app/shared/schema
+4.939 
+4.939     server/auth/passport-config.ts:5:22:
+4.939       5 │ import { users } from "@shared/schema";
+4.939         ╵                       ~~~~~~~~~~~~~~~~
+4.939 
+5.662 /app/node_modules/esbuild/lib/main.js:1467
+5.662   let error = new Error(text);
+5.662               ^
+5.662 
+5.662 Error: Build failed with 1 error:
+5.662 server/auth/passport-config.ts:5:22: ERROR: Cannot read file: /app/shared/schema
+5.662     at failureErrorWithLog (/app/node_modules/esbuild/lib/main.js:1467:15)
+5.662     at /app/node_modules/esbuild/lib/main.js:926:25
+5.662     at runOnEndCallbacks (/app/node_modules/esbuild/lib/main.js:1307:45)
+5.662     at buildResponseToResult (/app/node_modules/esbuild/lib/main.js:924:7)
+5.662     at /app/node_modules/esbuild/lib/main.js:951:16
+5.662     at responseCallbacks.<computed> (/app/node_modules/esbuild/lib/main.js:603:9)
+5.662     at handleIncomingPacket (/app/node_modules/esbuild/lib/main.js:658:12)
+5.662     at Socket.readFromStdout (/app/node_modules/esbuild/lib/main.js:581:7)
+5.662     at Socket.emit (node:events:524:28)
+5.662     at addChunk (node:internal/streams/readable:561:12) {
+5.662   errors: [Getter/Setter],
+5.662   warnings: [Getter/Setter]
+5.662 }
+5.662 
+5.662 Node.js v20.19.5
+------
+Dockerfile:19
+
+--------------------
+
+  18 |     # Backend builds to: dist/index.js
+
+  19 | >>> RUN npm run build && \
+
+  20 | >>>     echo "Build completed. Checking output..." && \
+
+  21 | >>>     ls -la dist/ && \
+
+  22 | >>>     echo "Build verification successful!"
+
+  23 |     
+
+--------------------
+
+target stream-bot: failed to solve: process "/bin/sh -c npm run build &&     echo \"Build completed. Checking output...\" &&     ls -la dist/ &&     echo \"Build verification successful!\"" did not complete successfully: exit code: 1
+

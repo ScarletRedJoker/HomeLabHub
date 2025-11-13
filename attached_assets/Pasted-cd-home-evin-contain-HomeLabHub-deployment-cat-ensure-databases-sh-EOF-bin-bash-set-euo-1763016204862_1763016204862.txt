@@ -1,0 +1,94 @@
+cd /home/evin/contain/HomeLabHub/deployment/
+cat > ensure-databases.sh << 'EOF'
+#!/bin/bash
+set -euo pipefail
+
+echo "╔══════════════════════════════════════════════╗"
+echo "║   Ensure All Homelab Databases Exist         ║"
+echo "╚══════════════════════════════════════════════╝"
+echo ""
+
+# Load environment variables
+cd /home/evin/contain/HomeLabHub
+source .env
+
+# Check PostgreSQL is running
+if ! docker ps --format '{{.Names}}' | grep -q '^discord-bot-db$'; then
+    echo "Starting PostgreSQL..."
+    docker-compose -f docker-compose.unified.yml up -d discord-bot-db
+    sleep 5
+fi
+
+echo "✓ PostgreSQL container is running"
+
+# Wait for ready
+echo "Waiting for PostgreSQL..."
+for i in {1..30}; do
+    docker exec discord-bot-db pg_isready -U ticketbot -d ticketbot >/dev/null 2>&1 && break
+    sleep 1
+done
+echo "✓ PostgreSQL is ready"
+echo ""
+
+# Fix ticketbot database
+if [ -n "${DISCORD_DB_PASSWORD:-}" ]; then
+    echo "Fixing ticketbot database..."
+    docker exec discord-bot-db psql -U ticketbot -d postgres -c "ALTER USER ticketbot WITH PASSWORD '$DISCORD_DB_PASSWORD';" 2>/dev/null || true
+    echo "✓ ticketbot password updated"
+fi
+
+# Fix streambot database and user
+if [ -n "${STREAMBOT_DB_PASSWORD:-}" ]; then
+    echo "Fixing streambot database..."
+    
+    # Create user
+    docker exec discord-bot-db psql -U ticketbot -d postgres -c "CREATE USER streambot WITH PASSWORD '$STREAMBOT_DB_PASSWORD';" 2>/dev/null || \
+    docker exec discord-bot-db psql -U ticketbot -d postgres -c "ALTER USER streambot WITH PASSWORD '$STREAMBOT_DB_PASSWORD';"
+    
+    # Create database
+    docker exec discord-bot-db psql -U ticketbot -d postgres -c "CREATE DATABASE streambot OWNER streambot;" 2>/dev/null || true
+    
+    # Grant privileges
+    docker exec discord-bot-db psql -U ticketbot -d postgres -c "GRANT ALL PRIVILEGES ON DATABASE streambot TO streambot;"
+    
+    echo "✓ streambot database ready"
+fi
+
+echo ""
+echo "✓ All databases ready!"
+echo ""
+
+# Restart services
+echo "Restarting services..."
+docker restart discord-bot stream-bot 2>/dev/null || true
+
+echo ""
+echo "Done! Wait 10 seconds then check: docker ps"
+EOF
+
+chmod +x ensure-databases.sh
+./ensure-databases.sh
+╔══════════════════════════════════════════════╗
+║   Ensure All Homelab Databases Exist         ║
+╚══════════════════════════════════════════════╝
+
+✓ PostgreSQL container is running
+Waiting for PostgreSQL...
+✓ PostgreSQL is ready
+
+Fixing ticketbot database...
+ALTER ROLE
+✓ ticketbot password updated
+Fixing streambot database...
+CREATE ROLE
+CREATE DATABASE
+GRANT
+✓ streambot database ready
+
+✓ All databases ready!
+
+Restarting services...
+discord-bot
+stream-bot
+
+Done! Wait 10 seconds then check: docker ps

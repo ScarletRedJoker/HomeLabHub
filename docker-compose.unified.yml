@@ -1,0 +1,230 @@
+networks:
+  homelab:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  n8n_data:
+  caddy_data:
+  caddy_config:
+
+services:
+  # ============================================
+  # Caddy - Reverse Proxy with Auto SSL
+  # ============================================
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    restart: unless-stopped
+    networks:
+      - homelab
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  # ============================================
+  # Homelab Dashboard
+  # ============================================
+  homelab-dashboard:
+    build:
+      context: ./services/dashboard
+      dockerfile: Dockerfile
+    container_name: homelab-dashboard
+    restart: unless-stopped
+    networks:
+      - homelab
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./services/dashboard/logs:/app/logs
+      - /home/${SERVICE_USER:-evin}/contain:/home/${SERVICE_USER:-evin}/contain:ro
+      - /var/www:/var/www
+    env_file:
+      - .env
+    environment:
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+
+  # ============================================
+  # Discord Ticket Bot + PostgreSQL
+  # ============================================
+  discord-bot-db:
+    image: postgres:16-alpine
+    container_name: discord-bot-db
+    restart: unless-stopped
+    networks:
+      homelab:
+        aliases:
+          - postgres
+          - discord-bot-db
+    environment:
+      POSTGRES_DB: ticketbot
+      POSTGRES_USER: ticketbot
+      POSTGRES_PASSWORD: ${DISCORD_DB_PASSWORD}
+      # Pass passwords to init script for creating additional databases
+      DISCORD_DB_PASSWORD: ${DISCORD_DB_PASSWORD}
+      STREAMBOT_DB_PASSWORD: ${STREAMBOT_DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./config/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ticketbot -d ticketbot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  discord-bot:
+    build:
+      context: ./services/discord-bot
+      dockerfile: Dockerfile
+    container_name: discord-bot
+    restart: unless-stopped
+    depends_on:
+      discord-bot-db:
+        condition: service_healthy
+    networks:
+      - homelab
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    environment:
+      DATABASE_URL: "postgresql://ticketbot:${DISCORD_DB_PASSWORD}@discord-bot-db:5432/ticketbot"
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
+      DISCORD_APP_ID: ${DISCORD_APP_ID}
+      VITE_DISCORD_CLIENT_ID: ${VITE_DISCORD_CLIENT_ID}
+      DISCORD_CALLBACK_URL: https://bot.rig-city.com/auth/discord/callback
+      APP_URL: https://bot.rig-city.com
+      PUBLIC_DOMAIN: https://bot.rig-city.com
+      VITE_CUSTOM_WS_URL: ${VITE_CUSTOM_WS_URL:-}
+      SESSION_SECRET: ${DISCORD_SESSION_SECRET}
+      NODE_ENV: production
+      PORT: 5000
+      RESET_DB: ${RESET_DB:-false}
+    volumes:
+      - ./services/discord-bot/attached_assets:/app/attached_assets
+      - ./services/discord-bot/logs:/app/logs
+
+  # ============================================
+  # Stream Bot (Snapple Facts AI)
+  # ============================================
+  stream-bot:
+    build:
+      context: ./services/stream-bot
+      dockerfile: Dockerfile
+    container_name: stream-bot
+    restart: unless-stopped
+    networks:
+      - homelab
+    depends_on:
+      discord-bot-db:
+        condition: service_healthy
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    environment:
+      DATABASE_URL: postgresql://streambot:${STREAMBOT_DB_PASSWORD}@discord-bot-db:5432/streambot
+      SESSION_SECRET: ${STREAMBOT_SESSION_SECRET}
+      OPENAI_API_KEY: ${STREAMBOT_OPENAI_API_KEY:-${OPENAI_API_KEY}}
+      OPENAI_BASE_URL: ${STREAMBOT_OPENAI_BASE_URL:-https://api.openai.com/v1}
+      NODE_ENV: ${STREAMBOT_NODE_ENV:-production}
+      PORT: ${STREAMBOT_PORT:-5000}
+    volumes:
+      - ./services/stream-bot/logs:/app/logs
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================
+  # Plex Media Server
+  # ============================================
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: plex-server
+    restart: unless-stopped
+    networks:
+      - homelab
+    ports:
+      - "32400:32400"
+      - "1900:1900/udp"
+      - "3005:3005"
+      - "8324:8324"
+      - "32410:32410/udp"
+      - "32412:32412/udp"
+      - "32413:32413/udp"
+      - "32414:32414/udp"
+      - "32469:32469"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+      - VERSION=docker
+      - PLEX_CLAIM=${PLEX_CLAIM}
+      - ADVERTISE_IP=https://plex.evindrake.net:443
+    volumes:
+      - ./services/plex/config:/config
+      - ./services/plex/transcode:/transcode
+      - ./services/plex/media:/media
+    devices:
+      - /dev/dri:/dev/dri
+
+  # ============================================
+  # n8n Automation
+  # ============================================
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    networks:
+      - homelab
+    environment:
+      - N8N_HOST=n8n.evindrake.net
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - NODE_ENV=production
+      - WEBHOOK_URL=https://n8n.evindrake.net/
+      - GENERIC_TIMEZONE=America/New_York
+      - TZ=America/New_York
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      - N8N_RUNNERS_ENABLED=true
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+  # ============================================
+  # Static Website (Scarlet Red Joker)
+  # ============================================
+  scarletredjoker-web:
+    image: nginx:alpine
+    container_name: scarletredjoker-web
+    restart: unless-stopped
+    networks:
+      - homelab
+    volumes:
+      - ./services/static-site:/usr/share/nginx/html:ro
+
+  # ============================================
+  # VNC Remote Desktop
+  # ============================================
+  vnc-desktop:
+    image: dorowu/ubuntu-desktop-lxde-vnc:latest
+    container_name: vnc-desktop
+    restart: unless-stopped
+    networks:
+      - homelab
+    environment:
+      - VNC_PASSWORD=${VNC_PASSWORD}
+      - USER=${VNC_USER:-evin}
+      - PASSWORD=${VNC_USER_PASSWORD}
+      - RESOLUTION=1920x1080
+    volumes:
+      - /home/${SERVICE_USER:-evin}:/home/ubuntu/host-home:ro
+    shm_size: '2gb'

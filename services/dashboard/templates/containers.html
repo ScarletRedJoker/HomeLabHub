@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Containers - Homelab Dashboard{% endblock %}
+{% block page_title %}Docker Containers{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-box-seam"></i>
+        Container Management
+    </div>
+    <div id="container-list">
+        <div class="loading">
+            <div class="spinner-border"></div>
+            <p style="margin-top: 20px; color: var(--text-secondary);">Loading containers...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadContainers() {
+    try {
+        const response = await fetch('/api/docker/containers');
+        const containers = await response.json();
+        
+        const containerList = document.getElementById('container-list');
+        
+        if (!Array.isArray(containers) || containers.length === 0) {
+            containerList.innerHTML = '<p style="padding: 20px; text-align: center; color: var(--text-secondary);">No containers found</p>';
+            return;
+        }
+        
+        let html = '<table class="table"><thead><tr>';
+        html += '<th>Name</th>';
+        html += '<th>Image</th>';
+        html += '<th>Status</th>';
+        html += '<th>Ports</th>';
+        html += '<th>Actions</th>';
+        html += '</tr></thead><tbody>';
+        
+        containers.forEach(container => {
+            const isRunning = container.status && container.status.toLowerCase().includes('up');
+            const statusBadge = isRunning ? 'badge-success' : 'badge-danger';
+            
+            html += '<tr>';
+            html += `<td><strong>${container.name}</strong></td>`;
+            html += `<td style="color: var(--text-secondary); font-size: 0.9rem;">${container.image || 'Unknown'}</td>`;
+            html += `<td><span class="badge ${statusBadge}">${container.status || 'Unknown'}</span></td>`;
+            html += `<td style="color: var(--text-secondary); font-size: 0.85rem;">${formatPorts(container.ports)}</td>`;
+            html += '<td>';
+            
+            if (isRunning) {
+                html += `<button class="btn btn-warning btn-sm" onclick="stopContainer('${container.id}')"><i class="bi bi-stop-fill"></i> Stop</button> `;
+                html += `<button class="btn btn-warning btn-sm" onclick="restartContainer('${container.id}')"><i class="bi bi-arrow-clockwise"></i> Restart</button>`;
+            } else {
+                html += `<button class="btn btn-success btn-sm" onclick="startContainer('${container.id}')"><i class="bi bi-play-fill"></i> Start</button>`;
+            }
+            
+            html += ` <button class="btn btn-primary btn-sm" onclick="viewLogs('${container.name}')"><i class="bi bi-file-text"></i> Logs</button>`;
+            html += '</td>';
+            html += '</tr>';
+        });
+        
+        html += '</tbody></table>';
+        containerList.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Failed to load containers:', error);
+        document.getElementById('container-list').innerHTML = 
+            '<div class="alert alert-danger">Failed to load containers. Check API connection.</div>';
+    }
+}
+
+function formatPorts(ports) {
+    if (!ports || ports.length === 0) return '-';
+    return ports.map(p => `${p.host || ''}:${p.container || ''}`).join(', ');
+}
+
+async function startContainer(id) {
+    if (!confirm('Start this container?')) return;
+    
+    try {
+        const response = await fetch(`/api/docker/containers/${id}/start`, { method: 'POST' });
+        const result = await response.json();
+        
+        if (result.error) {
+            alert('Error: ' + result.error);
+        } else {
+            setTimeout(loadContainers, 1000);
+        }
+    } catch (error) {
+        alert('Failed to start container: ' + error.message);
+    }
+}
+
+async function stopContainer(id) {
+    if (!confirm('Stop this container?')) return;
+    
+    try {
+        const response = await fetch(`/api/docker/containers/${id}/stop`, { method: 'POST' });
+        const result = await response.json();
+        
+        if (result.error) {
+            alert('Error: ' + result.error);
+        } else {
+            setTimeout(loadContainers, 1000);
+        }
+    } catch (error) {
+        alert('Failed to stop container: ' + error.message);
+    }
+}
+
+async function restartContainer(id) {
+    if (!confirm('Restart this container?')) return;
+    
+    try {
+        const response = await fetch(`/api/docker/containers/${id}/restart`, { method: 'POST' });
+        const result = await response.json();
+        
+        if (result.error) {
+            alert('Error: ' + result.error);
+        } else {
+            setTimeout(loadContainers, 1000);
+        }
+    } catch (error) {
+        alert('Failed to restart container: ' + error.message);
+    }
+}
+
+function viewLogs(name) {
+    window.location.href = `/logs?container=${name}`;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadContainers();
+    setInterval(loadContainers, 15000);
+});
+</script>
+{% endblock %}

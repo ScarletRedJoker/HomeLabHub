@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Homelab Dashboard{% endblock %}
+{% block page_title %}Welcome to Your Homelab{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card" style="background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); border: none;">
+            <div style="padding: 40px; text-align: center; color: white;">
+                <h1 style="font-size: 2.5rem; margin-bottom: 15px;">
+                    <i class="bi bi-server"></i> Homelab Dashboard
+                </h1>
+                <p style="font-size: 1.2rem; opacity: 0.9;">
+                    Centralized control and monitoring for all your homelab services
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="stat-card">
+            <i class="bi bi-box-seam" style="font-size: 2rem; color: var(--accent-blue);"></i>
+            <div class="stat-value" id="container-count">-</div>
+            <div class="stat-label">Containers</div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="stat-card">
+            <i class="bi bi-check-circle" style="font-size: 2rem; color: var(--accent-green);"></i>
+            <div class="stat-value" id="running-count">-</div>
+            <div class="stat-label">Running</div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="stat-card">
+            <i class="bi bi-cpu" style="font-size: 2rem; color: var(--accent-yellow);"></i>
+            <div class="stat-value" id="cpu-usage">-</div>
+            <div class="stat-label">CPU Usage</div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="stat-card">
+            <i class="bi bi-memory" style="font-size: 2rem; color: var(--accent-purple);"></i>
+            <div class="stat-value" id="mem-usage">-</div>
+            <div class="stat-label">Memory Usage</div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-activity"></i>
+                Quick Actions
+            </div>
+            <div style="display: grid; gap: 10px;">
+                <a href="/dashboard" class="btn btn-primary" style="text-decoration: none; text-align: center;">
+                    <i class="bi bi-speedometer2"></i> View Dashboard
+                </a>
+                <a href="/containers" class="btn btn-primary" style="text-decoration: none; text-align: center;">
+                    <i class="bi bi-box-seam"></i> Manage Containers
+                </a>
+                <a href="/system" class="btn btn-primary" style="text-decoration: none; text-align: center;">
+                    <i class="bi bi-cpu"></i> System Monitor
+                </a>
+                <a href="/logs" class="btn btn-primary" style="text-decoration: none; text-align: center;">
+                    <i class="bi bi-file-text"></i> View Logs
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-globe"></i>
+                Your Services
+            </div>
+            <table class="table">
+                <tbody>
+                    <tr>
+                        <td><i class="bi bi-ticket"></i> Discord Bot</td>
+                        <td><a href="https://bot.rig-city.com" target="_blank" style="color: var(--accent-blue);">bot.rig-city.com</a></td>
+                        <td><span class="badge badge-success" id="status-discord">●</span></td>
+                    </tr>
+                    <tr>
+                        <td><i class="bi bi-camera-video"></i> Stream Bot</td>
+                        <td><a href="https://stream.rig-city.com" target="_blank" style="color: var(--accent-blue);">stream.rig-city.com</a></td>
+                        <td><span class="badge badge-warning" id="status-stream">●</span></td>
+                    </tr>
+                    <tr>
+                        <td><i class="bi bi-film"></i> Plex Server</td>
+                        <td><a href="https://plex.evindrake.net" target="_blank" style="color: var(--accent-blue);">plex.evindrake.net</a></td>
+                        <td><span class="badge badge-success" id="status-plex">●</span></td>
+                    </tr>
+                    <tr>
+                        <td><i class="bi bi-diagram-3"></i> n8n Automation</td>
+                        <td><a href="https://n8n.evindrake.net" target="_blank" style="color: var(--accent-blue);">n8n.evindrake.net</a></td>
+                        <td><span class="badge badge-success" id="status-n8n">●</span></td>
+                    </tr>
+                    <tr>
+                        <td><i class="bi bi-globe"></i> Static Website</td>
+                        <td><a href="https://scarletredjoker.com" target="_blank" style="color: var(--accent-blue);">scarletredjoker.com</a></td>
+                        <td><span class="badge badge-success" id="status-static">●</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle"></i>
+                System Information
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Hostname:</strong> <span id="hostname">Loading...</span></p>
+                    <p><strong>Uptime:</strong> <span id="uptime">Loading...</span></p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>Platform:</strong> <span id="platform">Loading...</span></p>
+                    <p><strong>Architecture:</strong> <span id="arch">Loading...</span></p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>Docker Version:</strong> <span id="docker-version">Loading...</span></p>
+                    <p><strong>Last Updated:</strong> <span id="last-update">Just now</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadStats() {
+    try {
+        const response = await fetch('/api/system/stats');
+        const data = await response.json();
+        
+        if (data.error) {
+            console.error('Error loading stats:', data.error);
+            return;
+        }
+        
+        document.getElementById('cpu-usage').textContent = data.cpu_percent.toFixed(1) + '%';
+        document.getElementById('mem-usage').textContent = data.memory_percent.toFixed(1) + '%';
+        
+        document.getElementById('hostname').textContent = data.hostname || 'Unknown';
+        document.getElementById('platform').textContent = data.platform || 'Unknown';
+        document.getElementById('arch').textContent = data.architecture || 'Unknown';
+        
+        const uptimeHours = Math.floor(data.uptime / 3600);
+        const uptimeDays = Math.floor(uptimeHours / 24);
+        document.getElementById('uptime').textContent = uptimeDays + 'd ' + (uptimeHours % 24) + 'h';
+        
+    } catch (error) {
+        console.error('Failed to load stats:', error);
+    }
+}
+
+async function loadContainers() {
+    try {
+        const response = await fetch('/api/docker/containers');
+        const containers = await response.json();
+        
+        if (Array.isArray(containers)) {
+            const total = containers.length;
+            const running = containers.filter(c => c.status.includes('Up')).length;
+            
+            document.getElementById('container-count').textContent = total;
+            document.getElementById('running-count').textContent = running;
+        }
+    } catch (error) {
+        console.error('Failed to load containers:', error);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadStats();
+    loadContainers();
+    
+    setInterval(loadStats, 5000);
+    setInterval(loadContainers, 10000);
+});
+</script>
+{% endblock %}

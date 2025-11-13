@@ -1,0 +1,305 @@
+Enter service number: 2
+Starting Discord Bot deployment...
+Waiting for PostgreSQL to be ready...
+Extracted PostgreSQL host from DATABASE_URL: discord-bot-db
+Checking PostgreSQL connection at discord-bot-db:5432...
+PostgreSQL port is accessible!
+PostgreSQL is ready!
+Initializing database schema...
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '/app/drizzle.config.ts'
+Using 'pg' driver for database querying
+[⣷] Pulling schema from database...
+[⣯] Pulling schema from database...
+[⣟] Pulling schema from database...
+[⡿] Pulling schema from database...
+[✓] Pulling schema from database...
+[✓] Changes applied
+Database initialization complete!
+Starting application...
+
+> rest-express@1.0.0 start
+> NODE_ENV=production node dist/index.js
+
+[Database] Detected local/Docker PostgreSQL, using standard pg driver
+[Discord] Registered developer commands: dev-dm, dev-announce, dev-stats, dev-refresh, dev-ticket
+[Database] Creating read-only PostgreSQL connection for developer queries
+Setting up Discord authentication strategy
+Discord OAuth callback URL: https://bot.rig-city.com/auth/discord/callback
+Attempting to start Discord bot...
+Successfully registered application commands globally
+8:14:21 AM [express] serving on port 5000
+Discord bot ready! Logged in as Rig City Ticket Tool#8919
+
+=== Bot Server Status ===
+Connected to 2 server(s):
+  - Joker's Evil Headquarters (ID: 623281252451221515) | 14 members
+  - Rig City (ID: 692850100795473920) | 445 members
+========================
+
+[Discord] Loading ticket-channel mappings from database...
+[Discord] ✅ Successfully loaded 0 ticket-channel mappings
+[Discord] Scheduled ticket mapping refresh every 5 minutes
+[Bot] Starting ticket system safeguard background jobs...
+[Safeguards] Starting background jobs...
+[Safeguards] Background jobs started successfully.
+[Safeguards] - Channel reconciliation: every 15 minutes
+[Safeguards] - Auto-close check: every 60 minutes
+New WebSocket connection established
+WebSocket client authenticated as user 368610753885896705 with access to 2 server(s)
+[Safeguards] Starting ticket channel reconciliation...
+[Safeguards] Checking 0 open tickets with Discord channels
+[Safeguards] Reconciliation complete. Marked 0 tickets as orphaned.
+[Safeguards] Starting auto-close check for inactive tickets...
+[Safeguards] Auto-close check complete.
+npm error path /app
+npm error command failed
+npm error signal SIGTERM
+npm error command sh -c NODE_ENV=production node dist/index.js
+npm error A complete log of this run can be found in: /root/.npm/_logs/2025-11-13T08_14_19_439Z-debug-0.log
+Starting Discord Bot deployment...
+Waiting for PostgreSQL to be ready...
+Extracted PostgreSQL host from DATABASE_URL: discord-bot-db
+Checking PostgreSQL connection at discord-bot-db:5432...
+PostgreSQL port is accessible!
+PostgreSQL is ready!
+Initializing database schema...
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '/app/drizzle.config.ts'
+Using 'pg' driver for database querying
+[⣷] Pulling schema from database...
+[⣯] Pulling schema from database...
+[⣟] Pulling schema from database...
+[⡿] Pulling schema from database...
+[✓] Pulling schema from database...
+[✓] Changes applied
+Database initialization complete!
+Starting application...
+
+> rest-express@1.0.0 start
+> NODE_ENV=production node dist/index.js
+
+[Database] Detected local/Docker PostgreSQL, using standard pg driver
+[Discord] Registered developer commands: dev-dm, dev-announce, dev-stats, dev-refresh, dev-ticket
+[Database] Creating read-only PostgreSQL connection for developer queries
+Setting up Discord authentication strategy
+Discord OAuth callback URL: https://bot.rig-city.com/auth/discord/callback
+Attempting to start Discord bot...
+Successfully registered application commands globally
+8:17:54 AM [express] serving on port 5000
+Discord bot ready! Logged in as Rig City Ticket Tool#8919
+
+=== Bot Server Status ===
+Connected to 2 server(s):
+  - Joker's Evil Headquarters (ID: 623281252451221515) | 14 members
+  - Rig City (ID: 692850100795473920) | 445 members
+========================
+
+[Discord] Loading ticket-channel mappings from database...
+[Discord] ✅ Successfully loaded 0 ticket-channel mappings
+[Discord] Scheduled ticket mapping refresh every 5 minutes
+[Bot] Starting ticket system safeguard background jobs...
+[Safeguards] Starting background jobs...
+[Safeguards] Background jobs started successfully.
+[Safeguards] - Channel reconciliation: every 15 minutes
+[Safeguards] - Auto-close check: every 60 minutes
+New WebSocket connection established
+WebSocket client authenticated as user 368610753885896705 with access to 2 server(s)
+[Safeguards] Starting ticket channel reconciliation...
+[Safeguards] Checking 0 open tickets with Discord channels
+[Safeguards] Reconciliation complete. Marked 0 tickets as orphaned.
+[Safeguards] Starting auto-close check for inactive tickets...
+[Safeguards] Auto-close check complete.
+WebSocket connection closed
+[Discord] Scheduled refresh of ticket mappings...
+[Discord] Loading ticket-channel mappings from database...
+[Discord] ✅ Successfully loaded 0 ticket-channel mappings
+[Discord] Scheduled refresh of ticket mappings...
+[Discord] Loading ticket-channel mappings from database...
+[Discord] ✅ Successfully loaded 0 ticket-channel mappings
+[Safeguards] Starting ticket channel reconciliation...
+[Safeguards] Checking 0 open tickets with Discord channels
+[Safeguards] Reconciliation complete. Marked 0 tickets as orphaned.
+[Discord] Scheduled refresh of ticket mappings...
+[Discord] Loading ticket-channel mappings from database...
+[Discord] ✅ Successfully loaded 0 ticket-channel mappings
+[Discord] Scheduled refresh of ticket mappings...
+[Discord] Loading ticket-channel mappings from database...
+[Discord] ✅ Successfully loaded 0 ticket-channel mappings
+[Discord] Scheduled refresh of ticket mappings...
+[Discord] Loading ticket-channel mappings from database...
+[Discord] ✅ Successfully loaded 0 ticket-channel mappings
+[Safeguards] Starting ticket channel reconciliation...
+[Safeguards] Checking 0 open tickets with Discord channels
+[Safeguards] Reconciliation complete. Marked 0 tickets as orphaned.
+[Discord] Scheduled refresh of ticket mappings...
+[Discord] Loading ticket-channel mappings from database...
+[Discord] ✅ Successfully loaded 0 ticket-channel mappings
+[Discord] Scheduled refresh of ticket mappings...
+[Discord] Loading ticket-channel mappings from database...
+[Discord] ✅ Successfully loaded 0 ticket-channel mappings
+[Discord] Scheduled refresh of ticket mappings...
+[Discord] Loading ticket-channel mappings from database...
+[Discord] ✅ Successfully loaded 0 ticket-channel mappings
+[Safeguards] Starting ticket channel reconciliation...
+[Safeguards] Checking 0 open tickets with Discord channels
+[Safeguards] Reconciliation complete. Marked 0 tickets as orphaned.
+[Discord] Scheduled refresh of ticket mappings...
+[Discord] Loading ticket-channel mappings from database...
+[Discord] ✅ Successfully loaded 0 ticket-channel mappings
+[Discord] Scheduled refresh of ticket mappings...
+[Discord] Loading ticket-channel mappings from database...
+[Discord] ✅ Successfully loaded 0 ticket-channel mappings
+[Discord] Scheduled refresh of ticket mappings...
+[Discord] Loading ticket-channel mappings from database...
+[Discord] ✅ Successfully loaded 0 ticket-channel mappings
+[Safeguards] Starting auto-close check for inactive tickets...
+[Safeguards] Auto-close check complete.
+[Safeguards] Starting ticket channel reconciliation...
+[Safeguards] Checking 0 open tickets with Discord channels
+[Safeguards] Reconciliation complete. Marked 0 tickets as orphaned.
+[Discord] Scheduled refresh of ticket mappings...
+[Discord] Loading ticket-channel mappings from database...
+[Discord] ✅ Successfully loaded 0 ticket-channel mappings
+[Discord] Scheduled refresh of ticket mappings...
+[Discord] Loading ticket-channel mappings from database...
+[Discord] ✅ Successfully loaded 0 ticket-channel mappings
+[Discord] Scheduled refresh of ticket mappings...
+[Discord] Loading ticket-channel mappings from database...
+[Discord] ✅ Successfully loaded 0 ticket-channel mappings
+[Safeguards] Starting ticket channel reconciliation...
+[Safeguards] Checking 0 open tickets with Discord channels
+[Safeguards] Reconciliation complete. Marked 0 tickets as orphaned.
+[Discord] Scheduled refresh of ticket mappings...
+[Discord] Loading ticket-channel mappings from database...
+[Discord] ✅ Successfully loaded 0 ticket-channel mappings
+[Discord] Scheduled refresh of ticket mappings...
+[Discord] Loading ticket-channel mappings from database...
+[Discord] ✅ Successfully loaded 0 ticket-channel mappings
+[Discord] Scheduled refresh of ticket mappings...
+[Discord] Loading ticket-channel mappings from database...
+[Discord] ✅ Successfully loaded 0 ticket-channel mappings
+[Safeguards] Starting ticket channel reconciliation...
+[Safeguards] Checking 0 open tickets with Discord channels
+[Safeguards] Reconciliation complete. Marked 0 tickets as orphaned.
+[Discord] Scheduled refresh of ticket mappings...
+[Discord] Loading ticket-channel mappings from database...
+[Discord] ✅ Successfully loaded 0 ticket-channel mappings
+[Discord] Scheduled refresh of ticket mappings...
+[Discord] Loading ticket-channel mappings from database...
+[Discord] ✅ Successfully loaded 0 ticket-channel mappings
+[Discord] Scheduled refresh of ticket mappings...
+[Discord] Loading ticket-channel mappings from database...
+[Discord] ✅ Successfully loaded 0 ticket-channel mappings
+npm error path /app
+npm error command failed
+npm error signal SIGTERM
+npm error command sh -c NODE_ENV=production node dist/index.js
+npm error A complete log of this run can be found in: /root/.npm/_logs/2025-11-13T08_17_53_327Z-debug-0.log
+Starting Discord Bot deployment...
+Waiting for PostgreSQL to be ready...
+Extracted PostgreSQL host from DATABASE_URL: discord-bot-db
+Checking PostgreSQL connection at discord-bot-db:5432...
+PostgreSQL port is accessible!
+PostgreSQL is ready!
+Initializing database schema...
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '/app/drizzle.config.ts'
+Using 'pg' driver for database querying
+[⣷] Pulling schema from database...
+[⣯] Pulling schema from database...
+[⣟] Pulling schema from database...
+[⡿] Pulling schema from database...
+[✓] Pulling schema from database...
+[✓] Changes applied
+Database initialization complete!
+Starting application...
+
+> rest-express@1.0.0 start
+> NODE_ENV=production node dist/index.js
+
+[Database] Detected local/Docker PostgreSQL, using standard pg driver
+[Discord] Registered developer commands: dev-dm, dev-announce, dev-stats, dev-refresh, dev-ticket
+[Database] Creating read-only PostgreSQL connection for developer queries
+Setting up Discord authentication strategy
+Discord OAuth callback URL: https://bot.rig-city.com/auth/discord/callback
+Attempting to start Discord bot...
+Error registering commands with Discord API: DiscordAPIError[0]: 401: Unauthorized
+    at handleErrors (/app/node_modules/@discordjs/rest/dist/index.js:727:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async SequentialHandler.runRequest (/app/node_modules/@discordjs/rest/dist/index.js:1128:23)
+    at async SequentialHandler.queueRequest (/app/node_modules/@discordjs/rest/dist/index.js:959:14)
+    at async _REST.request (/app/node_modules/@discordjs/rest/dist/index.js:1272:22)
+    at async registerCommandsWithAPI (file:///app/dist/index.js:4051:7)
+    at async startBot (file:///app/dist/index.js:2801:7)
+    at async registerRoutes (file:///app/dist/index.js:8655:7)
+    at async file:///app/dist/index.js:8719:18 {
+  requestBody: {
+    files: undefined,
+    json: [
+      [Object], [Object],
+      [Object], [Object],
+      [Object], [Object],
+      [Object], [Object],
+      [Object], [Object]
+    ]
+  },
+  rawError: { message: '401: Unauthorized', code: 0 },
+  code: 0,
+  status: 401,
+  method: 'PUT',
+  url: 'https://discord.com/api/v10/applications/1355875026070667374/commands'
+}
+Error registering commands with Discord API. Continuing with limited functionality: DiscordAPIError[0]: 401: Unauthorized
+    at handleErrors (/app/node_modules/@discordjs/rest/dist/index.js:727:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async SequentialHandler.runRequest (/app/node_modules/@discordjs/rest/dist/index.js:1128:23)
+    at async SequentialHandler.queueRequest (/app/node_modules/@discordjs/rest/dist/index.js:959:14)
+    at async _REST.request (/app/node_modules/@discordjs/rest/dist/index.js:1272:22)
+    at async registerCommandsWithAPI (file:///app/dist/index.js:4051:7)
+    at async startBot (file:///app/dist/index.js:2801:7)
+    at async registerRoutes (file:///app/dist/index.js:8655:7)
+    at async file:///app/dist/index.js:8719:18 {
+  requestBody: {
+    files: undefined,
+    json: [
+      [Object], [Object],
+      [Object], [Object],
+      [Object], [Object],
+      [Object], [Object],
+      [Object], [Object]
+    ]
+  },
+  rawError: { message: '401: Unauthorized', code: 0 },
+  code: 0,
+  status: 401,
+  method: 'PUT',
+  url: 'https://discord.com/api/v10/applications/1355875026070667374/commands'
+}
+Failed to start Discord bot: Error [TokenInvalid]: An invalid token was provided.
+    at WebSocketManager.connect (/app/node_modules/discord.js/src/client/websocket/WebSocketManager.js:136:26)
+    at Client.login (/app/node_modules/discord.js/src/client/Client.js:228:21)
+    at startBot (file:///app/dist/index.js:4031:33)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async registerRoutes (file:///app/dist/index.js:8655:7)
+    at async file:///app/dist/index.js:8719:18 {
+  code: 'TokenInvalid'
+}
+9:59:23 AM [express] serving on port 5000
+10:17:14 AM [express] GET /api/health 200 in 2ms
+Discord OAuth redirect initiated with callback: https://bot.rig-city.com/auth/discord/callback
+Express error handler: TokenError
+    at OAuth2Strategy.parseErrorResponse (/app/node_modules/passport-oauth2/lib/strategy.js:373:12)
+    at OAuth2Strategy._createOAuthError (/app/node_modules/passport-oauth2/lib/strategy.js:420:16)
+    at /app/node_modules/passport-oauth2/lib/strategy.js:177:45
+    at /app/node_modules/oauth/lib/oauth2.js:196:18
+    at passBackControl (/app/node_modules/oauth/lib/oauth2.js:132:9)
+    at IncomingMessage.<anonymous> (/app/node_modules/oauth/lib/oauth2.js:157:7)
+    at IncomingMessage.emit (node:events:536:35)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  message: undefined,
+  code: 'invalid_client',
+  uri: undefined,
+  status: 500
+}

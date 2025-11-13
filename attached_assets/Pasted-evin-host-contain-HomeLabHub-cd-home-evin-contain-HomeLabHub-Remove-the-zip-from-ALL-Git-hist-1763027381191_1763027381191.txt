@@ -1,0 +1,215 @@
+evin@host:~/contain/HomeLabHub$ cd /home/evin/contain/HomeLabHub
+
+# Remove the zip from ALL Git history
+git filter-branch --force --index-filter \
+  'git rm --cached --ignore-unmatch static-site/scarletredjoker.com.zip' \
+  --prune-empty -- --all
+
+# Force push to GitHub (this will rewrite history)
+git push -u origin main --force
+WARNING: git-filter-branch has a glut of gotchas generating mangled history
+	 rewrites.  Hit Ctrl-C before proceeding to abort, then use an
+	 alternative filtering tool such as 'git filter-repo'
+	 (https://github.com/newren/git-filter-repo/) instead.  See the
+	 filter-branch manual page for more details; to squelch this warning,
+	 set FILTER_BRANCH_SQUELCH_WARNING=1.
+Proceeding with filter-branch...
+
+Rewrite 5e322170b67e900e4ee36c325812230bfa901c1a (171/291) (3 seconds passed, remaining 2 predicted)    rm 'static-site/scarletredjoker.com.zip'
+Rewrite aeaae4cba9b09b37147d12c72fb5e69850b2116f (171/291) (3 seconds passed, remaining 2 predicted)    rm 'static-site/scarletredjoker.com.zip'
+Rewrite fdd5f8063228d5de359ad3868e76f6101c453a2c (287/291) (5 seconds passed, remaining 0 predicted)    
+Ref 'refs/heads/main' was rewritten
+Ref 'refs/heads/replit-agent' was rewritten
+Ref 'refs/remotes/gitsafe-backup/main' was rewritten
+Ref 'refs/remotes/origin/main' was rewritten
+WARNING: Ref 'refs/remotes/origin/main' is unchanged
+Ref 'refs/replit/agent-ledger' was rewritten
+Enumerating objects: 19130, done.
+Counting objects: 100% (19130/19130), done.
+Delta compression using up to 16 threads
+Compressing objects: 100% (12031/12031), done.
+Writing objects: 100% (19130/19130), 257.78 MiB | 2.61 MiB/s, done.
+Total 19130 (delta 6471), reused 18995 (delta 6417), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (6471/6471), done.
+To github.com:ScarletRedJoker/HomeLabHub.git
+ * [new branch]        main -> main
+branch 'main' set up to track 'origin/main'.
+evin@host:~/contain/HomeLabHub$ cd /home/evin/contain/HomeLabHub
+
+# You already merged the static-site folders
+# Now add everything and commit
+git add -A
+git commit -m "Fix stream-bot database driver and clean up static-site"
+git push
+[main 90e4a610] Fix stream-bot database driver and clean up static-site
+ Committer: evin <evin@host.evindrake.net>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly. Run the
+following command and follow the instructions in your editor to edit
+your configuration file:
+
+    git config --global --edit
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 3 files changed, 173 insertions(+), 132 deletions(-)
+ delete mode 100644 github.pub
+Enumerating objects: 11, done.
+Counting objects: 100% (11/11), done.
+Delta compression using up to 16 threads
+Compressing objects: 100% (6/6), done.
+Writing objects: 100% (6/6), 2.20 KiB | 2.20 MiB/s, done.
+Total 6 (delta 5), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (5/5), completed with 5 local objects.
+To github.com:ScarletRedJoker/HomeLabHub.git
+   6f6dab85..90e4a610  main -> main
+evin@host:~/contain/HomeLabHub$ git pull 
+gitsafe-backup   origin           
+evin@host:~/contain/HomeLabHub$ git pull origin 
+HEAD   main   
+evin@host:~/contain/HomeLabHub$ git pull origin main 
+From github.com:ScarletRedJoker/HomeLabHub
+ * branch              main       -> FETCH_HEAD
+Already up to date.
+evin@host:~/contain/HomeLabHub$ cd /home/evin/contain/HomeLabHub/services/stream-bot
+
+# You already ran npm install ✓
+# Now copy the 3 fixed files from Replit to your server:
+# - server/db.ts
+# - package.json  
+# - esbuild.config.mjs
+
+# Then rebuild and deploy:
+cd /home/evin/contain/HomeLabHub
+docker-compose -f docker-compose.unified.yml build stream-bot
+docker-compose -f docker-compose.unified.yml up -d stream-bot
+
+# Check if it works!
+docker logs stream-bot --tail 30
+[+] Building 14.9s (16/18)                                                                                          
+ => [internal] load local bake definitions                                                                     0.0s
+ => => reading from stdin 573B                                                                                 0.0s
+ => [internal] load build definition from Dockerfile                                                           0.0s
+ => => transferring dockerfile: 1.64kB                                                                         0.0s
+ => [internal] load metadata for docker.io/library/node:20-alpine                                              0.3s
+ => [internal] load .dockerignore                                                                              0.0s
+ => => transferring context: 2B                                                                                0.0s
+ => [builder 1/6] FROM docker.io/library/node:20-alpine@sha256:6178e78b972f79c335df281f4b7674a2d85071aae2af02  0.0s
+ => [internal] load build context                                                                              0.7s
+ => => transferring context: 2.48MB                                                                            0.6s
+ => CACHED [builder 2/6] WORKDIR /app                                                                          0.0s
+ => CACHED [builder 3/6] COPY package*.json ./                                                                 0.0s
+ => CACHED [builder 4/6] RUN npm ci                                                                            0.0s
+ => [builder 5/6] COPY . .                                                                                     9.1s
+ => CACHED [stage-1 2/8] RUN apk add --no-cache dumb-init                                                      0.0s
+ => CACHED [stage-1 3/8] RUN addgroup -g 1001 -S nodejs &&     adduser -S streambot -u 1001                    0.0s
+ => CACHED [stage-1 4/8] WORKDIR /app                                                                          0.0s
+ => CACHED [stage-1 5/8] COPY package*.json ./                                                                 0.0s
+ => CACHED [stage-1 6/8] RUN npm ci --only=production && npm cache clean --force                               0.0s
+ => ERROR [builder 6/6] RUN npm run build &&     echo "Build completed. Checking output..." &&     ls -la dis  4.7s
+------                                                                                                              
+ > [builder 6/6] RUN npm run build &&     echo "Build completed. Checking output..." &&     ls -la dist/ &&     echo "Build verification successful!":                                                                                  
+0.244                                                                                                               
+0.244 > rest-express@1.0.0 build                                                                                    
+0.244 > vite build && node esbuild.config.mjs                                                                       
+0.244 
+0.416 vite v5.4.20 building for production...
+0.461 transforming...
+1.251 
+1.251 A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+3.710 ✓ 1771 modules transformed.
+3.926 rendering chunks...
+3.932 computing gzip size...
+3.945 ../dist/public/index.html                   1.01 kB │ gzip:   0.55 kB
+3.945 ../dist/public/assets/index-DUJ6WM3L.css   75.86 kB │ gzip:  12.17 kB
+3.945 ../dist/public/assets/index-Dsn_9HmS.js   537.08 kB │ gzip: 158.84 kB
+3.945 
+3.945 (!) Some chunks are larger than 500 kB after minification. Consider:
+3.945 - Using dynamic import() to code-split the application
+3.945 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+3.945 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+3.945 ✓ built in 3.51s
+4.064 ✘ [ERROR] Cannot read file: /app/shared/schema
+4.064 
+4.064     server/db.ts:5:24:
+4.064       5 │ import * as schema from "@shared/schema";
+4.064         ╵                         ~~~~~~~~~~~~~~~~
+4.064 
+4.650 /app/node_modules/esbuild/lib/main.js:1467
+4.650   let error = new Error(text);
+4.650               ^
+4.650 
+4.650 Error: Build failed with 1 error:
+4.650 server/db.ts:5:24: ERROR: Cannot read file: /app/shared/schema
+4.650     at failureErrorWithLog (/app/node_modules/esbuild/lib/main.js:1467:15)
+4.650     at /app/node_modules/esbuild/lib/main.js:926:25
+4.650     at runOnEndCallbacks (/app/node_modules/esbuild/lib/main.js:1307:45)
+4.650     at buildResponseToResult (/app/node_modules/esbuild/lib/main.js:924:7)
+4.650     at /app/node_modules/esbuild/lib/main.js:951:16
+4.650     at responseCallbacks.<computed> (/app/node_modules/esbuild/lib/main.js:603:9)
+4.650     at handleIncomingPacket (/app/node_modules/esbuild/lib/main.js:658:12)
+4.650     at Socket.readFromStdout (/app/node_modules/esbuild/lib/main.js:581:7)
+4.650     at Socket.emit (node:events:524:28)
+4.650     at addChunk (node:internal/streams/readable:561:12) {
+4.650   errors: [Getter/Setter],
+4.650   warnings: [Getter/Setter]
+4.650 }
+4.650 
+4.650 Node.js v20.19.5
+------
+Dockerfile:19
+
+--------------------
+
+  18 |     # Backend builds to: dist/index.js
+
+  19 | >>> RUN npm run build && \
+
+  20 | >>>     echo "Build completed. Checking output..." && \
+
+  21 | >>>     ls -la dist/ && \
+
+  22 | >>>     echo "Build verification successful!"
+
+  23 |     
+
+--------------------
+
+failed to solve: process "/bin/sh -c npm run build &&     echo \"Build completed. Checking output...\" &&     ls -la dist/ &&     echo \"Build verification successful!\"" did not complete successfully: exit code: 1
+
+[+] Running 2/2
+ ✔ Container discord-bot-db  Healthy                                                                           0.5s 
+ ✔ Container stream-bot      Started                                                                           0.0s 
+    _errorEmitted: true,
+    _extensions: {},
+    _paused: false,
+    _protocol: '',
+    _readyState: 3,
+    _receiver: null,
+    _sender: null,
+    _socket: null,
+    _bufferedAmount: 0,
+    _isServer: false,
+    _redirects: 0,
+    _autoPong: true,
+    _url: 'wss://discord-bot-db/v2',
+    _req: null,
+    [Symbol(shapeMode)]: false,
+    [Symbol(kCapture)]: false
+  },
+  [Symbol(kType)]: 'error',
+  [Symbol(kError)]: Error: connect ECONNREFUSED 172.23.0.4:443
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1611:16) {
+    errno: -111,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '172.23.0.4',
+    port: 443
+  },
+  [Symbol(kMessage)]: 'connect ECONNREFUSED 172.23.0.4:443'
+}
+
+Node.js v20.19.5

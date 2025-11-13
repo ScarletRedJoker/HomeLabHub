@@ -1,0 +1,64 @@
+networks:
+  homelab:
+    name: homelab
+    driver: bridge
+
+services:
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    restart: unless-stopped
+    networks:
+      - homelab
+    ports:
+      - "80:80"      # HTTP
+      - "443:443"    # HTTPS
+      - "8080:8080"  # Traefik dashboard (optional - disable in production)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/traefik.yml:ro
+      - ./traefik/acme.json:/acme.json
+      - ./traefik/config:/config:ro
+    environment:
+      - CF_API_EMAIL=${CF_API_EMAIL}
+      - CF_API_KEY=${CF_API_KEY}
+    labels:
+      # Enable Traefik for this container
+      - "traefik.enable=true"
+      
+      # Traefik Dashboard (optional - comment out for production)
+      - "traefik.http.routers.traefik.rule=Host(`traefik.evindrake.net`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      
+      # Optional: Protect Traefik dashboard with basic auth
+      # Generate password: echo $(htpasswd -nb admin yourpassword) | sed -e s/\\$/\\$\\$/g
+      # - "traefik.http.routers.traefik.middlewares=auth"
+      # - "traefik.http.middlewares.auth.basicauth.users=admin:$$apr1$$..."
+
+  # Homelab Dashboard
+  homelab-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: homelab-dashboard
+    restart: unless-stopped
+    networks:
+      - homelab
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./logs:/app/logs
+      - ./.env:/app/.env:ro
+    environment:
+      - FLASK_ENV=production
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`host.evindrake.net`)"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
+      - "traefik.http.services.dashboard.loadbalancer.server.port=5000"
+      
+      # Optional: Restrict to Twingate network
+      # - "traefik.http.routers.dashboard.middlewares=twingate-only"
+      # - "traefik.http.middlewares.twingate-only.ipwhitelist.sourcerange=100.64.0.0/10"

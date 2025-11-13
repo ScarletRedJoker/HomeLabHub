@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Logs - Homelab{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-terminal"></i> Container Logs</h2>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-6">
+        <label for="containerSelect" class="form-label">Select Container</label>
+        <select class="form-select" id="containerSelect">
+            <option value="">Loading containers...</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label for="logLines" class="form-label">Lines to Show</label>
+        <input type="number" class="form-control" id="logLines" value="100" min="10" max="1000">
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">&nbsp;</label>
+        <div>
+            <button class="btn btn-primary w-100" onclick="loadLogs()">
+                <i class="bi bi-arrow-clockwise"></i> Load Logs
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-12">
+        <input type="text" class="form-control" id="logSearch" placeholder="Search logs...">
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-12">
+        <button class="btn btn-success" onclick="analyzeWithAI()">
+            <i class="bi bi-robot"></i> Analyze with AI
+        </button>
+        <button class="btn btn-secondary" onclick="downloadLogs()">
+            <i class="bi bi-download"></i> Download
+        </button>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <pre id="logsContent" class="logs-container"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="aiAnalysisModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">AI Log Analysis</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="aiAnalysisContent">Analyzing...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/logs.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,459 @@
+Enter your choice: 11
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  🔍 SERVICE LOGS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Available services:
+  1) homelab-dashboard
+  2) discord-bot
+  3) stream-bot
+  4) caddy
+  5) discord-bot-db
+  6) All services
+
+Enter service number: 6
+discord-bot-db  | 
+discord-bot-db  | PostgreSQL Database directory appears to contain a database; Skipping initialization
+discord-bot-db  | 
+discord-bot-db  | 2025-11-13 10:31:40.910 UTC [1] LOG:  starting PostgreSQL 16.10 on x86_64-pc-linux-musl, compiled by gcc (Alpine 14.2.0) 14.2.0, 64-bit
+discord-bot-db  | 2025-11-13 10:31:40.911 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+discord-bot-db  | 2025-11-13 10:31:40.911 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+discord-bot-db  | 2025-11-13 10:31:40.915 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+discord-bot-db  | 2025-11-13 10:31:40.919 UTC [29] LOG:  database system was shut down at 2025-11-13 10:30:28 UTC
+discord-bot-db  | 2025-11-13 10:31:40.928 UTC [1] LOG:  database system is ready to accept connections
+discord-bot-db  | 2025-11-13 10:31:46.436 UTC [40] LOG:  incomplete startup packet
+n8n             | Initializing n8n process
+caddy           | {"level":"info","ts":1763029900.9453778,"msg":"maxprocs: Leaving GOMAXPROCS=16: CPU quota undefined"}
+caddy                | {"level":"info","ts":1763029900.9458044,"msg":"GOMEMLIMIT is updated","package":"github.com/KimMachineGun/automemlimit/memlimit","GOMEMLIMIT":29249033011,"previous":9223372036854775807}
+scarletredjoker-web  | /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+plex-server          | [migrations] started
+homelab-dashboard    | [2025-11-13 10:31:40 +0000] [1] [INFO] Starting gunicorn 21.2.0
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Extracted PostgreSQL host from DATABASE_URL: discord-bot-db
+discord-bot          | Checking PostgreSQL connection at discord-bot-db:5432...
+discord-bot          | PostgreSQL port is accessible!
+discord-bot          | PostgreSQL is ready!
+discord-bot          | Initializing database schema...
+discord-bot          | No config path provided, using default 'drizzle.config.ts'
+discord-bot          | Reading config file '/app/drizzle.config.ts'
+discord-bot          | Using 'pg' driver for database querying
+discord-bot          | [⣷] Pulling schema from database...
+[⣯] Pulling schema from database...
+[⣟] Pulling schema from database...
+vnc-desktop          | stored passwd in file: /.password2
+vnc-desktop          | * enable custom user: evin
+n8n             | n8n ready on ::, port 5678
+n8n                  | n8n Task Broker ready on 127.0.0.1, port 5679
+n8n                  | 
+n8n                  | There are deprecations related to your environment variables. Please take the recommended actions to update your configuration:
+caddy                | {"level":"info","ts":1763029900.9460096,"msg":"using config from file","file":"/etc/caddy/Caddyfile"}
+caddy                | {"level":"info","ts":1763029900.9481778,"msg":"adapted config to JSON","adapter":"caddyfile"}
+caddy                | {"level":"warn","ts":1763029900.948187,"msg":"Caddyfile input is not formatted; run 'caddy fmt --overwrite' to fix inconsistencies","adapter":"caddyfile","file":"/etc/caddy/Caddyfile","line":2}
+caddy                | {"level":"info","ts":1763029900.9494123,"logger":"admin","msg":"admin endpoint started","address":"localhost:2019","enforce_origin":false,"origins":["//localhost:2019","//[::1]:2019","//127.0.0.1:2019"]}
+caddy                | {"level":"info","ts":1763029900.9497826,"logger":"tls.cache.maintenance","msg":"started background certificate maintenance","cache":"0xc0005fc000"}
+caddy                | {"level":"info","ts":1763029900.9498732,"logger":"http.auto_https","msg":"server is listening only on the HTTPS port but has no TLS connection policies; adding one to enable TLS","server_name":"srv0","https_port":443}
+caddy                | {"level":"info","ts":1763029900.9498885,"logger":"http.auto_https","msg":"enabling automatic HTTP->HTTPS redirects","server_name":"srv0"}
+caddy                | {"level":"warn","ts":1763029900.9515417,"logger":"http","msg":"HTTP/2 skipped because it requires TLS","network":"tcp","addr":":80"}
+caddy                | {"level":"warn","ts":1763029900.95155,"logger":"http","msg":"HTTP/3 skipped because it requires TLS","network":"tcp","addr":":80"}
+caddy                | {"level":"info","ts":1763029900.9515536,"logger":"http.log","msg":"server running","name":"remaining_auto_https_redirects","protocols":["h1","h2","h3"]}
+caddy                | {"level":"info","ts":1763029900.9516013,"logger":"http","msg":"enabling HTTP/3 listener","addr":":443"}
+plex-server          | [migrations] no migrations found
+[⡿] Pulling schema from database...
+plex-server          | ───────────────────────────────────────
+n8n                  |  - DB_SQLITE_POOL_SIZE -> Running SQLite without a pool of read connections is deprecated. Please set `DB_SQLITE_POOL_SIZE` to a value higher than zero. See: https://docs.n8n.io/hosting/configuration/environment-variables/database/#sqlite
+plex-server          | 
+n8n                  |  - N8N_BLOCK_ENV_ACCESS_IN_NODE -> The default value of N8N_BLOCK_ENV_ACCESS_IN_NODE will be changed from false to true in a future version. If you need to access environment variables from the Code Node or from expressions, please set N8N_BLOCK_ENV_ACCESS_IN_NODE=false. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/security/
+n8n                  |  - N8N_GIT_NODE_DISABLE_BARE_REPOS -> Support for bare repositories in the Git Node will be removed in a future version due to security concerns. If you are not using bare repositories in the Git Node, please set N8N_GIT_NODE_DISABLE_BARE_REPOS=true. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/security/
+n8n                  | 
+n8n                  | [license SDK] Skipping renewal on init: license cert is not initialized
+n8n                  | Registered runner "JS Task Runner" (pQ-So6jYVyogZaFjrV14P) 
+n8n                  | Version: 1.118.2
+n8n                  | 
+n8n                  | Editor is now accessible via:
+n8n                  | https://n8n.evindrake.net
+homelab-dashboard    | [2025-11-13 10:31:40 +0000] [1] [INFO] Listening at: http://0.0.0.0:5000 (1)
+homelab-dashboard    | [2025-11-13 10:31:40 +0000] [1] [INFO] Using worker: sync
+homelab-dashboard    | [2025-11-13 10:31:40 +0000] [7] [INFO] Booting worker with pid: 7
+homelab-dashboard    | [2025-11-13 10:31:40 +0000] [8] [INFO] Booting worker with pid: 8
+homelab-dashboard    | [2025-11-13 10:31:40 +0000] [9] [INFO] Booting worker with pid: 9
+homelab-dashboard    | /usr/local/lib/python3.11/site-packages/paramiko/pkey.py:100: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+homelab-dashboard    |   "cipher": algorithms.TripleDES,
+homelab-dashboard    | /usr/local/lib/python3.11/site-packages/paramiko/pkey.py:100: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+vnc-desktop          | cp: cannot stat '/root/.config': No such file or directory
+stream-bot           | [BotManager] Bootstrapping...
+vnc-desktop          | 2025-11-13 10:31:41,147 CRIT Supervisor is running as root.  Privileges were not dropped because no user is specified in the config file.  If you intend to run as root, you can set user=root in the config file to avoid this message.
+vnc-desktop          | 2025-11-13 10:31:41,147 INFO Included extra file "/etc/supervisor/conf.d/supervisord.conf" during parsing
+vnc-desktop          | 2025-11-13 10:31:41,152 INFO RPC interface 'supervisor' initialized
+vnc-desktop          | 2025-11-13 10:31:41,152 CRIT Server 'unix_http_server' running without any HTTP authentication checking
+vnc-desktop          | 2025-11-13 10:31:41,152 INFO supervisord started with pid 32
+vnc-desktop          | 2025-11-13 10:31:42,154 INFO spawned: 'nginx' with pid 34
+vnc-desktop          | 2025-11-13 10:31:42,156 INFO spawned: 'web' with pid 35
+vnc-desktop          | 2025-11-13 10:31:42,157 INFO spawned: 'xvfb' with pid 36
+vnc-desktop          | 2025-11-13 10:31:42,158 INFO spawned: 'wm' with pid 37
+vnc-desktop          | 2025-11-13 10:31:42,160 INFO spawned: 'lxpanel' with pid 38
+vnc-desktop          | 2025-11-13 10:31:42,161 INFO spawned: 'pcmanfm' with pid 39
+vnc-desktop          | 2025-11-13 10:31:42,162 INFO spawned: 'x11vnc' with pid 40
+vnc-desktop          | 2025-11-13 10:31:42,164 INFO spawned: 'novnc' with pid 41
+vnc-desktop          | 2025-11-13 10:31:42,179 INFO exited: x11vnc (exit status 1; not expected)
+vnc-desktop          | 2025-11-13 10:31:42,343 INFO  Listening on http://localhost:6079 (run.py:87)
+vnc-desktop          | 2025-11-13 10:31:43,183 INFO success: nginx entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop          | 2025-11-13 10:31:43,183 INFO success: web entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+plex-server          |       ██╗     ███████╗██╗ ██████╗
+plex-server          |       ██║     ██╔════╝██║██╔═══██╗
+plex-server          |       ██║     ███████╗██║██║   ██║
+plex-server          |       ██║     ╚════██║██║██║   ██║
+plex-server          |       ███████╗███████║██║╚██████╔╝
+plex-server          |       ╚══════╝╚══════╝╚═╝ ╚═════╝
+plex-server          | 
+plex-server          |    Brought to you by linuxserver.io
+plex-server          | ───────────────────────────────────────
+plex-server          | 
+plex-server          | To support LSIO projects visit:
+plex-server          | https://www.linuxserver.io/donate/
+plex-server          | 
+plex-server          | ───────────────────────────────────────
+plex-server          | GID/UID
+plex-server          | ───────────────────────────────────────
+homelab-dashboard    |   "cipher": algorithms.TripleDES,
+homelab-dashboard    | /usr/local/lib/python3.11/site-packages/paramiko/pkey.py:100: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+homelab-dashboard    |   "cipher": algorithms.TripleDES,
+homelab-dashboard    | /usr/local/lib/python3.11/site-packages/paramiko/transport.py:259: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+homelab-dashboard    |   "class": algorithms.TripleDES,
+homelab-dashboard    | /usr/local/lib/python3.11/site-packages/paramiko/transport.py:259: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+homelab-dashboard    |   "class": algorithms.TripleDES,
+homelab-dashboard    | /usr/local/lib/python3.11/site-packages/paramiko/transport.py:259: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+homelab-dashboard    |   "class": algorithms.TripleDES,
+homelab-dashboard    | Failed to connect to Docker: Error while fetching server API version: Not supported URL scheme http+docker
+homelab-dashboard    | Failed to connect to Docker: Error while fetching server API version: Not supported URL scheme http+docker
+homelab-dashboard    | Failed to connect to Docker: Error while fetching server API version: Not supported URL scheme http+docker
+homelab-dashboard    | Failed to connect to Docker: Error while fetching server API version: Not supported URL scheme http+docker
+homelab-dashboard    | Failed to connect to Docker: Error while fetching server API version: Not supported URL scheme http+docker
+homelab-dashboard    | Failed to connect to Docker: Error while fetching server API version: Not supported URL scheme http+docker
+homelab-dashboard    | Compose file not found: docker-compose.unified.yml
+vnc-desktop          | 2025-11-13 10:31:43,183 INFO success: xvfb entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop          | 2025-11-13 10:31:43,183 INFO success: wm entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop          | 2025-11-13 10:31:43,183 INFO success: lxpanel entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop          | 2025-11-13 10:31:43,183 INFO success: pcmanfm entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop          | 2025-11-13 10:31:43,184 INFO spawned: 'x11vnc' with pid 110
+vnc-desktop          | 2025-11-13 10:31:43,184 INFO success: novnc entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop          | 2025-11-13 10:31:44,227 INFO success: x11vnc entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+scarletredjoker-web  | /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+scarletredjoker-web  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+scarletredjoker-web  | 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+scarletredjoker-web  | 10-listen-on-ipv6-by-default.sh: info: Enabled listen on IPv6 in /etc/nginx/conf.d/default.conf
+scarletredjoker-web  | /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+scarletredjoker-web  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+scarletredjoker-web  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+scarletredjoker-web  | /docker-entrypoint.sh: Configuration complete; ready for start up
+homelab-dashboard    | Caddyfile not found: Caddyfile
+plex-server          | 
+plex-server          | User UID:    1000
+plex-server          | User GID:    1000
+plex-server          | ───────────────────────────────────────
+plex-server          | Linuxserver.io version: 1.42.2.10156-f737b826c-ls285
+plex-server          | Build-date: 2025-11-10T09:30:56+00:00
+plex-server          | ───────────────────────────────────────
+plex-server          |     
+plex-server          | **** Server already claimed ****
+plex-server          | **** creating video group videooxdl with id 991 ****
+plex-server          | **** adding /dev/dri/renderD128 to video group videooxdl with id 991 ****
+plex-server          | **** adding /dev/dri/card1 to video group video with id 44 ****
+plex-server          | Docker is used for versioning skip update check
+plex-server          | [custom-init] No custom files found, skipping...
+plex-server          | Starting Plex Media Server. . . (you can ignore the libusb_init error)
+[⢿] Pulling schema from database...
+[✓] Pulling schema from database...
+plex-server          | Connection to localhost (::1) 32400 port [tcp/*] succeeded!
+plex-server          | [ls.io-init] done.
+plex-server          | Critical: libusb_init failed
+stream-bot           | [BotManager] Found 0 active bot instances
+stream-bot           | [BotManager] Bootstrap complete
+stream-bot           | 10:31:47 AM [express] serving on port 5000
+stream-bot           | [WebSocket] Rejecting unauthenticated connection
+scarletredjoker-web  | 2025/11/13 10:31:40 [notice] 1#1: using the "epoll" event method
+scarletredjoker-web  | 2025/11/13 10:31:40 [notice] 1#1: nginx/1.29.3
+scarletredjoker-web  | 2025/11/13 10:31:40 [notice] 1#1: built by gcc 14.2.0 (Alpine 14.2.0) 
+scarletredjoker-web  | 2025/11/13 10:31:40 [notice] 1#1: OS: Linux 6.17.0-6-generic
+scarletredjoker-web  | 2025/11/13 10:31:40 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1024:524288
+scarletredjoker-web  | 2025/11/13 10:31:40 [notice] 1#1: start worker processes
+scarletredjoker-web  | 2025/11/13 10:31:40 [notice] 1#1: start worker process 30
+scarletredjoker-web  | 2025/11/13 10:31:40 [notice] 1#1: start worker process 31
+homelab-dashboard    | .env file not found: .env
+homelab-dashboard    | Compose file not found: docker-compose.unified.yml
+scarletredjoker-web  | 2025/11/13 10:31:40 [notice] 1#1: start worker process 32
+scarletredjoker-web  | 2025/11/13 10:31:40 [notice] 1#1: start worker process 33
+scarletredjoker-web  | 2025/11/13 10:31:40 [notice] 1#1: start worker process 34
+scarletredjoker-web  | 2025/11/13 10:31:40 [notice] 1#1: start worker process 35
+scarletredjoker-web  | 2025/11/13 10:31:40 [notice] 1#1: start worker process 36
+scarletredjoker-web  | 2025/11/13 10:31:40 [notice] 1#1: start worker process 37
+scarletredjoker-web  | 2025/11/13 10:31:40 [notice] 1#1: start worker process 38
+scarletredjoker-web  | 2025/11/13 10:31:40 [notice] 1#1: start worker process 39
+scarletredjoker-web  | 2025/11/13 10:31:40 [notice] 1#1: start worker process 40
+scarletredjoker-web  | 2025/11/13 10:31:40 [notice] 1#1: start worker process 41
+scarletredjoker-web  | 2025/11/13 10:31:40 [notice] 1#1: start worker process 42
+scarletredjoker-web  | 2025/11/13 10:31:40 [notice] 1#1: start worker process 43
+scarletredjoker-web  | 2025/11/13 10:31:40 [notice] 1#1: start worker process 44
+scarletredjoker-web  | 2025/11/13 10:31:40 [notice] 1#1: start worker process 45
+discord-bot          | [✓] Changes applied
+discord-bot          | Database initialization complete!
+discord-bot          | Starting application...
+discord-bot          | 
+discord-bot          | > rest-express@1.0.0 start
+discord-bot          | > NODE_ENV=production node dist/index.js
+caddy                | {"level":"info","ts":1763029900.9519002,"msg":"failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 7168 kiB, got: 416 kiB). See https://github.com/quic-go/quic-go/wiki/UDP-Buffer-Sizes for details."}
+caddy                | {"level":"info","ts":1763029900.9521863,"logger":"http.log","msg":"server running","name":"srv0","protocols":["h1","h2","h3"]}
+caddy                | {"level":"info","ts":1763029900.952195,"logger":"http","msg":"enabling automatic TLS certificate management","domains":["scarletredjoker.com","plex.evindrake.net","host.evindrake.net","n8n.evindrake.net","vnc.evindrake.net","bot.rig-city.com","www.scarletredjoker.com","stream.rig-city.com"]}
+caddy                | {"level":"info","ts":1763029900.9616642,"msg":"autosaved config (load with --resume flag)","file":"/config/caddy/autosave.json"}
+caddy                | {"level":"info","ts":1763029900.9616807,"msg":"serving initial configuration"}
+caddy                | {"level":"info","ts":1763029900.9634795,"logger":"tls","msg":"storage cleaning happened too recently; skipping for now","storage":"FileStorage:/data/caddy","instance":"13fca5f7-ca3a-45b6-9f5a-dcca9f82ada1","try_again":1763116300.9634788,"try_again_in":86399.99999974}
+caddy                | {"level":"info","ts":1763029900.9635265,"logger":"tls","msg":"finished cleaning storage units"}
+homelab-dashboard    | Caddyfile not found: Caddyfile
+homelab-dashboard    | .env file not found: .env
+homelab-dashboard    | Compose file not found: docker-compose.unified.yml
+homelab-dashboard    | Caddyfile not found: Caddyfile
+homelab-dashboard    | .env file not found: .env
+discord-bot          | 
+discord-bot          | [Database] Detected local/Docker PostgreSQL, using standard pg driver
+discord-bot          | [Discord] Registered developer commands: dev-dm, dev-announce, dev-stats, dev-refresh, dev-ticket
+discord-bot          | [Database] Creating read-only PostgreSQL connection for developer queries
+discord-bot          | Setting up Discord authentication strategy
+discord-bot          | Discord OAuth callback URL: https://bot.rig-city.com/auth/discord/callback
+discord-bot          | Attempting to start Discord bot...
+discord-bot          | Error registering commands with Discord API: DiscordAPIError[0]: 401: Unauthorized
+discord-bot          |     at handleErrors (/app/node_modules/@discordjs/rest/dist/index.js:727:13)
+discord-bot          |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+discord-bot          |     at async SequentialHandler.runRequest (/app/node_modules/@discordjs/rest/dist/index.js:1128:23)
+discord-bot          |     at async SequentialHandler.queueRequest (/app/node_modules/@discordjs/rest/dist/index.js:959:14)
+discord-bot          |     at async _REST.request (/app/node_modules/@discordjs/rest/dist/index.js:1272:22)
+discord-bot          |     at async registerCommandsWithAPI (file:///app/dist/index.js:4051:7)
+discord-bot          |     at async startBot (file:///app/dist/index.js:2801:7)
+discord-bot          |     at async registerRoutes (file:///app/dist/index.js:8655:7)
+discord-bot          |     at async file:///app/dist/index.js:8719:18 {
+discord-bot          |   requestBody: {
+discord-bot          |     files: undefined,
+discord-bot          |     json: [
+discord-bot          |       [Object], [Object],
+discord-bot          |       [Object], [Object],
+discord-bot          |       [Object], [Object],
+discord-bot          |       [Object], [Object],
+discord-bot          |       [Object], [Object]
+discord-bot          |     ]
+discord-bot          |   },
+discord-bot          |   rawError: { message: '401: Unauthorized', code: 0 },
+discord-bot          |   code: 0,
+discord-bot          |   status: 401,
+discord-bot          |   method: 'PUT',
+discord-bot          |   url: 'https://discord.com/api/v10/applications/1355875026070667374/commands'
+discord-bot          | }
+discord-bot          | Error registering commands with Discord API. Continuing with limited functionality: DiscordAPIError[0]: 401: Unauthorized
+discord-bot          |     at handleErrors (/app/node_modules/@discordjs/rest/dist/index.js:727:13)
+discord-bot          |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+discord-bot          |     at async SequentialHandler.runRequest (/app/node_modules/@discordjs/rest/dist/index.js:1128:23)
+discord-bot          |     at async SequentialHandler.queueRequest (/app/node_modules/@discordjs/rest/dist/index.js:959:14)
+discord-bot          |     at async _REST.request (/app/node_modules/@discordjs/rest/dist/index.js:1272:22)
+discord-bot          |     at async registerCommandsWithAPI (file:///app/dist/index.js:4051:7)
+discord-bot          |     at async startBot (file:///app/dist/index.js:2801:7)
+discord-bot          |     at async registerRoutes (file:///app/dist/index.js:8655:7)
+discord-bot          |     at async file:///app/dist/index.js:8719:18 {
+discord-bot          |   requestBody: {
+discord-bot          |     files: undefined,
+discord-bot          |     json: [
+discord-bot          |       [Object], [Object],
+discord-bot          |       [Object], [Object],
+discord-bot          |       [Object], [Object],
+discord-bot          |       [Object], [Object],
+discord-bot          |       [Object], [Object]
+discord-bot          |     ]
+discord-bot          |   },
+discord-bot          |   rawError: { message: '401: Unauthorized', code: 0 },
+discord-bot          |   code: 0,
+discord-bot          |   status: 401,
+discord-bot          |   method: 'PUT',
+discord-bot          |   url: 'https://discord.com/api/v10/applications/1355875026070667374/commands'
+discord-bot          | }
+discord-bot          | Failed to start Discord bot: Error [TokenInvalid]: An invalid token was provided.
+discord-bot          |     at WebSocketManager.connect (/app/node_modules/discord.js/src/client/websocket/WebSocketManager.js:136:26)
+discord-bot          |     at Client.login (/app/node_modules/discord.js/src/client/Client.js:228:21)
+discord-bot          |     at startBot (file:///app/dist/index.js:4031:33)
+discord-bot          |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+discord-bot          |     at async registerRoutes (file:///app/dist/index.js:8655:7)
+discord-bot          |     at async file:///app/dist/index.js:8719:18 {
+discord-bot          |   code: 'TokenInvalid'
+discord-bot          | }
+discord-bot          | 10:31:52 AM [express] serving on port 5000
+discord-bot          | Discord auth: Processing login for user scarletredjoker#0
+discord-bot          | Discord auth: Profile data: { id: '368610753885896705', username: 'scarletredjoker', guilds: 101 }
+discord-bot          | Discord auth: User scarletredjoker admin status: true (12 admin guilds)
+discord-bot          | Discord client not ready - cannot fetch bot guilds
+discord-bot          | Discord auth: Failed to fetch bot guilds, preserving existing connectedServers: Error: Discord client not ready - cannot fetch bot guilds
+discord-bot          |     at getBotGuilds (file:///app/dist/index.js:4444:19)
+discord-bot          |     at Strategy._verify (file:///app/dist/index.js:5210:41)
+discord-bot          |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+discord-bot          | Discord auth: Deserializing user 368610753885896705
+discord-bot          | Discord auth: Deserializing user 368610753885896705
+discord-bot          | Discord auth: Deserializing user 368610753885896705
+discord-bot          | Discord auth: Deserializing user 368610753885896705
+discord-bot          | Discord auth: Deserializing user 368610753885896705
+discord-bot          | Discord auth: Deserializing user 368610753885896705
+discord-bot          | [Tickets API] User scarletredjoker (368610753885896705) requesting tickets
+discord-bot          | [Tickets API] User isAdmin: true, connectedServers: ["623281252451221515","692850100795473920"]
+discord-bot          | Discord auth: Deserializing user 368610753885896705
+discord-bot          | [Tickets API] Total tickets in database: 0
+discord-bot          | [Tickets API] Returning 0 filtered ticket(s) to user
+discord-bot          | 10:32:34 AM [express] GET /api/tickets 200 in 3ms :: []
+discord-bot          | Discord auth: Deserializing user 368610753885896705
+discord-bot          | Fetching available servers for user 368610753885896705 (scarletredjoker)
+discord-bot          | User 368610753885896705 has admin permissions in 12 servers: [
+discord-bot          |   "GumGumDabber's Hangout (580136949042642965)",
+discord-bot          |   "Joker's Evil Headquarters (623281252451221515)",
+discord-bot          |   'Rig City (692850100795473920)',
+discord-bot          |   'The Bebop (714669653799993384)',
+discord-bot          |   "Michigan dabbin's server (756968466455461900)",
+discord-bot          |   'Big Pusher Keys (756991798425026630)',
+discord-bot          |   'OGHempRollers (848196877224771595)',
+discord-bot          |   'Mayo Monkeys (986995994791133224)',
+discord-bot          |   'Test svr (1094297748699889876)',
+discord-bot          |   'Liquor & Legos (1205561598161457224)',
+discord-bot          |   "Ambyr & Evin's Wedding (1277815656963637328)",
+discord-bot          |   'RigCityAutoClub (1325638742232268831)'
+discord-bot          | ]
+discord-bot          | Discord client not ready - cannot fetch bot guilds
+discord-bot          | Error fetching available servers: Error: Discord client not ready - cannot fetch bot guilds
+discord-bot          |     at getBotGuilds (file:///app/dist/index.js:4444:19)
+discord-bot          |     at file:///app/dist/index.js:5373:31
+discord-bot          |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+discord-bot          | 10:32:34 AM [express] GET /api/admin/stats 200 in 4ms :: {"ticketCounts":{"total":0,"open":0,"closed"…
+discord-bot          | Discord auth: Deserializing user 368610753885896705
+discord-bot          | 10:32:34 AM [express] GET /api/categories 200 in 1ms :: []
+discord-bot          | Discord auth: Deserializing user 368610753885896705
+discord-bot          | 10:32:37 AM [express] GET /api/bot/invite-url 200 in 1ms :: {"inviteURL":"https://discord.com/api/oau…
+discord-bot          | Discord auth: Deserializing user 368610753885896705
+discord-bot          | Fetching available servers for user 368610753885896705 (scarletredjoker)
+discord-bot          | User 368610753885896705 has admin permissions in 12 servers: [
+discord-bot          |   "GumGumDabber's Hangout (580136949042642965)",
+discord-bot          |   "Joker's Evil Headquarters (623281252451221515)",
+discord-bot          |   'Rig City (692850100795473920)',
+discord-bot          |   'The Bebop (714669653799993384)',
+discord-bot          |   "Michigan dabbin's server (756968466455461900)",
+discord-bot          |   'Big Pusher Keys (756991798425026630)',
+discord-bot          |   'OGHempRollers (848196877224771595)',
+discord-bot          |   'Mayo Monkeys (986995994791133224)',
+discord-bot          |   'Test svr (1094297748699889876)',
+discord-bot          |   'Liquor & Legos (1205561598161457224)',
+discord-bot          |   "Ambyr & Evin's Wedding (1277815656963637328)",
+discord-bot          |   'RigCityAutoClub (1325638742232268831)'
+discord-bot          | ]
+discord-bot          | Discord client not ready - cannot fetch bot guilds
+discord-bot          | Error fetching available servers: Error: Discord client not ready - cannot fetch bot guilds
+discord-bot          |     at getBotGuilds (file:///app/dist/index.js:4444:19)
+discord-bot          |     at file:///app/dist/index.js:5373:31
+discord-bot          |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+discord-bot          | Discord auth: Deserializing user 368610753885896705
+discord-bot          | Fetching available servers for user 368610753885896705 (scarletredjoker)
+discord-bot          | User 368610753885896705 has admin permissions in 12 servers: [
+discord-bot          |   "GumGumDabber's Hangout (580136949042642965)",
+discord-bot          |   "Joker's Evil Headquarters (623281252451221515)",
+discord-bot          |   'Rig City (692850100795473920)',
+discord-bot          |   'The Bebop (714669653799993384)',
+discord-bot          |   "Michigan dabbin's server (756968466455461900)",
+discord-bot          |   'Big Pusher Keys (756991798425026630)',
+discord-bot          |   'OGHempRollers (848196877224771595)',
+discord-bot          |   'Mayo Monkeys (986995994791133224)',
+discord-bot          |   'Test svr (1094297748699889876)',
+discord-bot          |   'Liquor & Legos (1205561598161457224)',
+discord-bot          |   "Ambyr & Evin's Wedding (1277815656963637328)",
+discord-bot          |   'RigCityAutoClub (1325638742232268831)'
+discord-bot          | ]
+discord-bot          | Discord client not ready - cannot fetch bot guilds
+discord-bot          | Error fetching available servers: Error: Discord client not ready - cannot fetch bot guilds
+discord-bot          |     at getBotGuilds (file:///app/dist/index.js:4444:19)
+discord-bot          |     at file:///app/dist/index.js:5373:31
+discord-bot          |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+discord-bot          | Discord auth: Deserializing user 368610753885896705
+discord-bot          | Fetching available servers for user 368610753885896705 (scarletredjoker)
+discord-bot          | User 368610753885896705 has admin permissions in 12 servers: [
+discord-bot          |   "GumGumDabber's Hangout (580136949042642965)",
+discord-bot          |   "Joker's Evil Headquarters (623281252451221515)",
+discord-bot          |   'Rig City (692850100795473920)',
+discord-bot          |   'The Bebop (714669653799993384)',
+discord-bot          |   "Michigan dabbin's server (756968466455461900)",
+discord-bot          |   'Big Pusher Keys (756991798425026630)',
+discord-bot          |   'OGHempRollers (848196877224771595)',
+discord-bot          |   'Mayo Monkeys (986995994791133224)',
+discord-bot          |   'Test svr (1094297748699889876)',
+discord-bot          |   'Liquor & Legos (1205561598161457224)',
+discord-bot          |   "Ambyr & Evin's Wedding (1277815656963637328)",
+discord-bot          |   'RigCityAutoClub (1325638742232268831)'
+discord-bot          | ]
+discord-bot          | Discord client not ready - cannot fetch bot guilds
+discord-bot          | Error fetching available servers: Error: Discord client not ready - cannot fetch bot guilds
+discord-bot          |     at getBotGuilds (file:///app/dist/index.js:4444:19)
+discord-bot          |     at file:///app/dist/index.js:5373:31
+discord-bot          |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+discord-bot          | Discord auth: Deserializing user 368610753885896705
+discord-bot          | Completing onboarding for user 368610753885896705 with servers: []
+discord-bot          | Discord client not ready - cannot fetch bot guilds
+discord-bot          | Error validating selected servers: Error: Discord client not ready - cannot fetch bot guilds
+discord-bot          |     at getBotGuilds (file:///app/dist/index.js:4444:19)
+discord-bot          |     at file:///app/dist/index.js:5411:35
+discord-bot          |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+discord-bot          | Onboarding completed for user 368610753885896705. Connected to 0 servers.
+discord-bot          | Discord auth: Deserializing user 368610753885896705
+discord-bot          | Discord auth: Deserializing user 368610753885896705
+discord-bot          | Fetching available servers for user 368610753885896705 (scarletredjoker)
+discord-bot          | User 368610753885896705 has admin permissions in 12 servers: [
+discord-bot          |   "GumGumDabber's Hangout (580136949042642965)",
+discord-bot          |   "Joker's Evil Headquarters (623281252451221515)",
+discord-bot          |   'Rig City (692850100795473920)',
+discord-bot          |   'The Bebop (714669653799993384)',
+discord-bot          |   "Michigan dabbin's server (756968466455461900)",
+discord-bot          |   'Big Pusher Keys (756991798425026630)',
+discord-bot          |   'OGHempRollers (848196877224771595)',
+discord-bot          |   'Mayo Monkeys (986995994791133224)',
+discord-bot          |   'Test svr (1094297748699889876)',
+discord-bot          |   'Liquor & Legos (1205561598161457224)',
+discord-bot          |   "Ambyr & Evin's Wedding (1277815656963637328)",
+discord-bot          | Discord client not ready - cannot fetch bot guilds
+discord-bot          |   'RigCityAutoClub (1325638742232268831)'
+discord-bot          | ]
+discord-bot          | Error fetching available servers: Error: Discord client not ready - cannot fetch bot guilds
+discord-bot          |     at getBotGuilds (file:///app/dist/index.js:4444:19)
+discord-bot          |     at file:///app/dist/index.js:5373:31
+discord-bot          |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+discord-bot          | Discord auth: Deserializing user 368610753885896705
+discord-bot          | Discord auth: Deserializing user 368610753885896705
+discord-bot          | Discord auth: Deserializing user 368610753885896705
+discord-bot          | Discord auth: Deserializing user 368610753885896705
+discord-bot          | Discord auth: Deserializing user 368610753885896705
+discord-bot          | Discord auth: Deserializing user 368610753885896705
+discord-bot          | Fetching available servers for user 368610753885896705 (scarletredjoker)
+discord-bot          | User 368610753885896705 has admin permissions in 12 servers: [
+discord-bot          |   "GumGumDabber's Hangout (580136949042642965)",
+discord-bot          |   "Joker's Evil Headquarters (623281252451221515)",
+discord-bot          |   'Rig City (692850100795473920)',
+discord-bot          |   'The Bebop (714669653799993384)',
+discord-bot          |   "Michigan dabbin's server (756968466455461900)",
+discord-bot          |   'Big Pusher Keys (756991798425026630)',
+discord-bot          |   'OGHempRollers (848196877224771595)',
+discord-bot          |   'Mayo Monkeys (986995994791133224)',
+discord-bot          |   'Test svr (1094297748699889876)',
+discord-bot          |   'Liquor & Legos (1205561598161457224)',
+discord-bot          |   "Ambyr & Evin's Wedding (1277815656963637328)",
+discord-bot          |   'RigCityAutoClub (1325638742232268831)'
+discord-bot          | ]
+discord-bot          | Discord client not ready - cannot fetch bot guilds
+discord-bot          | Error fetching available servers: Error: Discord client not ready - cannot fetch bot guilds
+discord-bot          |     at getBotGuilds (file:///app/dist/index.js:4444:19)
+discord-bot          |     at file:///app/dist/index.js:5373:31
+discord-bot          |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+discord-bot          | Discord auth: Deserializing user 368610753885896705
+discord-bot          | [Tickets API] User scarletredjoker (368610753885896705) requesting tickets
+discord-bot          | [Tickets API] User isAdmin: true, connectedServers: []
+discord-bot          | [Tickets API] Total tickets in database: 0
+discord-bot          | [Tickets API] Returning 0 filtered ticket(s) to user
+discord-bot          | 10:32:45 AM [express] GET /api/tickets 304 in 1ms :: []
+discord-bot          | 10:32:45 AM [express] GET /api/admin/stats 304 in 2ms :: {"ticketCounts":{"total":0,"open":0,"closed"…
+discord-bot          | Discord auth: Deserializing user 368610753885896705
+discord-bot          | 10:32:45 AM [express] GET /api/categories 304 in 1ms :: []

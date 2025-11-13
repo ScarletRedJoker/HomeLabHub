@@ -1,0 +1,110 @@
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║        🏠 HOMELAB DEPLOYMENT MANAGER 🚀                    ║
+║                                                                ║
+║        Unified Control Panel for All Services              ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+
+━━━ Container Status ━━━
+  ⚠ Partial deployment (9/8 services running)
+
+━━━ What would you like to do? ━━━
+
+  Deployment:
+    1) 🚀 Full Deploy (build and start all services)
+    2) 🔄 Quick Restart (restart without rebuilding)
+    3) ⚡ Rebuild & Deploy (force rebuild + restart)
+
+  Service Control:
+    4) ▶️  Start All Services
+    5) ⏸️  Stop All Services
+    6) 🔄 Restart Specific Service
+
+  Database:
+    7) 🗄️  Ensure Databases Exist (fix DB issues)
+    8) 📊 Check Database Status
+
+  Configuration:
+    9) ⚙️  Generate/Edit .env File
+    10) 📋 View Current Configuration
+
+  Troubleshooting:
+    11) 🔍 View Service Logs
+    12) 🏥 Health Check (all services)
+    13) 🔧 Full Troubleshoot Mode
+
+  Updates:
+    16) 📦 Update Service (pull latest image)
+
+  Information:
+    14) 📊 Show Container Details
+    15) 🌐 Show Service URLs
+
+    0) 🚪 Exit
+
+Enter your choice: 11
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  🔍 SERVICE LOGS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Available services:
+  1) homelab-dashboard
+  2) discord-bot
+  3) stream-bot
+  4) caddy
+  5) discord-bot-db
+  6) All services
+
+Enter service number: 3
+[BotManager] Bootstrapping...
+[BotManager] Found 0 active bot instances
+[BotManager] Bootstrap complete
+9:51:42 AM [express] serving on port 5000
+[BotManager] Bootstrapping...
+[BotManager] Found 0 active bot instances
+[BotManager] Bootstrap complete
+9:59:18 AM [express] serving on port 5000
+Login error after signup: Error: ENOENT: no such file or directory, open '/app/dist/table.sql'
+    at async open (node:internal/fs/promises:639:25)
+    at async Object.readFile (node:internal/fs/promises:1246:14)
+    at async PGStore._rawEnsureSessionStoreTable (file:///app/dist/index.js:29975:36)
+    at async PGStore._asyncQuery (file:///app/dist/index.js:30087:11) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/app/dist/table.sql'
+}
+Error [ERR_HTTP_HEADERS_SENT]: Cannot set headers after they are sent to the client
+    at ServerResponse.setHeader (node:_http_outgoing:655:11)
+    at ServerResponse.header (file:///app/dist/index.js:23362:14)
+    at ServerResponse.send2 [as send] (file:///app/dist/index.js:23115:16)
+    at ServerResponse.json2 [as json] (file:///app/dist/index.js:23178:19)
+    at res.json (file:///app/dist/index.js:1160822:28)
+    at file:///app/dist/index.js:1160844:24
+    at Layer.handle_error (file:///app/dist/index.js:18456:9)
+    at trim_prefix (file:///app/dist/index.js:18864:17)
+    at file:///app/dist/index.js:18840:13
+    at Function.process_params (file:///app/dist/index.js:18874:16)
+Session creation error: Error: ENOENT: no such file or directory, open '/app/dist/table.sql'
+    at async open (node:internal/fs/promises:639:25)
+    at async Object.readFile (node:internal/fs/promises:1246:14)
+    at async PGStore._rawEnsureSessionStoreTable (file:///app/dist/index.js:29975:36)
+    at async PGStore._asyncQuery (file:///app/dist/index.js:30087:11) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/app/dist/table.sql'
+}
+Error [ERR_HTTP_HEADERS_SENT]: Cannot set headers after they are sent to the client
+    at ServerResponse.setHeader (node:_http_outgoing:655:11)
+    at ServerResponse.header (file:///app/dist/index.js:23362:14)
+    at ServerResponse.send2 [as send] (file:///app/dist/index.js:23115:16)
+    at ServerResponse.json2 [as json] (file:///app/dist/index.js:23178:19)
+    at res.json (file:///app/dist/index.js:1160822:28)
+    at file:///app/dist/index.js:1160844:24
+    at Layer.handle_error (file:///app/dist/index.js:18456:9)
+    at trim_prefix (file:///app/dist/index.js:18864:17)
+    at file:///app/dist/index.js:18840:13
+    at Function.process_params (file:///app/dist/index.js:18874:16)

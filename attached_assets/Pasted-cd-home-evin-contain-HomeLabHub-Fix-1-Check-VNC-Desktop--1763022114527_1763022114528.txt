@@ -1,0 +1,96 @@
+cd /home/evin/contain/HomeLabHub
+
+# ====================================
+# Fix 1: Check VNC Desktop
+# ====================================
+echo "=== VNC Desktop Status ==="
+docker logs vnc-desktop --tail 20
+
+# Test if VNC is serving on port 80 inside container
+docker exec vnc-desktop curl -I http://localhost:80 2>&1 | head -5
+
+# Check Caddy routing
+echo ""
+echo "=== Caddy VNC Route ==="
+docker exec caddy wget -q -O- http://vnc-desktop:80 2>&1 | head -10
+
+# ====================================
+# Fix 2: Fix Stream Bot (Check Kick)
+# ====================================
+echo ""
+echo "=== Stream Bot Database Check ==="
+docker exec discord-bot-db psql -U streambot -d streambot -c "SELECT platform, is_connected FROM platform_connections WHERE platform = 'kick';"
+
+# If Kick row exists with bad data, DELETE it entirely
+echo ""
+echo "Deleting broken Kick connection..."
+docker exec discord-bot-db psql -U streambot -d streambot -c "DELETE FROM platform_connections WHERE platform = 'kick';"
+
+# Restart stream-bot
+docker restart stream-bot
+
+# Wait and check
+sleep 10
+docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E "stream-bot|vnc"
+docker logs stream-bot --tail 20
+=== VNC Desktop Status ===
+2025-11-13 08:14:09,911 INFO RPC interface 'supervisor' initialized
+2025-11-13 08:14:09,911 CRIT Server 'unix_http_server' running without any HTTP authentication checking
+2025-11-13 08:14:09,911 INFO supervisord started with pid 32
+2025-11-13 08:14:10,913 INFO spawned: 'nginx' with pid 34
+2025-11-13 08:14:10,915 INFO spawned: 'web' with pid 35
+2025-11-13 08:14:10,916 INFO spawned: 'xvfb' with pid 36
+2025-11-13 08:14:10,917 INFO spawned: 'wm' with pid 37
+2025-11-13 08:14:10,918 INFO spawned: 'lxpanel' with pid 38
+2025-11-13 08:14:10,919 INFO spawned: 'pcmanfm' with pid 39
+2025-11-13 08:14:10,920 INFO spawned: 'x11vnc' with pid 40
+2025-11-13 08:14:10,921 INFO spawned: 'novnc' with pid 41
+2025-11-13 08:14:11,052 INFO  Listening on http://localhost:6079 (run.py:87)
+2025-11-13 08:14:11,935 INFO success: nginx entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2025-11-13 08:14:11,935 INFO success: web entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2025-11-13 08:14:11,935 INFO success: xvfb entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2025-11-13 08:14:11,935 INFO success: wm entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2025-11-13 08:14:11,936 INFO success: lxpanel entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2025-11-13 08:14:11,936 INFO success: pcmanfm entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2025-11-13 08:14:11,936 INFO success: x11vnc entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2025-11-13 08:14:11,936 INFO success: novnc entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0   512    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+HTTP/1.1 200 OK
+Server: nginx/1.18.0 (Ubuntu)
+
+=== Caddy VNC Route ===
+<!DOCTYPE html><html><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>novnc2</title><link href=./static/css/app.c90a3de1d5a865cd4149616f9b8040a5.css rel=stylesheet></head><body><div id=app></div><script type=text/javascript src=./static/js/manifest.3ad1d5771e9b13dbdad2.js></script><script type=text/javascript src=./static/js/vendor.eba9acff8b0b3b1b22c4.js></script><script type=text/javascript src=./static/js/app.fef011cae8f5fbff4b55.js></script></body></html>
+=== Stream Bot Database Check ===
+ERROR:  relation "platform_connections" does not exist
+LINE 1: SELECT platform, is_connected FROM platform_connections WHER...
+                                           ^
+
+Deleting broken Kick connection...
+ERROR:  relation "platform_connections" does not exist
+LINE 1: DELETE FROM platform_connections WHERE platform = 'kick';
+                    ^
+stream-bot
+stream-bot            Restarting (1) 1 second ago
+vnc-desktop           Up 7 minutes (healthy)
+    _redirects: 0,
+    _autoPong: true,
+    _url: 'wss://discord-bot-db/v2',
+    _req: null,
+    [Symbol(shapeMode)]: false,
+    [Symbol(kCapture)]: false
+  },
+  [Symbol(kType)]: 'error',
+  [Symbol(kError)]: Error: connect ECONNREFUSED 172.23.0.4:443
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1611:16) {
+    errno: -111,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '172.23.0.4',
+    port: 443
+  },
+  [Symbol(kMessage)]: 'connect ECONNREFUSED 172.23.0.4:443'
+}
+
+Node.js v20.19.5

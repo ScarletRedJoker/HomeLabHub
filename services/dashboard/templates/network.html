@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}Network Management - Homelab Dashboard{% endblock %}
+
+{% block content %}
+        <div class="row">
+            <div class="col-12">
+                <h2><i class="fas fa-network-wired text-primary"></i> Network Management</h2>
+                <p class="text-muted">Monitor network statistics, bandwidth usage, and active connections</p>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="fas fa-tachometer-alt"></i> Bandwidth Usage</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <div class="stat-box">
+                                    <i class="fas fa-arrow-up text-success fa-2x"></i>
+                                    <h4 id="upload-speed" class="mt-2">0 Mbps</h4>
+                                    <small class="text-muted">Upload</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-box">
+                                    <i class="fas fa-arrow-down text-info fa-2x"></i>
+                                    <h4 id="download-speed" class="mt-2">0 Mbps</h4>
+                                    <small class="text-muted">Download</small>
+                                </div>
+                            </div>
+                        </div>
+                        <canvas id="bandwidthChart" class="mt-3"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="fas fa-exchange-alt"></i> Network Statistics</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tbody id="network-stats">
+                                <tr><td colspan="2" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="fas fa-server"></i> Network Interfaces</h5>
+                    </div>
+                    <div class="card-body" id="network-interfaces">
+                        <div class="text-center">
+                            <i class="fas fa-spinner fa-spin"></i> Loading interfaces...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0"><i class="fas fa-door-open"></i> Listening Ports</h5>
+                    </div>
+                    <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Port</th>
+                                    <th>Protocol</th>
+                                    <th>Address</th>
+                                    <th>Process</th>
+                                </tr>
+                            </thead>
+                            <tbody id="listening-ports">
+                                <tr><td colspan="4" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0"><i class="fas fa-plug"></i> Active Connections</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3" id="connection-summary">
+                            <div class="col-md-3 text-center">
+                                <h4 id="total-connections">0</h4>
+                                <small class="text-muted">Total Connections</small>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <h4 id="tcp-connections">0</h4>
+                                <small class="text-muted">TCP</small>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <h4 id="udp-connections">0</h4>
+                                <small class="text-muted">UDP</small>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <h4 id="established-connections">0</h4>
+                                <small class="text-muted">Established</small>
+                            </div>
+                        </div>
+                        <div style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-sm table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Protocol</th>
+                                        <th>Local Address</th>
+                                        <th>Remote Address</th>
+                                        <th>Status</th>
+                                        <th>Process</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="active-connections">
+                                    <tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{{ url_for('static', filename='js/network.js') }}"></script>
+{% endblock %}

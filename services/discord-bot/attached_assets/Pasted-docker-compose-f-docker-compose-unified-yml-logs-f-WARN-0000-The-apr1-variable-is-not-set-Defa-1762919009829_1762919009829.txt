@@ -1,0 +1,2719 @@
+docker compose -f docker-compose.unified.yml logs -f
+WARN[0000] The "apr1" variable is not set. Defaulting to a blank string. 
+WARN[0000] The "niJzaejZ" variable is not set. Defaulting to a blank string. 
+WARN[0000] The "TqB91XEGDcyj5Jo3thEzi1" variable is not set. Defaulting to a blank string. 
+WARN[0000] The "apr1" variable is not set. Defaulting to a blank string. 
+WARN[0000] The "niJzaejZ" variable is not set. Defaulting to a blank string. 
+WARN[0000] The "TqB91XEGDcyj5Jo3thEzi1" variable is not set. Defaulting to a blank string. 
+WARN[0000] The "apr1" variable is not set. Defaulting to a blank string. 
+WARN[0000] The "niJzaejZ" variable is not set. Defaulting to a blank string. 
+WARN[0000] The "TqB91XEGDcyj5Jo3thEzi1" variable is not set. Defaulting to a blank string. 
+WARN[0000] The "apr1" variable is not set. Defaulting to a blank string. 
+WARN[0000] The "niJzaejZ" variable is not set. Defaulting to a blank string. 
+WARN[0000] The "TqB91XEGDcyj5Jo3thEzi1" variable is not set. Defaulting to a blank string. 
+n8n                  | Initializing n8n process
+stream-bot           | node:internal/modules/esm/resolve:873
+traefik              | 2025-11-12T03:41:55Z ERR Failed to retrieve information of the docker client and server host error="Error response from daemon: client version 1.24 is too old. Minimum supported API version is 1.44, please upgrade your client to a newer version" providerName=docker
+homelab-dashboard    | [2025-11-12 03:02:38 +0000] [1] [INFO] Starting gunicorn 21.2.0
+homelab-dashboard    | [2025-11-12 03:02:38 +0000] [1] [INFO] Listening at: http://0.0.0.0:5000 (1)
+homelab-dashboard    | [2025-11-12 03:02:38 +0000] [1] [INFO] Using worker: sync
+homelab-dashboard    | [2025-11-12 03:02:38 +0000] [7] [INFO] Booting worker with pid: 7
+n8n                  | n8n ready on ::, port 5678
+n8n                  | n8n Task Broker ready on 127.0.0.1, port 5679
+n8n                  | 
+n8n                  | There are deprecations related to your environment variables. Please take the recommended actions to update your configuration:
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+vnc-desktop          | stored passwd in file: /.password2
+vnc-desktop          | * enable custom user: evin
+vnc-desktop          | cp: cannot stat '/root/.config': No such file or directory
+vnc-desktop          | 2025-11-12 03:02:38,604 CRIT Supervisor is running as root.  Privileges were not dropped because no user is specified in the config file.  If you intend to run as root, you can set user=root in the config file to avoid this message.
+vnc-desktop          | 2025-11-12 03:02:38,604 INFO Included extra file "/etc/supervisor/conf.d/supervisord.conf" during parsing
+vnc-desktop          | 2025-11-12 03:02:38,607 INFO RPC interface 'supervisor' initialized
+vnc-desktop          | 2025-11-12 03:02:38,607 CRIT Server 'unix_http_server' running without any HTTP authentication checking
+vnc-desktop          | 2025-11-12 03:02:38,607 INFO supervisord started with pid 32
+vnc-desktop          | 2025-11-12 03:02:39,608 INFO spawned: 'nginx' with pid 34
+vnc-desktop          | 2025-11-12 03:02:39,610 INFO spawned: 'web' with pid 35
+vnc-desktop          | 2025-11-12 03:02:39,611 INFO spawned: 'xvfb' with pid 36
+vnc-desktop          | 2025-11-12 03:02:39,612 INFO spawned: 'wm' with pid 37
+vnc-desktop          | 2025-11-12 03:02:39,613 INFO spawned: 'lxpanel' with pid 38
+vnc-desktop          | 2025-11-12 03:02:39,614 INFO spawned: 'pcmanfm' with pid 39
+vnc-desktop          | 2025-11-12 03:02:39,615 INFO spawned: 'x11vnc' with pid 40
+plex-server          | [migrations] started
+plex-server          | [migrations] no migrations found
+plex-server          | ───────────────────────────────────────
+plex-server          | 
+plex-server          |       ██╗     ███████╗██╗ ██████╗
+plex-server          |       ██║     ██╔════╝██║██╔═══██╗
+plex-server          |       ██║     ███████╗██║██║   ██║
+plex-server          |       ██║     ╚════██║██║██║   ██║
+plex-server          |       ███████╗███████║██║╚██████╔╝
+plex-server          |       ╚══════╝╚══════╝╚═╝ ╚═════╝
+plex-server          | 
+plex-server          |    Brought to you by linuxserver.io
+plex-server          | ───────────────────────────────────────
+plex-server          | 
+plex-server          | To support LSIO projects visit:
+plex-server          | https://www.linuxserver.io/donate/
+plex-server          | 
+plex-server          | ───────────────────────────────────────
+scarletredjoker-web  | /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+scarletredjoker-web  | /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+scarletredjoker-web  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+scarletredjoker-web  | 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+scarletredjoker-web  | 10-listen-on-ipv6-by-default.sh: info: Enabled listen on IPv6 in /etc/nginx/conf.d/default.conf
+scarletredjoker-web  | /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+scarletredjoker-web  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+scarletredjoker-web  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+scarletredjoker-web  | /docker-entrypoint.sh: Configuration complete; ready for start up
+scarletredjoker-web  | 2025/11/12 02:48:45 [notice] 1#1: using the "epoll" event method
+scarletredjoker-web  | 2025/11/12 02:48:45 [notice] 1#1: nginx/1.29.3
+scarletredjoker-web  | 2025/11/12 02:48:45 [notice] 1#1: built by gcc 14.2.0 (Alpine 14.2.0) 
+scarletredjoker-web  | 2025/11/12 02:48:45 [notice] 1#1: OS: Linux 6.17.0-6-generic
+scarletredjoker-web  | 2025/11/12 02:48:45 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1024:524288
+scarletredjoker-web  | 2025/11/12 02:48:45 [notice] 1#1: start worker processes
+scarletredjoker-web  | 2025/11/12 02:48:45 [notice] 1#1: start worker process 30
+scarletredjoker-web  | 2025/11/12 02:48:45 [notice] 1#1: start worker process 31
+scarletredjoker-web  | 2025/11/12 02:48:45 [notice] 1#1: start worker process 32
+scarletredjoker-web  | 2025/11/12 02:48:45 [notice] 1#1: start worker process 33
+scarletredjoker-web  | 2025/11/12 02:48:45 [notice] 1#1: start worker process 34
+homelab-dashboard    | [2025-11-12 03:02:38 +0000] [8] [INFO] Booting worker with pid: 8
+homelab-dashboard    | [2025-11-12 03:02:38 +0000] [9] [INFO] Booting worker with pid: 9
+homelab-dashboard    | /usr/local/lib/python3.11/site-packages/paramiko/pkey.py:100: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+homelab-dashboard    |   "cipher": algorithms.TripleDES,
+homelab-dashboard    | /usr/local/lib/python3.11/site-packages/paramiko/transport.py:259: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+homelab-dashboard    |   "class": algorithms.TripleDES,
+homelab-dashboard    | /usr/local/lib/python3.11/site-packages/paramiko/pkey.py:100: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+homelab-dashboard    |   "cipher": algorithms.TripleDES,
+homelab-dashboard    | /usr/local/lib/python3.11/site-packages/paramiko/transport.py:259: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+homelab-dashboard    |   "class": algorithms.TripleDES,
+homelab-dashboard    | /usr/local/lib/python3.11/site-packages/paramiko/pkey.py:100: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+homelab-dashboard    |   "cipher": algorithms.TripleDES,
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+traefik              | 2025-11-12T03:41:55Z ERR Provider error, retrying in 353.204179ms error="Error response from daemon: client version 1.24 is too old. Minimum supported API version is 1.44, please upgrade your client to a newer version" providerName=docker
+traefik              | 2025-11-12T03:41:55Z ERR Failed to retrieve information of the docker client and server host error="Error response from daemon: client version 1.24 is too old. Minimum supported API version is 1.44, please upgrade your client to a newer version" providerName=docker
+traefik              | 2025-11-12T03:41:55Z ERR Provider error, retrying in 560.505061ms error="Error response from daemon: client version 1.24 is too old. Minimum supported API version is 1.44, please upgrade your client to a newer version" providerName=docker
+traefik              | 2025-11-12T03:41:55Z ERR Failed to retrieve information of the docker client and server host error="Error response from daemon: client version 1.24 is too old. Minimum supported API version is 1.44, please upgrade your client to a newer version" providerName=docker
+traefik              | 2025-11-12T03:41:55Z ERR Provider error, retrying in 1.147157837s error="Error response from daemon: client version 1.24 is too old. Minimum supported API version is 1.44, please upgrade your client to a newer version" providerName=docker
+traefik              | 2025-11-12T03:41:57Z ERR Failed to retrieve information of the docker client and server host error="Error response from daemon: client version 1.24 is too old. Minimum supported API version is 1.44, please upgrade your client to a newer version" providerName=docker
+traefik              | 2025-11-12T03:41:57Z ERR Provider error, retrying in 1.327363536s error="Error response from daemon: client version 1.24 is too old. Minimum supported API version is 1.44, please upgrade your client to a newer version" providerName=docker
+traefik              | 2025-11-12T03:41:58Z ERR Failed to retrieve information of the docker client and server host error="Error response from daemon: client version 1.24 is too old. Minimum supported API version is 1.44, please upgrade your client to a newer version" providerName=docker
+traefik              | 2025-11-12T03:41:58Z ERR Provider error, retrying in 1.284905366s error="Error response from daemon: client version 1.24 is too old. Minimum supported API version is 1.44, please upgrade your client to a newer version" providerName=docker
+traefik              | 2025-11-12T03:41:59Z ERR Failed to retrieve information of the docker client and server host error="Error response from daemon: client version 1.24 is too old. Minimum supported API version is 1.44, please upgrade your client to a newer version" providerName=docker
+traefik              | 2025-11-12T03:41:59Z ERR Provider error, retrying in 4.408965223s error="Error response from daemon: client version 1.24 is too old. Minimum supported API version is 1.44, please upgrade your client to a newer version" providerName=docker
+traefik              | 2025-11-12T03:42:04Z ERR Failed to retrieve information of the docker client and server host error="Error response from daemon: client version 1.24 is too old. Minimum supported API version is 1.44, please upgrade your client to a newer version" providerName=docker
+traefik              | 2025-11-12T03:42:04Z ERR Provider error, retrying in 6.10675696s error="Error response from daemon: client version 1.24 is too old. Minimum supported API version is 1.44, please upgrade your client to a newer version" providerName=docker
+discord-bot-db       | 
+discord-bot-db       | PostgreSQL Database directory appears to contain a database; Skipping initialization
+discord-bot-db       | 
+discord-bot-db       | 2025-11-12 02:48:45.801 UTC [1] LOG:  starting PostgreSQL 16.10 on x86_64-pc-linux-musl, compiled by gcc (Alpine 14.2.0) 14.2.0, 64-bit
+discord-bot-db       | 2025-11-12 02:48:45.801 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+discord-bot-db       | 2025-11-12 02:48:45.801 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+discord-bot-db       | 2025-11-12 02:48:45.804 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+discord-bot-db       | 2025-11-12 02:48:45.809 UTC [30] LOG:  database system was shut down at 2025-11-12 02:47:22 UTC
+discord-bot-db       | 2025-11-12 02:48:45.813 UTC [1] LOG:  database system is ready to accept connections
+discord-bot-db       | 2025-11-12 02:53:45.888 UTC [28] LOG:  checkpoint starting: time
+discord-bot-db       | 2025-11-12 02:53:45.893 UTC [28] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.002 s, sync=0.001 s, total=0.005 s; sync files=2, longest=0.001 s, average=0.001 s; distance=0 kB, estimate=0 kB; lsn=0/195FDA0, redo lsn=0/195FD68
+homelab-dashboard    | /usr/local/lib/python3.11/site-packages/paramiko/transport.py:259: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+homelab-dashboard    |   "class": algorithms.TripleDES,
+homelab-dashboard    | Failed to connect to Docker: Error while fetching server API version: Not supported URL scheme http+docker
+homelab-dashboard    | AI Service not initialized - missing API credentials
+homelab-dashboard    | WARNING:root:Docker not available: Error while fetching server API version: Not supported URL scheme http+docker. Database features will be disabled.
+homelab-dashboard    | Failed to connect to Docker: Error while fetching server API version: Not supported URL scheme http+docker
+homelab-dashboard    | AI Service not initialized - missing API credentials
+homelab-dashboard    | WARNING:root:Docker not available: Error while fetching server API version: Not supported URL scheme http+docker. Database features will be disabled.
+homelab-dashboard    | Failed to connect to Docker: Error while fetching server API version: Not supported URL scheme http+docker
+homelab-dashboard    | AI Service not initialized - missing API credentials
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+plex-server          | GID/UID
+plex-server          | ───────────────────────────────────────
+plex-server          | 
+plex-server          | User UID:    1000
+plex-server          | User GID:    1000
+plex-server          | ───────────────────────────────────────
+plex-server          | Linuxserver.io version: 1.42.2.10156-f737b826c-ls285
+plex-server          | Build-date: 2025-11-10T09:30:56+00:00
+plex-server          | ───────────────────────────────────────
+plex-server          |     
+plex-server          | **** Server already claimed ****
+scarletredjoker-web  | 2025/11/12 02:48:45 [notice] 1#1: start worker process 35
+scarletredjoker-web  | 2025/11/12 02:48:45 [notice] 1#1: start worker process 36
+n8n                  |  - DB_SQLITE_POOL_SIZE -> Running SQLite without a pool of read connections is deprecated. Please set `DB_SQLITE_POOL_SIZE` to a value higher than zero. See: https://docs.n8n.io/hosting/configuration/environment-variables/database/#sqlite
+n8n                  |  - N8N_BLOCK_ENV_ACCESS_IN_NODE -> The default value of N8N_BLOCK_ENV_ACCESS_IN_NODE will be changed from false to true in a future version. If you need to access environment variables from the Code Node or from expressions, please set N8N_BLOCK_ENV_ACCESS_IN_NODE=false. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/security/
+n8n                  |  - N8N_GIT_NODE_DISABLE_BARE_REPOS -> Support for bare repositories in the Git Node will be removed in a future version due to security concerns. If you are not using bare repositories in the Git Node, please set N8N_GIT_NODE_DISABLE_BARE_REPOS=true. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/security/
+plex-server          | **** creating video group videor1aj with id 991 ****
+plex-server          | **** adding /dev/dri/renderD128 to video group videor1aj with id 991 ****
+plex-server          | **** adding /dev/dri/card1 to video group video with id 44 ****
+plex-server          | Docker is used for versioning skip update check
+plex-server          | [custom-init] No custom files found, skipping...
+plex-server          | Starting Plex Media Server. . . (you can ignore the libusb_init error)
+plex-server          | Connection to localhost (::1) 32400 port [tcp/*] succeeded!
+plex-server          | [ls.io-init] done.
+plex-server          | Critical: libusb_init failed
+homelab-dashboard    | WARNING:root:Docker not available: Error while fetching server API version: Not supported URL scheme http+docker. Database features will be disabled.
+vnc-desktop          | 2025-11-12 03:02:39,617 INFO spawned: 'novnc' with pid 41
+vnc-desktop          | 2025-11-12 03:02:39,720 INFO  Listening on http://localhost:6079 (run.py:87)
+vnc-desktop          | 2025-11-12 03:02:40,629 INFO success: nginx entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop          | 2025-11-12 03:02:40,629 INFO success: web entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop          | 2025-11-12 03:02:40,629 INFO success: xvfb entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop          | 2025-11-12 03:02:40,629 INFO success: wm entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop          | 2025-11-12 03:02:40,629 INFO success: lxpanel entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop          | 2025-11-12 03:02:40,629 INFO success: pcmanfm entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop          | 2025-11-12 03:02:40,629 INFO success: x11vnc entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop          | 2025-11-12 03:02:40,629 INFO success: novnc entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+n8n                  | 
+n8n                  | [license SDK] Skipping renewal on init: license cert is not initialized
+n8n                  | Registered runner "JS Task Runner" (sD70doSnwB7Y-UDQLE2s4) 
+n8n                  | Version: 1.118.2
+n8n                  | 
+n8n                  | Editor is now accessible via:
+n8n                  | https://n8n.evindrake.net
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+scarletredjoker-web  | 2025/11/12 02:48:45 [notice] 1#1: start worker process 37
+scarletredjoker-web  | 2025/11/12 02:48:45 [notice] 1#1: start worker process 38
+scarletredjoker-web  | 2025/11/12 02:48:45 [notice] 1#1: start worker process 39
+scarletredjoker-web  | 2025/11/12 02:48:45 [notice] 1#1: start worker process 40
+scarletredjoker-web  | 2025/11/12 02:48:45 [notice] 1#1: start worker process 41
+scarletredjoker-web  | 2025/11/12 02:48:45 [notice] 1#1: start worker process 42
+scarletredjoker-web  | 2025/11/12 02:48:45 [notice] 1#1: start worker process 43
+scarletredjoker-web  | 2025/11/12 02:48:45 [notice] 1#1: start worker process 44
+scarletredjoker-web  | 2025/11/12 02:48:45 [notice] 1#1: start worker process 45
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+discord-bot          | Waiting for PostgreSQL... attempt 8/30
+discord-bot          | Waiting for PostgreSQL... attempt 9/30
+discord-bot          | Waiting for PostgreSQL... attempt 10/30
+discord-bot          | Waiting for PostgreSQL... attempt 11/30
+discord-bot          | Waiting for PostgreSQL... attempt 12/30
+discord-bot          | Waiting for PostgreSQL... attempt 13/30
+discord-bot          | Waiting for PostgreSQL... attempt 14/30
+discord-bot          | Waiting for PostgreSQL... attempt 15/30
+discord-bot          | Waiting for PostgreSQL... attempt 16/30
+discord-bot          | Waiting for PostgreSQL... attempt 17/30
+discord-bot          | Waiting for PostgreSQL... attempt 18/30
+discord-bot          | Waiting for PostgreSQL... attempt 19/30
+discord-bot          | Waiting for PostgreSQL... attempt 20/30
+discord-bot          | Waiting for PostgreSQL... attempt 21/30
+discord-bot          | Waiting for PostgreSQL... attempt 22/30
+discord-bot          | Waiting for PostgreSQL... attempt 23/30
+discord-bot          | Waiting for PostgreSQL... attempt 24/30
+discord-bot          | Waiting for PostgreSQL... attempt 25/30
+discord-bot          | Waiting for PostgreSQL... attempt 26/30
+discord-bot          | Waiting for PostgreSQL... attempt 27/30
+discord-bot          | Waiting for PostgreSQL... attempt 28/30
+discord-bot          | Waiting for PostgreSQL... attempt 29/30
+discord-bot          | Failed to connect to PostgreSQL after 30 attempts
+discord-bot          | Starting Discord Bot deployment...
+discord-bot          | Waiting for PostgreSQL to be ready...
+discord-bot          | Checking PostgreSQL connection at postgres:5432...
+discord-bot          | Waiting for PostgreSQL... attempt 1/30
+discord-bot          | Waiting for PostgreSQL... attempt 2/30
+discord-bot          | Waiting for PostgreSQL... attempt 3/30
+discord-bot          | Waiting for PostgreSQL... attempt 4/30
+discord-bot          | Waiting for PostgreSQL... attempt 5/30
+discord-bot          | Waiting for PostgreSQL... attempt 6/30
+discord-bot          | Waiting for PostgreSQL... attempt 7/30
+traefik              | 2025-11-12T03:42:10Z ERR Failed to retrieve information of the docker client and server host error="Error response from daemon: client version 1.24 is too old. Minimum supported API version is 1.44, please upgrade your client to a newer version" providerName=docker
+traefik              | 2025-11-12T03:42:10Z ERR Provider error, retrying in 6.625185447s error="Error response from daemon: client version 1.24 is too old. Minimum supported API version is 1.44, please upgrade your client to a newer version" providerName=docker
+discord-bot          | Waiting for PostgreSQL... attempt 8/30

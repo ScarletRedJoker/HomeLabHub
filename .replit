@@ -1,0 +1,44 @@
+modules = ["python-3.11", "nodejs-20"]
+[agent]
+expertMode = true
+integrations = ["python_openai_ai_integrations:1.0.0", "spotify:1.0.0"]
+
+[nix]
+channel = "stable-25_05"
+packages = ["cacert", "unzip", "xcodebuild", "zlib"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "static-site-preview"
+
+[[workflows.workflow]]
+name = "static-site-preview"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd services/static-site && python3 -m http.server 5000"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 39801
+externalPort = 3002
+
+[[ports]]
+localPort = 46877
+externalPort = 3000

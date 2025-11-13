@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}File Manager - Homelab{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-folder"></i> Static Site File Manager</h2>
+        <p class="text-muted">Manage files for scarletredjoker.com</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i>
+            <strong>Note:</strong> This file manager is designed for managing static website files.
+            For full functionality, ensure the path <code>{{ site_path }}</code> is accessible on your server.
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5>File Browser</h5>
+            </div>
+            <div class="card-body">
+                <p>File browsing functionality requires server-side access to <code>{{ site_path }}</code></p>
+                <p class="text-muted">
+                    You can use the Scripts page to run commands like:
+                </p>
+                <ul>
+                    <li><code>ls -la {{ site_path }}</code> - List files</li>
+                    <li><code>cat {{ site_path }}/index.html</code> - View file contents</li>
+                    <li><code>nano {{ site_path }}/index.html</code> - Edit files (via SSH)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <a href="/scripts" class="btn btn-primary w-100 mb-2">
+                    <i class="bi bi-code-square"></i> Go to Scripts
+                </a>
+                <button class="btn btn-outline-secondary w-100" onclick="alert('Connect via SSH or SFTP to: {{ site_path }}')">
+                    <i class="bi bi-info-circle"></i> Connection Info
+                </button>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5>Recommendations</h5>
+            </div>
+            <div class="card-body">
+                <p class="small">For advanced file management:</p>
+                <ul class="small">
+                    <li>Use SFTP clients (FileZilla, WinSCP)</li>
+                    <li>Connect via SSH with: <code>ssh {{ site_path }}</code></li>
+                    <li>Use Git for version control</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,45 @@
+🔧 DISCORD OAUTH QUICK FIX GUIDE
+================================
+
+PROBLEM: "Invalid OAuth2 redirect_uri" error when logging into Discord bot
+
+FIXED IN CODE: ✅
+- Updated callback URL from /callback to /auth/discord/callback
+- Added proper proxy headers to Caddyfile
+
+YOU MUST DO THIS:
+=================
+
+1. GO TO: https://discord.com/developers/applications
+2. SELECT: Your Discord Ticket Bot application
+3. CLICK: OAuth2 (left sidebar)
+4. SCROLL TO: Redirects section
+5. ADD THIS EXACT URL:
+   
+   https://bot.rig-city.com/auth/discord/callback
+   
+6. CLICK: "Save Changes"
+
+THEN DEPLOY:
+============
+
+On your Ubuntu server:
+
+cd /home/evin/contain/HomeLabHub
+git pull
+docker compose -f docker-compose.unified.yml down
+docker compose -f docker-compose.unified.yml up -d
+
+TEST:
+=====
+
+Visit: https://bot.rig-city.com
+Click: "Login with Discord"
+Result: Should work! ✅
+
+IMPORTANT: The redirect URI must be EXACTLY:
+https://bot.rig-city.com/auth/discord/callback
+
+(No trailing slash, correct path /auth/discord/callback)
+
+See docs/DISCORD_OAUTH_FIX.md for detailed troubleshooting.

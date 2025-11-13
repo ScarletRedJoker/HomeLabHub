@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Remote Desktop - Homelab{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-display"></i> Remote Desktop Access</h2>
+        <p class="text-muted">Connect to your Ubuntu desktop remotely</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle"></i>
+            <strong>Setup Required:</strong> Remote desktop access requires noVNC or Apache Guacamole to be installed on your server.
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5>Remote Desktop Connection</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">noVNC URL</label>
+                    <input type="text" class="form-control" id="novncUrl" value="{{ novnc_url }}">
+                </div>
+                <button class="btn btn-primary" onclick="connectNoVNC()">
+                    <i class="bi bi-box-arrow-up-right"></i> Open Remote Desktop
+                </button>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>Embedded Viewer</h5>
+            </div>
+            <div class="card-body">
+                <div id="desktopFrame" style="width: 100%; height: 600px; border: 1px solid #ddd;">
+                    <p class="text-center p-5">Click "Open Remote Desktop" to connect</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Setup Instructions</h5>
+            </div>
+            <div class="card-body">
+                <h6>Option 1: noVNC (Recommended)</h6>
+                <p class="small">Install noVNC on your Ubuntu server:</p>
+                <pre class="small bg-dark text-white p-2">sudo apt update
+sudo apt install novnc
+sudo apt install x11vnc
+
+# Start VNC server
+x11vnc -display :0 -forever -shared
+
+# Start noVNC (new terminal)
+/usr/share/novnc/utils/novnc_proxy \
+  --vnc localhost:5900</pre>
+
+                <hr>
+
+                <h6>Option 2: Apache Guacamole</h6>
+                <p class="small">Or use Guacamole with Docker:</p>
+                <pre class="small bg-dark text-white p-2">docker run -d \
+  --name guacamole \
+  -p 8080:8080 \
+  guacamole/guacamole</pre>
+
+                <hr>
+
+                <h6>Alternative: Twingate</h6>
+                <p class="small">You already have Twingate configured. You can use it to securely access your desktop via RDP or VNC clients.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/remote_desktop.js') }}"></script>
+{% endblock %}

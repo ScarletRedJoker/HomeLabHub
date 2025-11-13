@@ -1,0 +1,53 @@
+evin@host:~/contain/HomeLabHub$ cd ~/contain/HomeLabHub
+git pull
+
+# Rebuild Discord bot
+docker-compose -f docker-compose.unified.yml up -d --build discord-bot
+
+# Check the NEW debug logs
+docker logs discord-bot 2>&1 | grep "Commands loaded\|Total commands\|Registered"
+You are not currently on a branch.
+Please specify which branch you want to merge with.
+See git-pull(1) for details.
+
+    git pull <remote> <branch>
+
+[+] Building 0.4s (24/24) FINISHED                                                                                  
+ => [internal] load local bake definitions                                                                     0.0s
+ => => reading from stdin 579B                                                                                 0.0s
+ => [internal] load build definition from Dockerfile                                                           0.0s
+ => => transferring dockerfile: 2.83kB                                                                         0.0s
+ => [internal] load metadata for docker.io/library/node:20-slim                                                0.4s
+ => [internal] load .dockerignore                                                                              0.0s
+ => => transferring context: 2B                                                                                0.0s
+ => [internal] load build context                                                                              0.0s
+ => => transferring context: 9.09kB                                                                            0.0s
+ => [builder 1/7] FROM docker.io/library/node:20-slim@sha256:12541e65a3777c6035245518eb43006ed08ca8c684e68cd0  0.0s
+ => CACHED [stage-1  2/11] RUN apt-get update && apt-get install -y     ffmpeg     python3     python3-pip     0.0s
+ => CACHED [stage-1  3/11] WORKDIR /app                                                                        0.0s
+ => CACHED [stage-1  4/11] COPY package*.json ./                                                               0.0s
+ => CACHED [stage-1  5/11] RUN npm ci --omit=dev && npm install drizzle-kit --save-dev                         0.0s
+ => CACHED [builder 2/7] RUN apt-get update && apt-get install -y     python3     make     g++     libcairo2-  0.0s
+ => CACHED [builder 3/7] WORKDIR /app                                                                          0.0s
+ => CACHED [builder 4/7] COPY package*.json ./                                                                 0.0s
+ => CACHED [builder 5/7] RUN npm ci --include=dev                                                              0.0s
+ => CACHED [builder 6/7] COPY . .                                                                              0.0s
+ => CACHED [builder 7/7] RUN npm run build                                                                     0.0s
+ => CACHED [stage-1  6/11] COPY --from=builder /app/dist ./dist                                                0.0s
+ => CACHED [stage-1  7/11] COPY --from=builder /app/drizzle.config.ts ./                                       0.0s
+ => CACHED [stage-1  8/11] COPY --from=builder /app/shared ./shared                                            0.0s
+ => CACHED [stage-1  9/11] COPY docker-entrypoint.sh /usr/local/bin/                                           0.0s
+ => CACHED [stage-1 10/11] RUN chmod +x /usr/local/bin/docker-entrypoint.sh                                    0.0s
+ => CACHED [stage-1 11/11] RUN mkdir -p attached_assets logs                                                   0.0s
+ => exporting to image                                                                                         0.0s
+ => => exporting layers                                                                                        0.0s
+ => => writing image sha256:b6a793ec4ed5a50cf913716c55212539299ec16ff849bccbe67b23dded73a014                   0.0s
+ => => naming to docker.io/library/homelabhub-discord-bot                                                      0.0s
+ => resolving provenance for metadata file                                                                     0.0s
+[+] Running 3/3
+ ✔ homelabhub-discord-bot    Built                                                                             0.0s 
+ ✔ Container discord-bot-db  Healthy                                                                           0.5s 
+ ✔ Container discord-bot     Running                                                                           0.0s 
+[Discord] Registered developer commands: dev-dm, dev-announce, dev-stats, dev-refresh, dev-ticket
+[Discord] Registered developer commands: dev-dm, dev-announce, dev-stats, dev-refresh, dev-ticket
+evin@host:~/contain/HomeLabHub$ 

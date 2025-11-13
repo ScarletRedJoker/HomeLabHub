@@ -1,0 +1,54 @@
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/.LocalAdminToken
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Cache/CloudAccessV2.dat
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Cache/CloudAccountV2.dat
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Crash Reports/.RateLimit.json
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/PMS Plugin Logs/com.plexapp.agents.imdb.log
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/PMS Plugin Logs/com.plexapp.agents.imdb.log.1
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/PMS Plugin Logs/com.plexapp.agents.imdb.log.2
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/PMS Plugin Logs/com.plexapp.agents.imdb.log.3
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/PMS Plugin Logs/com.plexapp.agents.imdb.log.4
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/PMS Plugin Logs/com.plexapp.agents.imdb.log.5
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/PMS Plugin Logs/com.plexapp.system.log
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/PMS Plugin Logs/com.plexapp.system.log.1
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/PMS Plugin Logs/com.plexapp.system.log.2
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/PMS Plugin Logs/com.plexapp.system.log.3
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/PMS Plugin Logs/com.plexapp.system.log.4
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/PMS Plugin Logs/com.plexapp.system.log.5
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/Plex Crash Uploader.1.log
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/Plex Crash Uploader.2.log
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/Plex Crash Uploader.3.log
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/Plex Crash Uploader.4.log
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/Plex Crash Uploader.5.log
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/Plex Crash Uploader.log
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/Plex Media Server.1.log
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/Plex Media Server.2.log
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/Plex Media Server.3.log
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/Plex Media Server.4.log
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/Plex Media Server.5.log
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/Plex Media Server.log
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/Plex Tuner Service.1.log
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/Plex Tuner Service.2.log
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/Plex Tuner Service.3.log
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/Plex Tuner Service.4.log
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/Plex Tuner Service.5.log
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Logs/Plex Tuner Service.log
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Plug-in Support/Data/com.plexapp.system/Dict
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Plug-in Support/Data/com.plexapp.system/HTTPCookies
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Plug-in Support/Databases/com.plexapp.plugins.library.blobs.db
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Plug-in Support/Databases/com.plexapp.plugins.library.blobs.db-shm
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Plug-in Support/Databases/com.plexapp.plugins.library.blobs.db-wal
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Plug-in Support/Databases/com.plexapp.plugins.library.db
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Plug-in Support/Databases/com.plexapp.plugins.library.db-shm
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Plug-in Support/Databases/com.plexapp.plugins.library.db-wal
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/Preferences.xml
+	modified:   services/plex/config/Library/Application Support/Plex Media Server/plexmediaserver.pid
+	modified:   services/stream-bot/Dockerfile
+	modified:   services/stream-bot/esbuild.config.mjs
+
+no changes added to commit (use "git add" and/or "git commit -a")

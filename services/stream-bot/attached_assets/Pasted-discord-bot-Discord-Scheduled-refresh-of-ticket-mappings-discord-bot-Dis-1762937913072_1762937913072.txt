@@ -1,0 +1,29 @@
+discord-bot          | [Discord] Scheduled refresh of ticket mappings...
+discord-bot          | [Discord] Loading ticket-channel mappings from database...
+discord-bot-db       | 2025-11-12 08:57:53.357 UTC [3271] FATAL:  password authentication failed for user "ticketbot"
+discord-bot-db       | 2025-11-12 08:57:53.357 UTC [3271] DETAIL:  Connection matched file "/var/lib/postgresql/data/pg_hba.conf" line 128: "host all all all scram-sha-256"
+discord-bot          | [Discord] ⚠️  Loading ticket mappings failed (attempt 1/5), retrying in 1000ms...
+discord-bot-db       | 2025-11-12 08:57:54.362 UTC [3272] FATAL:  password authentication failed for user "ticketbot"
+discord-bot-db       | 2025-11-12 08:57:54.362 UTC [3272] DETAIL:  Connection matched file "/var/lib/postgresql/data/pg_hba.conf" line 128: "host all all all scram-sha-256"
+discord-bot          | [Discord] ⚠️  Loading ticket mappings failed (attempt 2/5), retrying in 2000ms...
+discord-bot-db       | 2025-11-12 08:57:56.368 UTC [3273] FATAL:  password authentication failed for user "ticketbot"
+discord-bot-db       | 2025-11-12 08:57:56.368 UTC [3273] DETAIL:  Connection matched file "/var/lib/postgresql/data/pg_hba.conf" line 128: "host all all all scram-sha-256"
+discord-bot          | [Discord] ⚠️  Loading ticket mappings failed (attempt 3/5), retrying in 4000ms...
+stream-bot           | node:internal/modules/esm/resolve:873
+stream-bot           |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+stream-bot           |         ^
+stream-bot           | 
+stream-bot           | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+stream-bot           |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+stream-bot           |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+stream-bot           |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+stream-bot           |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+stream-bot           |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+stream-bot           |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+stream-bot           |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+stream-bot           |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+stream-bot           |   code: 'ERR_MODULE_NOT_FOUND'
+stream-bot           | }
+stream-bot           | 
+stream-bot           | Node.js v20.19.5
+stream-bot exited with code 1 (restarting)

@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+
+{% block title %}Game Streaming - Homelab{% endblock %}
+
+{% block extra_css %}
+<style>
+    .streaming-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        border-left: 4px solid #28a745;
+    }
+    
+    .streaming-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .platform-badge {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.8rem;
+        margin: 0.2rem;
+        display: inline-block;
+    }
+    
+    .connection-code {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 1rem;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9rem;
+    }
+    
+    .latency-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    
+    .latency-good { background-color: #28a745; }
+    .latency-fair { background-color: #ffc107; }
+    .latency-poor { background-color: #dc3545; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-controller"></i> Game Streaming</h1>
+        <a href="/static/MOONLIGHT_SETUP.md" target="_blank" class="btn btn-outline-primary">
+            <i class="bi bi-book"></i> Setup Guide
+        </a>
+    </div>
+
+    <!-- Windows 11 KVM Card -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card streaming-card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h3><i class="bi bi-windows"></i> Windows 11 Gaming VM</h3>
+                            <p class="text-muted">RTX 3060 GPU Passthrough</p>
+                            
+                            <div class="mb-3">
+                                <h5>Status</h5>
+                                <div id="sunshine-status" class="mb-2">
+                                    <span class="badge bg-info">Ready for Setup</span>
+                                </div>
+                                <small class="text-muted">Sunshine Server @ <code>{{ windows_kvm_ip }}</code></small>
+                            </div>
+
+                            <div class="alert alert-info mb-3">
+                                <i class="bi bi-info-circle"></i> 
+                                <strong>First Time Setup:</strong> Install Sunshine on your Windows KVM, then connect with Moonlight client.
+                                See the setup guide for step-by-step instructions.
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h5>Quick Connect</h5>
+                            
+                            <div class="mb-3">
+                                <label class="form-label"><strong>Connection Address (Moonlight):</strong></label>
+                                <div class="connection-code">
+                                    <span id="connection-address">{{ windows_kvm_ip }}</span>
+                                    <button class="btn btn-sm btn-outline-secondary float-end" onclick="copyAddress()">
+                                        <i class="bi bi-clipboard"></i> Copy
+                                    </button>
+                                </div>
+                                <small class="text-muted">Recommended: Connect via Twingate VPN for best latency</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label"><strong>Sunshine Web UI:</strong></label>
+                                <div class="connection-code">
+                                    <a href="http://{{ windows_kvm_ip }}:47990" target="_blank" id="sunshine-link">
+                                        http://{{ windows_kvm_ip }}:47990
+                                    </a>
+                                    <small class="text-muted d-block mt-1">Configure games and streaming settings</small>
+                                </div>
+                            </div>
+
+                            <div>
+                                <a href="#" class="btn btn-success" onclick="launchMoonlight()">
+                                    <i class="bi bi-play-circle"></i> Launch Streaming
+                                </a>
+                                <a href="https://moonlight-stream.org/" target="_blank" class="btn btn-outline-primary">
+                                    <i class="bi bi-download"></i> Get Moonlight
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Moonlight Client Downloads -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4><i class="bi bi-download"></i> Moonlight Clients</h4>
+                </div>
+                <div class="card-body">
+                    <p>Download Moonlight for your device to start streaming:</p>
+                    
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <div class="text-center p-3 border rounded">
+                                <i class="bi bi-windows" style="font-size: 3rem; color: #0078d4;"></i>
+                                <h6 class="mt-2">Windows</h6>
+                                <a href="https://github.com/moonlight-stream/moonlight-qt/releases" 
+                                   target="_blank" class="btn btn-sm btn-primary">Download</a>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <div class="text-center p-3 border rounded">
+                                <i class="bi bi-apple" style="font-size: 3rem; color: #000;"></i>
+                                <h6 class="mt-2">macOS</h6>
+                                <a href="https://github.com/moonlight-stream/moonlight-qt/releases" 
+                                   target="_blank" class="btn btn-sm btn-primary">Download</a>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <div class="text-center p-3 border rounded">
+                                <i class="bi bi-ubuntu" style="font-size: 3rem; color: #e95420;"></i>
+                                <h6 class="mt-2">Linux</h6>
+                                <a href="https://github.com/moonlight-stream/moonlight-qt/releases" 
+                                   target="_blank" class="btn btn-sm btn-primary">Download</a>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <div class="text-center p-3 border rounded">
+                                <i class="bi bi-phone" style="font-size: 3rem; color: #3ddc84;"></i>
+                                <h6 class="mt-2">Android/iOS</h6>
+                                <a href="https://moonlight-stream.org/" 
+                                   target="_blank" class="btn btn-sm btn-primary">Get App</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </card>
+        </div>
+    </div>
+
+    <!-- Setup Instructions -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-1-circle"></i> First Time Setup</h5>
+                </div>
+                <div class="card-body">
+                    <ol>
+                        <li class="mb-2">
+                            <strong>Install Sunshine</strong> on Windows 11 KVM
+                            <br><small class="text-muted">Download from GitHub, install, configure GPU encoding</small>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Download Moonlight</strong> client for your device
+                            <br><small class="text-muted">Available for Windows, Mac, Linux, Android, iOS</small>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Add PC</strong> in Moonlight using the connection address above
+                            <br><small class="text-muted">Enter PIN shown in Moonlight into Sunshine web UI</small>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Start Streaming!</strong> Select game or desktop
+                            <br><small class="text-muted">Enjoy 3D accelerated gaming from anywhere</small>
+                        </li>
+                    </ol>
+                    
+                    <a href="/static/MOONLIGHT_SETUP.md" target="_blank" class="btn btn-primary w-100">
+                        <i class="bi bi-book"></i> View Full Setup Guide
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-gear"></i> Recommended Settings</h5>
+                </div>
+                <div class="card-body">
+                    <h6>For Best Gaming Performance:</h6>
+                    <table class="table table-sm">
+                        <tr>
+                            <th>Encoder</th>
+                            <td><code>NVENC (RTX 3060)</code></td>
+                        </tr>
+                        <tr>
+                            <th>Resolution</th>
+                            <td><code>1920x1080</code></td>
+                        </tr>
+                        <tr>
+                            <th>FPS</th>
+                            <td><code>60</code> (or 120 for high refresh)</td>
+                        </tr>
+                        <tr>
+                            <th>Bitrate</th>
+                            <td><code>20 Mbps</code> (LAN) / <code>10 Mbps</code> (Internet)</td>
+                        </tr>
+                        <tr>
+                            <th>Connection</th>
+                            <td><code>Twingate VPN</code> or <code>LAN</code></td>
+                        </tr>
+                    </table>
+
+                    <div class="alert alert-info mt-3">
+                        <i class="bi bi-info-circle"></i> <strong>Tip:</strong> Use Twingate VPN for best latency and security. Direct internet streaming adds ~20-50ms latency.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alternative: RDP Access -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-display"></i> Alternative: RDP (Non-Gaming)</h5>
+                </div>
+                <div class="card-body">
+                    <p>For simple remote desktop access (not gaming), use standard RDP:</p>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Windows RDP Client</h6>
+                            <div class="connection-code mb-3">
+                                <strong>Address:</strong> <span id="rdp-address">{{ windows_kvm_ip }}:3389</span>
+                            </div>
+                            <small class="text-muted">Built into Windows - search "Remote Desktop Connection"</small>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6>Web-Based (Guacamole)</h6>
+                            <p class="text-muted">Optional: Add Apache Guacamole for browser-based RDP</p>
+                            <a href="MOONLIGHT_SETUP.md#alternative-rdp-for-non-gaming-use" 
+                               target="_blank" class="btn btn-sm btn-outline-secondary">
+                                Setup Instructions
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function copyAddress() {
+        const address = document.getElementById('connection-address').textContent;
+        navigator.clipboard.writeText(address);
+        
+        // Visual feedback
+        const btn = event.target.closest('button');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check"></i> Copied!';
+        btn.classList.add('btn-success');
+        btn.classList.remove('btn-outline-secondary');
+        
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-secondary');
+        }, 2000);
+    }
+    
+    function launchMoonlight() {
+        const address = '{{ windows_kvm_ip }}';
+        alert(`To connect:\n\n1. Download and install Moonlight for your device\n2. Launch Moonlight and click "Add PC"\n3. Enter: ${address}\n4. Enter the PIN shown in Moonlight into Sunshine Web UI\n5. Start streaming!\n\nSee the Setup Guide for detailed instructions.`);
+    }
+</script>
+{% endblock %}

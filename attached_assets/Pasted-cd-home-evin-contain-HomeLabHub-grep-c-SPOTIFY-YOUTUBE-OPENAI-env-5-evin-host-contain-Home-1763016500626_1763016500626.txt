@@ -1,0 +1,98 @@
+cd /home/evin/contain/HomeLabHub/
+grep -c "SPOTIFY\|YOUTUBE\|OPENAI" .env
+5
+evin@host:~/contain/HomeLabHub$ cd /home/evin/contain/HomeLabHub/
+
+# Check stream bot startup logs
+echo "=== Stream Bot Startup ==="
+docker logs stream-bot 2>&1 | head -50
+
+echo ""
+echo "=== Caddy Configuration for scarletredjoker ==="
+docker exec caddy cat /etc/caddy/Caddyfile | grep -A 10 "scarletredjoker"
+
+echo ""
+echo "=== Static Site Container ==="
+docker logs scarletredjoker-web --tail 20
+=== Stream Bot Startup ===
+[BotManager] Bootstrapping...
+
+file:///app/dist/index.js:1139440
+      throw Error.captureStackTrace(
+                  ^
+ErrorEvent {
+  [Symbol(kTarget)]: _WebSocket {
+    _events: [Object: null prototype] {
+      error: [Function: onError] {
+        [Symbol(kIsForOnEventAttribute)]: false,
+        [Symbol(kListener)]: [Function (anonymous)]
+      },
+      message: [Function: onMessage] {
+        [Symbol(kIsForOnEventAttribute)]: false,
+        [Symbol(kListener)]: [Function (anonymous)]
+      },
+      close: [Function: onClose] {
+        [Symbol(kIsForOnEventAttribute)]: false,
+        [Symbol(kListener)]: [Function (anonymous)]
+      },
+      open: [Function: onOpen] {
+        [Symbol(kIsForOnEventAttribute)]: false,
+        [Symbol(kListener)]: [Function: handleWebSocketOpen]
+      }
+    },
+    _eventsCount: 4,
+    _maxListeners: undefined,
+    _binaryType: 'arraybuffer',
+    _closeCode: 1006,
+    _closeFrameReceived: false,
+    _closeFrameSent: false,
+    _closeMessage: Buffer(0) [Uint8Array] [],
+    _closeTimer: null,
+    _errorEmitted: true,
+    _extensions: {},
+    _paused: false,
+    _protocol: '',
+    _readyState: 3,
+    _receiver: null,
+    _sender: null,
+    _socket: null,
+    _bufferedAmount: 0,
+    _isServer: false,
+    _redirects: 0,
+    _autoPong: true,
+    _url: 'wss://discord-bot-db/v2',
+    _req: null,
+    [Symbol(shapeMode)]: false,
+    [Symbol(kCapture)]: false
+  },
+
+=== Caddy Configuration for scarletredjoker ===
+scarletredjoker.com {
+    reverse_proxy scarletredjoker-web:80
+}
+
+www.scarletredjoker.com {
+    redir https://scarletredjoker.com{uri} permanent
+}
+
+=== Static Site Container ===
+2025/11/13 06:03:38 [notice] 1#1: start worker process 24
+2025/11/13 06:03:38 [notice] 1#1: start worker process 25
+2025/11/13 06:03:38 [notice] 1#1: start worker process 26
+2025/11/13 06:03:38 [notice] 1#1: start worker process 27
+2025/11/13 06:03:38 [notice] 1#1: start worker process 28
+2025/11/13 06:03:38 [notice] 1#1: start worker process 29
+2025/11/13 06:03:38 [notice] 1#1: start worker process 30
+2025/11/13 06:03:38 [notice] 1#1: start worker process 31
+2025/11/13 06:03:38 [notice] 1#1: start worker process 32
+2025/11/13 06:03:38 [notice] 1#1: start worker process 33
+2025/11/13 06:03:38 [notice] 1#1: start worker process 34
+2025/11/13 06:03:38 [notice] 1#1: start worker process 35
+2025/11/13 06:03:38 [notice] 1#1: start worker process 36
+2025/11/13 06:03:38 [notice] 1#1: start worker process 37
+2025/11/13 06:17:42 [error] 22#22: *1 directory index of "/usr/share/nginx/html/" is forbidden, client: 172.23.0.4, server: localhost, request: "GET / HTTP/1.1", host: "scarletredjoker.com"
+172.23.0.4 - - [13/Nov/2025:06:17:42 +0000] "GET / HTTP/1.1" 403 153 "-" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+2025/11/13 06:31:54 [error] 23#23: *2 directory index of "/usr/share/nginx/html/" is forbidden, client: 172.23.0.4, server: localhost, request: "GET / HTTP/1.1", host: "scarletredjoker.com"
+172.23.0.4 - - [13/Nov/2025:06:31:54 +0000] "GET / HTTP/1.1" 403 153 "-" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+2025/11/13 06:46:48 [error] 24#24: *3 directory index of "/usr/share/nginx/html/" is forbidden, client: 172.23.0.4, server: localhost, request: "GET / HTTP/1.1", host: "scarletredjoker.com"
+172.23.0.4 - - [13/Nov/2025:06:46:48 +0000] "GET / HTTP/1.1" 403 153 "-" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"

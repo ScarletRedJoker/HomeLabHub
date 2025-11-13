@@ -1,0 +1,635 @@
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║        🏠 HOMELAB DEPLOYMENT MANAGER 🚀                    ║
+║                                                                ║
+║        Unified Control Panel for All Services              ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+
+━━━ Container Status ━━━
+  ⚠ Partial deployment (9/8 services running)
+
+━━━ What would you like to do? ━━━
+
+  Deployment:
+    1) 🚀 Full Deploy (build and start all services)
+    2) 🔄 Quick Restart (restart without rebuilding)
+    3) ⚡ Rebuild & Deploy (force rebuild + restart)
+
+  Service Control:
+    4) ▶️  Start All Services
+    5) ⏸️  Stop All Services
+    6) 🔄 Restart Specific Service
+
+  Database:
+    7) 🗄️  Ensure Databases Exist (fix DB issues)
+    8) 📊 Check Database Status
+
+  Configuration:
+    9) ⚙️  Generate/Edit .env File
+    10) 📋 View Current Configuration
+
+  Troubleshooting:
+    11) 🔍 View Service Logs
+    12) 🏥 Health Check (all services)
+    13) 🔧 Full Troubleshoot Mode
+
+  Updates:
+    16) 📦 Update Service (pull latest image)
+
+  Information:
+    14) 📊 Show Container Details
+    15) 🌐 Show Service URLs
+
+    0) 🚪 Exit
+
+Enter your choice: 11
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  🔍 SERVICE LOGS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Available services:
+  1) homelab-dashboard
+  2) discord-bot
+  3) stream-bot
+  4) caddy
+  5) discord-bot-db
+  6) All services
+
+Enter service number: 6
+discord-bot  | Starting Discord Bot deployment...
+discord-bot  | Waiting for PostgreSQL to be ready...
+discord-bot  | Extracted PostgreSQL host from DATABASE_URL: discord-bot-db
+discord-bot  | Checking PostgreSQL connection at discord-bot-db:5432...
+discord-bot  | PostgreSQL port is accessible!
+discord-bot  | PostgreSQL is ready!
+discord-bot  | Initializing database schema...
+discord-bot  | No config path provided, using default 'drizzle.config.ts'
+discord-bot  | Reading config file '/app/drizzle.config.ts'
+discord-bot  | Using 'pg' driver for database querying
+discord-bot  | [⣷] Pulling schema from database...
+[⣯] Pulling schema from database...
+[⣟] Pulling schema from database...
+[⡿] Pulling schema from database...
+[✓] Pulling schema from database...
+discord-bot  | [✓] Changes applied
+discord-bot  | Database initialization complete!
+discord-bot  | Starting application...
+discord-bot  | 
+discord-bot  | > rest-express@1.0.0 start
+discord-bot  | > NODE_ENV=production node dist/index.js
+discord-bot     | 
+discord-bot     | [Database] Detected local/Docker PostgreSQL, using standard pg driver
+discord-bot-db  | 
+discord-bot-db  | PostgreSQL Database directory appears to contain a database; Skipping initialization
+discord-bot-db  | 
+discord-bot-db  | 2025-11-13 11:12:06.803 UTC [1] LOG:  starting PostgreSQL 16.10 on x86_64-pc-linux-musl, compiled by gcc (Alpine 14.2.0) 14.2.0, 64-bit
+discord-bot-db  | 2025-11-13 11:12:06.803 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+discord-bot-db  | 2025-11-13 11:12:06.803 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+discord-bot-db  | 2025-11-13 11:12:06.804 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+discord-bot-db  | 2025-11-13 11:12:06.807 UTC [29] LOG:  database system was shut down at 2025-11-13 11:09:36 UTC
+discord-bot-db  | 2025-11-13 11:12:06.814 UTC [1] LOG:  database system is ready to accept connections
+discord-bot-db  | 2025-11-13 11:12:12.329 UTC [40] LOG:  incomplete startup packet
+discord-bot-db  | 2025-11-13 11:17:06.907 UTC [27] LOG:  checkpoint starting: time
+discord-bot-db  | 2025-11-13 11:17:13.830 UTC [27] LOG:  checkpoint complete: wrote 72 buffers (0.4%); 0 WAL file(s) added, 0 removed, 0 recycled; write=6.913 s, sync=0.006 s, total=6.923 s; sync files=56, longest=0.001 s, average=0.001 s; distance=353 kB, estimate=353 kB; lsn=0/2076440, redo lsn=0/2076408
+discord-bot-db  | 2025-11-13 11:19:06.566 UTC [363] LOG:  incomplete startup packet
+discord-bot-db  | 2025-11-13 11:22:06.930 UTC [27] LOG:  checkpoint starting: time
+discord-bot-db  | 2025-11-13 11:22:10.140 UTC [27] LOG:  checkpoint complete: wrote 33 buffers (0.2%); 0 WAL file(s) added, 0 removed, 0 recycled; write=3.206 s, sync=0.003 s, total=3.211 s; sync files=20, longest=0.001 s, average=0.001 s; distance=105 kB, estimate=328 kB; lsn=0/2090880, redo lsn=0/2090848
+discord-bot-db  | 2025-11-13 11:24:30.912 UTC [613] LOG:  incomplete startup packet
+discord-bot-db  | 2025-11-13 11:27:06.240 UTC [27] LOG:  checkpoint starting: time
+discord-bot-db  | 2025-11-13 11:27:07.749 UTC [27] LOG:  checkpoint complete: wrote 16 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=1.504 s, sync=0.002 s, total=1.510 s; sync files=14, longest=0.001 s, average=0.001 s; distance=66 kB, estimate=302 kB; lsn=0/20A1318, redo lsn=0/20A12E0
+discord-bot-db  | 2025-11-13 11:32:40.587 UTC [997] LOG:  incomplete startup packet
+discord-bot-db  | 2025-11-13 11:37:06.939 UTC [27] LOG:  checkpoint starting: time
+discord-bot-db  | 2025-11-13 11:37:08.948 UTC [27] LOG:  checkpoint complete: wrote 21 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=2.004 s, sync=0.003 s, total=2.010 s; sync files=17, longest=0.001 s, average=0.001 s; distance=104 kB, estimate=282 kB; lsn=0/20BB460, redo lsn=0/20BB428
+discord-bot     | [Discord] Registered developer commands: dev-dm, dev-announce, dev-stats, dev-refresh, dev-ticket
+discord-bot     | [Database] Creating read-only PostgreSQL connection for developer queries
+discord-bot     | Setting up Discord authentication strategy
+discord-bot     | Discord OAuth callback URL: https://bot.rig-city.com/auth/discord/callback
+discord-bot     | Attempting to start Discord bot...
+discord-bot     | Successfully registered application commands globally
+discord-bot     | 11:24:38 AM [express] serving on port 5000
+discord-bot     | Discord bot ready! Logged in as Rig City Ticket Tool#8919
+discord-bot     | 
+discord-bot     | === Bot Server Status ===
+discord-bot     | Connected to 2 server(s):
+discord-bot     |   - Joker's Evil Headquarters (ID: 623281252451221515) | 14 members
+discord-bot     |   - Rig City (ID: 692850100795473920) | 445 members
+discord-bot     | ========================
+discord-bot     | 
+discord-bot     | [Discord] Loading ticket-channel mappings from database...
+discord-bot     | [Discord] ✅ Successfully loaded 0 ticket-channel mappings
+discord-bot     | [Discord] Scheduled ticket mapping refresh every 5 minutes
+discord-bot     | [Bot] Starting ticket system safeguard background jobs...
+discord-bot     | [Safeguards] Starting background jobs...
+discord-bot     | [Safeguards] Background jobs started successfully.
+discord-bot     | [Safeguards] - Channel reconciliation: every 15 minutes
+discord-bot     | [Safeguards] - Auto-close check: every 60 minutes
+discord-bot     | [Stream Notifications] Initializing stream tracking...
+discord-bot     | [Stream Notifications] Initialized tracking for 0 server(s)
+discord-bot     | Discord OAuth redirect initiated with callback: https://bot.rig-city.com/auth/discord/callback
+discord-bot     | [Safeguards] Starting ticket channel reconciliation...
+discord-bot     | [Safeguards] Checking 0 open tickets with Discord channels
+discord-bot     | [Safeguards] Reconciliation complete. Marked 0 tickets as orphaned.
+discord-bot     | [Safeguards] Starting auto-close check for inactive tickets...
+discord-bot     | [Safeguards] Auto-close check complete.
+discord-bot     | [Discord] Scheduled refresh of ticket mappings...
+discord-bot     | [Discord] Loading ticket-channel mappings from database...
+discord-bot     | [Discord] ✅ Successfully loaded 0 ticket-channel mappings
+discord-bot     | npm error path /app
+discord-bot     | npm error command failed
+discord-bot     | npm error signal SIGTERM
+discord-bot     | npm error command sh -c NODE_ENV=production node dist/index.js
+discord-bot     | npm error A complete log of this run can be found in: /root/.npm/_logs/2025-11-13T11_24_35_153Z-debug-0.log
+discord-bot     | Starting Discord Bot deployment...
+discord-bot     | Waiting for PostgreSQL to be ready...
+discord-bot     | Extracted PostgreSQL host from DATABASE_URL: discord-bot-db
+discord-bot     | Checking PostgreSQL connection at discord-bot-db:5432...
+discord-bot     | PostgreSQL port is accessible!
+discord-bot     | PostgreSQL is ready!
+stream-bot      | [BotManager] Bootstrapping...
+stream-bot      | [BotManager] Found 0 active bot instances
+stream-bot      | [BotManager] Bootstrap complete
+discord-bot     | Initializing database schema...
+discord-bot     | No config path provided, using default 'drizzle.config.ts'
+stream-bot      | 11:14:17 AM [express] serving on port 5000
+stream-bot      | [WebSocket] Rejecting unauthenticated connection
+stream-bot      | [WebSocket] Rejecting unauthenticated connection
+stream-bot      | [WebSocket] Rejecting unauthenticated connection
+stream-bot      | [WebSocket] Rejecting unauthenticated connection
+stream-bot      | [WebSocket] Rejecting unauthenticated connection
+stream-bot      | [WebSocket] Rejecting unauthenticated connection
+stream-bot      | [WebSocket] Rejecting unauthenticated connection
+stream-bot      | [WebSocket] Rejecting unauthenticated connection
+stream-bot      | [WebSocket] Rejecting unauthenticated connection
+discord-bot     | Reading config file '/app/drizzle.config.ts'
+discord-bot     | Using 'pg' driver for database querying
+discord-bot     | [⣷] Pulling schema from database...
+[⣯] Pulling schema from database...
+stream-bot      | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+[⣟] Pulling schema from database...
+[⡿] Pulling schema from database...
+[✓] Pulling schema from database...
+discord-bot        | [✓] Changes applied
+discord-bot        | Database initialization complete!
+discord-bot        | Starting application...
+discord-bot        | 
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+discord-bot        | > rest-express@1.0.0 start
+discord-bot        | > NODE_ENV=production node dist/index.js
+discord-bot        | 
+discord-bot        | [Database] Detected local/Docker PostgreSQL, using standard pg driver
+discord-bot        | [Discord] Registered developer commands: dev-dm, dev-announce, dev-stats, dev-refresh, dev-ticket
+discord-bot        | [Database] Creating read-only PostgreSQL connection for developer queries
+discord-bot        | Setting up Discord authentication strategy
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+caddy              | {"level":"info","ts":1763032456.1841388,"msg":"maxprocs: Leaving GOMAXPROCS=16: CPU quota undefined"}
+caddy              | {"level":"info","ts":1763032456.1846912,"msg":"GOMEMLIMIT is updated","package":"github.com/KimMachineGun/automemlimit/memlimit","GOMEMLIMIT":29249033011,"previous":9223372036854775807}
+caddy              | {"level":"info","ts":1763032456.185114,"msg":"using config from file","file":"/etc/caddy/Caddyfile"}
+caddy              | {"level":"info","ts":1763032456.1883779,"msg":"adapted config to JSON","adapter":"caddyfile"}
+caddy              | {"level":"warn","ts":1763032456.1883879,"msg":"Caddyfile input is not formatted; run 'caddy fmt --overwrite' to fix inconsistencies","adapter":"caddyfile","file":"/etc/caddy/Caddyfile","line":2}
+caddy              | {"level":"info","ts":1763032456.1898122,"logger":"admin","msg":"admin endpoint started","address":"localhost:2019","enforce_origin":false,"origins":["//127.0.0.1:2019","//localhost:2019","//[::1]:2019"]}
+caddy              | {"level":"info","ts":1763032456.1911926,"logger":"http.auto_https","msg":"server is listening only on the HTTPS port but has no TLS connection policies; adding one to enable TLS","server_name":"srv0","https_port":443}
+caddy              | {"level":"info","ts":1763032456.1912062,"logger":"http.auto_https","msg":"enabling automatic HTTP->HTTPS redirects","server_name":"srv0"}
+caddy              | {"level":"info","ts":1763032456.1913173,"logger":"tls.cache.maintenance","msg":"started background certificate maintenance","cache":"0xc000635280"}
+caddy              | {"level":"info","ts":1763032456.1944141,"logger":"http","msg":"enabling HTTP/3 listener","addr":":443"}
+caddy              | {"level":"info","ts":1763032456.194739,"msg":"failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 7168 kiB, got: 416 kiB). See https://github.com/quic-go/quic-go/wiki/UDP-Buffer-Sizes for details."}
+homelab-dashboard  | [2025-11-13 11:14:16 +0000] [1] [INFO] Starting gunicorn 21.2.0
+homelab-dashboard  | [2025-11-13 11:14:16 +0000] [1] [INFO] Listening at: http://0.0.0.0:5000 (1)
+homelab-dashboard  | [2025-11-13 11:14:16 +0000] [1] [INFO] Using worker: sync
+homelab-dashboard  | [2025-11-13 11:14:16 +0000] [7] [INFO] Booting worker with pid: 7
+homelab-dashboard  | [2025-11-13 11:14:16 +0000] [8] [INFO] Booting worker with pid: 8
+homelab-dashboard  | [2025-11-13 11:14:16 +0000] [9] [INFO] Booting worker with pid: 9
+homelab-dashboard  | /usr/local/lib/python3.11/site-packages/paramiko/pkey.py:100: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+homelab-dashboard  |   "cipher": algorithms.TripleDES,
+homelab-dashboard  | /usr/local/lib/python3.11/site-packages/paramiko/pkey.py:100: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+homelab-dashboard  |   "cipher": algorithms.TripleDES,
+homelab-dashboard  | /usr/local/lib/python3.11/site-packages/paramiko/transport.py:259: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+homelab-dashboard  |   "class": algorithms.TripleDES,
+homelab-dashboard  | /usr/local/lib/python3.11/site-packages/paramiko/transport.py:259: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+homelab-dashboard  |   "class": algorithms.TripleDES,
+homelab-dashboard  | /usr/local/lib/python3.11/site-packages/paramiko/pkey.py:100: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+homelab-dashboard    |   "cipher": algorithms.TripleDES,
+homelab-dashboard    | /usr/local/lib/python3.11/site-packages/paramiko/transport.py:259: CryptographyDeprecationWarning: TripleDES has been moved to cryptography.hazmat.decrepit.ciphers.algorithms.TripleDES and will be removed from cryptography.hazmat.primitives.ciphers.algorithms in 48.0.0.
+homelab-dashboard    |   "class": algorithms.TripleDES,
+homelab-dashboard    | Failed to connect to Docker: Error while fetching server API version: Not supported URL scheme http+docker
+homelab-dashboard    | Failed to connect to Docker: Error while fetching server API version: Not supported URL scheme http+docker
+homelab-dashboard    | Failed to connect to Docker: Error while fetching server API version: Not supported URL scheme http+docker
+homelab-dashboard    | Failed to connect to Docker: Error while fetching server API version: Not supported URL scheme http+docker
+homelab-dashboard    | Failed to connect to Docker: Error while fetching server API version: Not supported URL scheme http+docker
+homelab-dashboard    | Failed to connect to Docker: Error while fetching server API version: Not supported URL scheme http+docker
+homelab-dashboard    | Compose file not found: docker-compose.unified.yml
+homelab-dashboard    | Caddyfile not found: Caddyfile
+homelab-dashboard    | .env file not found: .env
+homelab-dashboard    | Compose file not found: docker-compose.unified.yml
+homelab-dashboard    | Caddyfile not found: Caddyfile
+homelab-dashboard    | .env file not found: .env
+homelab-dashboard    | Compose file not found: docker-compose.unified.yml
+caddy              | {"level":"info","ts":1763032456.1962252,"logger":"http.log","msg":"server running","name":"srv0","protocols":["h1","h2","h3"]}
+caddy                | {"level":"info","ts":1763032456.1963058,"logger":"tls","msg":"storage cleaning happened too recently; skipping for now","storage":"FileStorage:/data/caddy","instance":"13fca5f7-ca3a-45b6-9f5a-dcca9f82ada1","try_again":1763118856.1963046,"try_again_in":86399.999999639}
+caddy                | {"level":"warn","ts":1763032456.1963172,"logger":"http","msg":"HTTP/2 skipped because it requires TLS","network":"tcp","addr":":80"}
+scarletredjoker-web  | /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+discord-bot        | Discord OAuth callback URL: https://bot.rig-city.com/auth/discord/callback
+discord-bot          | Attempting to start Discord bot...
+discord-bot          | Successfully registered application commands globally
+discord-bot          | 11:32:46 AM [express] serving on port 5000
+caddy                | {"level":"warn","ts":1763032456.1963224,"logger":"http","msg":"HTTP/3 skipped because it requires TLS","network":"tcp","addr":":80"}
+scarletredjoker-web  | /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+caddy                | {"level":"info","ts":1763032456.1963294,"logger":"http.log","msg":"server running","name":"remaining_auto_https_redirects","protocols":["h1","h2","h3"]}
+discord-bot          | Discord bot ready! Logged in as Rig City Ticket Tool#8919
+discord-bot          | 
+discord-bot          | === Bot Server Status ===
+discord-bot          | Connected to 2 server(s):
+discord-bot          |   - Joker's Evil Headquarters (ID: 623281252451221515) | 14 members
+stream-bot         | [WebSocket] Rejecting unauthenticated connection
+stream-bot           | [WebSocket] Rejecting unauthenticated connection
+stream-bot           | [WebSocket] Rejecting unauthenticated connection
+stream-bot           | [WebSocket] Rejecting unauthenticated connection
+stream-bot           | [WebSocket] Rejecting unauthenticated connection
+discord-bot          |   - Rig City (ID: 692850100795473920) | 445 members
+stream-bot           | [WebSocket] Rejecting unauthenticated connection
+discord-bot          | ========================
+discord-bot          | 
+discord-bot          | [Discord] Loading ticket-channel mappings from database...
+stream-bot           | [WebSocket] Rejecting unauthenticated connection
+stream-bot           | [WebSocket] Rejecting unauthenticated connection
+caddy                | {"level":"info","ts":1763032456.1963344,"logger":"http","msg":"enabling automatic TLS certificate management","domains":["bot.rig-city.com","www.scarletredjoker.com","stream.rig-city.com","scarletredjoker.com","plex.evindrake.net","host.evindrake.net","n8n.evindrake.net","vnc.evindrake.net"]}
+caddy                | {"level":"info","ts":1763032456.196394,"logger":"tls","msg":"finished cleaning storage units"}
+scarletredjoker-web  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+stream-bot           | [WebSocket] Rejecting unauthenticated connection
+stream-bot           | [WebSocket] Rejecting unauthenticated connection
+discord-bot          | [Discord] ✅ Successfully loaded 0 ticket-channel mappings
+discord-bot          | [Discord] Scheduled ticket mapping refresh every 5 minutes
+discord-bot          | [Bot] Starting ticket system safeguard background jobs...
+discord-bot          | [Safeguards] Starting background jobs...
+discord-bot          | [Safeguards] Background jobs started successfully.
+scarletredjoker-web  | 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+scarletredjoker-web  | 10-listen-on-ipv6-by-default.sh: info: Enabled listen on IPv6 in /etc/nginx/conf.d/default.conf
+scarletredjoker-web  | /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+scarletredjoker-web  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+scarletredjoker-web  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+scarletredjoker-web  | /docker-entrypoint.sh: Configuration complete; ready for start up
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: using the "epoll" event method
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: nginx/1.29.3
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: built by gcc 14.2.0 (Alpine 14.2.0) 
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: OS: Linux 6.17.0-6-generic
+caddy                | {"level":"info","ts":1763032456.20372,"msg":"autosaved config (load with --resume flag)","file":"/config/caddy/autosave.json"}
+caddy                | {"level":"info","ts":1763032456.2037392,"msg":"serving initial configuration"}
+caddy                | {"level":"error","ts":1763034221.9684427,"logger":"http.log.error","msg":"dial tcp 172.23.0.8:6080: connect: connection refused","request":{"remote_ip":"213.209.157.81","remote_port":"47556","client_ip":"213.209.157.81","proto":"HTTP/1.1","method":"GET","host":"vnc.evindrake.net","uri":"/","headers":{"Accept-Encoding":["gzip"],"Connection":["close"],"User-Agent":["Mozilla/5.0 (Linux; Android 8.0.0; LG-H873) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.111 Mobile Safari/537.36"],"Accept-Charset":["utf-8"]},"tls":{"resumed":false,"version":772,"cipher_suite":4865,"proto":"","server_name":"vnc.evindrake.net"}},"duration":0.001259312,"status":502,"err_id":"e5h9hmcbs","err_trace":"reverseproxy.statusError (reverseproxy.go:1390)"}
+caddy                | {"level":"error","ts":1763035705.6718214,"logger":"http.log.error","msg":"dial tcp 172.23.0.8:6080: connect: connection refused","request":{"remote_ip":"74.76.32.151","remote_port":"50194","client_ip":"74.76.32.151","proto":"HTTP/2.0","method":"GET","host":"vnc.evindrake.net","uri":"/","headers":{"User-Agent":["Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0"],"Sec-Fetch-Dest":["document"],"Sec-Fetch-Mode":["navigate"],"Sec-Fetch-Site":["none"],"Priority":["u=0, i"],"Accept-Language":["en-US,en;q=0.5"],"Accept-Encoding":["gzip, deflate, br, zstd"],"Te":["trailers"],"Upgrade-Insecure-Requests":["1"],"Accept":["text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"],"Sec-Fetch-User":["?1"]},"tls":{"resumed":false,"version":772,"cipher_suite":4865,"proto":"h2","server_name":"vnc.evindrake.net"}},"duration":0.000451327,"status":502,"err_id":"c3akiamkz","err_trace":"reverseproxy.statusError (reverseproxy.go:1390)"}
+caddy                | {"level":"error","ts":1763035726.4344435,"logger":"http.log.error","msg":"dial tcp 172.23.0.8:6080: connect: connection refused","request":{"remote_ip":"74.76.32.151","remote_port":"50194","client_ip":"74.76.32.151","proto":"HTTP/2.0","method":"GET","host":"vnc.evindrake.net","uri":"/","headers":{"Priority":["u=0, i"],"User-Agent":["Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0"],"Accept":["text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"],"Sec-Fetch-Site":["none"],"Accept-Language":["en-US,en;q=0.5"],"Te":["trailers"],"Accept-Encoding":["gzip, deflate, br, zstd"],"Upgrade-Insecure-Requests":["1"],"Sec-Fetch-User":["?1"],"Sec-Fetch-Dest":["document"],"Sec-Fetch-Mode":["navigate"]},"tls":{"resumed":false,"version":772,"cipher_suite":4865,"proto":"h2","server_name":"vnc.evindrake.net"}},"duration":0.000512983,"status":502,"err_id":"2357h9wjt","err_trace":"reverseproxy.statusError (reverseproxy.go:1390)"}
+discord-bot          | [Safeguards] - Channel reconciliation: every 15 minutes
+discord-bot          | [Safeguards] - Auto-close check: every 60 minutes
+discord-bot          | [Stream Notifications] Initializing stream tracking...
+discord-bot          | [Stream Notifications] Initialized tracking for 0 server(s)
+discord-bot          | [Safeguards] Starting ticket channel reconciliation...
+discord-bot          | [Safeguards] Checking 0 open tickets with Discord channels
+stream-bot           | [WebSocket] Rejecting unauthenticated connection
+stream-bot           | [WebSocket] Rejecting unauthenticated connection
+stream-bot           | [WebSocket] Rejecting unauthenticated connection
+stream-bot           | [WebSocket] Rejecting unauthenticated connection
+stream-bot           | [WebSocket] Rejecting unauthenticated connection
+stream-bot           | [WebSocket] Rejecting unauthenticated connection
+stream-bot           | [WebSocket] Rejecting unauthenticated connection
+stream-bot           | [WebSocket] Rejecting unauthenticated connection
+stream-bot           | [WebSocket] Rejecting unauthenticated connection
+stream-bot           | [WebSocket] Rejecting unauthenticated connection
+stream-bot           | [WebSocket] Rejecting unauthenticated connection
+vnc-desktop          | stored passwd in file: /.password2
+vnc-desktop          | * enable custom user: evin
+vnc-desktop          | cp: cannot stat '/root/.config': No such file or directory
+vnc-desktop          | 2025-11-13 11:14:16,211 CRIT Supervisor is running as root.  Privileges were not dropped because no user is specified in the config file.  If you intend to run as root, you can set user=root in the config file to avoid this message.
+plex-server          | [migrations] started
+plex-server          | [migrations] no migrations found
+plex-server          | ───────────────────────────────────────
+homelab-dashboard    | Caddyfile not found: Caddyfile
+homelab-dashboard    | .env file not found: .env
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1024:524288
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker processes
+plex-server          | 
+plex-server          |       ██╗     ███████╗██╗ ██████╗
+plex-server          |       ██║     ██╔════╝██║██╔═══██╗
+plex-server          |       ██║     ███████╗██║██║   ██║
+plex-server          |       ██║     ╚════██║██║██║   ██║
+plex-server          |       ███████╗███████║██║╚██████╔╝
+plex-server          |       ╚══════╝╚══════╝╚═╝ ╚═════╝
+plex-server          | 
+plex-server          |    Brought to you by linuxserver.io
+discord-bot          | [Safeguards] Reconciliation complete. Marked 0 tickets as orphaned.
+discord-bot          | [Safeguards] Starting auto-close check for inactive tickets...
+discord-bot          | [Safeguards] Auto-close check complete.
+discord-bot          | [Discord] Scheduled refresh of ticket mappings...
+discord-bot          | [Discord] Loading ticket-channel mappings from database...
+discord-bot          | [Discord] ✅ Successfully loaded 0 ticket-channel mappings
+discord-bot          | [Discord] Scheduled refresh of ticket mappings...
+discord-bot          | [Discord] Loading ticket-channel mappings from database...
+plex-server          | ───────────────────────────────────────
+plex-server          | 
+discord-bot          | [Discord] ✅ Successfully loaded 0 ticket-channel mappings
+vnc-desktop          | 2025-11-13 11:14:16,211 INFO Included extra file "/etc/supervisor/conf.d/supervisord.conf" during parsing
+vnc-desktop          | 2025-11-13 11:14:16,217 INFO RPC interface 'supervisor' initialized
+vnc-desktop          | 2025-11-13 11:14:16,217 CRIT Server 'unix_http_server' running without any HTTP authentication checking
+vnc-desktop          | 2025-11-13 11:14:16,217 INFO supervisord started with pid 32
+discord-bot          | [Safeguards] Starting ticket channel reconciliation...
+discord-bot          | [Discord] Scheduled refresh of ticket mappings...
+discord-bot          | [Discord] Loading ticket-channel mappings from database...
+discord-bot          | [Safeguards] Checking 0 open tickets with Discord channels
+discord-bot          | [Safeguards] Reconciliation complete. Marked 0 tickets as orphaned.
+discord-bot          | [Discord] ✅ Successfully loaded 0 ticket-channel mappings
+discord-bot          | [Discord] Scheduled refresh of ticket mappings...
+discord-bot          | [Discord] Loading ticket-channel mappings from database...
+discord-bot          | [Discord] ✅ Successfully loaded 0 ticket-channel mappings
+discord-bot          | [Discord] Scheduled refresh of ticket mappings...
+discord-bot          | [Discord] Loading ticket-channel mappings from database...
+discord-bot          | [Discord] ✅ Successfully loaded 0 ticket-channel mappings
+discord-bot          | [Safeguards] Starting ticket channel reconciliation...
+discord-bot          | [Discord] Scheduled refresh of ticket mappings...
+discord-bot          | [Discord] Loading ticket-channel mappings from database...
+discord-bot          | [Safeguards] Checking 0 open tickets with Discord channels
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 30
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 31
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 32
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 33
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 34
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 35
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 36
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 37
+vnc-desktop          | 2025-11-13 11:14:17,218 INFO spawned: 'nginx' with pid 34
+vnc-desktop          | 2025-11-13 11:14:17,220 INFO spawned: 'web' with pid 35
+vnc-desktop          | 2025-11-13 11:14:17,221 INFO spawned: 'xvfb' with pid 36
+vnc-desktop          | 2025-11-13 11:14:17,222 INFO spawned: 'wm' with pid 37
+vnc-desktop          | 2025-11-13 11:14:17,224 INFO spawned: 'lxpanel' with pid 38
+vnc-desktop          | 2025-11-13 11:14:17,225 INFO spawned: 'pcmanfm' with pid 39
+vnc-desktop          | 2025-11-13 11:14:17,227 INFO spawned: 'x11vnc' with pid 40
+vnc-desktop          | 2025-11-13 11:14:17,228 INFO spawned: 'novnc' with pid 41
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 38
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 39
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 40
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 41
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 42
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 43
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 44
+scarletredjoker-web  | 2025/11/13 11:14:15 [notice] 1#1: start worker process 45
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:11:42:58 +0000] "GET / HTTP/1.1" 200 5556 "-" "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36" "46.150.250.60"
+scarletredjoker-web  | 2025/11/13 12:07:20 [error] 31#31: *2 open() "/usr/share/nginx/html/vendor/phpunit/phpunit/phpunit.xsd" failed (2: No such file or directory), client: 172.23.0.9, server: localhost, request: "GET /vendor/phpunit/phpunit/phpunit.xsd HTTP/1.1", host: "scarletredjoker.com"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:07:20 +0000] "GET /vendor/phpunit/phpunit/phpunit.xsd HTTP/1.1" 404 153 "-" "Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0" "216.24.213.33"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /art.html HTTP/1.1" 200 8606 "https://scarletredjoker.com/about.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /css/styles.css HTTP/1.1" 200 284216 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /js/scripts.js HTTP/1.1" 304 0 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /js/main.js HTTP/1.1" 304 0 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/053.jpg HTTP/1.1" 200 63546 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+discord-bot          | [Safeguards] Reconciliation complete. Marked 0 tickets as orphaned.
+discord-bot          | [Discord] ✅ Successfully loaded 0 ticket-channel mappings
+discord-bot          | [Discord] Scheduled refresh of ticket mappings...
+discord-bot          | [Discord] Loading ticket-channel mappings from database...
+discord-bot          | [Discord] ✅ Successfully loaded 0 ticket-channel mappings
+vnc-desktop          | 2025-11-13 11:14:17,235 INFO exited: x11vnc (exit status 1; not expected)
+vnc-desktop          | 2025-11-13 11:14:17,375 INFO  Listening on http://localhost:6079 (run.py:87)
+vnc-desktop          | 2025-11-13 11:14:18,243 INFO success: nginx entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop          | 2025-11-13 11:14:18,243 INFO success: web entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop          | 2025-11-13 11:14:18,243 INFO success: xvfb entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop          | 2025-11-13 11:14:18,243 INFO success: wm entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop          | 2025-11-13 11:14:18,243 INFO success: lxpanel entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop          | 2025-11-13 11:14:18,243 INFO success: pcmanfm entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop          | 2025-11-13 11:14:18,244 INFO spawned: 'x11vnc' with pid 110
+vnc-desktop          | 2025-11-13 11:14:18,244 INFO success: novnc entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+vnc-desktop          | 2025-11-13 11:14:19,280 INFO success: x11vnc entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+n8n                  | Initializing n8n process
+n8n                  | n8n ready on ::, port 5678
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:14:46] "GET /api/health HTTP/1.1" 200 122 0.127815
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:15:16] "GET /api/health HTTP/1.1" 200 122 0.095798
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:15:46] "GET /api/health HTTP/1.1" 200 122 0.098787
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:16:16] "GET /api/health HTTP/1.1" 200 122 0.093591
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:16:46] "GET /api/health HTTP/1.1" 200 122 0.097072
+n8n                  | n8n Task Broker ready on 127.0.0.1, port 5679
+plex-server          | To support LSIO projects visit:
+plex-server          | https://www.linuxserver.io/donate/
+plex-server          | 
+plex-server          | ───────────────────────────────────────
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/038.png HTTP/1.1" 200 636716 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:17:16] "GET /api/health HTTP/1.1" 200 122 0.108283
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:17:46] "GET /api/health HTTP/1.1" 200 122 0.101021
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:18:17] "GET /api/health HTTP/1.1" 200 122 0.095921
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:18:47] "GET /api/health HTTP/1.1" 200 122 0.092517
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:19:17] "GET /api/health HTTP/1.1" 200 122 0.093948
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:19:47] "GET /api/health HTTP/1.1" 200 122 0.094087
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:20:17] "GET /api/health HTTP/1.1" 200 122 0.099118
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:20:47] "GET /api/health HTTP/1.1" 200 122 0.097708
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:21:17] "GET /api/health HTTP/1.1" 200 122 0.095039
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:21:48] "GET /api/health HTTP/1.1" 200 122 0.103580
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:22:18] "GET /api/health HTTP/1.1" 200 122 0.100712
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:22:48] "GET /api/health HTTP/1.1" 200 122 0.094802
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:23:18] "GET /api/health HTTP/1.1" 200 122 0.116536
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:23:48] "GET /api/health HTTP/1.1" 200 122 0.107725
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:24:18] "GET /api/health HTTP/1.1" 200 122 0.105570
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:24:48] "GET /api/health HTTP/1.1" 200 122 0.101194
+n8n                  | 
+n8n                  | There are deprecations related to your environment variables. Please take the recommended actions to update your configuration:
+n8n                  |  - DB_SQLITE_POOL_SIZE -> Running SQLite without a pool of read connections is deprecated. Please set `DB_SQLITE_POOL_SIZE` to a value higher than zero. See: https://docs.n8n.io/hosting/configuration/environment-variables/database/#sqlite
+n8n                  |  - N8N_BLOCK_ENV_ACCESS_IN_NODE -> The default value of N8N_BLOCK_ENV_ACCESS_IN_NODE will be changed from false to true in a future version. If you need to access environment variables from the Code Node or from expressions, please set N8N_BLOCK_ENV_ACCESS_IN_NODE=false. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/security/
+n8n                  |  - N8N_GIT_NODE_DISABLE_BARE_REPOS -> Support for bare repositories in the Git Node will be removed in a future version due to security concerns. If you are not using bare repositories in the Git Node, please set N8N_GIT_NODE_DISABLE_BARE_REPOS=true. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/security/
+n8n                  | 
+n8n                  | [license SDK] Skipping renewal on init: license cert is not initialized
+n8n                  | Registered runner "JS Task Runner" (0dLT-rKE4xZASWx4ZAixZ) 
+n8n                  | Version: 1.118.2
+n8n                  | 
+n8n                  | Editor is now accessible via:
+n8n                  | https://n8n.evindrake.net
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/012.png HTTP/1.1" 200 9403 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/013.png HTTP/1.1" 200 9240 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+plex-server          | GID/UID
+plex-server          | ───────────────────────────────────────
+plex-server          | 
+plex-server          | User UID:    1000
+plex-server          | User GID:    1000
+plex-server          | ───────────────────────────────────────
+plex-server          | Linuxserver.io version: 1.42.2.10156-f737b826c-ls285
+plex-server          | Build-date: 2025-11-10T09:30:56+00:00
+plex-server          | ───────────────────────────────────────
+plex-server          |     
+plex-server          | **** Server already claimed ****
+plex-server          | **** creating video group videoh18b with id 991 ****
+plex-server          | **** adding /dev/dri/renderD128 to video group videoh18b with id 991 ****
+plex-server          | **** adding /dev/dri/card1 to video group video with id 44 ****
+plex-server          | Docker is used for versioning skip update check
+plex-server          | [custom-init] No custom files found, skipping...
+plex-server          | Starting Plex Media Server. . . (you can ignore the libusb_init error)
+plex-server          | Connection to localhost (::1) 32400 port [tcp/*] succeeded!
+plex-server          | [ls.io-init] done.
+plex-server          | Critical: libusb_init failed
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:25:19] "GET /api/health HTTP/1.1" 200 122 0.103974
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:25:49] "GET /api/health HTTP/1.1" 200 122 0.100866
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:26:19] "GET /api/health HTTP/1.1" 200 122 0.100184
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:26:49] "GET /api/health HTTP/1.1" 200 122 0.104368
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:27:19] "GET /api/health HTTP/1.1" 200 122 0.101481
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:27:49] "GET /api/health HTTP/1.1" 200 122 0.094533
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:28:19] "GET /api/health HTTP/1.1" 200 122 0.094443
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:28:50] "GET /api/health HTTP/1.1" 200 122 0.091716
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:29:20] "GET /api/health HTTP/1.1" 200 122 0.094384
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:29:50] "GET /api/health HTTP/1.1" 200 122 0.099425
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:30:20] "GET /api/health HTTP/1.1" 200 122 0.102257
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:30:50] "GET /api/health HTTP/1.1" 200 122 0.095134
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:31:20] "GET /api/health HTTP/1.1" 200 122 0.097219
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:31:50] "GET /api/health HTTP/1.1" 200 122 0.095092
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:32:20] "GET /api/health HTTP/1.1" 200 122 0.098614
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:32:51] "GET /api/health HTTP/1.1" 200 122 0.097588
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:33:21] "GET /api/health HTTP/1.1" 200 122 0.096436
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:33:51] "GET /api/health HTTP/1.1" 200 122 0.098412
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:34:21] "GET /api/health HTTP/1.1" 200 122 0.097831
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:34:51] "GET /api/health HTTP/1.1" 200 122 0.097088
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:35:21] "GET /api/health HTTP/1.1" 200 122 0.100508
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:35:51] "GET /api/health HTTP/1.1" 200 122 0.097394
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:36:22] "GET /api/health HTTP/1.1" 200 122 0.101837
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:36:52] "GET /api/health HTTP/1.1" 200 122 0.102234
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:37:22] "GET /api/health HTTP/1.1" 200 122 0.098917
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:37:52] "GET /api/health HTTP/1.1" 200 122 0.096589
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:38:22] "GET /api/health HTTP/1.1" 200 122 0.096995
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:38:52] "GET /api/health HTTP/1.1" 200 122 0.097031
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:39:22] "GET /api/health HTTP/1.1" 200 122 0.100235
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:39:53] "GET /api/health HTTP/1.1" 200 122 0.098016
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:40:23] "GET /api/health HTTP/1.1" 200 122 0.101305
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:40:53] "GET /api/health HTTP/1.1" 200 122 0.094440
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:41:23] "GET /api/health HTTP/1.1" 200 122 0.100196
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:41:53] "GET /api/health HTTP/1.1" 200 122 0.095599
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:42:23] "GET /api/health HTTP/1.1" 200 122 0.095360
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:42:53] "GET /api/health HTTP/1.1" 200 122 0.097996
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:43:24] "GET /api/health HTTP/1.1" 200 122 0.100671
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:43:54] "GET /api/health HTTP/1.1" 200 122 0.088293
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:44:24] "GET /api/health HTTP/1.1" 200 122 0.088908
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:44:54] "GET /api/health HTTP/1.1" 200 122 0.090676
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:45:24] "GET /api/health HTTP/1.1" 200 122 0.090177
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:45:54] "GET /api/health HTTP/1.1" 200 122 0.092318
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:46:24] "GET /api/health HTTP/1.1" 200 122 0.093021
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:46:54] "GET /api/health HTTP/1.1" 200 122 0.088042
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:47:25] "GET /api/health HTTP/1.1" 200 122 0.088243
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:47:55] "GET /api/health HTTP/1.1" 200 122 0.087522
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:48:25] "GET /api/health HTTP/1.1" 200 122 0.094716
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:48:55] "GET /api/health HTTP/1.1" 200 122 0.091651
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:49:25] "GET /api/health HTTP/1.1" 200 122 0.089054
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:49:55] "GET /api/health HTTP/1.1" 200 122 0.088401
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:50:25] "GET /api/health HTTP/1.1" 200 122 0.089462
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:50:55] "GET /api/health HTTP/1.1" 200 122 0.088837
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/015.png HTTP/1.1" 200 16292 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/014.png HTTP/1.1" 200 18459 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/058.png HTTP/1.1" 200 521792 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/024.png HTTP/1.1" 200 1897662 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/016.png HTTP/1.1" 200 8828 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/017.png HTTP/1.1" 200 14042 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/018.png HTTP/1.1" 200 20265 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/059.png HTTP/1.1" 200 119341 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/056.png HTTP/1.1" 200 99261 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/033.png HTTP/1.1" 200 389000 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/011.png HTTP/1.1" 200 121068 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/044.png HTTP/1.1" 200 7372 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/052.png HTTP/1.1" 200 265357 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/019.png HTTP/1.1" 200 755991 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/042.png HTTP/1.1" 200 134128 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/025.png HTTP/1.1" 200 557396 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/003.jpg HTTP/1.1" 200 610129 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/Vibe.png HTTP/1.1" 200 37325 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/045.png HTTP/1.1" 200 87388 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:51:26] "GET /api/health HTTP/1.1" 200 122 0.088019
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:51:56] "GET /api/health HTTP/1.1" 200 122 0.088321
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/040.png HTTP/1.1" 200 311630 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/020.png HTTP/1.1" 200 1084946 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/048.jpg HTTP/1.1" 200 239008 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/010.png HTTP/1.1" 304 0 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/000.png HTTP/1.1" 200 379379 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/001.png HTTP/1.1" 200 189189 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/060.png HTTP/1.1" 200 259726 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/039.png HTTP/1.1" 200 221234 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/041.png HTTP/1.1" 200 346536 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/046.png HTTP/1.1" 200 550082 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/047.png HTTP/1.1" 200 920198 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/061.png HTTP/1.1" 200 1029701 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/009.png HTTP/1.1" 200 1149575 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/021.png HTTP/1.1" 200 1091968 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/036.png HTTP/1.1" 200 2121532 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/050.png HTTP/1.1" 200 1784269 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/027.png HTTP/1.1" 200 2101191 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/022.png HTTP/1.1" 200 2217061 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/064.png HTTP/1.1" 200 3202246 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/CoyFish.png HTTP/1.1" 200 2819148 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/008.png HTTP/1.1" 200 2936932 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/051.png HTTP/1.1" 200 2658544 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/049.png HTTP/1.1" 200 2970454 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/004.png HTTP/1.1" 200 3536172 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/057.png HTTP/1.1" 200 3110977 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/006.png HTTP/1.1" 200 3893347 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/032.gif HTTP/1.1" 200 4275815 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/070.png HTTP/1.1" 200 9689053 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+scarletredjoker-web  | 172.23.0.9 - - [13/Nov/2025:12:08:58 +0000] "GET /src/007.png HTTP/1.1" 200 16517619 "https://scarletredjoker.com/art.html" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" "74.76.32.151"
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:52:26] "GET /api/health HTTP/1.1" 200 122 0.088921
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:52:56] "GET /api/health HTTP/1.1" 200 122 0.091260
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:53:26] "GET /api/health HTTP/1.1" 200 122 0.087741
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:53:56] "GET /api/health HTTP/1.1" 200 122 0.094216
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:54:26] "GET /api/health HTTP/1.1" 200 122 0.087837
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:54:56] "GET /api/health HTTP/1.1" 200 122 0.090551
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:55:27] "GET /api/health HTTP/1.1" 200 122 0.088479
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:55:57] "GET /api/health HTTP/1.1" 200 122 0.091814
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:56:27] "GET /api/health HTTP/1.1" 200 122 0.092694
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:56:57] "GET /api/health HTTP/1.1" 200 122 0.089326
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:57:27] "GET /api/health HTTP/1.1" 200 122 0.087708
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:57:57] "GET /api/health HTTP/1.1" 200 122 0.088231
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:58:27] "GET /api/health HTTP/1.1" 200 122 0.090808
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:58:57] "GET /api/health HTTP/1.1" 200 122 0.089550
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:59:28] "GET /api/health HTTP/1.1" 200 122 0.087361
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 11:59:58] "GET /api/health HTTP/1.1" 200 122 0.090099
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 12:00:28] "GET /api/health HTTP/1.1" 200 122 0.087744
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 12:00:58] "GET /api/health HTTP/1.1" 200 122 0.087687
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 12:01:28] "GET /api/health HTTP/1.1" 200 122 0.091815
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 12:01:58] "GET /api/health HTTP/1.1" 200 122 0.101323
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 12:02:28] "GET /api/health HTTP/1.1" 200 122 0.097380
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 12:02:59] "GET /api/health HTTP/1.1" 200 122 0.098336
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 12:03:29] "GET /api/health HTTP/1.1" 200 122 0.098239
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 12:03:59] "GET /api/health HTTP/1.1" 200 122 0.091038
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 12:04:29] "GET /api/health HTTP/1.1" 200 122 0.100568
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 12:04:59] "GET /api/health HTTP/1.1" 200 122 0.093632
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 12:05:29] "GET /api/health HTTP/1.1" 200 122 0.098019
+vnc-desktop          | 127.0.0.1 - - [2025-11-13 12:05:59] "GET /api/health HTTP/1.1" 200 122 0.091605

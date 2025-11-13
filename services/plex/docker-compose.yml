@@ -1,0 +1,53 @@
+services:
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: plex
+    networks:
+      - plex-network
+    ports:
+      - "32400:32400"
+      - "1900:1900/udp"
+      - "3005:3005"
+      - "8324:8324"
+      - "32410:32410/udp"
+      - "32412:32412/udp"
+      - "32413:32413/udp"
+      - "32414:32414/udp"
+      - "32469:32469"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+      - VERSION=docker
+      - PLEX_CLAIM=${PLEX_CLAIM_TOKEN}
+      - ADVERTISE_IP=https://plex.evindrake.net:443
+    volumes:
+      - ./config:/config
+      - ./transcode:/transcode
+      - ./media:/media
+    devices:
+      - /dev/dri:/dev/dri
+    restart: unless-stopped
+
+  nginx-proxy-manager:
+    image: jc21/nginx-proxy-manager:latest
+    container_name: nginx-proxy-manager
+    networks:
+      - plex-network
+      - bot-network  # Connect to Discord bot network
+    ports:
+      - "80:80"
+      - "443:443"
+      - "81:81"
+    environment:
+      - DB_SQLITE_FILE=/data/database.sqlite
+    volumes:
+      - ./npm/data:/data
+      - ./npm/letsencrypt:/etc/letsencrypt
+    restart: unless-stopped
+
+networks:
+  plex-network:
+    driver: bridge
+  bot-network:
+    external: true  # Created by Discord bot stack

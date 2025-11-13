@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  streambot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: streambot:latest
+    container_name: streambot
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      # Application settings
+      NODE_ENV: production
+      PORT: 5000
+      
+      # Database connection
+      # Replace with your actual database URL in production
+      DATABASE_URL: ${DATABASE_URL:-postgresql://user:password@postgres:5432/streambot}
+      
+      # Session secret (generate with: openssl rand -base64 32)
+      SESSION_SECRET: ${SESSION_SECRET:-change-this-in-production}
+      
+      # OpenAI Integration (if using external OpenAI)
+      # Leave commented if using Replit AI Integrations
+      # OPENAI_API_KEY: ${OPENAI_API_KEY}
+      # OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      
+      # Twitch OAuth (optional - can be configured via dashboard)
+      # TWITCH_CLIENT_ID: ${TWITCH_CLIENT_ID}
+      # TWITCH_CLIENT_SECRET: ${TWITCH_CLIENT_SECRET}
+    
+    depends_on:
+      postgres:
+        condition: service_healthy
+    
+    networks:
+      - streambot-network
+    
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+    
+    volumes:
+      # Optional: mount logs directory for persistence
+      - ./logs:/app/logs
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: streambot-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-streambot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-streambot123}
+      POSTGRES_DB: ${POSTGRES_DB:-streambot}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - streambot-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-streambot}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  streambot-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
