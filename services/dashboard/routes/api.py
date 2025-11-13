@@ -50,6 +50,26 @@ def get_processes():
         logger.error(f"Error in /api/system/processes: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+@api_bp.route('/system/stats', methods=['GET'])
+@require_auth
+def get_system_stats():
+    try:
+        stats = system_service.get_realtime_stats()
+        return jsonify({'success': True, 'data': stats})
+    except Exception as e:
+        logger.error(f"Error in /api/system/stats: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@api_bp.route('/system/disk', methods=['GET'])
+@require_auth
+def get_disk_info():
+    try:
+        disks = system_service.get_disk_partitions()
+        return jsonify({'success': True, 'data': disks})
+    except Exception as e:
+        logger.error(f"Error in /api/system/disk: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 @api_bp.route('/containers', methods=['GET'])
 @require_auth
 def list_containers():

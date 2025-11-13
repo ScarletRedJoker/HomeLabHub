@@ -67,3 +67,53 @@ class SystemService:
         except Exception as e:
             logger.error(f"Error getting process list: {e}")
             return []
+    
+    @staticmethod
+    def get_realtime_stats() -> Dict:
+        """Lightweight stats for dashboard real-time monitoring"""
+        try:
+            cpu_percent = psutil.cpu_percent(interval=1)
+            memory = psutil.virtual_memory()
+            disk = psutil.disk_usage('/')
+            net_io = psutil.net_io_counters()
+            boot_time = psutil.boot_time()
+            import time
+            uptime = int(time.time() - boot_time)
+            
+            return {
+                'cpu_percent': round(cpu_percent, 1),
+                'memory_percent': round(memory.percent, 1),
+                'disk_percent': round(disk.percent, 1),
+                'network_sent_mb': round(net_io.bytes_sent / (1024**2), 2),
+                'network_recv_mb': round(net_io.bytes_recv / (1024**2), 2),
+                'hostname': platform.node(),
+                'platform': platform.system(),
+                'architecture': platform.machine(),
+                'uptime': uptime
+            }
+        except Exception as e:
+            logger.error(f"Error getting realtime stats: {e}")
+            return {}
+    
+    @staticmethod
+    def get_disk_partitions() -> list:
+        """Get disk partition information"""
+        try:
+            partitions = []
+            for partition in psutil.disk_partitions():
+                try:
+                    usage = psutil.disk_usage(partition.mountpoint)
+                    partitions.append({
+                        'mountpoint': partition.mountpoint,
+                        'fstype': partition.fstype,
+                        'total_gb': round(usage.total / (1024**3), 2),
+                        'used_gb': round(usage.used / (1024**3), 2),
+                        'free_gb': round(usage.free / (1024**3), 2),
+                        'percent': round(usage.percent, 1)
+                    })
+                except (PermissionError, OSError):
+                    pass
+            return partitions
+        except Exception as e:
+            logger.error(f"Error getting disk partitions: {e}")
+            return []

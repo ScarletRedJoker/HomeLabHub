@@ -143,13 +143,17 @@
 <script>
 async function loadStats() {
     try {
-        const response = await fetch('/api/system/stats');
-        const data = await response.json();
+        const response = await fetch('/api/system/stats', {
+            credentials: 'include'
+        });
+        const result = await response.json();
         
-        if (data.error) {
-            console.error('Error loading stats:', data.error);
+        if (!result.success || !result.data) {
+            console.error('Error loading stats:', result.message);
             return;
         }
+        
+        const data = result.data;
         
         document.getElementById('cpu-usage').textContent = data.cpu_percent.toFixed(1) + '%';
         document.getElementById('mem-usage').textContent = data.memory_percent.toFixed(1) + '%';
