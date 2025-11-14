@@ -12,6 +12,7 @@ from services.db_service import db_service
 from services.ai_service import AIService
 from jarvis.artifact_builder import ArtifactBuilder
 from jarvis.deployment_executor import DeploymentExecutor
+from jarvis.personality_profile import PersonalityOrchestrator, PersonalityMode
 from celery_app import celery_app
 from utils.auth import require_auth
 
@@ -31,6 +32,7 @@ jarvis_voice_bp = Blueprint('jarvis_voice', __name__, url_prefix='/api/jarvis')
 ai_service = AIService()
 artifact_builder = ArtifactBuilder()
 deployment_executor = DeploymentExecutor()
+personality = PersonalityOrchestrator()
 
 # Validation patterns for security
 ALLOWED_PROJECT_NAME_PATTERN = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$')
