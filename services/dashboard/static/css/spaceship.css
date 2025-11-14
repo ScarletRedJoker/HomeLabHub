@@ -341,8 +341,7 @@
     height: 12px;
     background: #34d399;
     clip-path: polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%);
-    box-shadow: 0 0 10px rgba(52, 211, 153, 0.6);
-    animation: pulse 2s ease-in-out infinite;
+    box-shadow: 0 0 6px rgba(52, 211, 153, 0.4);
 }
 
 .hex-led.warning {

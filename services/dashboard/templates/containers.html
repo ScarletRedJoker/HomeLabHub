@@ -50,8 +50,10 @@ async function loadContainers() {
         html += '</tr></thead><tbody>';
         
         containers.forEach(container => {
-            const isRunning = container.status && container.status.toLowerCase().includes('up');
-            const statusBadge = isRunning ? 'badge-success' : 'badge-danger';
+            const status = (container.status || '').toLowerCase();
+            const isRunning = status.includes('up') || status.includes('running');
+            const isExited = status.includes('exited') || status.includes('stopped');
+            const statusBadge = isRunning ? 'badge-success' : isExited ? 'badge-danger' : 'badge-warning';
             
             html += '<tr>';
             html += `<td><strong>${container.name}</strong></td>`;

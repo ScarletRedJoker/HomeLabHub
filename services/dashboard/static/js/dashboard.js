@@ -7,16 +7,29 @@ const chartData = {
 };
 
 async function loadSystemInfo() {
+    const timeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 10000)
+    );
+    
     try {
-        const response = await fetch('/api/system/info');
+        const response = await Promise.race([
+            fetch('/api/system/info'),
+            timeout
+        ]);
         const data = await response.json();
         
         if (data.success) {
             const info = data.data;
             
-            document.getElementById('cpuPercent').textContent = `${info.cpu.percent.toFixed(1)}%`;
-            document.getElementById('memPercent').textContent = `${info.memory.percent.toFixed(1)}%`;
-            document.getElementById('diskPercent').textContent = `${info.disk.percent.toFixed(1)}%`;
+            if (document.getElementById('cpuPercent')) {
+                document.getElementById('cpuPercent').textContent = `${info.cpu.percent.toFixed(1)}%`;
+            }
+            if (document.getElementById('memPercent')) {
+                document.getElementById('memPercent').textContent = `${info.memory.percent.toFixed(1)}%`;
+            }
+            if (document.getElementById('diskPercent')) {
+                document.getElementById('diskPercent').textContent = `${info.disk.percent.toFixed(1)}%`;
+            }
             
             const now = new Date().toLocaleTimeString();
             chartData.labels.push(now);
@@ -32,34 +45,69 @@ async function loadSystemInfo() {
             updateChart();
             
             const systemInfo = document.getElementById('systemInfo');
-            systemInfo.innerHTML = `
-                <p><strong>Hostname:</strong> ${info.system.hostname}</p>
-                <p><strong>Platform:</strong> ${info.system.platform} ${info.system.platform_release}</p>
-                <p><strong>CPU Cores:</strong> ${info.cpu.count} (${info.cpu.physical_count} physical)</p>
-                <p><strong>Total Memory:</strong> ${info.memory.total_gb} GB</p>
-                <p><strong>Available Memory:</strong> ${info.memory.available_gb} GB</p>
-                <p><strong>Total Disk:</strong> ${info.disk.total_gb} GB</p>
-                <p><strong>Free Disk:</strong> ${info.disk.free_gb} GB</p>
-                <p><strong>Network Sent:</strong> ${info.network.bytes_sent_mb} MB</p>
-                <p><strong>Network Received:</strong> ${info.network.bytes_recv_mb} MB</p>
-            `;
+            if (systemInfo) {
+                systemInfo.innerHTML = `
+                    <p><strong>Hostname:</strong> ${info.system.hostname}</p>
+                    <p><strong>Platform:</strong> ${info.system.platform} ${info.system.platform_release}</p>
+                    <p><strong>CPU Cores:</strong> ${info.cpu.count} (${info.cpu.physical_count} physical)</p>
+                    <p><strong>Total Memory:</strong> ${info.memory.total_gb} GB</p>
+                    <p><strong>Available Memory:</strong> ${info.memory.available_gb} GB</p>
+                    <p><strong>Total Disk:</strong> ${info.disk.total_gb} GB</p>
+                    <p><strong>Free Disk:</strong> ${info.disk.free_gb} GB</p>
+                    <p><strong>Network Sent:</strong> ${info.network.bytes_sent_mb} MB</p>
+                    <p><strong>Network Received:</strong> ${info.network.bytes_recv_mb} MB</p>
+                `;
+            }
+        } else {
+            throw new Error(data.message || 'Failed to load system info');
         }
     } catch (error) {
         console.error('Error loading system info:', error);
+        if (document.getElementById('cpuPercent')) {
+            document.getElementById('cpuPercent').textContent = 'N/A';
+        }
+        if (document.getElementById('memPercent')) {
+            document.getElementById('memPercent').textContent = 'N/A';
+        }
+        if (document.getElementById('diskPercent')) {
+            document.getElementById('diskPercent').textContent = 'N/A';
+        }
+        const systemInfo = document.getElementById('systemInfo');
+        if (systemInfo) {
+            systemInfo.innerHTML = '<p style="color: var(--accent-red); text-align: center;"><i class="bi bi-exclamation-triangle"></i> Service Unavailable</p>';
+        }
     }
 }
 
 async function refreshContainers() {
+    const timeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 10000)
+    );
+    
     try {
-        const response = await fetch('/api/containers');
+        const response = await Promise.race([
+            fetch('/api/containers'),
+            timeout
+        ]);
         const data = await response.json();
         
         if (data.success) {
-            document.getElementById('containerCount').textContent = data.data.length;
+            if (document.getElementById('containerCount')) {
+                document.getElementById('containerCount').textContent = data.data.length;
+            }
             displayContainers(data.data);
+        } else {
+            throw new Error(data.message || 'Failed to load containers');
         }
     } catch (error) {
         console.error('Error loading containers:', error);
+        if (document.getElementById('containerCount')) {
+            document.getElementById('containerCount').textContent = 'N/A';
+        }
+        const grid = document.getElementById('containersGrid');
+        if (grid) {
+            grid.innerHTML = '<p style="color: var(--accent-red); text-align: center; padding: 20px;"><i class="bi bi-exclamation-triangle"></i> Unable to load containers. Service may be unavailable.</p>';
+        }
     }
 }
 
