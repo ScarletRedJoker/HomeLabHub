@@ -75,6 +75,30 @@ StreamBot is a multi-tenant SaaS platform enabling users to deploy and manage AI
     - Kick: Manual bearer token + cookies (unofficial API)
 - **Session Store**: `connect-pg-simple` for PostgreSQL session management.
 
+## Recent Changes (November 14, 2025)
+- ✅ **Command Permission System**:
+  - Implemented permission levels for custom commands: broadcaster, moderator, subscriber, everyone
+  - Added `checkUserPermission()` method in BotWorker to validate user badges/roles
+  - Works across all platforms (Twitch, YouTube, Kick) with platform-specific badge detection
+  - Returns user-friendly error messages when permission is denied
+  - No schema changes required - permission field already existed in customCommands table
+- ✅ **Uptime Tracking**:
+  - Added `streamStartTime` property to BotWorker class
+  - Stream start time is set when bot starts and reset when bot stops
+  - Integrated with `{uptime}` variable in command responses
+  - Uptime displayed in "Xh Ym" format (e.g., "2h 15m")
+  - Handles bot restarts and stream disconnections appropriately
+- ✅ **Enhanced Health Check Endpoint**:
+  - Added `/api/health` endpoint for HomelabHub integration
+  - Returns comprehensive bot health information:
+    - Bot status (online/idle), uptime, active workers count
+    - Platform connection statuses (twitch/youtube/kick)
+    - User count and active bot instances
+    - WebSocket client connections
+    - Memory usage statistics
+  - Follows discord-bot's health endpoint pattern
+  - Both `/health` (basic) and `/api/health` (detailed) endpoints available
+
 ## Recent Changes (November 12, 2025)
 - ✅ **CRITICAL FIX: Production build now works in Docker**:
   - Split server/vite.ts into server/http.ts (production) and server/vite.dev.ts (dev-only)
