@@ -251,6 +251,18 @@ export class BotManager {
     }
   }
 
+  // Notify chat about giveaway winners
+  async notifyGiveawayEnd(userId: string, giveaway: any, winners: any[]): Promise<void> {
+    const worker = this.workers.get(userId);
+
+    if (!worker) {
+      console.log(`[BotManager] No worker found for user ${userId} to announce giveaway winners`);
+      return;
+    }
+
+    await worker.announceGiveawayWinners(giveaway, winners);
+  }
+
   // Get statistics
   getStats(): {
     totalWorkers: number;

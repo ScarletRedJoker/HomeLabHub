@@ -4,7 +4,15 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { botManager } from "./bot-manager";
-import { updateBotConfigSchema } from "@shared/schema";
+import { giveawayService } from "./giveaway-service";
+import {
+  updateBotConfigSchema,
+  insertCustomCommandSchema,
+  updateCustomCommandSchema,
+  updateModerationRuleSchema,
+  insertGiveawaySchema,
+} from "@shared/schema";
+import { getAvailableVariables } from "./command-variables";
 import authRoutes from "./auth/routes";
 import spotifyRoutes from "./spotify-routes";
 import oauthSpotifyRoutes from "./oauth-spotify";
@@ -319,6 +327,193 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Custom Commands
+  app.get("/api/commands", requireAuth, async (req, res) => {
+    try {
+      const commands = await storage.getCustomCommands(req.user!.id);
+      res.json(commands);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch commands" });
+    }
+  });
+
+  app.get("/api/commands/:id", requireAuth, async (req, res) => {
+    try {
+      const command = await storage.getCustomCommand(req.user!.id, req.params.id);
+      if (!command) {
+        return res.status(404).json({ error: "Command not found" });
+      }
+      res.json(command);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch command" });
+    }
+  });
+
+  app.post("/api/commands", requireAuth, async (req, res) => {
+    try {
+      const validated = insertCustomCommandSchema.parse(req.body);
+      
+      // Check if command name already exists for this user
+      const existing = await storage.getCustomCommandByName(req.user!.id, validated.name);
+      if (existing) {
+        return res.status(400).json({ error: "A command with this name already exists" });
+      }
+      
+      const command = await storage.createCustomCommand(req.user!.id, validated);
+      res.json(command);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Invalid command data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create command" });
+    }
+  });
+
+  app.patch("/api/commands/:id", requireAuth, async (req, res) => {
+    try {
+      const validated = updateCustomCommandSchema.parse(req.body);
+      
+      // If updating name, check if it already exists
+      if (validated.name) {
+        const existing = await storage.getCustomCommandByName(req.user!.id, validated.name);
+        if (existing && existing.id !== req.params.id) {
+          return res.status(400).json({ error: "A command with this name already exists" });
+        }
+      }
+      
+      const command = await storage.updateCustomCommand(req.user!.id, req.params.id, validated);
+      res.json(command);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Invalid command data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update command" });
+    }
+  });
+
+  app.delete("/api/commands/:id", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteCustomCommand(req.user!.id, req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete command" });
+    }
+  });
+
+  app.get("/api/commands/:id/stats", requireAuth, async (req, res) => {
+    try {
+      const stats = await storage.getCommandStats(req.user!.id, req.params.id);
+      res.json(stats);
+    } catch (error: any) {
+      if (error.message === "Command not found") {
+        return res.status(404).json({ error: "Command not found" });
+      }
+      res.status(500).json({ error: "Failed to fetch command stats" });
+    }
+  });
+
+  app.get("/api/commands-variables", requireAuth, async (req, res) => {
+    try {
+      const variables = getAvailableVariables();
+      res.json(variables);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch available variables" });
+    }
+  });
+
+  // Giveaways
+  app.get("/api/giveaways", requireAuth, async (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      const giveaways = await giveawayService.getGiveawayHistory(req.user!.id, limit);
+      res.json(giveaways);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch giveaways" });
+    }
+  });
+
+  app.get("/api/giveaways/active", requireAuth, async (req, res) => {
+    try {
+      const activeGiveaway = await giveawayService.getActiveGiveaway(req.user!.id);
+      res.json(activeGiveaway);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch active giveaway" });
+    }
+  });
+
+  app.get("/api/giveaways/:id", requireAuth, async (req, res) => {
+    try {
+      const giveaway = await giveawayService.getGiveaway(req.user!.id, req.params.id);
+      if (!giveaway) {
+        return res.status(404).json({ error: "Giveaway not found" });
+      }
+      res.json(giveaway);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch giveaway" });
+    }
+  });
+
+  app.get("/api/giveaways/:id/entries", requireAuth, async (req, res) => {
+    try {
+      const entries = await storage.getGiveawayEntries(req.params.id);
+      res.json(entries);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch giveaway entries" });
+    }
+  });
+
+  app.post("/api/giveaways", requireAuth, async (req, res) => {
+    try {
+      const validated = insertGiveawaySchema.parse(req.body);
+      const giveaway = await giveawayService.createGiveaway(req.user!.id, validated);
+      res.json(giveaway);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Invalid giveaway data", details: error.errors });
+      }
+      if (error.message?.includes("already have an active giveaway")) {
+        return res.status(400).json({ error: error.message });
+      }
+      res.status(500).json({ error: "Failed to create giveaway" });
+    }
+  });
+
+  app.post("/api/giveaways/:id/end", requireAuth, async (req, res) => {
+    try {
+      const result = await giveawayService.endGiveaway(req.user!.id, req.params.id);
+      
+      botManager.notifyGiveawayEnd(req.user!.id, result.giveaway, result.winners);
+      
+      res.json(result);
+    } catch (error: any) {
+      if (error.message === "Giveaway not found") {
+        return res.status(404).json({ error: "Giveaway not found" });
+      }
+      if (error.message === "This giveaway has already ended") {
+        return res.status(400).json({ error: error.message });
+      }
+      if (error.message === "No entries to select winners from") {
+        return res.status(400).json({ error: error.message });
+      }
+      res.status(500).json({ error: "Failed to end giveaway" });
+    }
+  });
+
+  app.delete("/api/giveaways/:id", requireAuth, async (req, res) => {
+    try {
+      await giveawayService.cancelGiveaway(req.user!.id, req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      if (error.message === "Giveaway not found") {
+        return res.status(404).json({ error: "Giveaway not found" });
+      }
+      if (error.message === "Cannot cancel a giveaway that has already ended") {
+        return res.status(400).json({ error: error.message });
+      }
+      res.status(500).json({ error: "Failed to cancel giveaway" });
+    }
+  });
+
   // Manual Trigger
   app.post("/api/trigger", requireAuth, async (req, res) => {
     try {
@@ -349,6 +544,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("[generate-fact] Error:", error.message || error);
       res.status(500).json({ error: "Failed to generate fact", details: error.message });
+    }
+  });
+
+  // Moderation Rules
+  app.get("/api/moderation/rules", requireAuth, async (req, res) => {
+    try {
+      let rules = await storage.getModerationRules(req.user!.id);
+      
+      // Initialize default rules if none exist
+      if (rules.length === 0) {
+        rules = await storage.initializeDefaultModerationRules(req.user!.id);
+      }
+      
+      res.json(rules);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch moderation rules" });
+    }
+  });
+
+  app.patch("/api/moderation/rules", requireAuth, async (req, res) => {
+    try {
+      const { rules } = req.body;
+      
+      if (!Array.isArray(rules)) {
+        return res.status(400).json({ error: "Rules must be an array" });
+      }
+
+      const updatedRules = [];
+      for (const ruleUpdate of rules) {
+        const validated = updateModerationRuleSchema.parse(ruleUpdate);
+        const updated = await storage.updateModerationRule(
+          req.user!.id,
+          ruleUpdate.id,
+          validated
+        );
+        updatedRules.push(updated);
+      }
+      
+      res.json(updatedRules);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Invalid rule data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update moderation rules" });
+    }
+  });
+
+  app.patch("/api/moderation/rules/:id", requireAuth, async (req, res) => {
+    try {
+      const validated = updateModerationRuleSchema.parse(req.body);
+      const rule = await storage.updateModerationRule(req.user!.id, req.params.id, validated);
+      res.json(rule);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Invalid rule data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update moderation rule" });
+    }
+  });
+
+  // Moderation Logs
+  app.get("/api/moderation/logs", requireAuth, async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 100;
+      const logs = await storage.getModerationLogs(req.user!.id, limit);
+      res.json(logs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch moderation logs" });
+    }
+  });
+
+  app.get("/api/moderation/stats", requireAuth, async (req, res) => {
+    try {
+      const stats = await storage.getModerationStats(req.user!.id);
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch moderation stats" });
+    }
+  });
+
+  // Link Whitelist
+  app.get("/api/moderation/whitelist", requireAuth, async (req, res) => {
+    try {
+      const whitelist = await storage.getLinkWhitelist(req.user!.id);
+      res.json(whitelist);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch link whitelist" });
+    }
+  });
+
+  app.post("/api/moderation/whitelist", requireAuth, async (req, res) => {
+    try {
+      const { domain } = req.body;
+      
+      if (!domain || typeof domain !== "string") {
+        return res.status(400).json({ error: "Domain is required" });
+      }
+      
+      const whitelistEntry = await storage.addToLinkWhitelist(req.user!.id, domain);
+      res.json(whitelistEntry);
+    } catch (error: any) {
+      if (error.message?.includes("duplicate")) {
+        return res.status(400).json({ error: "Domain already whitelisted" });
+      }
+      res.status(500).json({ error: "Failed to add domain to whitelist" });
+    }
+  });
+
+  app.delete("/api/moderation/whitelist/:domain", requireAuth, async (req, res) => {
+    try {
+      await storage.removeFromLinkWhitelist(req.user!.id, req.params.domain);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to remove domain from whitelist" });
     }
   });
 

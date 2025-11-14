@@ -1,4 +1,4 @@
-import { Home, Settings, Activity, Zap, History } from "lucide-react";
+import { Home, Settings, Activity, Zap, History, MessageSquare, Shield, Trophy } from "lucide-react";
 import { SiTwitch, SiYoutube, SiKick } from "react-icons/si";
 import {
   Sidebar,
@@ -33,6 +33,21 @@ const mainItems = [
     title: "History",
     url: "/history",
     icon: History,
+  },
+  {
+    title: "Commands",
+    url: "/commands",
+    icon: MessageSquare,
+  },
+  {
+    title: "Moderation",
+    url: "/moderation",
+    icon: Shield,
+  },
+  {
+    title: "Giveaways",
+    url: "/giveaways",
+    icon: Trophy,
   },
   {
     title: "Settings",

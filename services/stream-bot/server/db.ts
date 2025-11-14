@@ -1,6 +1,7 @@
 // Database connection using node-postgres for local PostgreSQL
 // Switched from @neondatabase/serverless to support local postgres (not Neon cloud)
-import { Pool } from 'pg';
+import pg from 'pg';
+const { Pool } = pg;
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from "@shared/schema";
 import { requireEnv } from "./env";

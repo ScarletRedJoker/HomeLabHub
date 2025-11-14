@@ -17,6 +17,9 @@ import Settings from "@/pages/settings";
 import Trigger from "@/pages/trigger";
 import Activity from "@/pages/activity";
 import History from "@/pages/history";
+import Commands from "@/pages/commands";
+import Moderation from "@/pages/moderation";
+import Giveaways from "@/pages/giveaways";
 import NotFound from "@/pages/not-found";
 import SpotifyOverlay from "@/pages/spotify-overlay";
 import YouTubeOverlay from "@/pages/youtube-overlay";
@@ -66,6 +69,9 @@ function ProtectedRouter() {
               <Route path="/trigger" component={Trigger} />
               <Route path="/activity" component={Activity} />
               <Route path="/history" component={History} />
+              <Route path="/commands" component={Commands} />
+              <Route path="/moderation" component={Moderation} />
+              <Route path="/giveaways" component={Giveaways} />
               <Route path="/settings" component={Settings} />
               <Route path="/profile" component={Profile} />
               <Route component={NotFound} />

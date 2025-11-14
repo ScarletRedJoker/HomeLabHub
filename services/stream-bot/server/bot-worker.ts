@@ -4,10 +4,13 @@ import { createClient } from "@retconned/kick-js";
 import { UserStorage } from "./user-storage";
 import { generateSnappleFact } from "./openai";
 import { sendYouTubeChatMessage, getActiveYouTubeLivestream } from "./youtube-client";
-import type { BotConfig, PlatformConnection } from "@shared/schema";
+import { parseCommandVariables, type CommandContext } from "./command-variables";
+import { moderationService } from "./moderation-service";
+import { giveawayService } from "./giveaway-service";
+import type { BotConfig, PlatformConnection, CustomCommand, ModerationRule, LinkWhitelist } from "@shared/schema";
 
 type BotEvent = {
-  type: "status_changed" | "new_message" | "error";
+  type: "status_changed" | "new_message" | "error" | "moderation_action" | "giveaway_entry";
   userId: string;
   data: any;
 };
@@ -23,6 +26,7 @@ export class BotWorker {
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private isRunning = false;
   private config: BotConfig | null = null;
+  private commandCooldowns: Map<string, number> = new Map(); // commandId -> lastUsedTimestamp
 
   constructor(
     private userId: string,
@@ -162,6 +166,220 @@ export class BotWorker {
     };
   }
 
+  private async checkModeration(
+    message: string,
+    username: string,
+    platform: string
+  ): Promise<{ allowed: boolean; action?: string; reason?: string; timeoutDuration?: number }> {
+    try {
+      const [rules, whitelist] = await Promise.all([
+        this.storage.getModerationRules(),
+        this.storage.getLinkWhitelist(),
+      ]);
+
+      const decision = await moderationService.checkMessage(message, username, rules, whitelist);
+
+      if (!decision.allow) {
+        await this.storage.createModerationLog({
+          userId: this.userId,
+          platform,
+          username,
+          message,
+          ruleTriggered: decision.ruleTriggered || "unknown",
+          action: decision.action,
+          severity: decision.severity || "low",
+        });
+
+        this.emitEvent({
+          type: "moderation_action",
+          userId: this.userId,
+          data: {
+            username,
+            platform,
+            action: decision.action,
+            ruleTriggered: decision.ruleTriggered,
+            reason: decision.reason,
+            message,
+          },
+        });
+
+        console.log(`[BotWorker] Moderation action: ${decision.action} for ${username} on ${platform} - ${decision.reason}`);
+      }
+
+      return {
+        allowed: decision.allow,
+        action: decision.action,
+        reason: decision.reason,
+        timeoutDuration: decision.timeoutDuration,
+      };
+    } catch (error) {
+      console.error(`[BotWorker] Error checking moderation:`, error);
+      return { allowed: true };
+    }
+  }
+
+  private async executeModerationAction(
+    platform: string,
+    username: string,
+    action: string,
+    timeoutDuration?: number
+  ): Promise<void> {
+    try {
+      if (platform === "twitch" && this.twitchClient) {
+        const channel = (await this.storage.getPlatformConnectionByPlatform("twitch"))?.platformUsername;
+        if (!channel) return;
+
+        if (action === "timeout" && timeoutDuration) {
+          await this.twitchClient.timeout(channel, username, timeoutDuration, "Auto-moderation");
+        } else if (action === "ban") {
+          await this.twitchClient.ban(channel, username, "Auto-moderation");
+        }
+      }
+    } catch (error) {
+      console.error(`[BotWorker] Error executing moderation action:`, error);
+    }
+  }
+
+  private async executeCustomCommand(
+    commandName: string,
+    username: string,
+    userTags?: any
+  ): Promise<string | null> {
+    try {
+      // Remove ! prefix if present
+      const cleanName = commandName.startsWith("!") ? commandName.slice(1) : commandName;
+      
+      // Get command from database
+      const command = await this.storage.getCustomCommandByName(cleanName);
+      
+      if (!command) {
+        return null; // Command doesn't exist
+      }
+
+      if (!command.isActive) {
+        return null; // Command is disabled
+      }
+
+      // Check cooldown
+      const now = Date.now();
+      const lastUsed = this.commandCooldowns.get(command.id);
+      if (lastUsed && command.cooldown > 0) {
+        const timeSinceLastUse = (now - lastUsed) / 1000; // seconds
+        if (timeSinceLastUse < command.cooldown) {
+          return null; // Still on cooldown
+        }
+      }
+
+      // TODO: Check user permissions (broadcaster/mods/subs/everyone)
+      // For now, we'll allow everyone
+      
+      // Parse variables in the response
+      const context: CommandContext = {
+        username,
+        usageCount: command.usageCount + 1, // Show the count after increment
+        // TODO: Add stream start time for uptime calculation
+      };
+      
+      const response = parseCommandVariables(command.response, context);
+      
+      // Update cooldown and increment usage
+      this.commandCooldowns.set(command.id, now);
+      await this.storage.incrementCommandUsage(command.id);
+      
+      return response;
+    } catch (error) {
+      console.error(`[BotWorker] Error executing command ${commandName}:`, error);
+      return null;
+    }
+  }
+
+  private async handleGiveawayEntry(
+    message: string,
+    username: string,
+    platform: string,
+    isSubscriber: boolean = false
+  ): Promise<string | null> {
+    try {
+      const activeGiveaway = await this.storage.getActiveGiveaway();
+      
+      if (!activeGiveaway) {
+        return null; // No active giveaway
+      }
+
+      // Check if message matches giveaway keyword
+      const lowerMessage = message.toLowerCase().trim();
+      const keyword = activeGiveaway.keyword.toLowerCase();
+      
+      if (lowerMessage !== keyword) {
+        return null; // Message doesn't match keyword
+      }
+
+      // Try to enter the giveaway
+      const result = await giveawayService.enterGiveaway(
+        this.userId,
+        activeGiveaway.id,
+        username,
+        platform,
+        isSubscriber
+      );
+
+      // Emit event for real-time updates
+      if (result.success) {
+        this.emitEvent({
+          type: "giveaway_entry",
+          userId: this.userId,
+          data: {
+            giveawayId: activeGiveaway.id,
+            username,
+            platform,
+            totalEntries: await this.storage.getGiveawayEntries(activeGiveaway.id).then(e => e.length),
+          },
+        });
+      }
+
+      return result.message;
+    } catch (error) {
+      console.error(`[BotWorker] Error handling giveaway entry:`, error);
+      return null;
+    }
+  }
+
+  async announceGiveawayWinners(giveaway: any, winners: any[]): Promise<void> {
+    try {
+      const connections = await this.storage.getPlatformConnections();
+      const connectedPlatforms = connections.filter((c) => c.isConnected).map((c) => c.platform);
+
+      if (winners.length === 0) {
+        const message = `Giveaway "${giveaway.title}" ended with no winners.`;
+        for (const platform of connectedPlatforms) {
+          try {
+            await this.postToPlatform(platform, message);
+          } catch (error) {
+            console.error(`[BotWorker] Failed to announce giveaway end on ${platform}:`, error);
+          }
+        }
+        return;
+      }
+
+      const winnerNames = winners.map((w) => `@${w.username}`).join(", ");
+      const message =
+        winners.length === 1
+          ? `🎉 Giveaway Winner: ${winnerNames}! Congratulations! 🎉`
+          : `🎉 Giveaway Winners: ${winnerNames}! Congratulations! 🎉`;
+
+      for (const platform of connectedPlatforms) {
+        try {
+          await this.postToPlatform(platform, message);
+          console.log(`[BotWorker] Announced giveaway winners on ${platform}`);
+        } catch (error) {
+          console.error(`[BotWorker] Failed to announce giveaway winners on ${platform}:`, error);
+        }
+      }
+    } catch (error) {
+      console.error(`[BotWorker] Error announcing giveaway winners:`, error);
+    }
+  }
+
   private async startTwitchClient(connection: PlatformConnection, keywords: string[]) {
     if (!connection.platformUsername) return;
 
@@ -177,7 +395,61 @@ export class BotWorker {
       this.twitchClient.on("message", async (channel, tags, message, self) => {
         if (self) return;
 
-        const lowerMessage = message.toLowerCase().trim();
+        const trimmedMessage = message.trim();
+        const username = tags.username || "unknown";
+        
+        // Check moderation FIRST, before processing anything
+        const moderationResult = await this.checkModeration(trimmedMessage, username, "twitch");
+        
+        if (!moderationResult.allowed) {
+          // Execute moderation action if needed
+          if (moderationResult.action && moderationResult.action !== "warn") {
+            await this.executeModerationAction(
+              "twitch",
+              username,
+              moderationResult.action,
+              moderationResult.timeoutDuration
+            );
+          }
+          
+          // Send warning message if action is warn
+          if (moderationResult.action === "warn" && this.twitchClient) {
+            await this.twitchClient.say(
+              channel,
+              `@${username}, please follow chat rules. ${moderationResult.reason || ""}`
+            );
+          }
+          
+          return;
+        }
+        
+        // Check for custom commands (starts with !)
+        if (trimmedMessage.startsWith("!")) {
+          const commandName = trimmedMessage.split(" ")[0]; // Get first word
+          const response = await this.executeCustomCommand(commandName, username, tags);
+          
+          if (response && this.twitchClient) {
+            await this.twitchClient.say(channel, response);
+            return; // Don't check keywords if command was executed
+          }
+
+          // Check for giveaway entry if no custom command matched
+          const isSubscriber = tags.subscriber || tags.badges?.subscriber || false;
+          const giveawayResponse = await this.handleGiveawayEntry(
+            trimmedMessage,
+            username,
+            "twitch",
+            isSubscriber
+          );
+          
+          if (giveawayResponse && this.twitchClient) {
+            await this.twitchClient.say(channel, giveawayResponse);
+            return; // Don't check keywords if giveaway entry was processed
+          }
+        }
+
+        // Check for Snapple fact keywords
+        const lowerMessage = trimmedMessage.toLowerCase();
         const hasKeyword = keywords.some((keyword) =>
           lowerMessage.includes(keyword.toLowerCase())
         );
@@ -252,7 +524,23 @@ export class BotWorker {
       });
 
       this.kickClient.on("ChatMessage", async (message: any) => {
-        const lowerMessage = message.content.toLowerCase().trim();
+        const trimmedContent = message.content.trim();
+        
+        // Check for custom commands (starts with !)
+        if (trimmedContent.startsWith("!")) {
+          const commandName = trimmedContent.split(" ")[0]; // Get first word
+          const response = await this.executeCustomCommand(commandName, message.sender.username);
+          
+          if (response) {
+            // Note: Kick client would need a send method here
+            // For now, we'll log it - actual implementation depends on kick-js API
+            console.log(`[BotWorker] Kick command response: ${response}`);
+            return; // Don't check keywords if command was executed
+          }
+        }
+
+        // Check for Snapple fact keywords
+        const lowerMessage = trimmedContent.toLowerCase();
         const hasKeyword = keywords.some((keyword) =>
           lowerMessage.includes(keyword.toLowerCase())
         );
