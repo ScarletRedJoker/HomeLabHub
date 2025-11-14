@@ -1,6 +1,5 @@
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-import { Strategy as TwitchStrategy } from "passport-twitch-new";
 import { Strategy as OAuth2Strategy } from "passport-oauth2";
 import { db } from "../db";
 import { users, platformConnections, botConfigs, botInstances } from "@shared/schema";
@@ -125,24 +124,41 @@ const TWITCH_CLIENT_SECRET = getEnv('TWITCH_CLIENT_SECRET');
 const TWITCH_CALLBACK_URL = getEnv('TWITCH_SIGNIN_CALLBACK_URL') || `${getEnv('APP_URL') || 'http://localhost:5000'}/api/auth/twitch/callback`;
 
 if (TWITCH_CLIENT_ID && TWITCH_CLIENT_SECRET) {
-  passport.use('twitch-signin', new TwitchStrategy(
+  passport.use('twitch-signin', new OAuth2Strategy(
     {
+      authorizationURL: 'https://id.twitch.tv/oauth2/authorize',
+      tokenURL: 'https://id.twitch.tv/oauth2/token',
       clientID: TWITCH_CLIENT_ID,
       clientSecret: TWITCH_CLIENT_SECRET,
       callbackURL: TWITCH_CALLBACK_URL,
-      scope: ['user:read:email', 'user:read:chat', 'user:write:chat', 'user:bot', 'channel:bot'],
+      scope: ['user:read:email'],
     },
     async (accessToken: string, refreshToken: string, profile: any, done: any) => {
       try {
-        if (!profile.email) {
+        // Fetch user profile from Twitch API
+        const userResponse = await fetch('https://api.twitch.tv/helix/users', {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Client-Id': TWITCH_CLIENT_ID,
+          },
+        });
+
+        if (!userResponse.ok) {
+          throw new Error(`Twitch API error: ${userResponse.statusText}`);
+        }
+
+        const userData = await userResponse.json();
+        const twitchUser = userData.data?.[0];
+
+        if (!twitchUser || !twitchUser.email) {
           return done(new Error('No email found in Twitch profile'), null);
         }
 
         const oauthProfile: OAuthProfile = {
-          id: profile.id,
-          email: profile.email,
-          displayName: profile.display_name,
-          username: profile.login,
+          id: twitchUser.id,
+          email: twitchUser.email,
+          displayName: twitchUser.display_name,
+          username: twitchUser.login,
           platform: 'twitch',
           accessToken,
           refreshToken,
