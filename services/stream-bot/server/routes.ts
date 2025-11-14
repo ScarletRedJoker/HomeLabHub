@@ -25,6 +25,8 @@ import { sessionMiddleware } from "./index";
 import { shoutoutService } from "./shoutout-service";
 import { statsService } from "./stats-service";
 import { GamesService } from "./games-service";
+import { currencyService } from "./currency-service";
+import { songRequestService } from "./song-request-service";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/auth", authRoutes);
@@ -941,6 +943,213 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== SONG REQUEST ROUTES =====
+
+  // Get song request settings
+  app.get("/api/songrequest/settings", requireAuth, async (req, res) => {
+    try {
+      const settings = await songRequestService.getSettings(req.user!.id);
+      res.json(settings);
+    } catch (error) {
+      console.error("Failed to fetch song request settings:", error);
+      res.status(500).json({ error: "Failed to fetch song request settings" });
+    }
+  });
+
+  // Update song request settings
+  app.patch("/api/songrequest/settings", requireAuth, async (req, res) => {
+    try {
+      const updated = await songRequestService.updateSettings(req.user!.id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Failed to update song request settings:", error);
+      res.status(500).json({ error: "Failed to update song request settings" });
+    }
+  });
+
+  // Search for songs
+  app.get("/api/songrequest/search", requireAuth, async (req, res) => {
+    try {
+      const query = req.query.q as string;
+      
+      if (!query) {
+        return res.status(400).json({ error: "Query parameter 'q' is required" });
+      }
+
+      const results = await songRequestService.searchSong(req.user!.id, query);
+      res.json(results);
+    } catch (error) {
+      console.error("Failed to search songs:", error);
+      res.status(500).json({ error: "Failed to search songs" });
+    }
+  });
+
+  // Add song to queue
+  app.post("/api/songrequest", requireAuth, async (req, res) => {
+    try {
+      const { query, requestedBy, isModerator } = req.body;
+      
+      if (!query || !requestedBy) {
+        return res.status(400).json({ error: "query and requestedBy are required" });
+      }
+
+      const result = await songRequestService.addToQueue(
+        req.user!.id,
+        requestedBy,
+        query,
+        isModerator || false
+      );
+
+      if (result.success) {
+        res.json(result);
+      } else {
+        res.status(400).json({ error: result.error });
+      }
+    } catch (error) {
+      console.error("Failed to add song to queue:", error);
+      res.status(500).json({ error: "Failed to add song to queue" });
+    }
+  });
+
+  // Get current queue
+  app.get("/api/songrequest/queue", requireAuth, async (req, res) => {
+    try {
+      const queue = await songRequestService.getQueue(req.user!.id);
+      res.json(queue);
+    } catch (error) {
+      console.error("Failed to fetch song queue:", error);
+      res.status(500).json({ error: "Failed to fetch song queue" });
+    }
+  });
+
+  // Get current playing song
+  app.get("/api/songrequest/current", requireAuth, async (req, res) => {
+    try {
+      const current = await songRequestService.getCurrentSong(req.user!.id);
+      res.json(current);
+    } catch (error) {
+      console.error("Failed to fetch current song:", error);
+      res.status(500).json({ error: "Failed to fetch current song" });
+    }
+  });
+
+  // Get song request history
+  app.get("/api/songrequest/history", requireAuth, async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const history = await songRequestService.getHistory(req.user!.id, limit);
+      res.json(history);
+    } catch (error) {
+      console.error("Failed to fetch song request history:", error);
+      res.status(500).json({ error: "Failed to fetch song request history" });
+    }
+  });
+
+  // Remove song from queue
+  app.delete("/api/songrequest/:id", requireAuth, async (req, res) => {
+    try {
+      const removed = await songRequestService.removeFromQueue(req.user!.id, req.params.id);
+      
+      if (removed) {
+        res.json({ success: true });
+      } else {
+        res.status(404).json({ error: "Song not found in queue" });
+      }
+    } catch (error) {
+      console.error("Failed to remove song from queue:", error);
+      res.status(500).json({ error: "Failed to remove song from queue" });
+    }
+  });
+
+  // Skip current song
+  app.post("/api/songrequest/skip", requireAuth, async (req, res) => {
+    try {
+      const skipped = await songRequestService.skipCurrent(req.user!.id);
+      
+      if (skipped) {
+        const next = await songRequestService.playNext(req.user!.id);
+        res.json({ success: true, next });
+      } else {
+        res.status(404).json({ error: "No song is currently playing" });
+      }
+    } catch (error) {
+      console.error("Failed to skip song:", error);
+      res.status(500).json({ error: "Failed to skip song" });
+    }
+  });
+
+  // Play next song
+  app.post("/api/songrequest/next", requireAuth, async (req, res) => {
+    try {
+      const next = await songRequestService.playNext(req.user!.id);
+      
+      if (next) {
+        res.json(next);
+      } else {
+        res.status(404).json({ error: "Queue is empty" });
+      }
+    } catch (error) {
+      console.error("Failed to play next song:", error);
+      res.status(500).json({ error: "Failed to play next song" });
+    }
+  });
+
+  // Ban a song
+  app.post("/api/songrequest/ban/:songId", requireAuth, async (req, res) => {
+    try {
+      const { songUrl } = req.body;
+      
+      if (!songUrl) {
+        return res.status(400).json({ error: "songUrl is required" });
+      }
+
+      await songRequestService.banSong(req.user!.id, songUrl);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to ban song:", error);
+      res.status(500).json({ error: "Failed to ban song" });
+    }
+  });
+
+  // Unban a song
+  app.delete("/api/songrequest/ban/:songId", requireAuth, async (req, res) => {
+    try {
+      const { songUrl } = req.body;
+      
+      if (!songUrl) {
+        return res.status(400).json({ error: "songUrl is required" });
+      }
+
+      await songRequestService.unbanSong(req.user!.id, songUrl);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to unban song:", error);
+      res.status(500).json({ error: "Failed to unban song" });
+    }
+  });
+
+  // Reorder queue
+  app.post("/api/songrequest/reorder", requireAuth, async (req, res) => {
+    try {
+      const { songId, newPosition } = req.body;
+      
+      if (!songId || typeof newPosition !== 'number') {
+        return res.status(400).json({ error: "songId and newPosition are required" });
+      }
+
+      const success = await songRequestService.reorderQueue(req.user!.id, songId, newPosition);
+      
+      if (success) {
+        res.json({ success: true });
+      } else {
+        res.status(400).json({ error: "Failed to reorder queue" });
+      }
+    } catch (error) {
+      console.error("Failed to reorder queue:", error);
+      res.status(500).json({ error: "Failed to reorder queue" });
+    }
+  });
+
   // ===== GAMES ROUTES =====
   
   app.get("/api/games/settings", requireAuth, async (req, res) => {
@@ -1000,11 +1209,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/games/stats", requireAuth, async (req, res) => {
     try {
       const userStorage = storage.getUserStorage(req.user!.id);
-      const stats = await userStorage.getGameStats();
-      res.json(stats);
+      const gamesService = new GamesService(userStorage);
+      const stats = await gamesService.getGameStats();
+      
+      // Convert the stats format for frontend
+      const statsArray = Object.entries(stats.byGame).map(([gameType, data]) => ({
+        gameType,
+        totalPlays: data.plays,
+        wins: data.wins,
+        losses: data.losses,
+        neutral: data.neutral,
+        totalPointsAwarded: 0,
+      }));
+      
+      res.json(statsArray);
     } catch (error) {
       console.error("Failed to fetch game stats:", error);
       res.status(500).json({ error: "Failed to fetch game stats" });
+    }
+  });
+
+  app.get("/api/games/leaderboard", requireAuth, async (req, res) => {
+    try {
+      const gameName = req.query.gameName as string;
+      const limit = parseInt(req.query.limit as string) || 10;
+      
+      if (!gameName) {
+        return res.status(400).json({ error: "gameName query parameter is required" });
+      }
+      
+      const userStorage = storage.getUserStorage(req.user!.id);
+      const leaderboard = await userStorage.getGameLeaderboard(gameName, limit);
+      res.json(leaderboard);
+    } catch (error) {
+      console.error("Failed to fetch leaderboard:", error);
+      res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+  });
+
+  app.post("/api/games/:gameName/play", requireAuth, async (req, res) => {
+    try {
+      const { gameName } = req.params;
+      const { player, platform, opponent, question, difficulty } = req.body;
+      
+      if (!player || !platform) {
+        return res.status(400).json({ error: "player and platform are required" });
+      }
+      
+      const userStorage = storage.getUserStorage(req.user!.id);
+      const gamesService = new GamesService(userStorage);
+      
+      let result;
+      
+      switch (gameName) {
+        case "8ball":
+          if (!question) {
+            return res.status(400).json({ error: "question is required for 8ball" });
+          }
+          result = await gamesService.play8Ball(question);
+          break;
+          
+        case "trivia":
+          result = await gamesService.playTrivia(
+            (difficulty || "medium") as "easy" | "medium" | "hard",
+            player,
+            req.user!.id,
+            platform
+          );
+          break;
+          
+        case "duel":
+          if (!opponent) {
+            return res.status(400).json({ error: "opponent is required for duel" });
+          }
+          result = await gamesService.playDuel(player, opponent);
+          break;
+          
+        case "slots":
+          result = await gamesService.playSlots();
+          break;
+          
+        case "roulette":
+          result = await gamesService.playRoulette(player);
+          break;
+          
+        default:
+          return res.status(400).json({ error: "Invalid game name" });
+      }
+      
+      // Track the game play
+      if (result.success) {
+        await gamesService.trackGamePlay(
+          gameName as any,
+          player,
+          result.outcome || "neutral",
+          platform,
+          result.pointsAwarded || 0,
+          opponent,
+          result.details
+        );
+      }
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Failed to play game:", error);
+      res.status(500).json({ error: "Failed to play game" });
     }
   });
 
@@ -1029,6 +1338,182 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to check trivia answer:", error);
       res.status(500).json({ error: "Failed to check trivia answer" });
+    }
+  });
+
+  app.get("/api/currency/settings", requireAuth, async (req, res) => {
+    try {
+      const userStorage = storage.getUserStorage(req.user!.id);
+      const settings = await userStorage.getCurrencySettings();
+      res.json(settings || {});
+    } catch (error) {
+      console.error("Failed to fetch currency settings:", error);
+      res.status(500).json({ error: "Failed to fetch currency settings" });
+    }
+  });
+
+  app.patch("/api/currency/settings", requireAuth, async (req, res) => {
+    try {
+      const userStorage = storage.getUserStorage(req.user!.id);
+      await userStorage.updateCurrencySettings(req.body);
+      const updated = await userStorage.getCurrencySettings();
+      res.json(updated);
+    } catch (error) {
+      console.error("Failed to update currency settings:", error);
+      res.status(500).json({ error: "Failed to update currency settings" });
+    }
+  });
+
+  app.get("/api/currency/balance/:username", requireAuth, async (req, res) => {
+    try {
+      const { username } = req.params;
+      const { platform = "twitch" } = req.query;
+      const balance = await currencyService.getBalance(req.user!.id, username, platform as string);
+      res.json(balance || { balance: 0, totalEarned: 0, totalSpent: 0 });
+    } catch (error) {
+      console.error("Failed to fetch balance:", error);
+      res.status(500).json({ error: "Failed to fetch balance" });
+    }
+  });
+
+  app.get("/api/currency/leaderboard", requireAuth, async (req, res) => {
+    try {
+      const { limit = "10" } = req.query;
+      const leaderboard = await currencyService.getLeaderboard(req.user!.id, parseInt(limit as string));
+      res.json(leaderboard);
+    } catch (error) {
+      console.error("Failed to fetch leaderboard:", error);
+      res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+  });
+
+  app.post("/api/currency/gamble", requireAuth, async (req, res) => {
+    try {
+      const { username, platform, amount } = req.body;
+      
+      if (!username || !platform || !amount) {
+        return res.status(400).json({ error: "Missing required fields: username, platform, amount" });
+      }
+      
+      const result = await currencyService.gamblePoints(req.user!.id, username, platform, amount);
+      res.json(result);
+    } catch (error) {
+      console.error("Failed to gamble:", error);
+      res.status(500).json({ error: "Failed to gamble" });
+    }
+  });
+
+  app.get("/api/currency/transactions", requireAuth, async (req, res) => {
+    try {
+      const { limit = "50", username } = req.query;
+      const transactions = await currencyService.getTransactions(
+        req.user!.id,
+        username as string | undefined,
+        parseInt(limit as string)
+      );
+      res.json(transactions);
+    } catch (error) {
+      console.error("Failed to fetch transactions:", error);
+      res.status(500).json({ error: "Failed to fetch transactions" });
+    }
+  });
+
+  app.get("/api/rewards", requireAuth, async (req, res) => {
+    try {
+      const rewards = await currencyService.getRewards(req.user!.id);
+      res.json(rewards);
+    } catch (error) {
+      console.error("Failed to fetch rewards:", error);
+      res.status(500).json({ error: "Failed to fetch rewards" });
+    }
+  });
+
+  app.post("/api/rewards", requireAuth, async (req, res) => {
+    try {
+      const { rewardName, cost, command, stock, maxRedeems, isActive = true } = req.body;
+      
+      if (!rewardName || cost === undefined) {
+        return res.status(400).json({ error: "Missing required fields: rewardName, cost" });
+      }
+      
+      const reward = await currencyService.createReward(req.user!.id, {
+        rewardName,
+        cost,
+        command,
+        stock,
+        maxRedeems,
+        isActive
+      });
+      
+      res.json(reward);
+    } catch (error) {
+      console.error("Failed to create reward:", error);
+      res.status(500).json({ error: "Failed to create reward" });
+    }
+  });
+
+  app.patch("/api/rewards/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      await currencyService.updateReward(req.user!.id, parseInt(id), req.body);
+      const rewards = await currencyService.getRewards(req.user!.id);
+      const updated = rewards.find(r => r.id === parseInt(id));
+      res.json(updated);
+    } catch (error) {
+      console.error("Failed to update reward:", error);
+      res.status(500).json({ error: "Failed to update reward" });
+    }
+  });
+
+  app.delete("/api/rewards/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      await currencyService.deleteReward(req.user!.id, parseInt(id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete reward:", error);
+      res.status(500).json({ error: "Failed to delete reward" });
+    }
+  });
+
+  app.post("/api/rewards/:id/redeem", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { username, platform } = req.body;
+      
+      if (!username || !platform) {
+        return res.status(400).json({ error: "Missing required fields: username, platform" });
+      }
+      
+      const result = await currencyService.redeemReward(req.user!.id, username, platform, parseInt(id));
+      res.json(result);
+    } catch (error) {
+      console.error("Failed to redeem reward:", error);
+      res.status(500).json({ error: "Failed to redeem reward" });
+    }
+  });
+
+  app.get("/api/currency/redemptions", requireAuth, async (req, res) => {
+    try {
+      const { pending = "false", limit = "50" } = req.query;
+      const redemptions = pending === "true"
+        ? await currencyService.getPendingRedemptions(req.user!.id, parseInt(limit as string))
+        : await currencyService.getRedemptions(req.user!.id, parseInt(limit as string));
+      res.json(redemptions);
+    } catch (error) {
+      console.error("Failed to fetch redemptions:", error);
+      res.status(500).json({ error: "Failed to fetch redemptions" });
+    }
+  });
+
+  app.post("/api/currency/redemptions/:id/fulfill", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      await currencyService.fulfillRedemption(req.user!.id, parseInt(id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to fulfill redemption:", error);
+      res.status(500).json({ error: "Failed to fulfill redemption" });
     }
   });
 

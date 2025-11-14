@@ -11,6 +11,7 @@ import { statsService } from "./stats-service";
 import { streamerInfoService } from "./streamer-info";
 import { GamesService } from "./games-service";
 import { currencyService } from "./currency-service";
+import { songRequestService } from "./song-request-service";
 import type { BotConfig, PlatformConnection, CustomCommand, ModerationRule, LinkWhitelist } from "@shared/schema";
 
 type BotEvent = {
@@ -377,7 +378,7 @@ export class BotWorker {
     message: string,
     username: string,
     platform: string
-  ): Promise<{ response: string | null; shouldTimeout?: boolean; timeoutDuration?: number }> {
+  ): Promise<{ response: string | null; shouldTimeout?: boolean; timeoutDuration?: number; timeoutUser?: string }> {
     try {
       const settings = await this.storage.getGameSettings();
       
@@ -459,12 +460,24 @@ export class BotWorker {
           result.details
         );
 
-        // Handle roulette timeout
+        // Handle game timeouts
+        // Roulette: timeout the player if they got shot
         if (command === "!roulette" && result.details?.shot) {
           return {
             response: result.message,
             shouldTimeout: true,
-            timeoutDuration: 30
+            timeoutDuration: result.details.timeoutDuration || 300,
+            timeoutUser: username
+          };
+        }
+
+        // Duel: timeout the loser
+        if (command === "!duel" && result.details?.timeout) {
+          return {
+            response: result.message,
+            shouldTimeout: true,
+            timeoutDuration: result.details.timeoutDuration || 60,
+            timeoutUser: result.details.loser
           };
         }
 
@@ -506,6 +519,105 @@ export class BotWorker {
     } catch (error) {
       console.error(`[BotWorker] Error handling trivia answer:`, error);
       return null;
+    }
+  }
+
+  private async handleSongRequestCommand(
+    message: string,
+    username: string,
+    isModerator: boolean
+  ): Promise<string | null> {
+    try {
+      const parts = message.trim().split(/\s+/);
+      const command = parts[0].toLowerCase();
+
+      switch (command) {
+        case "!songrequest":
+        case "!sr":
+          const query = parts.slice(1).join(" ");
+          if (!query) {
+            return "Usage: !songrequest <song name or URL>";
+          }
+
+          const addResult = await songRequestService.addToQueue(
+            this.userId,
+            username,
+            query,
+            isModerator
+          );
+
+          if (addResult.success && addResult.song && addResult.position) {
+            return `@${username}, added "${addResult.song.songTitle}" by ${addResult.song.artist} to the queue! (Position ${addResult.position.current}/${addResult.position.total})`;
+          } else {
+            return `@${username}, ${addResult.error || "Failed to add song to queue"}`;
+          }
+
+        case "!currentsong":
+        case "!nowplaying":
+          const current = await songRequestService.getCurrentSong(this.userId);
+          if (current) {
+            return `Now playing: "${current.songTitle}" by ${current.artist} (requested by ${current.requestedBy}) - ${current.url}`;
+          } else {
+            return "No song is currently playing";
+          }
+
+        case "!queue":
+          const queue = await songRequestService.getQueue(this.userId);
+          if (queue.length === 0) {
+            return "The song queue is empty!";
+          }
+
+          const next5 = queue.slice(0, 5);
+          const queueList = next5.map((song, index) => 
+            `${index + 1}. "${song.songTitle}" by ${song.artist} (${song.requestedBy})`
+          ).join(" | ");
+
+          if (queue.length > 5) {
+            return `Next ${next5.length} songs: ${queueList} ... (${queue.length - 5} more)`;
+          } else {
+            return `Song queue (${queue.length}): ${queueList}`;
+          }
+
+        case "!skipsong":
+          if (!isModerator) {
+            return `@${username}, only moderators can skip songs`;
+          }
+
+          const skipped = await songRequestService.skipCurrent(this.userId);
+          if (skipped) {
+            const next = await songRequestService.playNext(this.userId);
+            if (next) {
+              return `Song skipped! Now playing: "${next.songTitle}" by ${next.artist}`;
+            } else {
+              return "Song skipped! Queue is now empty.";
+            }
+          } else {
+            return "No song is currently playing";
+          }
+
+        case "!removesong":
+          if (!isModerator) {
+            return `@${username}, only moderators can remove songs`;
+          }
+
+          const position = parseInt(parts[1]);
+          if (isNaN(position) || position < 1) {
+            return "Usage: !removesong <position>";
+          }
+
+          const removed = await songRequestService.removeByPosition(this.userId, position);
+          if (removed) {
+            return `Removed song at position ${position} from queue`;
+          } else {
+            return `Invalid position. Check !queue to see current songs.`;
+          }
+
+        default:
+          return null;
+      }
+    } catch (error) {
+      console.error(`[BotWorker] Error handling song request command:`, error);
+      return "Song request error! Please try again later.";
     }
   }
 
@@ -786,25 +898,37 @@ export class BotWorker {
             if (gameResult.response && this.twitchClient) {
               await this.twitchClient.say(channel, gameResult.response);
               
-              // Handle roulette timeout
-              if (gameResult.shouldTimeout && gameResult.timeoutDuration) {
+              // Handle game timeouts (roulette, duel)
+              if (gameResult.shouldTimeout && gameResult.timeoutDuration && gameResult.timeoutUser) {
+                const reason = commandName === "!roulette" ? "Lost Russian roulette!" : "Lost duel!";
                 await this.twitchClient.timeout(
                   channel,
-                  username,
+                  gameResult.timeoutUser,
                   gameResult.timeoutDuration,
-                  "Lost Russian roulette!"
+                  reason
                 );
               }
               return;
             }
           }
 
-          // Check for currency commands (!balance, !gamble, !leaderboard, !redeem)
-          if (["!balance", "!gamble", "!leaderboard", "!redeem"].includes(commandName)) {
+          // Check for currency commands (!points, !balance, !gamble, !leaderboard, !redeem, !give)
+          if (["!points", "!balance", "!gamble", "!leaderboard", "!redeem", "!give"].includes(commandName)) {
             const currencyResponse = await this.handleCurrencyCommand(trimmedMessage, username, "twitch");
             
             if (currencyResponse && this.twitchClient) {
               await this.twitchClient.say(channel, currencyResponse);
+              return;
+            }
+          }
+
+          // Check for song request commands (!songrequest, !sr, !currentsong, !queue, !skipsong, !removesong, !nowplaying)
+          if (["!songrequest", "!sr", "!currentsong", "!nowplaying", "!queue", "!skipsong", "!removesong"].includes(commandName)) {
+            const isMod = tags.mod || tags.badges?.moderator || tags.badges?.broadcaster || false;
+            const songResponse = await this.handleSongRequestCommand(trimmedMessage, username, isMod);
+            
+            if (songResponse && this.twitchClient) {
+              await this.twitchClient.say(channel, songResponse);
               return;
             }
           }
@@ -1204,13 +1328,43 @@ export class BotWorker {
       const symbol = currencySettings?.currencySymbol || "⭐";
       const currencyName = currencySettings?.currencyName || "Points";
 
-      if (command === "!balance") {
+      if (command === "!balance" || command === "!points") {
         const balance = await currencyService.getBalance(this.userId, username, platform);
         if (balance) {
           return `@${username}, you have ${balance.balance} ${symbol} ${currencyName}!`;
         } else {
           return `@${username}, you have 0 ${symbol} ${currencyName}!`;
         }
+      }
+
+      if (command === "!give") {
+        const toUser = parts[1];
+        const amountStr = parts[2];
+        
+        if (!toUser || !amountStr) {
+          return `@${username}, usage: !give @username <amount>`;
+        }
+        
+        const amount = parseInt(amountStr);
+        if (isNaN(amount) || amount <= 0) {
+          return `@${username}, please enter a valid amount!`;
+        }
+        
+        const targetUsername = toUser.replace("@", "");
+        
+        const result = await currencyService.transferPoints(
+          this.userId,
+          username,
+          targetUsername,
+          platform,
+          amount
+        );
+        
+        if (!result.success) {
+          return `@${username}, ${result.error}`;
+        }
+        
+        return `@${username} gave ${amount} ${symbol} to @${targetUsername}! You have ${result.fromBalance} ${symbol} remaining.`;
       }
 
       if (command === "!leaderboard") {

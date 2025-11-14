@@ -1,4 +1,4 @@
-import { Home, Settings, Activity, Zap, History, MessageSquare, Shield, Trophy, Megaphone, BarChart3, Gamepad2 } from "lucide-react";
+import { Home, Settings, Activity, Zap, History, MessageSquare, Shield, Trophy, Megaphone, BarChart3, Gamepad2, Coins, Music } from "lucide-react";
 import { SiTwitch, SiYoutube, SiKick } from "react-icons/si";
 import {
   Sidebar,
@@ -63,6 +63,16 @@ const mainItems = [
     title: "Games",
     url: "/games",
     icon: Gamepad2,
+  },
+  {
+    title: "Currency",
+    url: "/currency",
+    icon: Coins,
+  },
+  {
+    title: "Song Requests",
+    url: "/song-requests",
+    icon: Music,
   },
   {
     title: "Settings",

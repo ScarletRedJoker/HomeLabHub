@@ -220,14 +220,14 @@ Keep questions clear and answers concise (1-3 words). Make it fun and engaging!`
     const loser = winner === player1 ? player2 : player1;
 
     const battleMessages = [
-      `⚔️ ${winner} strikes with lightning speed and defeats ${loser}!`,
-      `💥 ${winner} lands a critical hit! ${loser} has been vanquished!`,
-      `🛡️ ${winner} blocks ${loser}'s attack and counters with a devastating blow!`,
-      `✨ ${winner} uses their ultimate ability and obliterates ${loser}!`,
-      `🎯 ${winner} dodges ${loser}'s attack and strikes back for the win!`,
-      `⚡ ${winner} channels their inner power and overwhelms ${loser}!`,
-      `🔥 ${winner} unleashes a fury of attacks! ${loser} couldn't keep up!`,
-      `🌟 In an epic battle, ${winner} emerges victorious over ${loser}!`
+      `⚔️ ${winner} strikes with lightning speed and defeats ${loser}! ${loser} is timed out for 1 minute!`,
+      `💥 ${winner} lands a critical hit! ${loser} has been vanquished and timed out for 1 minute!`,
+      `🛡️ ${winner} blocks ${loser}'s attack and counters with a devastating blow! ${loser} gets 1 minute timeout!`,
+      `✨ ${winner} uses their ultimate ability and obliterates ${loser}! ${loser} is silenced for 1 minute!`,
+      `🎯 ${winner} dodges ${loser}'s attack and strikes back for the win! ${loser} gets 1 minute timeout!`,
+      `⚡ ${winner} channels their inner power and overwhelms ${loser}! ${loser} is timed out for 1 minute!`,
+      `🔥 ${winner} unleashes a fury of attacks! ${loser} couldn't keep up and gets 1 minute timeout!`,
+      `🌟 In an epic battle, ${winner} emerges victorious over ${loser}! ${loser} is timed out for 1 minute!`
     ];
 
     const message = battleMessages[Math.floor(Math.random() * battleMessages.length)];
@@ -239,7 +239,7 @@ Keep questions clear and answers concise (1-3 words). Make it fun and engaging!`
       message,
       outcome: "win",
       pointsAwarded,
-      details: { winner, loser, player1, player2 }
+      details: { winner, loser, player1, player2, timeout: true, timeoutDuration: 60 }
     };
   }
 
@@ -281,10 +281,10 @@ Keep questions clear and answers concise (1-3 words). Make it fun and engaging!`
     if (isShot) {
       return {
         success: true,
-        message: `💀 *BANG!* ${player} got timed out for 30 seconds! The chamber wasn't empty!`,
+        message: `💀 *BANG!* ${player} got timed out for 5 minutes! The chamber wasn't empty!`,
         outcome: "loss",
         pointsAwarded: 0,
-        details: { shot: true, timeout: true }
+        details: { shot: true, timeout: true, timeoutDuration: 300 }
       };
     } else {
       return {
@@ -316,6 +316,19 @@ Keep questions clear and answers concise (1-3 words). Make it fun and engaging!`
         pointsAwarded,
         details: details || null,
         platform,
+      });
+
+      // Update aggregated game stats
+      await this.storage.upsertGameStats({
+        userId: this.storage.userId,
+        username: player,
+        gameName: gameType,
+        platform,
+        wins: outcome === "win" ? 1 : 0,
+        losses: outcome === "loss" ? 1 : 0,
+        neutral: outcome === "neutral" ? 1 : 0,
+        totalPlays: 1,
+        totalPointsEarned: pointsAwarded,
       });
     } catch (error) {
       console.error("[GamesService] Error tracking game play:", error);

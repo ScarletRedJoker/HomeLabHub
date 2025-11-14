@@ -19,6 +19,7 @@ import type {
   GameSettings,
   GameHistory,
   ActiveTriviaQuestion,
+  GameStats,
   InsertModerationLog,
   InsertGiveaway,
   InsertGiveawayEntry,
@@ -27,6 +28,7 @@ import type {
   InsertGameSettings,
   InsertGameHistory,
   InsertActiveTriviaQuestion,
+  InsertGameStats,
   UpdateGiveaway,
   UpdateShoutout,
   UpdateGameSettings,
@@ -40,6 +42,16 @@ import type {
   UpdateCurrencyReward,
   ShoutoutSettings,
   UpdateShoutoutSettings,
+  Poll,
+  PollVote,
+  Prediction,
+  PredictionBet,
+  InsertPoll,
+  InsertPollVote,
+  InsertPrediction,
+  InsertPredictionBet,
+  UpdatePoll,
+  UpdatePrediction,
 } from "@shared/schema";
 
 export class UserStorage {
@@ -235,6 +247,27 @@ export class UserStorage {
     return storage.deleteActiveTriviaQuestion(id);
   }
 
+  // Game Stats
+  async getGameStats(limit?: number): Promise<GameStats[]> {
+    return storage.getGameStats(this.userId, limit);
+  }
+
+  async getGameStatsByGame(gameName: string, limit?: number): Promise<GameStats[]> {
+    return storage.getGameStatsByGame(this.userId, gameName, limit);
+  }
+
+  async getGameStatsByPlayer(username: string, platform: string): Promise<GameStats[]> {
+    return storage.getGameStatsByPlayer(this.userId, username, platform);
+  }
+
+  async getGameLeaderboard(gameName: string, limit?: number): Promise<GameStats[]> {
+    return storage.getGameLeaderboard(this.userId, gameName, limit);
+  }
+
+  async upsertGameStats(data: InsertGameStats): Promise<GameStats> {
+    return storage.upsertGameStats(data);
+  }
+
   // Currency Settings
   async getCurrencySettings(): Promise<CurrencySettings | undefined> {
     return storage.getCurrencySettings(this.userId);
@@ -276,6 +309,94 @@ export class UserStorage {
 
   async updateShoutoutSettings(data: UpdateShoutoutSettings): Promise<ShoutoutSettings> {
     return storage.updateShoutoutSettings(this.userId, data);
+  }
+
+  // Polls
+  async getPolls(limit?: number): Promise<Poll[]> {
+    return storage.getPolls(this.userId, limit);
+  }
+
+  async getPoll(id: string): Promise<Poll | undefined> {
+    return storage.getPoll(this.userId, id);
+  }
+
+  async getActivePoll(platform?: string): Promise<Poll | null> {
+    return storage.getActivePoll(this.userId, platform);
+  }
+
+  async getPollHistory(limit?: number): Promise<Poll[]> {
+    return storage.getPollHistory(this.userId, limit);
+  }
+
+  async createPoll(data: InsertPoll): Promise<Poll> {
+    return storage.createPoll(this.userId, data);
+  }
+
+  async updatePoll(id: string, data: UpdatePoll): Promise<Poll> {
+    return storage.updatePoll(this.userId, id, data);
+  }
+
+  async incrementPollVotes(pollId: string): Promise<void> {
+    return storage.incrementPollVotes(this.userId, pollId);
+  }
+
+  // Poll Votes
+  async getPollVotes(pollId: string): Promise<PollVote[]> {
+    return storage.getPollVotes(this.userId, pollId);
+  }
+
+  async getPollVoteByUser(pollId: string, username: string, platform: string): Promise<PollVote | undefined> {
+    return storage.getPollVoteByUser(this.userId, pollId, username, platform);
+  }
+
+  async createPollVote(data: InsertPollVote): Promise<PollVote> {
+    return storage.createPollVote(this.userId, data);
+  }
+
+  // Predictions
+  async getPredictions(limit?: number): Promise<Prediction[]> {
+    return storage.getPredictions(this.userId, limit);
+  }
+
+  async getPrediction(id: string): Promise<Prediction | undefined> {
+    return storage.getPrediction(this.userId, id);
+  }
+
+  async getActivePrediction(platform?: string): Promise<Prediction | null> {
+    return storage.getActivePrediction(this.userId, platform);
+  }
+
+  async getPredictionHistory(limit?: number): Promise<Prediction[]> {
+    return storage.getPredictionHistory(this.userId, limit);
+  }
+
+  async createPrediction(data: InsertPrediction): Promise<Prediction> {
+    return storage.createPrediction(this.userId, data);
+  }
+
+  async updatePrediction(id: string, data: UpdatePrediction): Promise<Prediction> {
+    return storage.updatePrediction(this.userId, id, data);
+  }
+
+  async incrementPredictionStats(predictionId: string, points: number): Promise<void> {
+    return storage.incrementPredictionStats(this.userId, predictionId, points);
+  }
+
+  // Prediction Bets
+  async getPredictionBets(predictionId: string): Promise<PredictionBet[]> {
+    return storage.getPredictionBets(this.userId, predictionId);
+  }
+
+  async getPredictionBetByUser(predictionId: string, username: string, platform: string): Promise<PredictionBet | undefined> {
+    return storage.getPredictionBetByUser(this.userId, predictionId, username, platform);
+  }
+
+  async createPredictionBet(data: InsertPredictionBet): Promise<PredictionBet> {
+    return storage.createPredictionBet(this.userId, data);
+  }
+
+  async updatePredictionBet(betId: string, data: { payout: number }): Promise<PredictionBet> {
+    return storage.updatePredictionBet(this.userId, betId, data);
   }
 }
 

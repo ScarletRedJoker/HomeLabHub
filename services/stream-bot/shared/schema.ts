@@ -265,6 +265,8 @@ export const chatActivity = pgTable("chat_activity", {
   sessionId: varchar("session_id").notNull().references(() => streamSessions.id, { onDelete: "cascade" }),
   username: text("username").notNull(),
   messageCount: integer("message_count").default(1).notNull(),
+  firstSeen: timestamp("first_seen").defaultNow().notNull(),
+  lastSeen: timestamp("last_seen").defaultNow().notNull(),
   timestamp: timestamp("timestamp").defaultNow().notNull(),
 });
 
@@ -311,6 +313,30 @@ export const activeTriviaQuestions = pgTable("active_trivia_questions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Game Stats - Aggregated statistics per user per game
+export const gameStats = pgTable("game_stats", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  username: text("username").notNull(),
+  gameName: text("game_name").notNull(), // '8ball', 'trivia', 'duel', 'slots', 'roulette'
+  platform: text("platform").notNull(), // 'twitch', 'youtube', 'kick'
+  wins: integer("wins").default(0).notNull(),
+  losses: integer("losses").default(0).notNull(),
+  neutral: integer("neutral").default(0).notNull(),
+  totalPlays: integer("total_plays").default(0).notNull(),
+  totalPointsEarned: integer("total_points_earned").default(0).notNull(),
+  lastPlayed: timestamp("last_played"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  userGameIdx: uniqueIndex("game_stats_user_id_username_game_name_platform_unique").on(
+    table.userId,
+    table.username,
+    table.gameName,
+    table.platform
+  ),
+}));
+
 // Currency Settings - Per-user currency configuration
 export const currencySettings = pgTable("currency_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -318,7 +344,9 @@ export const currencySettings = pgTable("currency_settings", {
   currencyName: text("currency_name").default("Points").notNull(),
   currencySymbol: text("currency_symbol").default("⭐").notNull(),
   earnPerMessage: integer("earn_per_message").default(1).notNull(),
-  earnPerMinute: integer("earn_per_minute").default(2).notNull(),
+  earnPerMinute: integer("earn_per_minute").default(10).notNull(),
+  startingBalance: integer("starting_balance").default(100).notNull(),
+  maxBalance: integer("max_balance").default(1000000).notNull(),
   enableGambling: boolean("enable_gambling").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -348,7 +376,8 @@ export const userBalances = pgTable("user_balances", {
 export const currencyTransactions = pgTable("currency_transactions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   balanceId: varchar("balance_id").notNull().references(() => userBalances.id, { onDelete: "cascade" }),
-  type: text("type").notNull(), // 'earn_message', 'earn_watch', 'gamble_win', 'gamble_loss', 'reward_purchase', 'admin_adjust'
+  username: text("username").notNull(),
+  type: text("type").notNull(), // 'earn_message', 'earn_watch', 'gamble_win', 'gamble_loss', 'reward_purchase', 'admin_adjust', 'transfer_in', 'transfer_out'
   amount: integer("amount").notNull(), // Can be negative for spending
   description: text("description").notNull(),
   timestamp: timestamp("timestamp").defaultNow().notNull(),
@@ -360,14 +389,190 @@ export const currencyRewards = pgTable("currency_rewards", {
   botUserId: varchar("bot_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   rewardName: text("reward_name").notNull(),
   cost: integer("cost").default(100).notNull(),
+  command: text("command"), // Optional command triggered on redemption
+  stock: integer("stock"), // null = unlimited stock
+  maxRedeems: integer("max_redeems"), // null = unlimited per user
   rewardType: text("reward_type").notNull(), // 'timeout_immunity', 'song_request', 'highlight_message', 'custom_command'
   rewardData: jsonb("reward_data"), // Type-specific data (duration, command, etc.)
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({
   userRewardIdx: uniqueIndex("currency_rewards_bot_user_id_reward_name_unique").on(
     table.botUserId,
     table.rewardName
+  ),
+}));
+
+// Reward Redemptions - Track reward redemption history
+export const rewardRedemptions = pgTable("reward_redemptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  rewardId: varchar("reward_id").notNull().references(() => currencyRewards.id, { onDelete: "cascade" }),
+  botUserId: varchar("bot_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  username: text("username").notNull(),
+  platform: text("platform").notNull(), // 'twitch', 'youtube', 'kick'
+  fulfilled: boolean("fulfilled").default(false).notNull(),
+  fulfilledAt: timestamp("fulfilled_at"),
+  redeemedAt: timestamp("redeemed_at").defaultNow().notNull(),
+});
+
+// Song Queue - Tracks requested songs in queue
+export const songQueue = pgTable("song_queue", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  requestedBy: text("requested_by").notNull(), // Username who requested
+  songTitle: text("song_title").notNull(),
+  artist: text("artist").notNull(),
+  url: text("url").notNull(), // Spotify or YouTube URL
+  platform: text("platform").notNull(), // 'spotify', 'youtube'
+  status: text("status").default("pending").notNull(), // 'pending', 'playing', 'played', 'skipped', 'removed'
+  albumImageUrl: text("album_image_url"), // For display purposes
+  duration: integer("duration"), // Duration in milliseconds
+  position: integer("position").notNull(), // Queue position
+  requestedAt: timestamp("requested_at").defaultNow().notNull(),
+  playedAt: timestamp("played_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Song Settings - Per-user song request configuration
+export const songSettings = pgTable("song_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  enableSongRequests: boolean("enable_song_requests").default(true).notNull(),
+  maxQueueSize: integer("max_queue_size").default(20).notNull(),
+  maxSongsPerUser: integer("max_songs_per_user").default(3).notNull(),
+  allowDuplicates: boolean("allow_duplicates").default(false).notNull(),
+  profanityFilter: boolean("profanity_filter").default(true).notNull(),
+  bannedSongs: text("banned_songs").array().default(sql`ARRAY[]::text[]`).notNull(), // Array of song IDs or URLs
+  volumeLimit: integer("volume_limit").default(100).notNull(), // 0-100
+  allowSpotify: boolean("allow_spotify").default(true).notNull(),
+  allowYoutube: boolean("allow_youtube").default(true).notNull(),
+  moderatorOnly: boolean("moderator_only").default(false).notNull(), // Only mods can request
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Polls - Chat polls for viewer engagement
+export const polls = pgTable("polls", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  question: text("question").notNull(),
+  options: text("options").array().notNull(), // Array of poll options
+  duration: integer("duration").notNull(), // Duration in seconds
+  platform: text("platform").notNull(), // 'twitch', 'youtube', 'kick'
+  status: text("status").default("pending").notNull(), // 'pending', 'active', 'ended', 'cancelled'
+  twitchPollId: text("twitch_poll_id"), // Native Twitch poll ID if using Twitch API
+  startedAt: timestamp("started_at"),
+  endedAt: timestamp("ended_at"),
+  totalVotes: integer("total_votes").default(0).notNull(),
+  winner: text("winner"), // Winning option text
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Poll Votes - Individual votes on polls
+export const pollVotes = pgTable("poll_votes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  pollId: varchar("poll_id").notNull().references(() => polls.id, { onDelete: "cascade" }),
+  username: text("username").notNull(),
+  platform: text("platform").notNull(), // 'twitch', 'youtube', 'kick'
+  option: text("option").notNull(), // The option they voted for
+  votedAt: timestamp("voted_at").defaultNow().notNull(),
+}, (table) => ({
+  pollUserIdx: uniqueIndex("poll_votes_poll_id_username_platform_unique").on(
+    table.pollId,
+    table.username,
+    table.platform
+  ),
+}));
+
+// Predictions - Channel point predictions for viewer engagement
+export const predictions = pgTable("predictions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  outcomes: text("outcomes").array().notNull(), // Array of possible outcomes (2-10 options)
+  duration: integer("duration").notNull(), // Duration in seconds
+  platform: text("platform").notNull(), // 'twitch', 'youtube', 'kick'
+  status: text("status").default("pending").notNull(), // 'pending', 'active', 'locked', 'resolved', 'cancelled'
+  twitchPredictionId: text("twitch_prediction_id"), // Native Twitch prediction ID if using Twitch API
+  startedAt: timestamp("started_at"),
+  lockedAt: timestamp("locked_at"), // When betting closes
+  endedAt: timestamp("ended_at"),
+  totalPoints: integer("total_points").default(0).notNull(),
+  totalBets: integer("total_bets").default(0).notNull(),
+  winningOutcome: text("winning_outcome"), // Winning outcome text
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Prediction Bets - Individual bets on predictions
+export const predictionBets = pgTable("prediction_bets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  predictionId: varchar("prediction_id").notNull().references(() => predictions.id, { onDelete: "cascade" }),
+  username: text("username").notNull(),
+  platform: text("platform").notNull(), // 'twitch', 'youtube', 'kick'
+  outcome: text("outcome").notNull(), // The outcome they bet on
+  points: integer("points").notNull(), // Points wagered
+  payout: integer("payout").default(0).notNull(), // Points won (0 if lost)
+  placedAt: timestamp("placed_at").defaultNow().notNull(),
+}, (table) => ({
+  predictionUserIdx: uniqueIndex("prediction_bets_prediction_id_username_platform_unique").on(
+    table.predictionId,
+    table.username,
+    table.platform
+  ),
+}));
+
+// Alert Settings - Per-user alert configuration for follower/sub/raid/milestone events
+export const alertSettings = pgTable("alert_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  
+  // Enable/disable toggles for each alert type
+  enableFollowerAlerts: boolean("enable_follower_alerts").default(true).notNull(),
+  enableSubAlerts: boolean("enable_sub_alerts").default(true).notNull(),
+  enableRaidAlerts: boolean("enable_raid_alerts").default(true).notNull(),
+  enableMilestoneAlerts: boolean("enable_milestone_alerts").default(true).notNull(),
+  
+  // Customizable message templates
+  followerTemplate: text("follower_template").default("Thanks for the follow, {user}! Welcome to the community!").notNull(),
+  subTemplate: text("sub_template").default("Thanks for subscribing, {user}! {tier} sub for {months} months!").notNull(),
+  raidTemplate: text("raid_template").default("Thanks for the raid, {raider}! {viewers} viewers joining the party!").notNull(),
+  
+  // Milestone thresholds (array of integers like [50, 100, 500, 1000])
+  milestoneThresholds: integer("milestone_thresholds").array().default(sql`ARRAY[50, 100, 500, 1000, 5000, 10000]::integer[]`).notNull(),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Alert History - Log of all posted alerts
+export const alertHistory = pgTable("alert_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  alertType: text("alert_type").notNull(), // 'follower', 'subscriber', 'raid', 'milestone'
+  username: text("username"), // Username that triggered the alert (for follower/sub/raid)
+  message: text("message").notNull(), // The actual message posted
+  platform: text("platform").notNull(), // 'twitch', 'youtube', 'kick'
+  metadata: jsonb("metadata"), // Additional data: {tier, months, viewerCount, milestoneType, threshold, count}
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+});
+
+// Milestones - Track achieved milestones for followers/subs
+export const milestones = pgTable("milestones", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  milestoneType: text("milestone_type").notNull(), // 'followers', 'subscribers'
+  threshold: integer("threshold").notNull(), // The milestone number (50, 100, 500, etc.)
+  achieved: boolean("achieved").default(false).notNull(),
+  achievedAt: timestamp("achieved_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  userMilestoneIdx: uniqueIndex("milestones_user_id_type_threshold_unique").on(
+    table.userId,
+    table.milestoneType,
+    table.threshold
   ),
 }));
 
@@ -536,11 +741,28 @@ export const insertActiveTriviaQuestionSchema = createInsertSchema(activeTriviaQ
   createdAt: true,
 });
 
+export const insertGameStatsSchema = createInsertSchema(gameStats, {
+  username: z.string().min(1, "Username is required").max(100, "Username too long"),
+  gameName: z.enum(["8ball", "trivia", "duel", "slots", "roulette"]),
+  platform: z.enum(["twitch", "youtube", "kick"]),
+  wins: z.coerce.number().min(0),
+  losses: z.coerce.number().min(0),
+  neutral: z.coerce.number().min(0),
+  totalPlays: z.coerce.number().min(0),
+  totalPointsEarned: z.coerce.number().min(0),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertCurrencySettingsSchema = createInsertSchema(currencySettings, {
   currencyName: z.string().min(1, "Currency name is required").max(50, "Currency name too long"),
   currencySymbol: z.string().min(1, "Currency symbol is required").max(10, "Currency symbol too long"),
   earnPerMessage: z.coerce.number().min(0).max(1000),
   earnPerMinute: z.coerce.number().min(0).max(1000),
+  startingBalance: z.coerce.number().min(0).max(1000000),
+  maxBalance: z.coerce.number().min(0).max(100000000),
 }).omit({
   id: true,
   createdAt: true,
@@ -560,7 +782,8 @@ export const insertUserBalanceSchema = createInsertSchema(userBalances, {
 });
 
 export const insertCurrencyTransactionSchema = createInsertSchema(currencyTransactions, {
-  type: z.enum(["earn_message", "earn_watch", "gamble_win", "gamble_loss", "reward_purchase", "admin_adjust"]),
+  username: z.string().min(1, "Username is required").max(100, "Username too long"),
+  type: z.enum(["earn_message", "earn_watch", "gamble_win", "gamble_loss", "reward_purchase", "admin_adjust", "transfer_in", "transfer_out"]),
   amount: z.coerce.number(),
   description: z.string().min(1, "Description is required").max(500, "Description too long"),
 }).omit({
@@ -571,7 +794,116 @@ export const insertCurrencyTransactionSchema = createInsertSchema(currencyTransa
 export const insertCurrencyRewardSchema = createInsertSchema(currencyRewards, {
   rewardName: z.string().min(1, "Reward name is required").max(100, "Reward name too long"),
   cost: z.coerce.number().min(1).max(1000000),
+  command: z.string().max(500, "Command too long").optional(),
+  stock: z.coerce.number().min(0).optional(),
+  maxRedeems: z.coerce.number().min(1).optional(),
   rewardType: z.enum(["timeout_immunity", "song_request", "highlight_message", "custom_command"]),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertRewardRedemptionSchema = createInsertSchema(rewardRedemptions, {
+  username: z.string().min(1, "Username is required").max(100, "Username too long"),
+  platform: z.enum(["twitch", "youtube", "kick"]),
+}).omit({
+  id: true,
+  redeemedAt: true,
+});
+
+export const insertSongQueueSchema = createInsertSchema(songQueue, {
+  requestedBy: z.string().min(1, "Username is required").max(100, "Username too long"),
+  songTitle: z.string().min(1, "Song title is required").max(200, "Song title too long"),
+  artist: z.string().min(1, "Artist is required").max(200, "Artist too long"),
+  url: z.string().url("Invalid URL"),
+  platform: z.enum(["spotify", "youtube"]),
+  status: z.enum(["pending", "playing", "played", "skipped", "removed"]),
+  position: z.coerce.number().min(0),
+  duration: z.coerce.number().min(0).optional(),
+}).omit({
+  id: true,
+  createdAt: true,
+  requestedAt: true,
+});
+
+export const insertSongSettingsSchema = createInsertSchema(songSettings, {
+  maxQueueSize: z.coerce.number().min(1).max(100),
+  maxSongsPerUser: z.coerce.number().min(1).max(10),
+  volumeLimit: z.coerce.number().min(0).max(100),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPollSchema = createInsertSchema(polls, {
+  question: z.string().min(1, "Question is required").max(200, "Question too long"),
+  options: z.array(z.string().min(1).max(100)).min(2, "At least 2 options required").max(10, "Maximum 10 options"),
+  duration: z.coerce.number().min(30, "Minimum 30 seconds").max(3600, "Maximum 1 hour"),
+  platform: z.enum(["twitch", "youtube", "kick"]),
+  status: z.enum(["pending", "active", "ended", "cancelled"]).optional(),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPollVoteSchema = createInsertSchema(pollVotes, {
+  username: z.string().min(1, "Username is required").max(100, "Username too long"),
+  option: z.string().min(1, "Option is required"),
+  platform: z.enum(["twitch", "youtube", "kick"]),
+}).omit({
+  id: true,
+  votedAt: true,
+});
+
+export const insertPredictionSchema = createInsertSchema(predictions, {
+  title: z.string().min(1, "Title is required").max(200, "Title too long"),
+  outcomes: z.array(z.string().min(1).max(100)).min(2, "At least 2 outcomes required").max(10, "Maximum 10 outcomes"),
+  duration: z.coerce.number().min(30, "Minimum 30 seconds").max(3600, "Maximum 1 hour"),
+  platform: z.enum(["twitch", "youtube", "kick"]),
+  status: z.enum(["pending", "active", "locked", "resolved", "cancelled"]).optional(),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPredictionBetSchema = createInsertSchema(predictionBets, {
+  username: z.string().min(1, "Username is required").max(100, "Username too long"),
+  outcome: z.string().min(1, "Outcome is required"),
+  points: z.coerce.number().min(1, "Minimum 1 point").max(1000000),
+  platform: z.enum(["twitch", "youtube", "kick"]),
+}).omit({
+  id: true,
+  placedAt: true,
+});
+
+export const insertAlertSettingsSchema = createInsertSchema(alertSettings, {
+  followerTemplate: z.string().min(1, "Template is required").max(500, "Template too long"),
+  subTemplate: z.string().min(1, "Template is required").max(500, "Template too long"),
+  raidTemplate: z.string().min(1, "Template is required").max(500, "Template too long"),
+  milestoneThresholds: z.array(z.number().min(1).max(1000000)).optional(),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAlertHistorySchema = createInsertSchema(alertHistory, {
+  alertType: z.enum(["follower", "subscriber", "raid", "milestone"]),
+  message: z.string().min(1, "Message is required"),
+  platform: z.enum(["twitch", "youtube", "kick"]),
+  username: z.string().max(100, "Username too long").optional(),
+}).omit({
+  id: true,
+  timestamp: true,
+});
+
+export const insertMilestoneSchema = createInsertSchema(milestones, {
+  milestoneType: z.enum(["followers", "subscribers"]),
+  threshold: z.coerce.number().min(1).max(1000000),
 }).omit({
   id: true,
   createdAt: true,
@@ -589,9 +921,17 @@ export const updateShoutoutSchema = insertShoutoutSchema.partial();
 export const updateShoutoutSettingsSchema = insertShoutoutSettingsSchema.partial();
 export const updateStreamSessionSchema = insertStreamSessionSchema.partial();
 export const updateGameSettingsSchema = insertGameSettingsSchema.partial();
+export const updateGameStatsSchema = insertGameStatsSchema.partial();
 export const updateCurrencySettingsSchema = insertCurrencySettingsSchema.partial();
 export const updateUserBalanceSchema = insertUserBalanceSchema.partial();
 export const updateCurrencyRewardSchema = insertCurrencyRewardSchema.partial();
+export const updateRewardRedemptionSchema = insertRewardRedemptionSchema.partial();
+export const updateSongQueueSchema = insertSongQueueSchema.partial();
+export const updateSongSettingsSchema = insertSongSettingsSchema.partial();
+export const updatePollSchema = insertPollSchema.partial();
+export const updatePollVoteSchema = insertPollVoteSchema.partial();
+export const updatePredictionSchema = insertPredictionSchema.partial();
+export const updatePredictionBetSchema = insertPredictionBetSchema.partial();
 
 // Signup schema - for user registration
 export const signupSchema = z.object({
@@ -627,10 +967,18 @@ export type ChatActivity = typeof chatActivity.$inferSelect;
 export type GameSettings = typeof gameSettings.$inferSelect;
 export type GameHistory = typeof gameHistory.$inferSelect;
 export type ActiveTriviaQuestion = typeof activeTriviaQuestions.$inferSelect;
+export type GameStats = typeof gameStats.$inferSelect;
 export type CurrencySettings = typeof currencySettings.$inferSelect;
 export type UserBalance = typeof userBalances.$inferSelect;
 export type CurrencyTransaction = typeof currencyTransactions.$inferSelect;
 export type CurrencyReward = typeof currencyRewards.$inferSelect;
+export type RewardRedemption = typeof rewardRedemptions.$inferSelect;
+export type SongQueue = typeof songQueue.$inferSelect;
+export type SongSettings = typeof songSettings.$inferSelect;
+export type Poll = typeof polls.$inferSelect;
+export type PollVote = typeof pollVotes.$inferSelect;
+export type Prediction = typeof predictions.$inferSelect;
+export type PredictionBet = typeof predictionBets.$inferSelect;
 
 // Insert types
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -654,10 +1002,18 @@ export type InsertChatActivity = z.infer<typeof insertChatActivitySchema>;
 export type InsertGameSettings = z.infer<typeof insertGameSettingsSchema>;
 export type InsertGameHistory = z.infer<typeof insertGameHistorySchema>;
 export type InsertActiveTriviaQuestion = z.infer<typeof insertActiveTriviaQuestionSchema>;
+export type InsertGameStats = z.infer<typeof insertGameStatsSchema>;
 export type InsertCurrencySettings = z.infer<typeof insertCurrencySettingsSchema>;
 export type InsertUserBalance = z.infer<typeof insertUserBalanceSchema>;
 export type InsertCurrencyTransaction = z.infer<typeof insertCurrencyTransactionSchema>;
 export type InsertCurrencyReward = z.infer<typeof insertCurrencyRewardSchema>;
+export type InsertRewardRedemption = z.infer<typeof insertRewardRedemptionSchema>;
+export type InsertSongQueue = z.infer<typeof insertSongQueueSchema>;
+export type InsertSongSettings = z.infer<typeof insertSongSettingsSchema>;
+export type InsertPoll = z.infer<typeof insertPollSchema>;
+export type InsertPollVote = z.infer<typeof insertPollVoteSchema>;
+export type InsertPrediction = z.infer<typeof insertPredictionSchema>;
+export type InsertPredictionBet = z.infer<typeof insertPredictionBetSchema>;
 
 // Update types
 export type UpdateUser = z.infer<typeof updateUserSchema>;
@@ -671,9 +1027,17 @@ export type UpdateShoutout = z.infer<typeof updateShoutoutSchema>;
 export type UpdateShoutoutSettings = z.infer<typeof updateShoutoutSettingsSchema>;
 export type UpdateStreamSession = z.infer<typeof updateStreamSessionSchema>;
 export type UpdateGameSettings = z.infer<typeof updateGameSettingsSchema>;
+export type UpdateGameStats = z.infer<typeof updateGameStatsSchema>;
 export type UpdateCurrencySettings = z.infer<typeof updateCurrencySettingsSchema>;
 export type UpdateUserBalance = z.infer<typeof updateUserBalanceSchema>;
 export type UpdateCurrencyReward = z.infer<typeof updateCurrencyRewardSchema>;
+export type UpdateRewardRedemption = z.infer<typeof updateRewardRedemptionSchema>;
+export type UpdateSongQueue = z.infer<typeof updateSongQueueSchema>;
+export type UpdateSongSettings = z.infer<typeof updateSongSettingsSchema>;
+export type UpdatePoll = z.infer<typeof updatePollSchema>;
+export type UpdatePollVote = z.infer<typeof updatePollVoteSchema>;
+export type UpdatePrediction = z.infer<typeof updatePredictionSchema>;
+export type UpdatePredictionBet = z.infer<typeof updatePredictionBetSchema>;
 
 // Auth types
 export type Signup = z.infer<typeof signupSchema>;

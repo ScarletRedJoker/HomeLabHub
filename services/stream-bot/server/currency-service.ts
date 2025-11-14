@@ -4,14 +4,17 @@ import {
   userBalances,
   currencyTransactions,
   currencyRewards,
+  rewardRedemptions,
   type CurrencySettings,
   type UserBalance,
   type CurrencyTransaction,
   type CurrencyReward,
+  type RewardRedemption,
   type InsertCurrencySettings,
   type InsertUserBalance,
   type InsertCurrencyTransaction,
   type InsertCurrencyReward,
+  type InsertRewardRedemption,
   type UpdateCurrencySettings,
   type UpdateCurrencyReward,
 } from "@shared/schema";
@@ -39,7 +42,9 @@ export class CurrencyService {
         currencyName: data.currencyName || "Points",
         currencySymbol: data.currencySymbol || "⭐",
         earnPerMessage: data.earnPerMessage || 1,
-        earnPerMinute: data.earnPerMinute || 2,
+        earnPerMinute: data.earnPerMinute || 10,
+        startingBalance: data.startingBalance || 100,
+        maxBalance: data.maxBalance || 1000000,
         enableGambling: data.enableGambling !== undefined ? data.enableGambling : true,
       })
       .returning();
@@ -91,13 +96,16 @@ export class CurrencyService {
     let balance = await this.getBalance(botUserId, username, platform);
 
     if (!balance) {
+      const settings = await this.getCurrencySettings(botUserId);
+      const startingBalance = settings?.startingBalance || 100;
+      
       const [newBalance] = await db
         .insert(userBalances)
         .values({
           botUserId,
           username,
           platform,
-          balance: 0,
+          balance: startingBalance,
           totalEarned: 0,
           totalSpent: 0,
         })
@@ -115,22 +123,27 @@ export class CurrencyService {
     platform: string,
     amount: number,
     reason: string,
-    type: "earn_message" | "earn_watch" | "gamble_win" | "admin_adjust" = "earn_message"
+    type: "earn_message" | "earn_watch" | "gamble_win" | "admin_adjust" | "transfer_in" = "earn_message"
   ): Promise<UserBalance> {
     const balance = await this.getOrCreateBalance(botUserId, username, platform);
+    const settings = await this.getCurrencySettings(botUserId);
+    const maxBalance = settings?.maxBalance || 1000000;
+    
+    const newBalance = Math.min(balance.balance + amount, maxBalance);
+    const actualAmount = newBalance - balance.balance;
 
     const [updatedBalance] = await db
       .update(userBalances)
       .set({
-        balance: balance.balance + amount,
-        totalEarned: balance.totalEarned + amount,
+        balance: newBalance,
+        totalEarned: balance.totalEarned + actualAmount,
         lastEarned: new Date(),
         updatedAt: new Date(),
       })
       .where(eq(userBalances.id, balance.id))
       .returning();
 
-    await this.trackTransaction(balance.id, type, amount, reason);
+    await this.trackTransaction(balance.id, username, type, actualAmount, reason);
 
     return updatedBalance;
   }
@@ -141,7 +154,7 @@ export class CurrencyService {
     platform: string,
     amount: number,
     reason: string,
-    type: "gamble_loss" | "reward_purchase" | "admin_adjust" = "reward_purchase"
+    type: "gamble_loss" | "reward_purchase" | "admin_adjust" | "transfer_out" = "reward_purchase"
   ): Promise<{ success: boolean; balance?: UserBalance; error?: string }> {
     const balance = await this.getOrCreateBalance(botUserId, username, platform);
 
@@ -162,7 +175,7 @@ export class CurrencyService {
       .where(eq(userBalances.id, balance.id))
       .returning();
 
-    await this.trackTransaction(balance.id, type, -amount, reason);
+    await this.trackTransaction(balance.id, username, type, -amount, reason);
 
     return { success: true, balance: updatedBalance };
   }
@@ -262,13 +275,16 @@ export class CurrencyService {
 
   async trackTransaction(
     balanceId: string,
+    username: string,
     type:
       | "earn_message"
       | "earn_watch"
       | "gamble_win"
       | "gamble_loss"
       | "reward_purchase"
-      | "admin_adjust",
+      | "admin_adjust"
+      | "transfer_in"
+      | "transfer_out",
     amount: number,
     description: string
   ): Promise<CurrencyTransaction> {
@@ -276,6 +292,7 @@ export class CurrencyService {
       .insert(currencyTransactions)
       .values({
         balanceId,
+        username,
         type,
         amount,
         description,
@@ -317,6 +334,9 @@ export class CurrencyService {
         botUserId,
         rewardName: data.rewardName,
         cost: data.cost,
+        command: data.command || null,
+        stock: data.stock || null,
+        maxRedeems: data.maxRedeems || null,
         rewardType: data.rewardType,
         rewardData: data.rewardData || null,
         isActive: data.isActive !== undefined ? data.isActive : true,
@@ -407,6 +427,7 @@ export class CurrencyService {
     success: boolean;
     reward?: CurrencyReward;
     newBalance?: number;
+    redemption?: RewardRedemption;
     error?: string;
   }> {
     const reward = await this.getReward(botUserId, rewardId);
@@ -425,6 +446,29 @@ export class CurrencyService {
       };
     }
 
+    if (reward.stock !== null && reward.stock <= 0) {
+      return {
+        success: false,
+        error: "This reward is out of stock.",
+      };
+    }
+
+    if (reward.maxRedeems !== null) {
+      const userRedemptionCount = await this.getUserRedemptionCount(
+        botUserId,
+        username,
+        platform,
+        rewardId
+      );
+      
+      if (userRedemptionCount >= reward.maxRedeems) {
+        return {
+          success: false,
+          error: `You have already redeemed this reward the maximum number of times (${reward.maxRedeems}).`,
+        };
+      }
+    }
+
     const result = await this.removePoints(
       botUserId,
       username,
@@ -441,10 +485,32 @@ export class CurrencyService {
       };
     }
 
+    if (reward.stock !== null) {
+      await db
+        .update(currencyRewards)
+        .set({ 
+          stock: reward.stock - 1,
+          updatedAt: new Date(),
+        })
+        .where(eq(currencyRewards.id, rewardId));
+    }
+
+    const [redemption] = await db
+      .insert(rewardRedemptions)
+      .values({
+        rewardId,
+        botUserId,
+        username,
+        platform,
+        fulfilled: false,
+      })
+      .returning();
+
     return {
       success: true,
       reward,
       newBalance: result.balance!.balance,
+      redemption,
     };
   }
 
@@ -485,6 +551,155 @@ export class CurrencyService {
       .limit(limit);
 
     return topSpenders;
+  }
+
+  async transferPoints(
+    botUserId: string,
+    fromUsername: string,
+    toUsername: string,
+    platform: string,
+    amount: number
+  ): Promise<{
+    success: boolean;
+    fromBalance?: number;
+    toBalance?: number;
+    error?: string;
+  }> {
+    if (amount <= 0) {
+      return {
+        success: false,
+        error: "Transfer amount must be greater than 0.",
+      };
+    }
+
+    if (fromUsername.toLowerCase() === toUsername.toLowerCase()) {
+      return {
+        success: false,
+        error: "You cannot transfer points to yourself.",
+      };
+    }
+
+    const removeResult = await this.removePoints(
+      botUserId,
+      fromUsername,
+      platform,
+      amount,
+      `Transferred ${amount} points to ${toUsername}`,
+      "transfer_out"
+    );
+
+    if (!removeResult.success) {
+      return {
+        success: false,
+        error: removeResult.error,
+      };
+    }
+
+    const toBalance = await this.addPoints(
+      botUserId,
+      toUsername,
+      platform,
+      amount,
+      `Received ${amount} points from ${fromUsername}`,
+      "transfer_in"
+    );
+
+    return {
+      success: true,
+      fromBalance: removeResult.balance!.balance,
+      toBalance: toBalance.balance,
+    };
+  }
+
+  async getUserRedemptionCount(
+    botUserId: string,
+    username: string,
+    platform: string,
+    rewardId: string
+  ): Promise<number> {
+    const result = await db
+      .select({
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(rewardRedemptions)
+      .where(
+        and(
+          eq(rewardRedemptions.rewardId, rewardId),
+          eq(rewardRedemptions.botUserId, botUserId),
+          eq(rewardRedemptions.username, username),
+          eq(rewardRedemptions.platform, platform)
+        )
+      );
+
+    return Number(result[0]?.count || 0);
+  }
+
+  async getRedemptions(
+    botUserId: string,
+    limit: number = 50
+  ): Promise<RewardRedemption[]> {
+    const redemptions = await db
+      .select()
+      .from(rewardRedemptions)
+      .where(eq(rewardRedemptions.botUserId, botUserId))
+      .orderBy(desc(rewardRedemptions.redeemedAt))
+      .limit(limit);
+
+    return redemptions;
+  }
+
+  async getPendingRedemptions(botUserId: string): Promise<RewardRedemption[]> {
+    const redemptions = await db
+      .select()
+      .from(rewardRedemptions)
+      .where(
+        and(
+          eq(rewardRedemptions.botUserId, botUserId),
+          eq(rewardRedemptions.fulfilled, false)
+        )
+      )
+      .orderBy(desc(rewardRedemptions.redeemedAt));
+
+    return redemptions;
+  }
+
+  async getRedemptionsByReward(
+    botUserId: string,
+    rewardId: string
+  ): Promise<RewardRedemption[]> {
+    const redemptions = await db
+      .select()
+      .from(rewardRedemptions)
+      .where(
+        and(
+          eq(rewardRedemptions.rewardId, rewardId),
+          eq(rewardRedemptions.botUserId, botUserId)
+        )
+      )
+      .orderBy(desc(rewardRedemptions.redeemedAt));
+
+    return redemptions;
+  }
+
+  async fulfillRedemption(
+    botUserId: string,
+    redemptionId: string
+  ): Promise<RewardRedemption> {
+    const [redemption] = await db
+      .update(rewardRedemptions)
+      .set({
+        fulfilled: true,
+        fulfilledAt: new Date(),
+      })
+      .where(
+        and(
+          eq(rewardRedemptions.id, redemptionId),
+          eq(rewardRedemptions.botUserId, botUserId)
+        )
+      )
+      .returning();
+
+    return redemption;
   }
 }
 

@@ -22,7 +22,9 @@ import Moderation from "@/pages/moderation";
 import Giveaways from "@/pages/giveaways";
 import Shoutouts from "@/pages/shoutouts";
 import Games from "@/pages/games";
+import Currency from "@/pages/currency";
 import Statistics from "@/pages/statistics";
+import SongRequests from "@/pages/song-requests";
 import NotFound from "@/pages/not-found";
 import SpotifyOverlay from "@/pages/spotify-overlay";
 import YouTubeOverlay from "@/pages/youtube-overlay";
@@ -78,6 +80,8 @@ function ProtectedRouter() {
               <Route path="/giveaways" component={Giveaways} />
               <Route path="/shoutouts" component={Shoutouts} />
               <Route path="/games" component={Games} />
+              <Route path="/currency" component={Currency} />
+              <Route path="/song-requests" component={SongRequests} />
               <Route path="/settings" component={Settings} />
               <Route path="/profile" component={Profile} />
               <Route component={NotFound} />

@@ -63,7 +63,8 @@ export default function Statistics() {
 
   // Fetch top chatters
   const { data: topChatters, isLoading: chattersLoading } = useQuery<TopChatter[]>({
-    queryKey: ["/api/stream-stats/top-chatters", selectedSessionId],
+    queryKey: [`/api/stream-stats/top-chatters?sessionId=${selectedSessionId || currentStats?.id || ''}`],
+    enabled: !!(selectedSessionId || currentStats?.id),
   });
 
   // Fetch viewer history for selected session
@@ -263,11 +264,11 @@ export default function Statistics() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {topChatters.map((chatter) => (
+                        {topChatters.map((chatter, index) => (
                           <TableRow key={chatter.username}>
                             <TableCell>
-                              <Badge variant={chatter.rank === 1 ? "default" : "outline"}>
-                                #{chatter.rank}
+                              <Badge variant={index === 0 ? "default" : "outline"}>
+                                #{index + 1}
                               </Badge>
                             </TableCell>
                             <TableCell className="font-medium">{chatter.username}</TableCell>

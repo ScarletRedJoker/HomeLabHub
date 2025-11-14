@@ -102,15 +102,37 @@ export class StatsService {
         session = await this.createSession(userId, platform);
       }
 
-      await db.insert(chatActivity).values({
-        sessionId: session.id,
-        username,
-        messageCount: 1,
-        timestamp: new Date(),
-      });
+      const existing = await db.select()
+        .from(chatActivity)
+        .where(
+          and(
+            eq(chatActivity.sessionId, session.id),
+            eq(chatActivity.username, username)
+          )
+        )
+        .limit(1);
+
+      if (existing.length > 0) {
+        await db.update(chatActivity)
+          .set({
+            messageCount: sql`${chatActivity.messageCount} + 1`,
+            lastSeen: new Date(),
+            timestamp: new Date(),
+          })
+          .where(eq(chatActivity.id, existing[0].id));
+      } else {
+        await db.insert(chatActivity).values({
+          sessionId: session.id,
+          username,
+          messageCount: 1,
+          firstSeen: new Date(),
+          lastSeen: new Date(),
+          timestamp: new Date(),
+        });
+      }
 
       const [{ count }] = await db.select({ 
-        count: sql<number>`count(*)::int`
+        count: sql<number>`SUM(${chatActivity.messageCount})::int`
       })
         .from(chatActivity)
         .where(eq(chatActivity.sessionId, session.id));
@@ -123,7 +145,7 @@ export class StatsService {
 
       await db.update(streamSessions)
         .set({ 
-          totalMessages: count,
+          totalMessages: count || 0,
           uniqueChatters: uniqueCount,
         })
         .where(eq(streamSessions.id, session.id));
@@ -133,6 +155,7 @@ export class StatsService {
   }
 
   async getSessionStats(sessionId: string): Promise<{
+    userId: string;
     session: StreamSession;
     viewerSnapshots: ViewerSnapshot[];
     chatActivity: ChatActivity[];
@@ -156,7 +179,7 @@ export class StatsService {
       const activity = await db.select()
         .from(chatActivity)
         .where(eq(chatActivity.sessionId, sessionId))
-        .orderBy(chatActivity.timestamp);
+        .orderBy(desc(chatActivity.messageCount));
 
       const averageViewers = snapshots.length > 0
         ? Math.round(snapshots.reduce((sum, s) => sum + s.viewerCount, 0) / snapshots.length)
@@ -167,6 +190,7 @@ export class StatsService {
       const uptime = Math.floor((endTime - startTime) / 1000);
 
       return {
+        userId: session.userId,
         session,
         viewerSnapshots: snapshots,
         chatActivity: activity,
@@ -194,36 +218,171 @@ export class StatsService {
     }
   }
 
-  async getTopChatters(userId: string, limit: number = 10): Promise<Array<{
+  async getRecentSessions(userId: string, platform?: string, limit: number = 20): Promise<StreamSession[]> {
+    try {
+      if (platform) {
+        const sessions = await db.select()
+          .from(streamSessions)
+          .where(
+            and(
+              eq(streamSessions.userId, userId),
+              eq(streamSessions.platform, platform)
+            )
+          )
+          .orderBy(desc(streamSessions.startedAt))
+          .limit(limit);
+        
+        return sessions;
+      } else {
+        return this.getSessions(userId, limit);
+      }
+    } catch (error: any) {
+      console.error(`[StatsService] Error getting recent sessions:`, error);
+      return [];
+    }
+  }
+
+  async getViewerHistory(sessionId: string): Promise<ViewerSnapshot[]> {
+    try {
+      const snapshots = await db.select()
+        .from(viewerSnapshots)
+        .where(eq(viewerSnapshots.sessionId, sessionId))
+        .orderBy(viewerSnapshots.timestamp);
+
+      return snapshots;
+    } catch (error: any) {
+      console.error(`[StatsService] Error getting viewer history:`, error);
+      return [];
+    }
+  }
+
+  async getUserStats(userId: string): Promise<{
+    totalSessions: number;
+    totalStreamTime: number;
+    totalMessages: number;
+    totalUniqueChatters: number;
+    averageViewers: number;
+    peakViewers: number;
+    topPlatform: string | null;
+  }> {
+    try {
+      const allSessions = await db.select()
+        .from(streamSessions)
+        .where(eq(streamSessions.userId, userId));
+
+      if (allSessions.length === 0) {
+        return {
+          totalSessions: 0,
+          totalStreamTime: 0,
+          totalMessages: 0,
+          totalUniqueChatters: 0,
+          averageViewers: 0,
+          peakViewers: 0,
+          topPlatform: null,
+        };
+      }
+
+      let totalStreamTime = 0;
+      let totalMessages = 0;
+      let totalUniqueChattersSet = new Set<string>();
+      let peakViewers = 0;
+      let totalViewerSum = 0;
+      let totalViewerSnapshots = 0;
+      const platformCounts: Record<string, number> = {};
+
+      for (const session of allSessions) {
+        const startTime = new Date(session.startedAt).getTime();
+        const endTime = session.endedAt ? new Date(session.endedAt).getTime() : Date.now();
+        totalStreamTime += endTime - startTime;
+
+        totalMessages += session.totalMessages || 0;
+
+        if ((session.peakViewers || 0) > peakViewers) {
+          peakViewers = session.peakViewers || 0;
+        }
+
+        platformCounts[session.platform] = (platformCounts[session.platform] || 0) + 1;
+
+        const chatters = await db.select({ username: chatActivity.username })
+          .from(chatActivity)
+          .where(eq(chatActivity.sessionId, session.id));
+        
+        chatters.forEach(c => totalUniqueChattersSet.add(c.username));
+
+        const snapshots = await db.select()
+          .from(viewerSnapshots)
+          .where(eq(viewerSnapshots.sessionId, session.id));
+        
+        snapshots.forEach(s => {
+          totalViewerSum += s.viewerCount;
+          totalViewerSnapshots++;
+        });
+      }
+
+      const averageViewers = totalViewerSnapshots > 0 
+        ? Math.round(totalViewerSum / totalViewerSnapshots) 
+        : 0;
+
+      const topPlatform = Object.entries(platformCounts).length > 0
+        ? Object.entries(platformCounts).sort((a, b) => b[1] - a[1])[0][0]
+        : null;
+
+      return {
+        totalSessions: allSessions.length,
+        totalStreamTime: Math.floor(totalStreamTime / 1000),
+        totalMessages,
+        totalUniqueChatters: totalUniqueChattersSet.size,
+        averageViewers,
+        peakViewers,
+        topPlatform,
+      };
+    } catch (error: any) {
+      console.error(`[StatsService] Error getting user stats:`, error);
+      return {
+        totalSessions: 0,
+        totalStreamTime: 0,
+        totalMessages: 0,
+        totalUniqueChatters: 0,
+        averageViewers: 0,
+        peakViewers: 0,
+        topPlatform: null,
+      };
+    }
+  }
+
+  async getTopChatters(userId: string, limit: number = 10, sessionId?: string): Promise<Array<{
     username: string;
     messageCount: number;
   }>> {
     try {
-      const activeSession = await db.select()
-        .from(streamSessions)
-        .where(
-          and(
-            eq(streamSessions.userId, userId),
-            sql`${streamSessions.endedAt} IS NULL`
+      let targetSessionId = sessionId;
+
+      if (!targetSessionId) {
+        const activeSession = await db.select()
+          .from(streamSessions)
+          .where(
+            and(
+              eq(streamSessions.userId, userId),
+              sql`${streamSessions.endedAt} IS NULL`
+            )
           )
-        )
-        .orderBy(desc(streamSessions.startedAt))
-        .limit(1);
+          .orderBy(desc(streamSessions.startedAt))
+          .limit(1);
 
-      if (!activeSession || activeSession.length === 0) {
-        return [];
+        if (!activeSession || activeSession.length === 0) {
+          return [];
+        }
+
+        targetSessionId = activeSession[0].id;
       }
-
-      const sessionId = activeSession[0].id;
 
       const topChatters = await db.select({
         username: chatActivity.username,
-        messageCount: sql<number>`count(*)::int`,
+        messageCount: chatActivity.messageCount,
       })
         .from(chatActivity)
-        .where(eq(chatActivity.sessionId, sessionId))
-        .groupBy(chatActivity.username)
-        .orderBy(desc(sql`count(*)`))
+        .where(eq(chatActivity.sessionId, targetSessionId))
+        .orderBy(desc(chatActivity.messageCount))
         .limit(limit);
 
       return topChatters;
@@ -240,7 +399,7 @@ export class StatsService {
     try {
       const heatmap = await db.select({
         hour: sql<number>`EXTRACT(HOUR FROM ${chatActivity.timestamp})::int`,
-        messageCount: sql<number>`count(*)::int`,
+        messageCount: sql<number>`SUM(${chatActivity.messageCount})::int`,
       })
         .from(chatActivity)
         .where(eq(chatActivity.sessionId, sessionId))
@@ -276,24 +435,29 @@ export class StatsService {
     }
   }
 
-  async getCurrentStats(userId: string): Promise<{
+  async getCurrentStats(userId: string, platform?: string): Promise<{
     hasActiveSession: boolean;
     currentViewers: number;
     peakViewers: number;
     totalMessages: number;
     uniqueChatters: number;
     uptime: number;
+    avgViewers: number;
     session: StreamSession | null;
   }> {
     try {
+      const whereConditions = [
+        eq(streamSessions.userId, userId),
+        sql`${streamSessions.endedAt} IS NULL`
+      ];
+
+      if (platform) {
+        whereConditions.push(eq(streamSessions.platform, platform));
+      }
+
       const sessions = await db.select()
         .from(streamSessions)
-        .where(
-          and(
-            eq(streamSessions.userId, userId),
-            sql`${streamSessions.endedAt} IS NULL`
-          )
-        )
+        .where(and(...whereConditions))
         .orderBy(desc(streamSessions.startedAt))
         .limit(1);
 
@@ -305,6 +469,7 @@ export class StatsService {
           totalMessages: 0,
           uniqueChatters: 0,
           uptime: 0,
+          avgViewers: 0,
           session: null,
         };
       }
@@ -319,6 +484,14 @@ export class StatsService {
 
       const currentViewers = latestSnapshot.length > 0 ? latestSnapshot[0].viewerCount : 0;
 
+      const allSnapshots = await db.select()
+        .from(viewerSnapshots)
+        .where(eq(viewerSnapshots.sessionId, session.id));
+
+      const avgViewers = allSnapshots.length > 0
+        ? Math.round(allSnapshots.reduce((sum, s) => sum + s.viewerCount, 0) / allSnapshots.length)
+        : 0;
+
       const startTime = new Date(session.startedAt).getTime();
       const uptime = Math.floor((Date.now() - startTime) / 1000);
 
@@ -329,6 +502,7 @@ export class StatsService {
         totalMessages: session.totalMessages || 0,
         uniqueChatters: session.uniqueChatters || 0,
         uptime,
+        avgViewers,
         session,
       };
     } catch (error: any) {
@@ -340,6 +514,7 @@ export class StatsService {
         totalMessages: 0,
         uniqueChatters: 0,
         uptime: 0,
+        avgViewers: 0,
         session: null,
       };
     }

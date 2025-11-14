@@ -16,6 +16,7 @@ import {
   gameSettings,
   gameHistory,
   activeTriviaQuestions,
+  gameStats,
   currencySettings,
   currencyRewards,
   type PlatformConnection,
@@ -34,6 +35,7 @@ import {
   type GameSettings,
   type GameHistory,
   type ActiveTriviaQuestion,
+  type GameStats,
   type CurrencySettings,
   type CurrencyReward,
   type InsertPlatformConnection,
@@ -52,6 +54,7 @@ import {
   type InsertGameSettings,
   type InsertGameHistory,
   type InsertActiveTriviaQuestion,
+  type InsertGameStats,
   type InsertCurrencySettings,
   type InsertCurrencyReward,
   type UpdateBotConfig,
@@ -62,6 +65,7 @@ import {
   type UpdateShoutout,
   type UpdateShoutoutSettings,
   type UpdateGameSettings,
+  type UpdateGameStats,
   type UpdateCurrencySettings,
   type UpdateCurrencyReward,
 } from "@shared/schema";
@@ -184,6 +188,13 @@ export interface IStorage {
   createActiveTriviaQuestion(data: InsertActiveTriviaQuestion): Promise<ActiveTriviaQuestion>;
   deleteActiveTriviaQuestion(id: string): Promise<void>;
   cleanupExpiredTriviaQuestions(): Promise<void>;
+
+  // Game Stats
+  getGameStats(userId: string, limit?: number): Promise<GameStats[]>;
+  getGameStatsByGame(userId: string, gameName: string, limit?: number): Promise<GameStats[]>;
+  getGameStatsByPlayer(userId: string, username: string, platform: string): Promise<GameStats[]>;
+  getGameLeaderboard(userId: string, gameName: string, limit?: number): Promise<GameStats[]>;
+  upsertGameStats(data: InsertGameStats): Promise<GameStats>;
 
   // Currency Settings
   getCurrencySettings(userId: string): Promise<CurrencySettings | undefined>;
@@ -1172,6 +1183,99 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(activeTriviaQuestions)
       .where(gte(now, activeTriviaQuestions.expiresAt));
+  }
+
+  // Game Stats
+  async getGameStats(userId: string, limit: number = 100): Promise<GameStats[]> {
+    return await db
+      .select()
+      .from(gameStats)
+      .where(eq(gameStats.userId, userId))
+      .orderBy(desc(gameStats.totalPlays))
+      .limit(limit);
+  }
+
+  async getGameStatsByGame(userId: string, gameName: string, limit: number = 100): Promise<GameStats[]> {
+    return await db
+      .select()
+      .from(gameStats)
+      .where(
+        and(
+          eq(gameStats.userId, userId),
+          eq(gameStats.gameName, gameName)
+        )
+      )
+      .orderBy(desc(gameStats.totalPlays))
+      .limit(limit);
+  }
+
+  async getGameStatsByPlayer(userId: string, username: string, platform: string): Promise<GameStats[]> {
+    return await db
+      .select()
+      .from(gameStats)
+      .where(
+        and(
+          eq(gameStats.userId, userId),
+          eq(gameStats.username, username),
+          eq(gameStats.platform, platform)
+        )
+      )
+      .orderBy(desc(gameStats.totalPlays));
+  }
+
+  async getGameLeaderboard(userId: string, gameName: string, limit: number = 10): Promise<GameStats[]> {
+    return await db
+      .select()
+      .from(gameStats)
+      .where(
+        and(
+          eq(gameStats.userId, userId),
+          eq(gameStats.gameName, gameName)
+        )
+      )
+      .orderBy(desc(gameStats.totalPointsEarned))
+      .limit(limit);
+  }
+
+  async upsertGameStats(data: InsertGameStats): Promise<GameStats> {
+    const existing = await db
+      .select()
+      .from(gameStats)
+      .where(
+        and(
+          eq(gameStats.userId, data.userId),
+          eq(gameStats.username, data.username),
+          eq(gameStats.gameName, data.gameName),
+          eq(gameStats.platform, data.platform)
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      const [updated] = await db
+        .update(gameStats)
+        .set({
+          wins: existing[0].wins + (data.wins || 0),
+          losses: existing[0].losses + (data.losses || 0),
+          neutral: existing[0].neutral + (data.neutral || 0),
+          totalPlays: existing[0].totalPlays + (data.totalPlays || 0),
+          totalPointsEarned: existing[0].totalPointsEarned + (data.totalPointsEarned || 0),
+          lastPlayed: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(gameStats.id, existing[0].id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(gameStats)
+        .values({
+          ...data,
+          lastPlayed: new Date(),
+        })
+        .returning();
+      return created;
+    }
   }
 
   // Currency Settings

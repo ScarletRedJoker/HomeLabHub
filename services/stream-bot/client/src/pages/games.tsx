@@ -31,9 +31,10 @@ import {
   AlertTitle,
 } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Save, Gamepad2, Trophy, Dices, Info } from "lucide-react";
+import { Loader2, Save, Gamepad2, Trophy, Dices, Info, Crown } from "lucide-react";
 import { z } from "zod";
 import { formatDistanceToNow } from "date-fns";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const gameSettingsSchema = z.object({
   enableGames: z.boolean(),
@@ -84,6 +85,20 @@ interface GameStats {
   totalPointsAwarded: number;
 }
 
+interface LeaderboardEntry {
+  id: string;
+  userId: string;
+  username: string;
+  gameName: string;
+  platform: string;
+  wins: number;
+  losses: number;
+  neutral: number;
+  totalPlays: number;
+  totalPointsEarned: number;
+  lastPlayed: string;
+}
+
 export default function Games() {
   const { toast } = useToast();
 
@@ -97,6 +112,26 @@ export default function Games() {
 
   const { data: stats, isLoading: statsLoading } = useQuery<GameStats[]>({
     queryKey: ["/api/games/stats"],
+  });
+
+  const { data: leaderboard8Ball } = useQuery<LeaderboardEntry[]>({
+    queryKey: ["/api/games/leaderboard?gameName=8ball&limit=10"],
+  });
+
+  const { data: leaderboardTrivia } = useQuery<LeaderboardEntry[]>({
+    queryKey: ["/api/games/leaderboard?gameName=trivia&limit=10"],
+  });
+
+  const { data: leaderboardDuel } = useQuery<LeaderboardEntry[]>({
+    queryKey: ["/api/games/leaderboard?gameName=duel&limit=10"],
+  });
+
+  const { data: leaderboardSlots } = useQuery<LeaderboardEntry[]>({
+    queryKey: ["/api/games/leaderboard?gameName=slots&limit=10"],
+  });
+
+  const { data: leaderboardRoulette } = useQuery<LeaderboardEntry[]>({
+    queryKey: ["/api/games/leaderboard?gameName=roulette&limit=10"],
   });
 
   const form = useForm<GameSettingsFormValues>({
@@ -463,6 +498,257 @@ export default function Games() {
               <p className="text-sm">Stats will appear once viewers start playing!</p>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Crown className="h-5 w-5" />
+            Leaderboards
+          </CardTitle>
+          <CardDescription>
+            Top players ranked by total points earned
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="8ball" className="w-full">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="8ball">🔮 8-Ball</TabsTrigger>
+              <TabsTrigger value="trivia">🧠 Trivia</TabsTrigger>
+              <TabsTrigger value="duel">⚔️ Duel</TabsTrigger>
+              <TabsTrigger value="slots">🎰 Slots</TabsTrigger>
+              <TabsTrigger value="roulette">🎲 Roulette</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="8ball">
+              {leaderboard8Ball && leaderboard8Ball.length > 0 ? (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-16">Rank</TableHead>
+                        <TableHead>Player</TableHead>
+                        <TableHead>Platform</TableHead>
+                        <TableHead className="text-right">Plays</TableHead>
+                        <TableHead className="text-right">Points</TableHead>
+                        <TableHead className="text-right">Last Played</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {leaderboard8Ball.map((entry, index) => (
+                        <TableRow key={entry.id}>
+                          <TableCell className="font-bold">
+                            {index === 0 && <span className="text-yellow-500">🥇</span>}
+                            {index === 1 && <span className="text-gray-400">🥈</span>}
+                            {index === 2 && <span className="text-orange-600">🥉</span>}
+                            {index > 2 && <span className="text-muted-foreground">#{index + 1}</span>}
+                          </TableCell>
+                          <TableCell className="font-medium">{entry.username}</TableCell>
+                          <TableCell className="capitalize">{entry.platform}</TableCell>
+                          <TableCell className="text-right">{entry.totalPlays}</TableCell>
+                          <TableCell className="text-right font-bold text-blue-600">{entry.totalPointsEarned}</TableCell>
+                          <TableCell className="text-right text-sm text-muted-foreground">
+                            {formatDistanceToNow(new Date(entry.lastPlayed), { addSuffix: true })}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Crown className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No players yet</p>
+                  <p className="text-sm">Leaderboard will appear once viewers start playing!</p>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="trivia">
+              {leaderboardTrivia && leaderboardTrivia.length > 0 ? (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-16">Rank</TableHead>
+                        <TableHead>Player</TableHead>
+                        <TableHead>Platform</TableHead>
+                        <TableHead className="text-right">Wins</TableHead>
+                        <TableHead className="text-right">Losses</TableHead>
+                        <TableHead className="text-right">Points</TableHead>
+                        <TableHead className="text-right">Last Played</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {leaderboardTrivia.map((entry, index) => (
+                        <TableRow key={entry.id}>
+                          <TableCell className="font-bold">
+                            {index === 0 && <span className="text-yellow-500">🥇</span>}
+                            {index === 1 && <span className="text-gray-400">🥈</span>}
+                            {index === 2 && <span className="text-orange-600">🥉</span>}
+                            {index > 2 && <span className="text-muted-foreground">#{index + 1}</span>}
+                          </TableCell>
+                          <TableCell className="font-medium">{entry.username}</TableCell>
+                          <TableCell className="capitalize">{entry.platform}</TableCell>
+                          <TableCell className="text-right text-green-600">{entry.wins}</TableCell>
+                          <TableCell className="text-right text-red-600">{entry.losses}</TableCell>
+                          <TableCell className="text-right font-bold text-blue-600">{entry.totalPointsEarned}</TableCell>
+                          <TableCell className="text-right text-sm text-muted-foreground">
+                            {formatDistanceToNow(new Date(entry.lastPlayed), { addSuffix: true })}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Crown className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No players yet</p>
+                  <p className="text-sm">Leaderboard will appear once viewers start playing!</p>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="duel">
+              {leaderboardDuel && leaderboardDuel.length > 0 ? (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-16">Rank</TableHead>
+                        <TableHead>Player</TableHead>
+                        <TableHead>Platform</TableHead>
+                        <TableHead className="text-right">Wins</TableHead>
+                        <TableHead className="text-right">Losses</TableHead>
+                        <TableHead className="text-right">Total Duels</TableHead>
+                        <TableHead className="text-right">Last Played</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {leaderboardDuel.map((entry, index) => (
+                        <TableRow key={entry.id}>
+                          <TableCell className="font-bold">
+                            {index === 0 && <span className="text-yellow-500">🥇</span>}
+                            {index === 1 && <span className="text-gray-400">🥈</span>}
+                            {index === 2 && <span className="text-orange-600">🥉</span>}
+                            {index > 2 && <span className="text-muted-foreground">#{index + 1}</span>}
+                          </TableCell>
+                          <TableCell className="font-medium">{entry.username}</TableCell>
+                          <TableCell className="capitalize">{entry.platform}</TableCell>
+                          <TableCell className="text-right text-green-600 font-bold">{entry.wins}</TableCell>
+                          <TableCell className="text-right text-red-600">{entry.losses}</TableCell>
+                          <TableCell className="text-right">{entry.totalPlays}</TableCell>
+                          <TableCell className="text-right text-sm text-muted-foreground">
+                            {formatDistanceToNow(new Date(entry.lastPlayed), { addSuffix: true })}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Crown className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No players yet</p>
+                  <p className="text-sm">Leaderboard will appear once viewers start playing!</p>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="slots">
+              {leaderboardSlots && leaderboardSlots.length > 0 ? (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-16">Rank</TableHead>
+                        <TableHead>Player</TableHead>
+                        <TableHead>Platform</TableHead>
+                        <TableHead className="text-right">Wins</TableHead>
+                        <TableHead className="text-right">Losses</TableHead>
+                        <TableHead className="text-right">Points</TableHead>
+                        <TableHead className="text-right">Last Played</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {leaderboardSlots.map((entry, index) => (
+                        <TableRow key={entry.id}>
+                          <TableCell className="font-bold">
+                            {index === 0 && <span className="text-yellow-500">🥇</span>}
+                            {index === 1 && <span className="text-gray-400">🥈</span>}
+                            {index === 2 && <span className="text-orange-600">🥉</span>}
+                            {index > 2 && <span className="text-muted-foreground">#{index + 1}</span>}
+                          </TableCell>
+                          <TableCell className="font-medium">{entry.username}</TableCell>
+                          <TableCell className="capitalize">{entry.platform}</TableCell>
+                          <TableCell className="text-right text-green-600">{entry.wins}</TableCell>
+                          <TableCell className="text-right text-red-600">{entry.losses}</TableCell>
+                          <TableCell className="text-right font-bold text-blue-600">{entry.totalPointsEarned}</TableCell>
+                          <TableCell className="text-right text-sm text-muted-foreground">
+                            {formatDistanceToNow(new Date(entry.lastPlayed), { addSuffix: true })}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Crown className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No players yet</p>
+                  <p className="text-sm">Leaderboard will appear once viewers start playing!</p>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="roulette">
+              {leaderboardRoulette && leaderboardRoulette.length > 0 ? (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-16">Rank</TableHead>
+                        <TableHead>Player</TableHead>
+                        <TableHead>Platform</TableHead>
+                        <TableHead className="text-right">Survived</TableHead>
+                        <TableHead className="text-right">Lost</TableHead>
+                        <TableHead className="text-right">Points</TableHead>
+                        <TableHead className="text-right">Last Played</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {leaderboardRoulette.map((entry, index) => (
+                        <TableRow key={entry.id}>
+                          <TableCell className="font-bold">
+                            {index === 0 && <span className="text-yellow-500">🥇</span>}
+                            {index === 1 && <span className="text-gray-400">🥈</span>}
+                            {index === 2 && <span className="text-orange-600">🥉</span>}
+                            {index > 2 && <span className="text-muted-foreground">#{index + 1}</span>}
+                          </TableCell>
+                          <TableCell className="font-medium">{entry.username}</TableCell>
+                          <TableCell className="capitalize">{entry.platform}</TableCell>
+                          <TableCell className="text-right text-green-600">{entry.wins}</TableCell>
+                          <TableCell className="text-right text-red-600">{entry.losses}</TableCell>
+                          <TableCell className="text-right font-bold text-blue-600">{entry.totalPointsEarned}</TableCell>
+                          <TableCell className="text-right text-sm text-muted-foreground">
+                            {formatDistanceToNow(new Date(entry.lastPlayed), { addSuffix: true })}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Crown className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No players yet</p>
+                  <p className="text-sm">Leaderboard will appear once viewers start playing!</p>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
