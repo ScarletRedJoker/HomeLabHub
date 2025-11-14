@@ -627,6 +627,7 @@ def conversational_query():
         
         with db_service.get_session() as session:
             # Get or create AI session
+            is_new_session = False
             if session_id:
                 ai_session = session.query(AISession).filter_by(id=session_id).first()
                 if not ai_session:
@@ -636,6 +637,7 @@ def conversational_query():
                     }), 404
             else:
                 # Create new session
+                is_new_session = True
                 ai_session = AISession(
                     session_type='conversational',
                     state='active',
@@ -648,6 +650,11 @@ def conversational_query():
             
             # Get conversation history
             conversation_history = ai_session.messages or []
+            
+            # Add greeting for new sessions
+            greeting = ""
+            if is_new_session:
+                greeting = personality.get_greeting() + " "
             
             # Add user message to history
             user_msg = {
@@ -662,7 +669,11 @@ def conversational_query():
             ai_messages = [{'role': msg['role'], 'content': msg['content']} 
                           for msg in conversation_history if 'role' in msg and 'content' in msg]
             
-            response_text = ai_service.chat(message, ai_messages[:-1])  # Exclude last message as it's sent separately
+            response_text = ai_service.chat(message, ai_messages[:-1])
+            
+            # Prepend greeting for new sessions
+            if greeting:
+                response_text = greeting + response_text
             
             # Add assistant response to history
             assistant_msg = {
@@ -687,10 +698,11 @@ def conversational_query():
             }), 200
     
     except Exception as e:
+        error_msg = personality.wrap_error('general_error', str(e))
         logger.error(f"Error in voice query endpoint: {e}", exc_info=True)
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': error_msg
         }), 500
 
 
