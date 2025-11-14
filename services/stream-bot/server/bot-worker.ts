@@ -38,6 +38,7 @@ export class BotWorker {
   private commandCooldowns: Map<string, number> = new Map(); // commandId -> lastUsedTimestamp
   private gameCooldowns: Map<string, number> = new Map(); // userId+gameType -> lastPlayedTimestamp
   private activePlatforms: Set<string> = new Set();
+  private streamStartTime: Date | null = null; // Track when stream/bot started for uptime
   private gamesService: GamesService;
   private pollsService: PollsService;
   private alertsService: AlertsService;
@@ -65,6 +66,9 @@ export class BotWorker {
       this.config = config;
 
       this.isRunning = true;
+
+      // Set stream start time for uptime tracking
+      this.streamStartTime = new Date();
 
       // Start Twitch client if connected and chat triggers enabled
       const twitchConnection = await this.storage.getPlatformConnectionByPlatform("twitch");
@@ -178,6 +182,9 @@ export class BotWorker {
         clearInterval(this.viewerTrackingInterval);
         this.viewerTrackingInterval = null;
       }
+
+      // Reset stream start time
+      this.streamStartTime = null;
 
       // End sessions for all active platforms
       for (const platform of this.activePlatforms) {
@@ -718,6 +725,48 @@ export class BotWorker {
     }
   }
 
+  /**
+   * Check if user has required permission level for a command
+   * @param requiredPermission - Command permission level: 'broadcaster', 'moderator', 'subscriber', 'everyone'
+   * @param userTags - Platform-specific user tags/badges
+   * @param username - Username for additional checks
+   * @returns true if user has permission, false otherwise
+   */
+  private checkUserPermission(
+    requiredPermission: string,
+    userTags: any,
+    username: string
+  ): boolean {
+    // Everyone can use commands with 'everyone' permission
+    if (requiredPermission === 'everyone') {
+      return true;
+    }
+
+    // Extract user roles from tags (works for Twitch, YouTube, Kick)
+    const isBroadcaster = userTags?.badges?.broadcaster || userTags?.isBroadcaster || false;
+    const isModerator = userTags?.mod || userTags?.badges?.moderator || userTags?.isModerator || false;
+    const isSubscriber = userTags?.subscriber || userTags?.badges?.subscriber || userTags?.isSubscriber || false;
+
+    // Broadcaster has access to all commands
+    if (isBroadcaster) {
+      return true;
+    }
+
+    // Check permission hierarchy: broadcaster > moderator > subscriber > everyone
+    switch (requiredPermission) {
+      case 'broadcaster':
+        return isBroadcaster;
+      case 'moderator':
+      case 'mods':
+        return isModerator || isBroadcaster;
+      case 'subscriber':
+      case 'subs':
+        return isSubscriber || isModerator || isBroadcaster;
+      default:
+        return true; // Default to everyone
+    }
+  }
+
   private async executeCustomCommand(
     commandName: string,
     username: string,
@@ -748,14 +797,31 @@ export class BotWorker {
         }
       }
 
-      // TODO: Check user permissions (broadcaster/mods/subs/everyone)
-      // For now, we'll allow everyone
+      // Check user permissions
+      const hasPermission = this.checkUserPermission(
+        command.permission || 'everyone',
+        userTags,
+        username
+      );
+
+      if (!hasPermission) {
+        // Return permission error message
+        const permissionName = command.permission === 'moderator' || command.permission === 'mods'
+          ? 'moderators'
+          : command.permission === 'subscriber' || command.permission === 'subs'
+          ? 'subscribers'
+          : command.permission === 'broadcaster'
+          ? 'the broadcaster'
+          : 'everyone';
+        
+        return `@${username}, this command is only available to ${permissionName}.`;
+      }
       
       // Parse variables in the response
       const context: CommandContext = {
         username,
         usageCount: command.usageCount + 1, // Show the count after increment
-        // TODO: Add stream start time for uptime calculation
+        streamStartTime: this.streamStartTime || undefined,
       };
       
       const response = parseCommandVariables(command.response, context);

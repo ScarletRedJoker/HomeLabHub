@@ -8,8 +8,8 @@ import re
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
 
-from services.dashboard.services import home_assistant_service
-from services.dashboard.services.websocket_service import websocket_service
+from services.home_assistant_service import home_assistant_service
+from services.websocket_service import websocket_service
 from utils.auth import require_auth
 
 logger = logging.getLogger(__name__)
