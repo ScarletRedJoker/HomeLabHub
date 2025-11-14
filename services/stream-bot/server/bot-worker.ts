@@ -1299,10 +1299,8 @@ export class BotWorker {
           const commandName = trimmedContent.split(" ")[0]; // Get first word
           const response = await this.executeCustomCommand(commandName, message.sender.username);
           
-          if (response) {
-            // Note: Kick client would need a send method here
-            // For now, we'll log it - actual implementation depends on kick-js API
-            console.log(`[BotWorker] Kick command response: ${response}`);
+          if (response && this.kickClient) {
+            await this.kickClient.sendMessage(response);
             return; // Don't check keywords if command was executed
           }
         }
@@ -1468,11 +1466,8 @@ export class BotWorker {
         break;
 
       case "kick":
-        // Kick.js posting requires authentication - for now log intent
-        // In production, this would use the Kick client's sendMessage method
         if (this.kickClient) {
-          console.log(`[BotWorker] [Kick] Posting to channel ${connection.platformUsername}: ${message}`);
-          // Note: @retconned/kick-js API may vary - consult documentation for exact method
+          await this.kickClient.sendMessage(message);
         } else {
           throw new Error("Kick client not connected");
         }

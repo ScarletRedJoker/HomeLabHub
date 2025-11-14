@@ -1,6 +1,7 @@
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as TwitchStrategy } from "passport-twitch-new";
+import { Strategy as OAuth2Strategy } from "passport-oauth2";
 import { db } from "../db";
 import { users, platformConnections, botConfigs, botInstances } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
@@ -197,6 +198,59 @@ if (YOUTUBE_CLIENT_ID && YOUTUBE_CLIENT_SECRET) {
         return done(null, user);
       } catch (error) {
         console.error('[OAuth YouTube] Error:', error);
+        return done(error, null);
+      }
+    }
+  ));
+}
+
+const KICK_CLIENT_ID = getEnv('KICK_CLIENT_ID');
+const KICK_CLIENT_SECRET = getEnv('KICK_CLIENT_SECRET');
+const KICK_CALLBACK_URL = getEnv('KICK_SIGNIN_CALLBACK_URL') || `${getEnv('APP_URL') || 'http://localhost:5000'}/api/auth/kick/callback`;
+
+if (KICK_CLIENT_ID && KICK_CLIENT_SECRET) {
+  passport.use('kick-signin', new OAuth2Strategy(
+    {
+      authorizationURL: 'https://kick.com/oauth2/authorize',
+      tokenURL: 'https://kick.com/oauth2/token',
+      clientID: KICK_CLIENT_ID,
+      clientSecret: KICK_CLIENT_SECRET,
+      callbackURL: KICK_CALLBACK_URL,
+      scope: ['user:read', 'chat:read', 'chat:send'],
+    },
+    async (accessToken: string, refreshToken: string, profile: any, done: any) => {
+      try {
+        const userResponse = await fetch('https://kick.com/api/v2/user', {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        });
+
+        if (!userResponse.ok) {
+          return done(new Error('Failed to fetch Kick user profile'), null);
+        }
+
+        const userData = await userResponse.json();
+        
+        if (!userData.email) {
+          return done(new Error('No email found in Kick profile'), null);
+        }
+
+        const oauthProfile: OAuthProfile = {
+          id: String(userData.id),
+          email: userData.email,
+          displayName: userData.username,
+          username: userData.username,
+          platform: 'kick',
+          accessToken,
+          refreshToken,
+          expiresIn: 3600,
+        };
+
+        const user = await findOrCreateUserFromOAuth(oauthProfile);
+        return done(null, user);
+      } catch (error) {
+        console.error('[OAuth Kick] Error:', error);
         return done(error, null);
       }
     }

@@ -116,6 +116,7 @@ HomeLabHub/                      ← Replit Workspace Root
 - **Stack**: TypeScript, React, Express, tmi.js, @retconned/kick-js, OpenAI GPT-5, Spotify Web API, Drizzle ORM, PostgreSQL
 - **Purpose**: Multi-tenant SaaS platform for AI-powered stream bot management across Twitch, YouTube, and Kick.
 - **Authentication**: OAuth-only sign-in (Twitch/YouTube/Kick), email matching for account linking, no email/password auth.
+- **Kick Integration** (November 14, 2025): Complete Kick platform support with OAuth2 authentication using Passport.js (passport-oauth2 strategy), chat bot service using @retconned/kick-js library, WebSocket-based chat connection, custom command execution, and full UI integration. Environment variables: KICK_CLIENT_ID, KICK_CLIENT_SECRET (with STREAMBOT_ prefix support).
 - **Design System**: Candy theme with delicious gradients (cotton candy pink, blue raspberry, lime green), smooth glassmorphism effects, rounded edges, glow effects, and micro-animations (fade-in, bounce, pulse). Features gradient buttons, platform-specific card styling, and animated background gradients. All styled with `candy-theme.css` and candy-themed loading components.
 - **15 Major Features**:
   1. Custom Commands - User-defined commands with variables, cooldowns, permissions

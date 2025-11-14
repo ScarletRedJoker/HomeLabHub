@@ -252,14 +252,10 @@ export default function Profile() {
                                   window.location.href = '/auth/twitch';
                                 } else if (platform === 'youtube') {
                                   window.location.href = '/auth/youtube';
-                                } else {
-                                  toast({
-                                    title: 'Coming Soon',
-                                    description: 'Kick integration is coming soon!',
-                                  });
+                                } else if (platform === 'kick') {
+                                  window.location.href = '/auth/kick';
                                 }
                               }}
-                              disabled={platform === 'kick'}
                             >
                               <Link2 className="h-4 w-4 mr-1" />
                               Link {platform}

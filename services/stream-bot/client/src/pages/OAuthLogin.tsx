@@ -28,6 +28,7 @@ export default function OAuthLogin() {
       const successMessages: Record<string, string> = {
         'twitch_signin': 'Successfully signed in with Twitch!',
         'youtube_signin': 'Successfully signed in with YouTube!',
+        'kick_signin': 'Successfully signed in with Kick!',
       };
       setSuccess(successMessages[successParam] || 'Successfully signed in!');
     }
@@ -39,6 +40,10 @@ export default function OAuthLogin() {
 
   const handleYouTubeLogin = () => {
     window.location.href = '/api/auth/youtube';
+  };
+
+  const handleKickLogin = () => {
+    window.location.href = '/api/auth/kick';
   };
 
   return (
@@ -95,12 +100,12 @@ export default function OAuthLogin() {
             </button>
 
             <button
-              disabled
-              className="w-full h-12 text-base text-black/50 font-semibold rounded-2xl cursor-not-allowed opacity-50"
+              onClick={handleKickLogin}
+              className="w-full h-12 text-base text-white font-semibold rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-lg"
               style={{
                 background: 'linear-gradient(135deg, #53FC18 0%, #45D614 100%)',
+                boxShadow: '0 4px 15px rgba(83, 252, 24, 0.3)'
               }}
-              title="Kick authentication coming soon"
             >
               <div className="flex items-center justify-center gap-2">
                 <svg 
@@ -110,7 +115,7 @@ export default function OAuthLogin() {
                 >
                   <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
                 </svg>
-                Sign in with Kick (Coming Soon)
+                Sign in with Kick
               </div>
             </button>
           </div>

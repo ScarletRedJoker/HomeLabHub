@@ -48,6 +48,23 @@ router.get('/youtube/callback',
   }
 );
 
+router.get('/kick', 
+  passport.authenticate('kick-signin', { 
+    scope: ['user:read', 'chat:read', 'chat:send'] 
+  })
+);
+
+router.get('/kick/callback',
+  passport.authenticate('kick-signin', { 
+    failureRedirect: '/login?error=kick_auth_failed',
+    failureMessage: true 
+  }),
+  (req, res) => {
+    console.log(`[OAuth Sign-in] Kick authentication successful for user ${req.user?.id}`);
+    res.redirect('/?success=kick_signin');
+  }
+);
+
 router.delete('/unlink/:platform', requireAuth, async (req, res) => {
   try {
     const { platform } = req.params;

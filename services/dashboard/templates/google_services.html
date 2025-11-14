@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block title %}Google Services - Jarvis{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-google"></i> Google Services</h2>
+        <p class="text-muted">Manage Google Calendar, Gmail, and Drive integrations</p>
+    </div>
+</div>
+
+<!-- Service Status Cards -->
+<div class="row mb-4">
+    <div class="col-md-4 mb-3">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-calendar3"></i> Calendar</h5>
+                <h3 id="calendarStatus">Checking...</h3>
+                <p class="mb-0" id="calendarDetails">-</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-envelope"></i> Gmail</h5>
+                <h3 id="gmailStatus">Checking...</h3>
+                <p class="mb-0" id="gmailDetails">-</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-cloud-arrow-up"></i> Drive</h5>
+                <h3 id="driveStatus">Checking...</h3>
+                <p class="mb-0" id="driveDetails">-</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-4" id="googleServicesTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="status-tab" data-bs-toggle="tab" data-bs-target="#status" type="button">
+            <i class="bi bi-info-circle"></i> Status
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="calendar-tab" data-bs-toggle="tab" data-bs-target="#calendar" type="button">
+            <i class="bi bi-calendar3"></i> Calendar Automations
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="email-tab" data-bs-toggle="tab" data-bs-target="#email" type="button">
+            <i class="bi bi-envelope"></i> Email Notifications
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="backups-tab" data-bs-toggle="tab" data-bs-target="#backups" type="button">
+            <i class="bi bi-cloud-arrow-up"></i> Backups
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="googleServicesTabContent">
+    <!-- Status Tab -->
+    <div class="tab-pane fade show active" id="status" role="tabpanel">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-info-circle"></i> Service Status</h5>
+            </div>
+            <div class="card-body">
+                <div id="statusDetails">Loading...</div>
+                <button class="btn btn-primary mt-3" onclick="refreshStatus()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh Status
+                </button>
+                <button class="btn btn-warning mt-3" onclick="resetConnections()">
+                    <i class="bi bi-x-circle"></i> Reset Connections
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calendar Automations Tab -->
+    <div class="tab-pane fade" id="calendar" role="tabpanel">
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <button class="btn btn-primary" onclick="showAutomationForm()">
+                    <i class="bi bi-plus-circle"></i> New Automation
+                </button>
+            </div>
+        </div>
+
+        <div class="card mb-3" id="automationFormCard" style="display: none;">
+            <div class="card-header">
+                <h5 class="mb-0">Create Calendar Automation</h5>
+            </div>
+            <div class="card-body">
+                <form id="automationForm">
+                    <input type="hidden" id="automationId">
+                    <div class="mb-3">
+                        <label for="automationName" class="form-label">Name *</label>
+                        <input type="text" class="form-control" id="automationName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="automationDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="automationDescription" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="automationKeywords" class="form-label">Event Keywords (comma-separated) *</label>
+                        <input type="text" class="form-control" id="automationKeywords" placeholder="meeting, standup, review" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="leadTime" class="form-label">Lead Time (minutes)</label>
+                            <input type="number" class="form-control" id="leadTime" value="15" min="0">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="lagTime" class="form-label">Lag Time (minutes)</label>
+                            <input type="number" class="form-control" id="lagTime" value="0" min="0">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="haDomain" class="form-label">Home Assistant Service Domain</label>
+                        <input type="text" class="form-control" id="haDomain" placeholder="light, switch, etc.">
+                    </div>
+                    <div class="mb-3">
+                        <label for="haService" class="form-label">Home Assistant Service Name</label>
+                        <input type="text" class="form-control" id="haService" placeholder="turn_on, turn_off, etc.">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save Automation</button>
+                    <button type="button" class="btn btn-secondary" onclick="hideAutomationForm()">Cancel</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Calendar Automations</h5>
+            </div>
+            <div class="card-body">
+                <div id="automationsList">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Email Notifications Tab -->
+    <div class="tab-pane fade" id="email" role="tabpanel">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Send Test Email</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="testEmailForm">
+                            <div class="mb-3">
+                                <label for="emailTo" class="form-label">To *</label>
+                                <input type="email" class="form-control" id="emailTo" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="emailSubject" class="form-label">Subject *</label>
+                                <input type="text" class="form-control" id="emailSubject" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="emailBody" class="form-label">Message *</label>
+                                <textarea class="form-control" id="emailBody" rows="4" required></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="emailTemplate" class="form-label">Template</label>
+                                <select class="form-select" id="emailTemplate">
+                                    <option value="custom">Custom</option>
+                                    <option value="deployment">Deployment</option>
+                                    <option value="error">Error Alert</option>
+                                    <option value="backup">Backup</option>
+                                    <option value="ssl_expiry">SSL Expiry</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-send"></i> Send Email
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Recent Notifications</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="notificationsList">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Backups Tab -->
+    <div class="tab-pane fade" id="backups" role="tabpanel">
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Storage Info</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="storageInfo">Loading...</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Quick Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <button class="btn btn-primary mb-2 w-100" onclick="refreshBackups()">
+                            <i class="bi bi-arrow-clockwise"></i> Refresh Backups
+                        </button>
+                        <button class="btn btn-warning mb-2 w-100" onclick="cleanupOldBackups()">
+                            <i class="bi bi-trash"></i> Cleanup Old Backups (30+ days)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Backup History</h5>
+            </div>
+            <div class="card-body">
+                <div id="backupsList">Loading...</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/google_services.js') }}"></script>
+<script>
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        initGoogleServices();
+    });
+</script>
+{% endblock %}
