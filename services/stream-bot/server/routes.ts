@@ -110,10 +110,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Health Check - Simple endpoint for container health monitoring
   app.get("/health", async (req, res) => {
     res.status(200).json({ 
-      status: "ok",
+      status: "healthy",
       timestamp: new Date().toISOString(),
-      uptime: process.uptime()
+      uptime: process.uptime(),
+      service: 'stream-bot',
     });
+  });
+
+  // Readiness Check - Checks database connectivity
+  app.get("/ready", async (req, res) => {
+    try {
+      // Check database connection
+      const { pool } = await import('./db');
+      await pool.query('SELECT 1');
+      res.json({ status: 'ready' });
+    } catch (error: any) {
+      res.status(503).json({ 
+        status: 'not ready', 
+        error: 'Database unavailable',
+        message: error.message 
+      });
+    }
   });
 
   // Diagnostics - Detailed system diagnostics for homelabhub integration

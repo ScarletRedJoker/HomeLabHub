@@ -1,6 +1,7 @@
 from flask import Flask
 from flask_cors import CORS
 import logging
+from logging.handlers import RotatingFileHandler
 import sys
 import os
 from datetime import timedelta
@@ -16,6 +17,7 @@ from services.db_service import db_service
 from services.websocket_service import websocket_service
 import redis
 
+# Basic logging configuration (console)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -35,6 +37,27 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=12)
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
+
+# Production logging configuration
+if not app.debug and os.environ.get('FLASK_ENV') == 'production':
+    # Create logs directory if it doesn't exist
+    log_dir = os.path.join(os.path.dirname(__file__), 'logs')
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # Rotating file handler for production
+    file_handler = RotatingFileHandler(
+        os.path.join(log_dir, 'app.log'),
+        maxBytes=10*1024*1024,  # 10MB
+        backupCount=5
+    )
+    file_handler.setFormatter(logging.Formatter(
+        '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
+    ))
+    file_handler.setLevel(logging.INFO)
+    app.logger.addHandler(file_handler)
+    app.logger.setLevel(logging.INFO)
+    
+    logger.info("Production logging enabled - logs saved to logs/app.log")
 
 # CRITICAL: Validate required environment variables
 missing_vars = []

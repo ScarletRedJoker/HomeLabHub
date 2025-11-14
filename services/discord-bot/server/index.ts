@@ -24,6 +24,8 @@
  */
 
 import express, { type Request, Response, NextFunction } from "express";
+import cors from "cors";
+import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
 import { setupAuth } from "./auth";
 import { dbStorage as storage } from "./database-storage";
@@ -52,6 +54,24 @@ function log(message: string, source = "express") {
 dotenv.config();
 
 /**
+ * PRODUCTION SECURITY: Validate SESSION_SECRET
+ */
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const SESSION_SECRET = process.env.SESSION_SECRET;
+
+if (NODE_ENV === 'production' && !SESSION_SECRET) {
+  console.error("=".repeat(60));
+  console.error("FATAL: SESSION_SECRET environment variable is required for production!");
+  console.error("Generate one with: openssl rand -base64 32");
+  console.error("=".repeat(60));
+  process.exit(1);
+}
+
+if (!SESSION_SECRET && NODE_ENV !== 'production') {
+  console.warn("⚠️  WARNING: SESSION_SECRET not set! Using insecure default for development.");
+}
+
+/**
  * Auto-configure APP_URL from DISCORD_CALLBACK_URL if not explicitly set
  * 
  * Why this is needed:
@@ -76,12 +96,59 @@ if (!process.env.APP_URL && process.env.DISCORD_CALLBACK_URL) {
 const app = express();
 
 /**
+ * Trust proxy configuration (required for rate limiting behind reverse proxy)
+ */
+app.set('trust proxy', 1);
+
+/**
+ * CORS Configuration
+ */
+const allowedOrigins = [
+  'https://bot.rig-city.com',
+  NODE_ENV === 'development' ? 'http://localhost:5173' : null,
+  NODE_ENV === 'development' ? 'http://localhost:5000' : null,
+].filter(Boolean) as string[];
+
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
+/**
+ * Rate Limiting
+ */
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5, // only 5 login attempts per 15 minutes
+  message: 'Too many login attempts, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+/**
  * Body parsing middleware
  * - express.json(): Parses incoming JSON payloads (for API requests)
  * - express.urlencoded(): Parses URL-encoded form data
  */
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+/**
+ * Apply rate limiters to routes
+ * CRITICAL: Must be registered BEFORE setupAuth() to properly rate-limit auth endpoints
+ */
+app.use('/api/', apiLimiter);
+app.use('/auth/', authLimiter);
 
 /**
  * Set up authentication system

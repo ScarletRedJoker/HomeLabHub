@@ -1,6 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
+import cors from "cors";
+import rateLimit from "express-rate-limit";
 import passport from "./auth/passport-oauth-config";
 import { registerRoutes } from "./routes";
 import { serveStatic, log } from "./http";
@@ -10,6 +12,9 @@ import { getEnv } from "./env";
 const app = express();
 const PgSession = connectPg(session);
 
+// Trust proxy configuration (required for rate limiting behind reverse proxy)
+app.set('trust proxy', 1);
+
 // Get environment variables with STREAMBOT_ fallback
 const NODE_ENV = getEnv('NODE_ENV', 'development');
 const SESSION_SECRET = getEnv('SESSION_SECRET');
@@ -17,6 +22,50 @@ const SESSION_SECRET = getEnv('SESSION_SECRET');
 // CRITICAL: Set NODE_ENV so Express and dynamic imports use correct mode
 process.env.NODE_ENV = NODE_ENV;
 app.set('env', NODE_ENV);
+
+// PRODUCTION SECURITY: Validate SESSION_SECRET in production
+if (NODE_ENV === 'production' && !SESSION_SECRET) {
+  console.error("=".repeat(60));
+  console.error("FATAL: SESSION_SECRET environment variable is required for production!");
+  console.error("Generate one with: openssl rand -base64 32");
+  console.error("=".repeat(60));
+  process.exit(1);
+}
+
+if (!SESSION_SECRET && NODE_ENV !== 'production') {
+  console.warn("⚠️  WARNING: SESSION_SECRET or STREAMBOT_SESSION_SECRET not set! Using insecure default for development.");
+}
+
+// CORS Configuration
+const allowedOrigins = [
+  'https://stream.rig-city.com',
+  NODE_ENV === 'development' ? 'http://localhost:5173' : null,
+  NODE_ENV === 'development' ? 'http://localhost:5000' : null,
+].filter(Boolean) as string[];
+
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
+// Rate Limiting
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5, // only 5 login attempts per 15 minutes
+  message: 'Too many login attempts, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 declare module 'http' {
   interface IncomingMessage {
@@ -30,9 +79,11 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ extended: false }));
 
-if (!SESSION_SECRET) {
-  console.warn("⚠️  WARNING: SESSION_SECRET or STREAMBOT_SESSION_SECRET not set! Using insecure default.");
-}
+// Apply rate limiters to routes
+// CRITICAL: Rate limiters MUST run BEFORE session middleware to prevent
+// throttled requests from creating sessions and hitting the session store
+app.use('/api/', apiLimiter);
+app.use('/auth/', authLimiter);
 
 // Export session middleware for WebSocket authentication
 export const sessionMiddleware = session({
@@ -119,4 +170,30 @@ app.use((req, res, next) => {
   }, () => {
     log(`serving on port ${port}`);
   });
+
+  // Graceful shutdown handlers
+  async function gracefulShutdown(signal: string) {
+    log(`${signal} received, shutting down gracefully...`);
+    
+    server.close(async () => {
+      try {
+        await pool.end();
+        log('Database connections closed');
+        log('Server closed successfully');
+        process.exit(0);
+      } catch (error) {
+        log(`Error during shutdown: ${error}`);
+        process.exit(1);
+      }
+    });
+
+    // Force close after 10 seconds
+    setTimeout(() => {
+      log('Forcing shutdown after timeout');
+      process.exit(1);
+    }, 10000);
+  }
+
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 })();

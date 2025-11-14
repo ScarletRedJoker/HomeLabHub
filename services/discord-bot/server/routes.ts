@@ -268,8 +268,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(200).json({ 
       status: 'healthy', 
       timestamp: new Date().toISOString(),
-      uptime: process.uptime()
+      uptime: process.uptime(),
+      service: 'discord-bot',
     });
+  });
+
+  // Readiness check endpoint - verifies database connectivity
+  app.get('/ready', async (req: Request, res: Response) => {
+    try {
+      // Check database connection
+      await db.execute({ sql: 'SELECT 1' });
+      res.json({ status: 'ready' });
+    } catch (error: any) {
+      res.status(503).json({ 
+        status: 'not ready', 
+        error: 'Database unavailable',
+        message: error.message 
+      });
+    }
   });
 
   // Detailed bot health endpoint for dashboard
