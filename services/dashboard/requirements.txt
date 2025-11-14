@@ -22,3 +22,7 @@ celery==5.3.4
 redis==5.0.1
 flask-sock==0.7.0
 docker==7.1.0
+google-api-python-client==2.108.0
+google-auth==2.25.2
+google-auth-httplib2==0.2.0
+google-auth-oauthlib==1.2.0
