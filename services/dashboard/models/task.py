@@ -2,11 +2,14 @@ from sqlalchemy import String, DateTime, Text, Enum as SQLEnum, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, JSON
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from datetime import datetime
 import uuid
 import enum
 from . import Base
+
+if TYPE_CHECKING:
+    from .workflow import Workflow
 
 class TaskType(enum.Enum):
     dns_manual = "dns_manual"
@@ -41,7 +44,7 @@ class Task(Base):
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     task_metadata: Mapped[Optional[dict]] = mapped_column(JSON, default=dict)
     
-    workflow = relationship("Workflow", backref="tasks", foreign_keys=[workflow_id])
+    workflow: Mapped[Optional["Workflow"]] = relationship("Workflow", backref="tasks", foreign_keys=[workflow_id])
     
     def __repr__(self):
         return f"<Task(id={self.id}, title='{self.title}', status='{self.status.value}')>"

@@ -46,11 +46,11 @@ class Deployment(Base):
     health_check_url: Mapped[Optional[str]] = mapped_column(Text)
     health_check_status: Mapped[Optional[str]] = mapped_column(String(20))
     
-    workflow = relationship("Workflow", backref="deployments", foreign_keys=[workflow_id])
-    artifact = relationship("Artifact", backref="deployments", foreign_keys=[artifact_id])
-    previous_deployment = relationship("Deployment", remote_side=[id], foreign_keys=[previous_deployment_id])
-    ssl_certificate = relationship("SSLCertificate", foreign_keys=[ssl_certificate_id])
-    compose_spec = relationship("ComposeSpec", foreign_keys=[compose_spec_id])
+    workflow: Mapped["Workflow"] = relationship("Workflow", backref="deployments", foreign_keys=[workflow_id])
+    artifact: Mapped[Optional["Artifact"]] = relationship("Artifact", backref="deployments", foreign_keys=[artifact_id])
+    previous_deployment: Mapped[Optional["Deployment"]] = relationship("Deployment", remote_side=[id], foreign_keys=[previous_deployment_id])
+    ssl_certificate: Mapped[Optional["SSLCertificate"]] = relationship("SSLCertificate", foreign_keys=[ssl_certificate_id])
+    compose_spec: Mapped[Optional["ComposeSpec"]] = relationship("ComposeSpec", foreign_keys=[compose_spec_id])
     
     def __repr__(self):
         return f"<Deployment(id={self.id}, service_name='{self.service_name}', status='{self.status.value}')>"

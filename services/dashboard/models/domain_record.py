@@ -2,11 +2,14 @@ from sqlalchemy import String, DateTime, Integer, Boolean, Enum as SQLEnum, Fore
 from sqlalchemy.dialects.postgresql import UUID, JSON
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from datetime import datetime
 import uuid
 import enum
 from . import Base
+
+if TYPE_CHECKING:
+    from .deployment import Deployment
 
 class RecordType(enum.Enum):
     A = "A"
@@ -43,7 +46,7 @@ class DomainRecord(Base):
     provider_record_id: Mapped[Optional[str]] = mapped_column(String(255))
     last_verified: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     
-    deployment = relationship("Deployment", backref="domain_records", foreign_keys=[deployment_id])
+    deployment: Mapped[Optional["Deployment"]] = relationship("Deployment", backref="domain_records", foreign_keys=[deployment_id])
     
     def __repr__(self):
         return f"<DomainRecord(id={self.id}, domain='{self.domain}', subdomain='{self.subdomain}', type='{self.record_type.value}')>"
