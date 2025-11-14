@@ -181,181 +181,322 @@ gunicorn --bind 0.0.0.0:5000 --workers 4 --reuse-port app:app
 
 ## API Endpoints
 
-### Health Check
-- `GET /health` - Service health status
+### Core Routes
+*Main application routes*
 
-### Web Routes (Blueprint: web)
-- `GET,POST /login` - User login
-- `GET /logout` - User logout
-- `GET /` - Dashboard index
-- `GET /dashboard` - Main dashboard
-- `GET /logs` - Logs viewer
-- `GET /ai-assistant` - AI assistant interface
-- `GET /file-manager` - File manager
-- `GET /remote-desktop` - Remote desktop viewer
-- `GET /scripts` - Scripts management
-- `GET /containers` - Container management
-- `GET /system` - System monitoring
-- `GET /databases` - Database management
-- `GET /game-streaming` - Game streaming interface
-- `GET /network` - Network monitoring
-- `GET /domains` - Domain management
-- `GET /game-connect` - Game connection interface
+- `GET /health`
+  - Health check endpoint with service status
 
-### System API (Blueprint: api, prefix: /api)
-**System Information**
-- `GET /api/system/info` - Get system information
-- `GET /api/system/processes` - List running processes
-- `GET /api/system/stats` - Real-time system statistics
-- `GET /api/system/disk` - Disk partition information
 
-**Container Management**
-- `GET /api/containers` - List all containers
-- `GET /api/containers/<container_name>/status` - Get container status
-- `POST /api/containers/<container_name>/start` - Start container
-- `POST /api/containers/<container_name>/stop` - Stop container
-- `POST /api/containers/<container_name>/restart` - Restart container
-- `GET /api/containers/<container_name>/logs` - Get container logs
+### Web Interface Routes
+*HTML pages and web interface*
 
-**Service Status**
-- `GET /api/services/status` - Get all service statuses
+- `GET /`
 
-**AI Features**
-- `POST /api/ai/analyze-logs` - Analyze logs with AI
-- `POST /api/ai/chat` - Chat with AI assistant
-- `POST /api/ai/troubleshoot` - Get troubleshooting advice
+- `GET /ai-assistant`
 
-**Script Execution**
-- `POST /api/scripts/execute` - Execute safe commands
+- `GET /containers`
 
-**Database Management**
-- `GET /api/databases` - List databases
-- `POST /api/databases` - Create database
-- `GET /api/databases/<container_name>` - Get database info
-- `DELETE /api/databases/<container_name>` - Delete database
-- `POST /api/databases/<container_name>/backup` - Backup database
-- `GET /api/databases/templates` - Get database templates
-- `GET /api/databases/<container_name>/connection-examples` - Get connection examples
+- `GET /dashboard`
 
-**Network Monitoring**
-- `GET /api/network/stats` - Network statistics
-- `GET /api/network/interfaces` - Network interfaces
-- `GET /api/network/connections` - Active connections
-- `GET /api/network/ports` - Listening ports
-- `GET /api/network/bandwidth` - Bandwidth usage
+- `GET /databases`
 
-**Domain Management**
-- `GET /api/domains` - Domain status summary
-- `GET /api/domains/<subdomain>/check` - Check specific domain
-- `GET /api/domains/ssl-certificates` - SSL certificate status
+- `GET /domains`
 
-**Activity Log**
-- `GET /api/activity/recent` - Recent activity log
+- `GET /file-manager`
 
-### Deployment API (Blueprint: deployment, prefix: /api/deployment)
-**Templates**
-- `GET /api/deployment/templates` - List service templates
-- `GET /api/deployment/templates/<template_id>` - Get template details
+- `GET /game-connect`
 
-**Service Deployment**
-- `POST /api/deployment/deploy` - Deploy new service
-- `GET /api/deployment/services` - List deployed services
-- `GET /api/deployment/services/<service_name>` - Get service details
-- `DELETE /api/deployment/services/<service_name>` - Remove service
-- `PATCH /api/deployment/services/<service_name>` - Update service
-- `POST /api/deployment/services/<service_name>/rebuild` - Rebuild service
+- `GET /game-streaming`
 
-**Environment Variables**
-- `GET /api/deployment/environment` - List environment variables
-- `POST /api/deployment/environment` - Set environment variable
-- `DELETE /api/deployment/environment/<key>` - Delete environment variable
+- `GET, POST /login`
 
-### Jarvis Deployment API (Blueprint: jarvis_deployments, prefix: /api/jarvis/deployments)
-- `POST /api/jarvis/deployments/deploy` - Create Jarvis deployment
-- `POST /api/jarvis/deployments/<deployment_id>/stop` - Stop deployment
-- `GET /api/jarvis/deployments/<deployment_id>/logs` - Get deployment logs
+- `GET /logout`
 
-### Upload & Artifacts (Blueprint: upload)
-**File Upload**
-- `POST /api/upload/file` - Upload single file
-- `POST /api/upload/zip` - Upload ZIP file
-- `POST /api/upload/validate` - Validate file without uploading
+- `GET /logs`
 
-**Artifact Management**
-- `GET /api/artifacts` - List artifacts
-- `GET /api/artifacts/<artifact_id>` - Get artifact details
-- `GET /api/artifacts/<artifact_id>/download` - Download artifact
-- `DELETE /api/artifacts/<artifact_id>` - Delete artifact
+- `GET /network`
 
-**Web Interface**
-- `GET /uploads` - Uploads page
+- `GET /remote-desktop`
 
-### Analysis (Blueprint: analysis)
-**Artifact Analysis**
-- `POST /api/analyze/artifact/<artifact_id>` - Trigger analysis
-- `GET /api/analyze/artifact/<artifact_id>/status` - Get analysis status
-- `GET /api/analyze/artifact/<artifact_id>/result` - Get analysis result
-- `POST /api/analyze/preview` - Preview analysis without saving
+- `GET /scripts`
 
-**Web Interface**
-- `GET /analysis/result/<artifact_id>` - Analysis result page
+- `GET /system`
 
-### Artifact Builder (Blueprint: artifacts, prefix: /api/artifacts)
-**Build Management**
-- `POST /api/artifacts/build` - Build artifact for project
-- `GET /api/artifacts/build/<build_id>` - Get build status
-- `GET /api/artifacts/build/<build_id>/logs` - Get build logs
-- `GET /api/artifacts/builds` - List recent builds
 
-**Templates**
-- `GET /api/artifacts/templates` - List Dockerfile templates
+### System API
+*Core system management and monitoring*
+**Prefix:** `/api`
 
-### Smart Home API (Blueprint: smart_home, prefix: /smarthome)
-**Dashboard**
-- `GET /smarthome/` - Smart home dashboard
+- `GET /api/activity/recent`
 
-**Device Management**
-- `GET /smarthome/api/devices` - Get all devices
-- `GET /smarthome/api/devices/<domain>` - Get devices by domain
-- `GET /smarthome/api/device/<entity_id>` - Get device state
+- `POST /api/ai/analyze-logs`
 
-**Device Control**
-- `POST /smarthome/api/device/<entity_id>/turn_on` - Turn on device
-- `POST /smarthome/api/device/<entity_id>/turn_off` - Turn off device
+- `POST /api/ai/chat`
 
-**Light Control**
-- `POST /smarthome/api/light/<entity_id>/brightness` - Set brightness
-- `POST /smarthome/api/light/<entity_id>/color` - Set color
+- `POST /api/ai/troubleshoot`
 
-**Climate Control**
-- `POST /smarthome/api/climate/<entity_id>/temperature` - Set temperature
+- `GET /api/containers`
 
-**Automation**
-- `POST /smarthome/api/scene/<entity_id>/activate` - Activate scene
-- `POST /smarthome/api/automation/<entity_id>/trigger` - Trigger automation
-- `GET /smarthome/api/automation/templates` - Get automation templates
+- `GET /api/containers/<container_name>/logs`
 
-**Voice Commands**
-- `POST /smarthome/api/voice/command` - Process voice command
+- `POST /api/containers/<container_name>/restart`
 
-**Status**
-- `GET /smarthome/api/status` - Smart home system status
+- `POST /api/containers/<container_name>/start`
 
-### Jarvis Voice API (Blueprint: jarvis_voice, prefix: /api/jarvis)
-**Voice-Controlled Operations**
-- `POST /api/jarvis/voice/deploy` - Deploy project via voice
-- `POST /api/jarvis/voice/database` - Create database via voice
-- `POST /api/jarvis/voice/ssl` - Manage SSL certificates
-- `POST /api/jarvis/voice/query` - Conversational AI query
+- `GET /api/containers/<container_name>/status`
 
-**System Status**
-- `GET /api/jarvis/status` - Jarvis system status
+- `POST /api/containers/<container_name>/stop`
 
-### WebSocket Endpoints (Blueprint: websocket, prefix: /ws)
-- `WebSocket /ws/workflows/<workflow_id>` - Workflow-specific updates
-- `WebSocket /ws/tasks` - Task notifications
-- `WebSocket /ws/deployments/<deployment_id>` - Deployment progress updates
-- `WebSocket /ws/system` - System-wide events
+- `GET /api/databases`
+
+- `POST /api/databases`
+
+- `GET /api/databases/<container_name>`
+
+- `DELETE /api/databases/<container_name>`
+
+- `POST /api/databases/<container_name>/backup`
+
+- `GET /api/databases/<container_name>/connection-examples`
+
+- `GET /api/databases/templates`
+
+- `GET /api/domains`
+
+- `GET /api/domains/<path:subdomain>/check`
+
+- `GET /api/domains/ssl-certificates`
+
+- `GET /api/network/bandwidth`
+
+- `GET /api/network/connections`
+
+- `GET /api/network/interfaces`
+
+- `GET /api/network/ports`
+
+- `GET /api/network/stats`
+
+- `POST /api/scripts/execute`
+
+- `GET /api/services/status`
+
+- `GET /api/system/disk`
+
+- `GET /api/system/info`
+
+- `GET /api/system/processes`
+
+- `GET /api/system/stats`
+
+
+### Deployment API
+*Service deployment and template management*
+**Prefix:** `/api/deployment`
+
+- `POST /api/deployment/deploy`
+  - Deploy a new service from a template
+
+- `GET /api/deployment/environment`
+  - List environment variables
+
+- `POST /api/deployment/environment`
+  - Set an environment variable
+
+- `DELETE /api/deployment/environment/<key>`
+  - Delete an environment variable
+
+- `GET /api/deployment/services`
+  - List all deployed services
+
+- `GET /api/deployment/services/<service_name>`
+  - Get detailed information about a service
+
+- `DELETE /api/deployment/services/<service_name>`
+  - Remove a deployed service
+
+- `PATCH /api/deployment/services/<service_name>`
+  - Update a service configuration
+
+- `POST /api/deployment/services/<service_name>/rebuild`
+  - Rebuild and restart a service
+
+- `GET /api/deployment/templates`
+  - List all available service templates
+
+- `GET /api/deployment/templates/<template_id>`
+  - Get details of a specific template
+
+
+### Jarvis Deployment API
+*AI-powered deployment operations*
+**Prefix:** `/api/jarvis/deployments`
+
+- `GET /api/jarvis/deployments/<deployment_id>/logs`
+  - Get deployment logs
+
+- `POST /api/jarvis/deployments/<deployment_id>/stop`
+  - Stop a running deployment
+
+- `POST /api/jarvis/deployments/deploy`
+  - Create a new Jarvis deployment
+
+
+### Upload & Artifacts API
+*File upload and artifact management*
+**Prefix:** `/api`
+
+- `GET /api/artifacts`
+  - List all artifacts
+
+- `GET /api/artifacts/<artifact_id>`
+  - Get artifact details
+
+- `DELETE /api/artifacts/<artifact_id>`
+  - Delete an artifact
+
+- `GET /api/artifacts/<artifact_id>/download`
+  - Download an artifact
+
+- `POST /api/upload/file`
+  - Upload a single file
+
+- `POST /api/upload/validate`
+  - Validate a file without uploading
+
+- `POST /api/upload/zip`
+  - Upload a zip file
+
+- `GET /uploads`
+  - Render uploads page
+
+
+### Analysis API
+*Artifact analysis and code inspection*
+**Prefix:** `/api`
+
+- `GET /analysis/result/<artifact_id>`
+  - Render analysis result page
+
+- `POST /api/analyze/artifact/<artifact_id>`
+  - Trigger analysis for an uploaded artifact
+
+- `GET /api/analyze/artifact/<artifact_id>/result`
+  - Get detailed analysis result for an artifact
+
+- `GET /api/analyze/artifact/<artifact_id>/status`
+  - Get analysis status for an artifact
+
+- `POST /api/analyze/preview`
+  - Analyze uploaded file without saving to database (for preview)
+
+
+### Artifact Builder API
+*Automated artifact building and templates*
+**Prefix:** `/api/artifacts`
+
+- `POST /api/artifacts/build`
+  - Build artifact for a project
+
+- `GET /api/artifacts/build/<build_id>`
+  - Get build status
+
+- `GET /api/artifacts/build/<build_id>/logs`
+  - Get build logs
+
+- `GET /api/artifacts/builds`
+  - List recent builds
+
+- `GET /api/artifacts/templates`
+  - List available Dockerfile templates
+
+
+### Smart Home API
+*Home Assistant integration and device control*
+**Prefix:** `/smarthome`
+
+- `GET /smarthome/`
+  - Render smart home control dashboard
+
+- `POST /smarthome/api/automation/<path:entity_id>/trigger`
+  - Trigger an automation with rate limiting
+
+- `GET /smarthome/api/automation/templates`
+  - Get pre-made automation templates
+
+- `POST /smarthome/api/climate/<path:entity_id>/temperature`
+  - Set temperature for climate device with rate limiting
+
+- `GET /smarthome/api/csrf-token`
+  - Get CSRF token for client-side requests
+
+- `GET /smarthome/api/device/<path:entity_id>`
+  - Get state of a specific device
+
+- `POST /smarthome/api/device/<path:entity_id>/turn_off`
+  - Turn off a device with rate limiting and CSRF protection
+
+- `POST /smarthome/api/device/<path:entity_id>/turn_on`
+  - Turn on a device with rate limiting and CSRF protection
+
+- `GET /smarthome/api/devices`
+  - Get all smart home devices
+
+- `GET /smarthome/api/devices/<domain>`
+  - Get devices filtered by domain
+
+- `POST /smarthome/api/light/<path:entity_id>/brightness`
+  - Set brightness of a light with rate limiting
+
+- `POST /smarthome/api/light/<path:entity_id>/color`
+  - Set color of a light with rate limiting
+
+- `POST /smarthome/api/scene/<path:entity_id>/activate`
+  - Activate a scene with rate limiting
+
+- `GET /smarthome/api/status`
+  - Get smart home system status
+
+- `POST /smarthome/api/voice/command`
+  - Process natural language voice command with structured intent parsing
+
+
+### Jarvis Voice API
+*Voice-controlled operations and AI queries*
+**Prefix:** `/api/jarvis`
+
+- `GET /api/jarvis/status`
+  - Get overall Jarvis system status
+
+- `POST /api/jarvis/voice/database`
+  - Create a database container using Docker
+
+- `POST /api/jarvis/voice/deploy`
+  - Deploy a website/project using voice commands
+
+- `POST /api/jarvis/voice/query`
+  - Conversational Q&A with AI assistant
+
+- `POST /api/jarvis/voice/ssl`
+  - Manage SSL certificates
+
+
+### WebSocket Endpoints
+*Real-time communication channels*
+**Prefix:** `/ws`
+
+- `GET /ws/deployments/<deployment_id>`
+  - WebSocket endpoint for deployment-specific progress updates (per-user rooms)
+
+- `GET /ws/system`
+  - WebSocket endpoint for system-wide events (per-user)
+
+- `GET /ws/tasks`
+  - WebSocket endpoint for general task notifications (per-user)
+
+- `GET /ws/workflows/<workflow_id>`
+  - WebSocket endpoint for workflow-specific updates (per-user rooms)
 
 ## Running the Service
 

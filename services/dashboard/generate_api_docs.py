@@ -264,9 +264,8 @@ def main():
     
     args = parser.parse_args()
     
-    # Mock environment variables and modules before importing
+    # Mock environment variables before importing
     mock_required_env_vars()
-    mock_missing_modules()
     
     # Suppress warnings if quiet mode
     if args.quiet:
