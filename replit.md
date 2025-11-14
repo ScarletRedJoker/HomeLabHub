@@ -50,6 +50,7 @@ HomeLabHub/                      ← Replit Workspace Root
 - **Purpose**: Web UI for managing all homelab services
 - **Features**: Docker management, system monitoring, AI assistant, network analytics, domain health checks, one-click database deployments (PostgreSQL, MySQL, MongoDB, Redis), game streaming integration (Moonlight/Sunshine setup).
 - **Security**: Username/password web login, API key for programmatic access.
+- **Design System**: Cosmic theme with deep space backgrounds, animated starfields (Canvas API), nebula gradients (purple/pink/blue), glassmorphic UI panels with backdrop blur, smooth micro-animations (fade-in, slide-in, pulse), cosmic loading spinners, and candy-inspired polish. All styled with custom CSS (`cosmic-theme.css`) and JavaScript starfield animation (`starfield.js`).
 
 **Discord Ticket Bot (services/discord-bot/)**
 - **Stack**: TypeScript, React, Express, Discord.js, Drizzle ORM, PostgreSQL
