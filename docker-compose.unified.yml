@@ -109,6 +109,8 @@ services:
       PUBLIC_DOMAIN: https://bot.rig-city.com
       VITE_CUSTOM_WS_URL: ${VITE_CUSTOM_WS_URL:-}
       SESSION_SECRET: ${DISCORD_SESSION_SECRET}
+      TWITCH_CLIENT_ID: ${TWITCH_CLIENT_ID}
+      TWITCH_CLIENT_SECRET: ${TWITCH_CLIENT_SECRET}
       NODE_ENV: production
       PORT: 5000
       RESET_DB: ${RESET_DB:-false}
@@ -215,6 +217,18 @@ services:
       - homelab
     volumes:
       - ./services/static-site:/usr/share/nginx/html:ro
+
+  # ============================================
+  # Rig City Community Website
+  # ============================================
+  rig-city-site:
+    image: nginx:alpine
+    container_name: rig-city-site
+    restart: unless-stopped
+    networks:
+      - homelab
+    volumes:
+      - ./services/rig-city-site:/usr/share/nginx/html:ro
 
   # ============================================
   # VNC Remote Desktop (Enhanced Ubuntu Desktop)
