@@ -6,14 +6,14 @@ import shutil
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from celery import Task
-from services.dashboard.celery_app import celery_app
-from services.dashboard.services.google.calendar_service import calendar_service
-from services.dashboard.services.google.gmail_service import gmail_service
-from services.dashboard.services.google.drive_service import drive_service
-from services.dashboard.services.home_assistant_service import home_assistant_service
-from services.dashboard.services.db_service import db_service
-from services.dashboard.services.websocket_service import websocket_service
-from services.dashboard.models.google_integration import (
+from celery_app import celery_app
+from services.google.calendar_service import calendar_service
+from services.google.gmail_service import gmail_service
+from services.google.drive_service import drive_service
+from services.home_assistant_service import home_assistant_service
+from services.db_service import db_service
+from services.websocket_service import websocket_service
+from models.google_integration import (
     CalendarAutomation,
     EmailNotification,
     DriveBackup,
@@ -202,7 +202,7 @@ def send_email_task(
                     subject=subject,
                     template_type=template_type,
                     status=EmailNotificationStatus.pending,
-                    metadata=template_vars
+                    email_metadata=template_vars
                 )
                 session.add(notification)
                 session.commit()

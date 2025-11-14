@@ -265,12 +265,11 @@ class GmailService:
         return self.send_email(
             to=to,
             subject=f"{emoji} Deployment {status}",
-            body=f"Deployment of {service_name} has {status}.\n\n{details}",
+            body=content,
             template_type='deployment',
             service_name=service_name,
             status=status,
-            html=True,
-            body=content
+            html=True
         )
     
     def send_error_notification(
@@ -303,11 +302,10 @@ class GmailService:
         return self.send_email(
             to=to,
             subject="System Error Alert",
-            body=f"{error_type}: {error_message}",
+            body=content,
             template_type='error',
             error_type=error_type,
-            html=True,
-            body=content
+            html=True
         )
 
 

@@ -151,7 +151,7 @@ class EmailNotification(Base):
     sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     error_message: Mapped[Optional[str]] = mapped_column(Text)
     retry_count: Mapped[int] = mapped_column(Integer, default=0)
-    metadata: Mapped[Optional[dict]] = mapped_column(JSON, default=dict)
+    email_metadata: Mapped[Optional[dict]] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     
     def __repr__(self):
@@ -169,7 +169,7 @@ class EmailNotification(Base):
             'sent_at': self.sent_at.isoformat() if self.sent_at else None,
             'error_message': self.error_message,
             'retry_count': self.retry_count,
-            'metadata': self.metadata,
+            'email_metadata': self.email_metadata,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 
@@ -196,7 +196,7 @@ class DriveBackup(Base):
     auto_delete_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     error_message: Mapped[Optional[str]] = mapped_column(Text)
-    metadata: Mapped[Optional[dict]] = mapped_column(JSON, default=dict)
+    backup_metadata: Mapped[Optional[dict]] = mapped_column(JSON, default=dict)
     created_by: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
@@ -225,7 +225,7 @@ class DriveBackup(Base):
             'auto_delete_at': self.auto_delete_at.isoformat() if self.auto_delete_at else None,
             'deleted': self.deleted,
             'error_message': self.error_message,
-            'metadata': self.metadata,
+            'backup_metadata': self.backup_metadata,
             'created_by': self.created_by,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None

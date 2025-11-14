@@ -17,15 +17,15 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "stream-bot-dev"
+args = "dashboard"
 
 [[workflows.workflow]]
-name = "stream-bot-dev"
+name = "dashboard"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd services/stream-bot && npm run dev"
+args = "cd services/dashboard && python main.py"
 waitForPort = 5000
 
 [workflows.workflow.metadata]
@@ -36,8 +36,8 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 24678
-externalPort = 3001
+localPort = 34855
+externalPort = 3002
 
 [[ports]]
 localPort = 46877

@@ -11,13 +11,13 @@ from typing import Dict, Any
 from datetime import datetime, timedelta
 import os
 
-from services.dashboard.services.google.orchestrator import google_orchestrator
-from services.dashboard.services.google.calendar_service import calendar_service
-from services.dashboard.services.google.gmail_service import gmail_service
-from services.dashboard.services.google.drive_service import drive_service
-from services.dashboard.services.db_service import db_service
-from services.dashboard.services.websocket_service import websocket_service
-from services.dashboard.models.google_integration import (
+from services.google.orchestrator import google_orchestrator
+from services.google.calendar_service import calendar_service
+from services.google.gmail_service import gmail_service
+from services.google.drive_service import drive_service
+from services.db_service import db_service
+from services.websocket_service import websocket_service
+from models.google_integration import (
     GoogleServiceStatus,
     CalendarAutomation,
     EmailNotification,
@@ -27,7 +27,7 @@ from services.dashboard.models.google_integration import (
     EmailNotificationStatus,
     BackupStatus
 )
-from services.dashboard.utils.auth import require_auth
+from utils.auth import require_auth
 
 logger = logging.getLogger(__name__)
 
@@ -477,7 +477,7 @@ def send_email():
                     gmail_message_id=result['id'],
                     gmail_thread_id=result['threadId'],
                     sent_at=datetime.utcnow(),
-                    metadata=data.get('template_vars', {})
+                    email_metadata=data.get('template_vars', {})
                 )
                 session.add(notification)
                 session.commit()
@@ -500,7 +500,7 @@ def send_email():
                         template_type=data.get('template_type', 'custom'),
                         status=EmailNotificationStatus.failed,
                         error_message=str(e),
-                        metadata=data.get('template_vars', {})
+                        email_metadata=data.get('template_vars', {})
                     )
                     session.add(notification)
                     session.commit()
