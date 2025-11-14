@@ -175,6 +175,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enhanced Health Check - Detailed bot health for homelabhub integration
+  // Returns bot status, platform connections, and user counts
+  app.get("/api/health", async (req, res) => {
+    try {
+      const managerStats = botManager.getStats();
+      
+      // Get all users with bot instances
+      const { db } = await import('./db');
+      const { botInstances, users } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+      
+      const instances = await db.query.botInstances.findMany({
+        where: eq(botInstances.status, 'running'),
+      });
+
+      // Count total users
+      const allUsers = await db.query.users.findMany();
+      const userCount = allUsers.length;
+
+      // Aggregate platform connection statuses
+      const platformStatuses = {
+        twitch: { connected: 0, total: 0 },
+        youtube: { connected: 0, total: 0 },
+        kick: { connected: 0, total: 0 }
+      };
+
+      // Query all platform connections
+      const { platformConnections } = await import('@shared/schema');
+      const allConnections = await db.query.platformConnections.findMany();
+
+      for (const conn of allConnections) {
+        const platform = conn.platform as 'twitch' | 'youtube' | 'kick';
+        if (platformStatuses[platform]) {
+          platformStatuses[platform].total++;
+          if (conn.isConnected) {
+            platformStatuses[platform].connected++;
+          }
+        }
+      }
+
+      // Determine overall status
+      const status = managerStats.activeWorkers > 0 ? 'online' : 'idle';
+
+      const health = {
+        status,
+        uptime: Math.floor(process.uptime()),
+        timestamp: new Date().toISOString(),
+        service: 'stream-bot',
+        bot: {
+          totalWorkers: managerStats.totalWorkers,
+          activeWorkers: managerStats.activeWorkers,
+          status: status === 'online' ? 'operational' : 'idle',
+        },
+        platforms: {
+          twitch: {
+            status: platformStatuses.twitch.connected > 0 ? 'connected' : 'disconnected',
+            connections: platformStatuses.twitch.connected,
+            total: platformStatuses.twitch.total,
+          },
+          youtube: {
+            status: platformStatuses.youtube.connected > 0 ? 'connected' : 'disconnected',
+            connections: platformStatuses.youtube.connected,
+            total: platformStatuses.youtube.total,
+          },
+          kick: {
+            status: platformStatuses.kick.connected > 0 ? 'connected' : 'disconnected',
+            connections: platformStatuses.kick.connected,
+            total: platformStatuses.kick.total,
+          },
+        },
+        users: {
+          total: userCount,
+          activeInstances: instances.length,
+        },
+        websocket: {
+          clients: managerStats.totalWSClients,
+          status: 'active',
+        },
+        memory: {
+          used: process.memoryUsage().heapUsed,
+          total: process.memoryUsage().heapTotal,
+        },
+      };
+
+      res.json(health);
+    } catch (error: any) {
+      console.error('Error fetching bot health:', error);
+      res.status(500).json({ 
+        status: 'error',
+        message: 'Failed to fetch bot health',
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // Platform Connections - sanitized to not expose encrypted tokens
   app.get("/api/platforms", requireAuth, async (req, res) => {
     try {
