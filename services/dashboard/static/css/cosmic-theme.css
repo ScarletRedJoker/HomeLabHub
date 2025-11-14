@@ -17,6 +17,36 @@
   --glass-cosmic-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
 }
 
+/* CRITICAL: Fix unreadable text on dark backgrounds */
+body, .main-content {
+  color: #E5E7EB !important;
+}
+
+.text-muted, small.text-muted {
+  color: #9CA3AF !important;
+  opacity: 1 !important;
+}
+
+.card {
+  background-color: rgba(31, 41, 55, 0.8) !important;
+  border: 1px solid rgba(139, 92, 246, 0.2) !important;
+  color: #E5E7EB !important;
+}
+
+.card-body, .card-header {
+  color: #E5E7EB !important;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #F9FAFB !important;
+}
+
+.connection-code {
+  background: rgba(31, 41, 55, 0.6) !important;
+  border: 1px solid rgba(139, 92, 246, 0.3) !important;
+  color: #F9FAFB !important;
+}
+
 /* Animated Starfield Background */
 .cosmic-bg {
   background: var(--cosmic-darker);
