@@ -223,6 +223,256 @@
     .glow-text {
         text-shadow: 0 0 20px rgba(96, 165, 250, 0.5);
     }
+    
+    /* Favicon Settings Button */
+    .btn-favicon-settings {
+        background: transparent;
+        border: 1px solid rgba(96, 165, 250, 0.2);
+        color: var(--text-secondary);
+        padding: 6px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.875rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .btn-favicon-settings:hover {
+        background: rgba(96, 165, 250, 0.1);
+        border-color: rgba(96, 165, 250, 0.4);
+        color: var(--accent-blue);
+        transform: scale(1.05);
+    }
+    
+    /* Favicon Modal */
+    .favicon-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(8px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        animation: fadeIn 0.3s ease;
+    }
+    
+    .favicon-modal-overlay.active {
+        display: flex;
+    }
+    
+    .favicon-modal {
+        background: linear-gradient(145deg, rgba(31, 41, 55, 0.95) 0%, rgba(17, 24, 39, 0.98) 100%);
+        border: 1px solid rgba(139, 92, 246, 0.3);
+        border-radius: 16px;
+        padding: 32px;
+        max-width: 500px;
+        width: 90%;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(139, 92, 246, 0.2) inset;
+        animation: slideUp 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    @keyframes slideUp {
+        from {
+            transform: translateY(20px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+    
+    .favicon-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid rgba(96, 165, 250, 0.1);
+    }
+    
+    .favicon-modal-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 50%, #3B82F6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .modal-close-btn {
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 1.5rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        padding: 4px;
+        line-height: 1;
+    }
+    
+    .modal-close-btn:hover {
+        color: var(--accent-red);
+        transform: rotate(90deg);
+    }
+    
+    .favicon-preview {
+        width: 120px;
+        height: 120px;
+        margin: 0 auto 24px;
+        border: 2px dashed rgba(96, 165, 250, 0.3);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(31, 41, 55, 0.5);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .favicon-preview img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+    
+    .favicon-preview i {
+        font-size: 3rem;
+        color: var(--text-secondary);
+        opacity: 0.3;
+    }
+    
+    .file-input-wrapper {
+        position: relative;
+        margin-bottom: 20px;
+    }
+    
+    .file-input-label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 24px;
+        background: linear-gradient(135deg, rgba(96, 165, 250, 0.15), rgba(59, 130, 246, 0.15));
+        border: 1px solid rgba(96, 165, 250, 0.3);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+    
+    .file-input-label:hover {
+        background: linear-gradient(135deg, rgba(96, 165, 250, 0.25), rgba(59, 130, 246, 0.25));
+        border-color: rgba(96, 165, 250, 0.5);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3);
+    }
+    
+    .file-input {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .modal-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 24px;
+    }
+    
+    .btn-modal {
+        flex: 1;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 0.95rem;
+    }
+    
+    .btn-modal-primary {
+        background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+    }
+    
+    .btn-modal-primary:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+    }
+    
+    .btn-modal-primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    .btn-modal-danger {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.2));
+        color: var(--accent-red);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    
+    .btn-modal-danger:hover {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(220, 38, 38, 0.3));
+        border-color: rgba(239, 68, 68, 0.5);
+    }
+    
+    .upload-info {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        text-align: center;
+        margin-top: 12px;
+        padding: 12px;
+        background: rgba(96, 165, 250, 0.05);
+        border-radius: 8px;
+        border: 1px solid rgba(96, 165, 250, 0.1);
+    }
+    
+    .alert-message {
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        font-size: 0.875rem;
+        display: none;
+        animation: slideDown 0.3s ease;
+    }
+    
+    @keyframes slideDown {
+        from {
+            transform: translateY(-10px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+    
+    .alert-success {
+        background: rgba(34, 197, 94, 0.1);
+        border: 1px solid rgba(34, 197, 94, 0.3);
+        color: var(--accent-green);
+    }
+    
+    .alert-error {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: var(--accent-red);
+    }
 </style>
 {% endblock %}
 
@@ -382,66 +632,27 @@
             <div class="widget-title">Service Health</div>
         </div>
         <div id="service-health">
-            <div class="activity-item">
-                <div class="activity-icon"><i class="bi bi-discord"></i></div>
-                <div>
-                    <div style="font-weight: 500;">Discord Bot</div>
-                    <a href="https://bot.rig-city.com" target="_blank" rel="noopener noreferrer" style="font-size: 0.75rem; color: var(--text-secondary); text-decoration: none;">
-                        bot.rig-city.com <i class="bi bi-box-arrow-up-right"></i>
+            {% for service_id, service_data in services.items() %}
+            <div class="activity-item service-item" data-service-id="{{ service_id }}">
+                <div class="activity-icon service-favicon-container" id="favicon-{{ service_id }}">
+                    {% if service_data.favicon %}
+                    <img src="{{ url_for('static', filename='favicons/' + service_data.favicon) }}" alt="{{ service_data.name }}" style="width: 100%; height: 100%; object-fit: contain; border-radius: 4px;">
+                    {% else %}
+                    <i class="bi bi-box-seam"></i>
+                    {% endif %}
+                </div>
+                <div style="flex: 1;">
+                    <div style="font-weight: 500;">{{ service_data.name }}</div>
+                    <a href="{{ service_data.url }}" target="_blank" rel="noopener noreferrer" style="font-size: 0.75rem; color: var(--text-secondary); text-decoration: none;">
+                        {{ service_data.url.replace('https://', '').replace('http://', '') }} <i class="bi bi-box-arrow-up-right"></i>
                     </a>
                 </div>
-                <span class="status-led online blink" style="margin-left: auto;"></span>
+                <button class="btn-favicon-settings" onclick="openFaviconModal('{{ service_id }}', '{{ service_data.name }}')" title="Manage Favicon">
+                    <i class="bi bi-gear"></i>
+                </button>
+                <span class="status-led online blink" style="margin-left: 8px;"></span>
             </div>
-            <div class="activity-item">
-                <div class="activity-icon"><i class="bi bi-camera-video"></i></div>
-                <div>
-                    <div style="font-weight: 500;">Stream Bot</div>
-                    <a href="https://stream.rig-city.com" target="_blank" rel="noopener noreferrer" style="font-size: 0.75rem; color: var(--text-secondary); text-decoration: none;">
-                        stream.rig-city.com <i class="bi bi-box-arrow-up-right"></i>
-                    </a>
-                </div>
-                <span class="status-led online blink" style="margin-left: auto;"></span>
-            </div>
-            <div class="activity-item">
-                <div class="activity-icon"><i class="bi bi-film"></i></div>
-                <div>
-                    <div style="font-weight: 500;">Plex Server</div>
-                    <a href="https://plex.evindrake.net" target="_blank" rel="noopener noreferrer" style="font-size: 0.75rem; color: var(--text-secondary); text-decoration: none;">
-                        plex.evindrake.net <i class="bi bi-box-arrow-up-right"></i>
-                    </a>
-                </div>
-                <span class="status-led online blink" style="margin-left: auto;"></span>
-            </div>
-            <div class="activity-item">
-                <div class="activity-icon"><i class="bi bi-lightning"></i></div>
-                <div>
-                    <div style="font-weight: 500;">n8n Automation</div>
-                    <a href="https://n8n.evindrake.net" target="_blank" rel="noopener noreferrer" style="font-size: 0.75rem; color: var(--text-secondary); text-decoration: none;">
-                        n8n.evindrake.net <i class="bi bi-box-arrow-up-right"></i>
-                    </a>
-                </div>
-                <span class="status-led online blink" style="margin-left: auto;"></span>
-            </div>
-            <div class="activity-item">
-                <div class="activity-icon"><i class="bi bi-globe"></i></div>
-                <div>
-                    <div style="font-weight: 500;">Portfolio Site</div>
-                    <a href="https://scarletredjoker.com" target="_blank" rel="noopener noreferrer" style="font-size: 0.75rem; color: var(--text-secondary); text-decoration: none;">
-                        scarletredjoker.com <i class="bi bi-box-arrow-up-right"></i>
-                    </a>
-                </div>
-                <span class="status-led online blink" style="margin-left: auto;"></span>
-            </div>
-            <div class="activity-item">
-                <div class="activity-icon"><i class="bi bi-display"></i></div>
-                <div>
-                    <div style="font-weight: 500;">VNC Desktop</div>
-                    <a href="https://vnc.evindrake.net" target="_blank" rel="noopener noreferrer" style="font-size: 0.75rem; color: var(--text-secondary); text-decoration: none;">
-                        vnc.evindrake.net <i class="bi bi-box-arrow-up-right"></i>
-                    </a>
-                </div>
-                <span class="status-led warning" style="margin-left: auto;"></span>
-            </div>
+            {% endfor %}
         </div>
     </div>
     
@@ -461,6 +672,44 @@
                     <div style="font-weight: 500; font-size: 0.875rem;">Loading activities...</div>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Favicon Management Modal -->
+<div class="favicon-modal-overlay" id="faviconModalOverlay">
+    <div class="favicon-modal">
+        <div class="favicon-modal-header">
+            <h3 class="favicon-modal-title" id="modal-service-name">Manage Favicon</h3>
+            <button class="modal-close-btn" onclick="closeFaviconModal()">&times;</button>
+        </div>
+        
+        <div class="alert-message alert-success" id="success-message"></div>
+        <div class="alert-message alert-error" id="error-message"></div>
+        
+        <div class="favicon-preview" id="favicon-preview">
+            <i class="bi bi-image"></i>
+        </div>
+        
+        <div class="file-input-wrapper">
+            <input type="file" id="favicon-file-input" class="file-input" accept=".png,.ico,.jpg,.jpeg,.svg" onchange="handleFaviconPreview(event)">
+            <label for="favicon-file-input" class="file-input-label">
+                <i class="bi bi-upload"></i>
+                Choose Favicon Image
+            </label>
+        </div>
+        
+        <div class="upload-info">
+            <i class="bi bi-info-circle"></i> Supported formats: PNG, ICO, JPG, SVG | Max size: 2MB
+        </div>
+        
+        <div class="modal-actions">
+            <button class="btn-modal btn-modal-primary" id="upload-btn" onclick="uploadFavicon()" disabled>
+                <i class="bi bi-check-circle"></i> Upload
+            </button>
+            <button class="btn-modal btn-modal-danger" id="delete-btn" onclick="deleteFavicon()" style="display: none;">
+                <i class="bi bi-trash"></i> Remove
+            </button>
         </div>
     </div>
 </div>

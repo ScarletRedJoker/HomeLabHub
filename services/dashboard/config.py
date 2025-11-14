@@ -57,42 +57,53 @@ class Config:
     ALLOWED_EXTENSIONS = os.environ.get('ALLOWED_EXTENSIONS', 'zip,tar,gz,html,css,js,py,php,java,go,rs,dockerfile,sh,bash').split(',')
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', '/tmp/jarvis_uploads')
     
+    # Favicon settings
+    FAVICON_FOLDER = os.path.join(os.path.dirname(__file__), 'static', 'favicons')
+    FAVICON_MAX_SIZE = 2 * 1024 * 1024  # 2MB
+    FAVICON_ALLOWED_EXTENSIONS = {'png', 'ico', 'jpg', 'jpeg', 'svg'}
+    
     # Services configuration (used for dashboard UI)
     SERVICES = {
         'discord-bot': {
             'name': 'Discord Ticket Bot',
             'url': 'https://bot.rig-city.com',
             'container': 'discord-bot',
-            'description': 'Discord ticket system with web dashboard'
+            'description': 'Discord ticket system with web dashboard',
+            'favicon': None
         },
         'stream-bot': {
             'name': 'Stream Bot',
             'url': 'https://stream.rig-city.com',
             'container': 'stream-bot',
-            'description': 'AI-powered Snapple facts for Twitch and Kick'
+            'description': 'AI-powered Snapple facts for Twitch and Kick',
+            'favicon': None
         },
         'n8n': {
             'name': 'n8n Automation',
             'url': 'https://n8n.evindrake.net',
             'container': 'n8n',
-            'description': 'Workflow automation platform'
+            'description': 'Workflow automation platform',
+            'favicon': None
         },
         'plex': {
             'name': 'Plex Media Server',
             'url': 'https://plex.evindrake.net',
             'container': 'plex-server',
-            'description': 'Media streaming server'
+            'description': 'Media streaming server',
+            'favicon': None
         },
         'static-site': {
             'name': 'ScarletRedJoker',
             'url': 'https://scarletredjoker.com',
             'container': 'scarletredjoker-web',
-            'description': 'Personal portfolio website'
+            'description': 'Personal portfolio website',
+            'favicon': None
         },
         'vnc': {
             'name': 'VNC Desktop',
             'url': 'https://vnc.evindrake.net',
             'container': 'vnc-desktop',
-            'description': 'Remote desktop access'
+            'description': 'Remote desktop access',
+            'favicon': None
         }
     }

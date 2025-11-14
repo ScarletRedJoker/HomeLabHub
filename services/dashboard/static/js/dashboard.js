@@ -256,3 +256,227 @@ refreshContainers();
 
 setInterval(loadSystemInfo, 5000);
 setInterval(refreshContainers, 10000);
+
+// Favicon Management Functions
+let currentServiceId = null;
+let currentServiceName = null;
+let selectedFile = null;
+
+function getCsrfToken() {
+    const token = document.querySelector('meta[name="csrf-token"]');
+    return token ? token.getAttribute('content') : '';
+}
+
+function openFaviconModal(serviceId, serviceName) {
+    currentServiceId = serviceId;
+    currentServiceName = serviceName;
+    
+    document.getElementById('modal-service-name').textContent = `Manage Favicon - ${serviceName}`;
+    document.getElementById('faviconModalOverlay').classList.add('active');
+    document.getElementById('success-message').style.display = 'none';
+    document.getElementById('error-message').style.display = 'none';
+    
+    selectedFile = null;
+    document.getElementById('favicon-file-input').value = '';
+    document.getElementById('upload-btn').disabled = true;
+    
+    loadCurrentFavicon(serviceId);
+}
+
+function closeFaviconModal() {
+    document.getElementById('faviconModalOverlay').classList.remove('active');
+    currentServiceId = null;
+    currentServiceName = null;
+    selectedFile = null;
+}
+
+async function loadCurrentFavicon(serviceId) {
+    try {
+        const response = await fetch(`/api/services/${serviceId}/favicon`, {
+            credentials: 'include'
+        });
+        const data = await response.json();
+        
+        const previewContainer = document.getElementById('favicon-preview');
+        const deleteBtn = document.getElementById('delete-btn');
+        
+        if (data.success && data.has_favicon) {
+            previewContainer.innerHTML = `<img src="${data.favicon_url}?t=${Date.now()}" alt="Current favicon">`;
+            deleteBtn.style.display = 'block';
+        } else {
+            previewContainer.innerHTML = '<i class="bi bi-image"></i>';
+            deleteBtn.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error loading current favicon:', error);
+        showError('Failed to load current favicon');
+    }
+}
+
+function handleFaviconPreview(event) {
+    const file = event.target.files[0];
+    
+    if (!file) {
+        selectedFile = null;
+        document.getElementById('upload-btn').disabled = true;
+        return;
+    }
+    
+    const allowedTypes = ['image/png', 'image/x-icon', 'image/jpeg', 'image/jpg', 'image/svg+xml'];
+    if (!allowedTypes.includes(file.type)) {
+        showError('Invalid file type. Please use PNG, ICO, JPG, or SVG.');
+        event.target.value = '';
+        selectedFile = null;
+        document.getElementById('upload-btn').disabled = true;
+        return;
+    }
+    
+    const maxSize = 2 * 1024 * 1024;
+    if (file.size > maxSize) {
+        showError('File too large. Maximum size is 2MB.');
+        event.target.value = '';
+        selectedFile = null;
+        document.getElementById('upload-btn').disabled = true;
+        return;
+    }
+    
+    selectedFile = file;
+    document.getElementById('upload-btn').disabled = false;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const previewContainer = document.getElementById('favicon-preview');
+        previewContainer.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+    };
+    reader.readAsDataURL(file);
+}
+
+async function uploadFavicon() {
+    if (!selectedFile || !currentServiceId) {
+        showError('Please select a file first');
+        return;
+    }
+    
+    const uploadBtn = document.getElementById('upload-btn');
+    uploadBtn.disabled = true;
+    uploadBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Uploading...';
+    
+    try {
+        const formData = new FormData();
+        formData.append('favicon', selectedFile);
+        
+        const response = await fetch(`/api/services/${currentServiceId}/favicon`, {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showSuccess('Favicon uploaded successfully!');
+            updateServiceFavicon(currentServiceId, data.favicon_url);
+            document.getElementById('delete-btn').style.display = 'block';
+            selectedFile = null;
+            document.getElementById('favicon-file-input').value = '';
+            
+            setTimeout(() => {
+                closeFaviconModal();
+            }, 1500);
+        } else {
+            showError(data.message || 'Upload failed');
+        }
+    } catch (error) {
+        console.error('Upload error:', error);
+        showError('Upload failed: ' + error.message);
+    } finally {
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML = '<i class="bi bi-check-circle"></i> Upload';
+    }
+}
+
+async function deleteFavicon() {
+    if (!currentServiceId) {
+        showError('No service selected');
+        return;
+    }
+    
+    if (!confirm('Are you sure you want to remove this favicon?')) {
+        return;
+    }
+    
+    const deleteBtn = document.getElementById('delete-btn');
+    deleteBtn.disabled = true;
+    deleteBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Removing...';
+    
+    try {
+        const response = await fetch(`/api/services/${currentServiceId}/favicon`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showSuccess('Favicon removed successfully!');
+            updateServiceFavicon(currentServiceId, null);
+            document.getElementById('favicon-preview').innerHTML = '<i class="bi bi-image"></i>';
+            deleteBtn.style.display = 'none';
+            
+            setTimeout(() => {
+                closeFaviconModal();
+            }, 1500);
+        } else {
+            showError(data.message || 'Deletion failed');
+        }
+    } catch (error) {
+        console.error('Delete error:', error);
+        showError('Deletion failed: ' + error.message);
+    } finally {
+        deleteBtn.disabled = false;
+        deleteBtn.innerHTML = '<i class="bi bi-trash"></i> Remove';
+    }
+}
+
+function updateServiceFavicon(serviceId, faviconUrl) {
+    const faviconContainer = document.getElementById(`favicon-${serviceId}`);
+    if (faviconContainer) {
+        if (faviconUrl) {
+            faviconContainer.innerHTML = `<img src="${faviconUrl}?t=${Date.now()}" alt="Service favicon" style="width: 100%; height: 100%; object-fit: contain; border-radius: 4px;">`;
+        } else {
+            faviconContainer.innerHTML = '<i class="bi bi-box-seam"></i>';
+        }
+    }
+}
+
+function showSuccess(message) {
+    const successMsg = document.getElementById('success-message');
+    const errorMsg = document.getElementById('error-message');
+    
+    errorMsg.style.display = 'none';
+    successMsg.textContent = message;
+    successMsg.style.display = 'block';
+    
+    setTimeout(() => {
+        successMsg.style.display = 'none';
+    }, 5000);
+}
+
+function showError(message) {
+    const successMsg = document.getElementById('success-message');
+    const errorMsg = document.getElementById('error-message');
+    
+    successMsg.style.display = 'none';
+    errorMsg.textContent = message;
+    errorMsg.style.display = 'block';
+    
+    setTimeout(() => {
+        errorMsg.style.display = 'none';
+    }, 5000);
+}
+
+document.getElementById('faviconModalOverlay').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeFaviconModal();
+    }
+});

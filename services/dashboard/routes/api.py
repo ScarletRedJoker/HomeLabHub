@@ -8,6 +8,7 @@ from services.network_service import NetworkService
 from services.domain_service import DomainService
 from services.activity_service import activity_service
 from utils.auth import require_auth
+from utils.favicon_manager import get_favicon_manager
 from config import Config
 import logging
 import os
@@ -23,6 +24,7 @@ ai_service = AIService()
 database_service = DatabaseService()
 network_service = NetworkService()
 domain_service = DomainService()
+favicon_manager = get_favicon_manager()
 
 ALLOWED_CONTAINER_NAME_PATTERN = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}$')
 
@@ -595,4 +597,171 @@ def get_recent_activity():
         return jsonify({'success': True, 'data': activities})
     except Exception as e:
         logger.error(f"Error fetching recent activity: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@api_bp.route('/services/<service_id>/favicon', methods=['POST'])
+@require_auth
+def upload_service_favicon(service_id):
+    """
+    Upload a custom favicon for a service
+    
+    Form data:
+        favicon: Image file (.png, .ico, .jpg, .svg) max 2MB
+    
+    Returns:
+        JSON with upload status and favicon path
+    """
+    try:
+        if service_id not in Config.SERVICES:
+            return jsonify({'success': False, 'message': 'Service not found'}), 404
+        
+        if 'favicon' not in request.files:
+            return jsonify({'success': False, 'message': 'No favicon file provided'}), 400
+        
+        file = request.files['favicon']
+        
+        if not file.filename or file.filename == '':
+            return jsonify({'success': False, 'message': 'No file selected'}), 400
+        
+        filename = str(file.filename).lower()
+        file_ext = filename.rsplit('.', 1)[1] if '.' in filename else ''
+        
+        if file_ext not in Config.FAVICON_ALLOWED_EXTENSIONS:
+            return jsonify({
+                'success': False, 
+                'message': f'Invalid file type. Allowed: {", ".join(Config.FAVICON_ALLOWED_EXTENSIONS)}'
+            }), 400
+        
+        file.seek(0, os.SEEK_END)
+        file_size = file.tell()
+        file.seek(0)
+        
+        if file_size > Config.FAVICON_MAX_SIZE:
+            return jsonify({
+                'success': False, 
+                'message': f'File too large. Maximum size is {Config.FAVICON_MAX_SIZE / (1024*1024)}MB'
+            }), 400
+        
+        os.makedirs(Config.FAVICON_FOLDER, exist_ok=True)
+        
+        from werkzeug.utils import secure_filename
+        safe_filename = f"{service_id}.{file_ext}"
+        filepath = os.path.join(Config.FAVICON_FOLDER, safe_filename)
+        
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        
+        file.save(filepath)
+        
+        # Update in-memory config
+        Config.SERVICES[service_id]['favicon'] = safe_filename
+        
+        # Persist to disk
+        favicon_manager.set_favicon(service_id, safe_filename)
+        
+        activity_service.log_activity(
+            'service',
+            f'Custom favicon uploaded for {Config.SERVICES[service_id]["name"]}',
+            'image',
+            'success'
+        )
+        
+        logger.info(f"Favicon uploaded for service {service_id}: {safe_filename}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Favicon uploaded successfully',
+            'favicon': safe_filename,
+            'favicon_url': f'/static/favicons/{safe_filename}'
+        }), 200
+    
+    except Exception as e:
+        logger.error(f"Error uploading favicon for {service_id}: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': f'Upload failed: {str(e)}'}), 500
+
+@api_bp.route('/services/<service_id>/favicon', methods=['GET'])
+@require_auth
+def get_service_favicon(service_id):
+    """
+    Get the favicon path for a service
+    
+    Returns:
+        JSON with favicon information
+    """
+    try:
+        if service_id not in Config.SERVICES:
+            return jsonify({'success': False, 'message': 'Service not found'}), 404
+        
+        service = Config.SERVICES[service_id]
+        favicon = service.get('favicon')
+        
+        if favicon:
+            favicon_path = os.path.join(Config.FAVICON_FOLDER, favicon)
+            if os.path.exists(favicon_path):
+                return jsonify({
+                    'success': True,
+                    'favicon': favicon,
+                    'favicon_url': f'/static/favicons/{favicon}',
+                    'has_favicon': True
+                })
+        
+        return jsonify({
+            'success': True,
+            'favicon': None,
+            'favicon_url': None,
+            'has_favicon': False
+        })
+    
+    except Exception as e:
+        logger.error(f"Error getting favicon for {service_id}: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@api_bp.route('/services/<service_id>/favicon', methods=['DELETE'])
+@require_auth
+def delete_service_favicon(service_id):
+    """
+    Delete the custom favicon for a service
+    
+    Returns:
+        JSON with deletion status
+    """
+    try:
+        if service_id not in Config.SERVICES:
+            return jsonify({'success': False, 'message': 'Service not found'}), 404
+        
+        service = Config.SERVICES[service_id]
+        favicon = service.get('favicon')
+        
+        if favicon:
+            favicon_path = os.path.join(Config.FAVICON_FOLDER, favicon)
+            if os.path.exists(favicon_path):
+                os.remove(favicon_path)
+            
+            # Update in-memory config
+            Config.SERVICES[service_id]['favicon'] = None
+            
+            # Remove from persistent storage
+            favicon_manager.delete_favicon(service_id)
+            
+            activity_service.log_activity(
+                'service',
+                f'Custom favicon removed for {service["name"]}',
+                'trash',
+                'warning'
+            )
+            
+            logger.info(f"Favicon deleted for service {service_id}")
+            
+            return jsonify({
+                'success': True,
+                'message': 'Favicon deleted successfully'
+            })
+        
+        return jsonify({
+            'success': False,
+            'message': 'No favicon to delete'
+        }), 404
+    
+    except Exception as e:
+        logger.error(f"Error deleting favicon for {service_id}: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500

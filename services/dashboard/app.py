@@ -122,6 +122,23 @@ app.register_blueprint(google_services_bp)
 websocket_service.init_app(app)
 logger.info("✓ WebSocket service initialized")
 
+# Load persisted favicon configurations
+logger.info("Loading service favicon configurations...")
+try:
+    from utils.favicon_manager import get_favicon_manager
+    favicon_manager = get_favicon_manager()
+    persisted_favicons = favicon_manager.load_favicons()
+    
+    # Update Config.SERVICES with persisted favicons
+    for service_id, favicon_filename in persisted_favicons.items():
+        if service_id in Config.SERVICES:
+            Config.SERVICES[service_id]['favicon'] = favicon_filename
+            logger.info(f"  Loaded favicon for {service_id}: {favicon_filename}")
+    
+    logger.info(f"✓ Loaded {len(persisted_favicons)} favicon configurations")
+except Exception as e:
+    logger.warning(f"⚠ Failed to load favicon configurations: {e}")
+
 # Initialize database and run migrations
 logger.info("=" * 60)
 logger.info("Initializing Jarvis Platform Database")
