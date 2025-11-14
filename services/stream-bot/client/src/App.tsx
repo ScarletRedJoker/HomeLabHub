@@ -32,6 +32,7 @@ import Chatbot from "@/pages/chatbot";
 import NotFound from "@/pages/not-found";
 import SpotifyOverlay from "@/pages/spotify-overlay";
 import YouTubeOverlay from "@/pages/youtube-overlay";
+import './styles/candy-theme.css';
 
 function AuthRouter() {
   return (

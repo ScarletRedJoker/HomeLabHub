@@ -223,10 +223,10 @@ export default function Dashboard() {
   const hasConnectedPlatforms = platforms?.some(p => p.isConnected) ?? false;
 
   return (
-    <div className="space-y-8 p-4 sm:p-6 max-w-7xl">
+    <div className="space-y-8 p-4 sm:p-6 max-w-7xl candy-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <h1 className="text-3xl font-bold candy-gradient-text">Dashboard</h1>
           <p className="text-muted-foreground mt-1">
             Manage your multi-platform streaming bot
           </p>
@@ -254,6 +254,7 @@ export default function Dashboard() {
             size="sm"
             onClick={() => quickTriggerMutation.mutate()}
             disabled={quickTriggerMutation.isPending || !hasConnectedPlatforms}
+            className="candy-button border-0 candy-glow"
           >
             {quickTriggerMutation.isPending ? (
               <>
@@ -274,17 +275,17 @@ export default function Dashboard() {
       <WelcomeCard />
 
       {/* Stats Overview */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 candy-fade-in-delay-1">
+        <Card className="candy-stat-card-pink candy-hover-elevate border-0">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Bot Status</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+            <Activity className="h-4 w-4 text-candy-pink" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {settings?.isActive ? (
-                <Badge variant="default" className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20">
-                  <div className="h-2 w-2 rounded-full bg-green-500 mr-1.5 animate-pulse" />
+                <Badge variant="default" className="candy-badge-green">
+                  <div className="h-2 w-2 rounded-full bg-white mr-1.5 animate-pulse" />
                   Active
                 </Badge>
               ) : (
@@ -304,10 +305,10 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="candy-stat-card-blue candy-hover-elevate border-0">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Facts</CardTitle>
-            <Zap className="h-4 w-4 text-muted-foreground" />
+            <Zap className="h-4 w-4 text-candy-blue" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="stat-total-messages">
@@ -319,10 +320,10 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="candy-stat-card-purple candy-hover-elevate border-0">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">This Week</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <TrendingUp className="h-4 w-4 text-candy-purple" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="stat-weekly-messages">
@@ -334,10 +335,10 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="candy-stat-card-green candy-hover-elevate border-0">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Platforms</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <Clock className="h-4 w-4 text-candy-green" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="stat-active-platforms">
@@ -351,23 +352,23 @@ export default function Dashboard() {
       </div>
 
       {/* What's New Section */}
-      <Card className="border-primary/20">
+      <Card className="candy-glass-card candy-fade-in-delay-2">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
+              <Sparkles className="h-5 w-5 text-candy-yellow candy-bounce" />
               <CardTitle>What's New</CardTitle>
             </div>
-            <Badge variant="secondary">Latest Updates</Badge>
+            <Badge className="candy-badge-purple">Latest Updates</Badge>
           </div>
           <CardDescription>
             Check out the newest features and improvements
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
-          <div className="flex gap-3 p-3 rounded-lg bg-muted/50">
+          <div className="flex gap-3 p-3 rounded-lg bg-gradient-to-br from-candy-pink/10 to-candy-purple/10">
             <div className="flex-shrink-0">
-              <div className="h-2 w-2 rounded-full bg-primary mt-2" />
+              <div className="h-2 w-2 rounded-full bg-candy-pink mt-2 animate-pulse" />
             </div>
             <div className="space-y-1">
               <div className="text-sm font-medium">Multi-Platform Support</div>
@@ -376,9 +377,9 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-          <div className="flex gap-3 p-3 rounded-lg bg-muted/50">
+          <div className="flex gap-3 p-3 rounded-lg bg-gradient-to-br from-candy-blue/10 to-candy-green/10">
             <div className="flex-shrink-0">
-              <div className="h-2 w-2 rounded-full bg-primary mt-2" />
+              <div className="h-2 w-2 rounded-full bg-candy-blue mt-2 animate-pulse" />
             </div>
             <div className="space-y-1">
               <div className="text-sm font-medium">AI Chatbot Integration</div>
@@ -391,11 +392,11 @@ export default function Dashboard() {
       </Card>
 
       {/* Feature Discovery */}
-      <div>
+      <div className="candy-fade-in-delay-3">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-semibold">Explore Features</h2>
           <Link href="/settings">
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" className="hover:scale-105 transition-transform">
               View All
               <ArrowRight className="h-4 w-4 ml-2" />
             </Button>

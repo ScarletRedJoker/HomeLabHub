@@ -19,19 +19,22 @@ const platformConfig = {
     name: "Twitch",
     icon: SiTwitch,
     color: "text-purple-500",
-    bgColor: "bg-purple-500/10",
+    bgColor: "bg-gradient-to-br from-purple-500/20 to-purple-600/10",
+    glowClass: "candy-platform-twitch",
   },
   youtube: {
     name: "YouTube",
     icon: SiYoutube,
     color: "text-red-500",
-    bgColor: "bg-red-500/10",
+    bgColor: "bg-gradient-to-br from-red-500/20 to-red-600/10",
+    glowClass: "candy-platform-youtube",
   },
   kick: {
     name: "Kick",
     icon: SiKick,
     color: "text-green-500",
-    bgColor: "bg-green-500/10",
+    bgColor: "bg-gradient-to-br from-green-400/20 to-green-500/10",
+    glowClass: "candy-platform-kick",
   },
 };
 
@@ -48,11 +51,14 @@ export function PlatformCard({
   const isConnected = connection?.isConnected ?? false;
 
   return (
-    <Card className="hover-elevate" data-testid={`card-platform-${platform}`}>
+    <Card 
+      className={`candy-glass-card candy-hover-elevate overflow-hidden ${isConnected ? config.glowClass : ''}`} 
+      data-testid={`card-platform-${platform}`}
+    >
       <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0 pb-4">
         <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${config.bgColor}`}>
-            <Icon className={`h-6 w-6 ${config.color}`} />
+          <div className={`p-3 rounded-xl ${config.bgColor} backdrop-blur-sm`}>
+            <Icon className={`h-6 w-6 ${config.color} ${isConnected ? 'animate-pulse' : ''}`} />
           </div>
           <div>
             <h3 className="text-lg font-semibold">{config.name}</h3>
@@ -67,10 +73,10 @@ export function PlatformCard({
           {isConnected ? (
             <Badge
               variant="default"
-              className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20"
+              className="candy-badge-green"
               data-testid={`status-${platform}-connected`}
             >
-              <div className="h-2 w-2 rounded-full bg-green-500 mr-1.5 animate-pulse" />
+              <div className="h-2 w-2 rounded-full bg-white mr-1.5 animate-pulse" />
               Connected
             </Badge>
           ) : (
@@ -108,6 +114,7 @@ export function PlatformCard({
               onClick={onDisconnect}
               disabled={isLoading}
               data-testid={`button-disconnect-${platform}`}
+              className="hover:scale-105 transition-transform"
             >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -121,6 +128,7 @@ export function PlatformCard({
               size="sm"
               onClick={onSettings}
               data-testid={`button-settings-${platform}`}
+              className="hover:scale-105 transition-transform"
             >
               <Settings className="h-4 w-4" />
               <span>Settings</span>
@@ -131,7 +139,7 @@ export function PlatformCard({
             size="sm"
             onClick={onConnect}
             disabled={isLoading}
-            className="w-full"
+            className="w-full candy-button border-0"
             data-testid={`button-connect-${platform}`}
           >
             {isLoading ? (

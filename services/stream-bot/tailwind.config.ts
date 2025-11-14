@@ -81,6 +81,14 @@ export default {
           busy: "rgb(239 68 68)",
           offline: "rgb(156 163 175)",
         },
+        candy: {
+          pink: '#FF6B9D',
+          blue: '#4ECDC4',
+          purple: '#A78BFA',
+          green: '#5EE68C',
+          orange: '#FFA07A',
+          yellow: '#FFD93D',
+        },
       },
       fontFamily: {
         sans: ["var(--font-sans)"],
