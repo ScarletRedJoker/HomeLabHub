@@ -1,7 +1,9 @@
-from sqlalchemy import Column, String, DateTime, Text, Enum as SQLEnum, ForeignKey
+from sqlalchemy import String, DateTime, Text, Enum as SQLEnum, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, JSON
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped, mapped_column
+from typing import Optional
+from datetime import datetime
 import uuid
 import enum
 from . import Base
@@ -26,18 +28,18 @@ class TaskPriority(enum.Enum):
 class Task(Base):
     __tablename__ = 'tasks'
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workflow_id = Column(UUID(as_uuid=True), ForeignKey('workflows.id', ondelete='SET NULL'), nullable=True)
-    title = Column(String(255), nullable=False)
-    description = Column(Text, nullable=False)
-    task_type = Column(SQLEnum(TaskType), nullable=False)
-    status = Column(SQLEnum(TaskStatus), nullable=False, default=TaskStatus.pending)
-    priority = Column(SQLEnum(TaskPriority), nullable=False, default=TaskPriority.medium)
-    assigned_to = Column(String(255), nullable=True)
-    instructions = Column(JSON, nullable=True, default=dict)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    completed_at = Column(DateTime(timezone=True), nullable=True)
-    task_metadata = Column(JSON, nullable=True, default=dict)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workflow_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey('workflows.id', ondelete='SET NULL'))
+    title: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(Text)
+    task_type: Mapped[TaskType] = mapped_column(SQLEnum(TaskType))
+    status: Mapped[TaskStatus] = mapped_column(SQLEnum(TaskStatus), default=TaskStatus.pending)
+    priority: Mapped[TaskPriority] = mapped_column(SQLEnum(TaskPriority), default=TaskPriority.medium)
+    assigned_to: Mapped[Optional[str]] = mapped_column(String(255))
+    instructions: Mapped[Optional[dict]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    task_metadata: Mapped[Optional[dict]] = mapped_column(JSON, default=dict)
     
     workflow = relationship("Workflow", backref="tasks", foreign_keys=[workflow_id])
     

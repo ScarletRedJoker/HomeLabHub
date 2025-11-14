@@ -1,7 +1,8 @@
 """Jarvis Phase 2 database models"""
-from sqlalchemy import Column, String, Integer, BigInteger, Boolean, DateTime, Text, ForeignKey
+from sqlalchemy import String, Integer, BigInteger, Boolean, DateTime, Text, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped, mapped_column
+from typing import Optional
 import uuid
 from datetime import datetime
 from . import Base
@@ -10,17 +11,17 @@ class Project(Base):
     """Detected projects from /home/evin/contain/"""
     __tablename__ = 'projects'
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String(255), nullable=False, unique=True)
-    path = Column(Text, nullable=False)
-    project_type = Column(String(50), nullable=False)
-    framework = Column(String(50), nullable=True)
-    detected_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    last_scanned = Column(DateTime, nullable=True)
-    config = Column(JSONB, nullable=True)
-    status = Column(String(20), nullable=False, default='detected')
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(255), unique=True)
+    path: Mapped[str] = mapped_column(Text)
+    project_type: Mapped[str] = mapped_column(String(50))
+    framework: Mapped[Optional[str]] = mapped_column(String(50))
+    detected_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_scanned: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    config: Mapped[Optional[dict]] = mapped_column(JSONB)
+    status: Mapped[str] = mapped_column(String(20), default='detected')
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     builds = relationship("ArtifactBuild", back_populates="project", cascade="all, delete-orphan")
     compose_specs = relationship("ComposeSpec", back_populates="project", cascade="all, delete-orphan")
@@ -48,19 +49,19 @@ class ArtifactBuild(Base):
     """Docker image build tracking"""
     __tablename__ = 'artifact_builds'
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    project_id = Column(UUID(as_uuid=True), ForeignKey('projects.id', ondelete='CASCADE'), nullable=False)
-    workflow_id = Column(UUID(as_uuid=True), ForeignKey('workflows.id', ondelete='SET NULL'), nullable=True)
-    status = Column(String(20), nullable=False, default='pending')
-    image_ref = Column(Text, nullable=True)
-    image_tag = Column(String(100), nullable=True)
-    dockerfile_content = Column(Text, nullable=True)
-    build_logs = Column(Text, nullable=True)
-    build_duration_ms = Column(Integer, nullable=True)
-    image_size_bytes = Column(BigInteger, nullable=True)
-    build_metadata = Column(JSONB, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    completed_at = Column(DateTime, nullable=True)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('projects.id', ondelete='CASCADE'))
+    workflow_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey('workflows.id', ondelete='SET NULL'))
+    status: Mapped[str] = mapped_column(String(20), default='pending')
+    image_ref: Mapped[Optional[str]] = mapped_column(Text)
+    image_tag: Mapped[Optional[str]] = mapped_column(String(100))
+    dockerfile_content: Mapped[Optional[str]] = mapped_column(Text)
+    build_logs: Mapped[Optional[str]] = mapped_column(Text)
+    build_duration_ms: Mapped[Optional[int]] = mapped_column(Integer)
+    image_size_bytes: Mapped[Optional[int]] = mapped_column(BigInteger)
+    build_metadata: Mapped[Optional[dict]] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     
     project = relationship("Project", back_populates="builds")
     workflow = relationship("Workflow")
@@ -89,17 +90,17 @@ class ComposeSpec(Base):
     """Versioned docker-compose.yml configurations"""
     __tablename__ = 'compose_specs'
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    project_id = Column(UUID(as_uuid=True), ForeignKey('projects.id', ondelete='CASCADE'), nullable=False)
-    version = Column(Integer, nullable=False, default=1)
-    yaml_content = Column(Text, nullable=False)
-    checksum = Column(String(64), nullable=False)
-    services = Column(JSONB, nullable=True)
-    networks = Column(JSONB, nullable=True)
-    volumes = Column(JSONB, nullable=True)
-    is_active = Column(Boolean, nullable=False, default=True)
-    created_by = Column(String(100), nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('projects.id', ondelete='CASCADE'))
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    yaml_content: Mapped[str] = mapped_column(Text)
+    checksum: Mapped[str] = mapped_column(String(64))
+    services: Mapped[Optional[dict]] = mapped_column(JSONB)
+    networks: Mapped[Optional[dict]] = mapped_column(JSONB)
+    volumes: Mapped[Optional[dict]] = mapped_column(JSONB)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_by: Mapped[Optional[str]] = mapped_column(String(100))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     
     project = relationship("Project", back_populates="compose_specs")
     
@@ -125,21 +126,21 @@ class SSLCertificate(Base):
     """SSL/TLS certificates"""
     __tablename__ = 'ssl_certificates'
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    domain = Column(String(255), nullable=False, unique=True)
-    status = Column(String(20), nullable=False, default='pending')
-    provider = Column(String(50), nullable=False, default='letsencrypt')
-    cert_path = Column(Text, nullable=True)
-    key_path = Column(Text, nullable=True)
-    chain_path = Column(Text, nullable=True)
-    issued_at = Column(DateTime, nullable=True)
-    expires_at = Column(DateTime, nullable=True)
-    auto_renew = Column(Boolean, nullable=False, default=True)
-    last_renewal_attempt = Column(DateTime, nullable=True)
-    renewal_logs = Column(Text, nullable=True)
-    cert_metadata = Column(JSONB, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    domain: Mapped[str] = mapped_column(String(255), unique=True)
+    status: Mapped[str] = mapped_column(String(20), default='pending')
+    provider: Mapped[str] = mapped_column(String(50), default='letsencrypt')
+    cert_path: Mapped[Optional[str]] = mapped_column(Text)
+    key_path: Mapped[Optional[str]] = mapped_column(Text)
+    chain_path: Mapped[Optional[str]] = mapped_column(Text)
+    issued_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    auto_renew: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_renewal_attempt: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    renewal_logs: Mapped[Optional[str]] = mapped_column(Text)
+    cert_metadata: Mapped[Optional[dict]] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     def __repr__(self):
         return f"<SSLCertificate(id={self.id}, domain='{self.domain}', status='{self.status}')>"
@@ -167,18 +168,18 @@ class AISession(Base):
     """Conversational deployment sessions"""
     __tablename__ = 'ai_sessions'
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(String(100), nullable=True)
-    session_type = Column(String(50), nullable=False, default='deployment')
-    state = Column(String(20), nullable=False, default='active')
-    current_step = Column(String(100), nullable=True)
-    context = Column(JSONB, nullable=True)
-    messages = Column(JSONB, nullable=True)
-    intent = Column(String(100), nullable=True)
-    target_project_id = Column(UUID(as_uuid=True), ForeignKey('projects.id', ondelete='SET NULL'), nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
-    completed_at = Column(DateTime, nullable=True)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[Optional[str]] = mapped_column(String(100))
+    session_type: Mapped[str] = mapped_column(String(50), default='deployment')
+    state: Mapped[str] = mapped_column(String(20), default='active')
+    current_step: Mapped[Optional[str]] = mapped_column(String(100))
+    context: Mapped[Optional[dict]] = mapped_column(JSONB)
+    messages: Mapped[Optional[dict]] = mapped_column(JSONB)
+    intent: Mapped[Optional[str]] = mapped_column(String(100))
+    target_project_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey('projects.id', ondelete='SET NULL'))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     
     target_project = relationship("Project", back_populates="ai_sessions")
     

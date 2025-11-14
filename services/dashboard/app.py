@@ -14,6 +14,7 @@ from routes.websocket_routes import ws_bp
 from routes.upload_routes import upload_bp
 from routes.analysis_routes import analysis_bp
 from routes.artifact_routes import artifact_bp
+from routes.jarvis_voice_api import jarvis_voice_bp
 from services.activity_service import activity_service
 from services.db_service import db_service
 from services.websocket_service import websocket_service
@@ -106,6 +107,7 @@ app.register_blueprint(ws_bp)
 app.register_blueprint(upload_bp)
 app.register_blueprint(analysis_bp)
 app.register_blueprint(artifact_bp)
+app.register_blueprint(jarvis_voice_bp)
 
 # Initialize WebSocket service
 websocket_service.init_app(app)

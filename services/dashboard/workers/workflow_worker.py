@@ -244,3 +244,163 @@ def run_artifact_analysis_workflow(self, workflow_id, artifact_config):
     except Exception as e:
         logger.error(f"Artifact analysis workflow {workflow_id} failed: {e}")
         raise
+
+
+@celery_app.task(base=WorkflowTask, bind=True, name='workers.workflow_worker.run_voice_deployment_workflow')
+def run_voice_deployment_workflow(self, project_id, project_name, project_type, domain=None, session_id=None):
+    """
+    Run a voice-initiated deployment workflow
+    
+    Args:
+        project_id: UUID of the project
+        project_name: Name of the project to deploy
+        project_type: Type of project (flask, react, nodejs, etc.)
+        domain: Optional domain for the deployment
+        session_id: Optional AI session ID for tracking
+    """
+    logger.info(f"Starting voice deployment workflow for project {project_name}")
+    
+    from jarvis.artifact_builder import ArtifactBuilder
+    from jarvis.deployment_executor import DeploymentExecutor
+    from services.db_service import db_service
+    from models.jarvis import Project, AISession
+    
+    total_steps = 4
+    
+    try:
+        # Step 1: Build Docker image
+        logger.info(f"Step 1: Building Docker image for {project_name}")
+        
+        if not db_service.is_available:
+            raise ValueError("Database service not available")
+        
+        with db_service.get_session() as session:
+            project = session.query(Project).filter_by(id=project_id).first()
+            if not project:
+                raise ValueError(f"Project {project_id} not found")
+            
+            # Update AI session if available
+            if session_id:
+                ai_session = session.query(AISession).filter_by(id=session_id).first()
+                if ai_session:
+                    messages = ai_session.messages or []
+                    messages.append({
+                        'timestamp': datetime.utcnow().isoformat(),
+                        'message': f'Building Docker image for {project_name}',
+                        'type': 'progress',
+                        'step': 1,
+                        'total_steps': total_steps
+                    })
+                    ai_session.messages = messages
+                    session.commit()
+        
+        # Build the artifact
+        builder = ArtifactBuilder()
+        build = builder.build_project(project)
+        
+        logger.info(f"Build completed: {build.image_ref}")
+        
+        # Step 2: Create deployment
+        logger.info(f"Step 2: Creating deployment for {project_name}")
+        
+        with db_service.get_session() as session:
+            if session_id:
+                ai_session = session.query(AISession).filter_by(id=session_id).first()
+                if ai_session:
+                    messages = ai_session.messages or []
+                    messages.append({
+                        'timestamp': datetime.utcnow().isoformat(),
+                        'message': f'Creating deployment configuration',
+                        'type': 'progress',
+                        'step': 2,
+                        'total_steps': total_steps
+                    })
+                    ai_session.messages = messages
+                    session.commit()
+        
+        executor = DeploymentExecutor()
+        deployment = executor.create_deployment(
+            project_id=project_id,
+            image_ref=build.image_ref,
+            domain=domain,
+            container_port=80,
+            environment={'PROJECT_NAME': project_name}
+        )
+        
+        # Step 3: Start deployment
+        logger.info(f"Step 3: Starting deployment")
+        
+        with db_service.get_session() as session:
+            if session_id:
+                ai_session = session.query(AISession).filter_by(id=session_id).first()
+                if ai_session:
+                    messages = ai_session.messages or []
+                    messages.append({
+                        'timestamp': datetime.utcnow().isoformat(),
+                        'message': f'Deployment started successfully',
+                        'type': 'progress',
+                        'step': 3,
+                        'total_steps': total_steps
+                    })
+                    ai_session.messages = messages
+                    session.commit()
+        
+        # Step 4: Complete
+        logger.info(f"Step 4: Deployment complete")
+        
+        with db_service.get_session() as session:
+            project = session.query(Project).filter_by(id=project_id).first()
+            if project:
+                project.status = 'deployed'
+                session.commit()
+            
+            if session_id:
+                ai_session = session.query(AISession).filter_by(id=session_id).first()
+                if ai_session:
+                    messages = ai_session.messages or []
+                    messages.append({
+                        'timestamp': datetime.utcnow().isoformat(),
+                        'message': f'Deployment of {project_name} completed successfully',
+                        'type': 'success',
+                        'step': 4,
+                        'total_steps': total_steps,
+                        'deployment_url': f'https://{domain}' if domain else None
+                    })
+                    ai_session.messages = messages
+                    ai_session.state = 'completed'
+                    ai_session.completed_at = datetime.utcnow()
+                    session.commit()
+        
+        logger.info(f"Voice deployment workflow completed successfully for {project_name}")
+        return {
+            'status': 'success',
+            'project_name': project_name,
+            'project_id': project_id,
+            'deployment_id': str(deployment.id),
+            'image_ref': build.image_ref,
+            'domain': domain,
+            'deployed_at': datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Voice deployment workflow failed for {project_name}: {e}")
+        
+        # Update AI session with error
+        if session_id and db_service.is_available:
+            try:
+                with db_service.get_session() as session:
+                    ai_session = session.query(AISession).filter_by(id=session_id).first()
+                    if ai_session:
+                        messages = ai_session.messages or []
+                        messages.append({
+                            'timestamp': datetime.utcnow().isoformat(),
+                            'message': f'Deployment failed: {str(e)}',
+                            'type': 'error'
+                        })
+                        ai_session.messages = messages
+                        ai_session.state = 'failed'
+                        session.commit()
+            except Exception as update_error:
+                logger.error(f"Failed to update AI session on error: {update_error}")
+        
+        raise

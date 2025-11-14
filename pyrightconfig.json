@@ -1,0 +1,15 @@
+{
+  "include": ["services/dashboard"],
+  "exclude": [
+    "**/__pycache__",
+    "services/dashboard/venv",
+    "services/dashboard/.venv"
+  ],
+  "typeCheckingMode": "basic",
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false,
+  "pythonVersion": "3.11",
+  "pythonPlatform": "Linux",
+  "venvPath": "services/dashboard",
+  "venv": ".venv"
+}

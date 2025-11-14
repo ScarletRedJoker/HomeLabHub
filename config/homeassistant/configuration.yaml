@@ -1,0 +1,95 @@
+# Home Assistant Core Configuration
+# Jarvis Homelab Integration
+
+default_config:
+
+# Configure HTTP access
+http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 172.16.0.0/12
+    - 192.168.0.0/16
+    - 10.0.0.0/8
+  
+# Enable frontend
+frontend:
+  themes: !include_dir_merge_named themes
+
+# Enable configuration UI
+config:
+
+# Enable history
+history:
+
+# Enable logbook
+logbook:
+
+# Enable system health
+system_health:
+
+# Text to speech
+tts:
+  - platform: google_translate
+
+# Automation
+automation: !include automations.yaml
+
+# Scripts
+script: !include scripts.yaml
+
+# Scenes
+scene: !include scenes.yaml
+
+# RESTful integration for Jarvis
+# IMPORTANT: Set DASHBOARD_API_KEY environment variable in Home Assistant secrets.yaml
+# Add this line to secrets.yaml: jarvis_api_key: "your-secure-api-key-here"
+rest_command:
+  jarvis_deploy_website:
+    url: "http://homelab-dashboard:5000/api/jarvis/voice/deploy"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+      X-API-Key: "!secret jarvis_api_key"
+    payload: '{"command": "{{ command }}", "params": {{ params | tojson }}}'
+  
+  jarvis_create_database:
+    url: "http://homelab-dashboard:5000/api/jarvis/voice/database"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+      X-API-Key: "!secret jarvis_api_key"
+    payload: '{"db_type": "{{ db_type }}", "db_name": "{{ db_name }}"}'
+  
+  jarvis_manage_ssl:
+    url: "http://homelab-dashboard:5000/api/jarvis/voice/ssl"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+      X-API-Key: "!secret jarvis_api_key"
+    payload: '{"domain": "{{ domain }}", "action": "{{ action }}"}'
+
+  jarvis_query:
+    url: "http://homelab-dashboard:5000/api/jarvis/voice/query"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+      X-API-Key: "!secret jarvis_api_key"
+    payload: '{"session_id": "{{ session_id }}", "message": "{{ message }}"}'
+
+# Jarvis Status Sensor
+sensor:
+  - platform: rest
+    name: "Jarvis Status"
+    resource: "http://homelab-dashboard:5000/api/jarvis/status"
+    scan_interval: 30
+    headers:
+      X-API-Key: "!secret jarvis_api_key"
+    json_attributes:
+      - active_deployments
+      - pending_builds
+      - ssl_certificates
+      - total_projects
+    value_template: '{{ value_json.status }}'
+
+# Google Assistant integration (setup via UI after first boot)
+# google_assistant: !include google_assistant.yaml

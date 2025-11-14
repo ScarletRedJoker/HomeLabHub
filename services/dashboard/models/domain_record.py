@@ -1,7 +1,9 @@
-from sqlalchemy import Column, String, DateTime, Integer, Boolean, Enum as SQLEnum, ForeignKey
+from sqlalchemy import String, DateTime, Integer, Boolean, Enum as SQLEnum, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, JSON
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped, mapped_column
+from typing import Optional
+from datetime import datetime
 import uuid
 import enum
 from . import Base
@@ -22,24 +24,24 @@ class RecordStatus(enum.Enum):
 class DomainRecord(Base):
     __tablename__ = 'domain_records'
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    deployment_id = Column(UUID(as_uuid=True), ForeignKey('deployments.id', ondelete='SET NULL'), nullable=True)
-    domain = Column(String(255), nullable=False)
-    subdomain = Column(String(255), nullable=False)
-    record_type = Column(SQLEnum(RecordType), nullable=False)
-    record_value = Column(String(512), nullable=False)
-    ttl = Column(Integer, nullable=False, default=3600)
-    auto_managed = Column(Boolean, nullable=False, default=False)
-    dns_provider = Column(String(100), nullable=False)
-    status = Column(SQLEnum(RecordStatus), nullable=False, default=RecordStatus.pending)
-    verified_at = Column(DateTime(timezone=True), nullable=True)
-    record_metadata = Column(JSON, nullable=True, default=dict)
-    managed_by = Column(String(20), nullable=True, default='automatic')
-    verification_token = Column(String(255), nullable=True)
-    priority = Column(Integer, nullable=True)
-    provider = Column(String(50), nullable=True)
-    provider_record_id = Column(String(255), nullable=True)
-    last_verified = Column(DateTime(timezone=True), nullable=True)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    deployment_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey('deployments.id', ondelete='SET NULL'))
+    domain: Mapped[str] = mapped_column(String(255))
+    subdomain: Mapped[str] = mapped_column(String(255))
+    record_type: Mapped[RecordType] = mapped_column(SQLEnum(RecordType))
+    record_value: Mapped[str] = mapped_column(String(512))
+    ttl: Mapped[int] = mapped_column(Integer, default=3600)
+    auto_managed: Mapped[bool] = mapped_column(Boolean, default=False)
+    dns_provider: Mapped[str] = mapped_column(String(100))
+    status: Mapped[RecordStatus] = mapped_column(SQLEnum(RecordStatus), default=RecordStatus.pending)
+    verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    record_metadata: Mapped[Optional[dict]] = mapped_column(JSON, default=dict)
+    managed_by: Mapped[Optional[str]] = mapped_column(String(20), default='automatic')
+    verification_token: Mapped[Optional[str]] = mapped_column(String(255))
+    priority: Mapped[Optional[int]] = mapped_column(Integer)
+    provider: Mapped[Optional[str]] = mapped_column(String(50))
+    provider_record_id: Mapped[Optional[str]] = mapped_column(String(255))
+    last_verified: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     
     deployment = relationship("Deployment", backref="domain_records", foreign_keys=[deployment_id])
     

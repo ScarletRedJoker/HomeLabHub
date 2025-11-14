@@ -1,6 +1,9 @@
-from sqlalchemy import Column, String, DateTime, BigInteger, Boolean, Enum as SQLEnum
+from sqlalchemy import String, DateTime, BigInteger, Boolean, Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import UUID, JSON
 from sqlalchemy.sql import func
+from sqlalchemy.orm import Mapped, mapped_column
+from typing import Optional
+from datetime import datetime
 import uuid
 import enum
 from . import Base
@@ -20,23 +23,23 @@ class AnalysisStatus(enum.Enum):
 class Artifact(Base):
     __tablename__ = 'artifacts'
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    filename = Column(String(255), nullable=False)
-    original_filename = Column(String(255), nullable=False)
-    file_type = Column(SQLEnum(FileType), nullable=False)
-    storage_path = Column(String(512), nullable=False)
-    file_size = Column(BigInteger, nullable=False)
-    checksum_sha256 = Column(String(64), nullable=False)
-    uploaded_by = Column(String(255), nullable=False)
-    uploaded_at = Column(DateTime(timezone=True), server_default=func.now())
-    detected_service_type = Column(String(100), nullable=True)
-    analysis_complete = Column(Boolean, nullable=False, default=False)
-    artifact_metadata = Column(JSON, nullable=True, default=dict)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    filename: Mapped[str] = mapped_column(String(255))
+    original_filename: Mapped[str] = mapped_column(String(255))
+    file_type: Mapped[FileType] = mapped_column(SQLEnum(FileType))
+    storage_path: Mapped[str] = mapped_column(String(512))
+    file_size: Mapped[int] = mapped_column(BigInteger)
+    checksum_sha256: Mapped[str] = mapped_column(String(64))
+    uploaded_by: Mapped[str] = mapped_column(String(255))
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    detected_service_type: Mapped[Optional[str]] = mapped_column(String(100))
+    analysis_complete: Mapped[bool] = mapped_column(Boolean, default=False)
+    artifact_metadata: Mapped[Optional[dict]] = mapped_column(JSON, default=dict)
     
-    analysis_status = Column(SQLEnum(AnalysisStatus), nullable=False, default=AnalysisStatus.pending)
-    analysis_result = Column(JSON, nullable=True, default=dict)
-    detected_framework = Column(String(100), nullable=True)
-    requires_database = Column(Boolean, nullable=False, default=False)
+    analysis_status: Mapped[AnalysisStatus] = mapped_column(SQLEnum(AnalysisStatus), default=AnalysisStatus.pending)
+    analysis_result: Mapped[Optional[dict]] = mapped_column(JSON, default=dict)
+    detected_framework: Mapped[Optional[str]] = mapped_column(String(100))
+    requires_database: Mapped[bool] = mapped_column(Boolean, default=False)
     
     def __repr__(self):
         return f"<Artifact(id={self.id}, filename='{self.filename}', size={self.file_size})>"

@@ -1,7 +1,9 @@
-from sqlalchemy import Column, String, DateTime, Text, Enum as SQLEnum, ForeignKey
+from sqlalchemy import String, DateTime, Text, Enum as SQLEnum, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, JSON
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped, mapped_column
+from typing import Optional
+from datetime import datetime
 import uuid
 import enum
 from . import Base
@@ -21,23 +23,23 @@ class HealthStatus(enum.Enum):
 class Deployment(Base):
     __tablename__ = 'deployments'
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workflow_id = Column(UUID(as_uuid=True), ForeignKey('workflows.id', ondelete='CASCADE'), nullable=False)
-    artifact_id = Column(UUID(as_uuid=True), ForeignKey('artifacts.id', ondelete='SET NULL'), nullable=True)
-    service_name = Column(String(255), nullable=False)
-    service_type = Column(String(100), nullable=False)
-    domain = Column(String(255), nullable=True)
-    status = Column(SQLEnum(DeploymentStatus), nullable=False, default=DeploymentStatus.deploying)
-    deployed_at = Column(DateTime(timezone=True), server_default=func.now())
-    configuration = Column(JSON, nullable=True, default=dict)
-    health_status = Column(SQLEnum(HealthStatus), nullable=False, default=HealthStatus.unknown)
-    last_health_check = Column(DateTime(timezone=True), nullable=True)
-    rollout_strategy = Column(String(50), nullable=True, default='rolling')
-    previous_deployment_id = Column(UUID(as_uuid=True), ForeignKey('deployments.id', ondelete='SET NULL'), nullable=True)
-    ssl_certificate_id = Column(UUID(as_uuid=True), ForeignKey('ssl_certificates.id', ondelete='SET NULL'), nullable=True)
-    compose_spec_id = Column(UUID(as_uuid=True), ForeignKey('compose_specs.id', ondelete='SET NULL'), nullable=True)
-    health_check_url = Column(Text, nullable=True)
-    health_check_status = Column(String(20), nullable=True)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workflow_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('workflows.id', ondelete='CASCADE'))
+    artifact_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey('artifacts.id', ondelete='SET NULL'))
+    service_name: Mapped[str] = mapped_column(String(255))
+    service_type: Mapped[str] = mapped_column(String(100))
+    domain: Mapped[Optional[str]] = mapped_column(String(255))
+    status: Mapped[DeploymentStatus] = mapped_column(SQLEnum(DeploymentStatus), default=DeploymentStatus.deploying)
+    deployed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    configuration: Mapped[Optional[dict]] = mapped_column(JSON, default=dict)
+    health_status: Mapped[HealthStatus] = mapped_column(SQLEnum(HealthStatus), default=HealthStatus.unknown)
+    last_health_check: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    rollout_strategy: Mapped[Optional[str]] = mapped_column(String(50), default='rolling')
+    previous_deployment_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey('deployments.id', ondelete='SET NULL'))
+    ssl_certificate_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey('ssl_certificates.id', ondelete='SET NULL'))
+    compose_spec_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey('compose_specs.id', ondelete='SET NULL'))
+    health_check_url: Mapped[Optional[str]] = mapped_column(Text)
+    health_check_status: Mapped[Optional[str]] = mapped_column(String(20))
     
     workflow = relationship("Workflow", backref="deployments", foreign_keys=[workflow_id])
     artifact = relationship("Artifact", backref="deployments", foreign_keys=[artifact_id])

@@ -1,0 +1,42 @@
+# Script configurations
+
+# Jarvis voice command handlers
+jarvis_deploy:
+  alias: "Tell Jarvis to Deploy"
+  description: "Deploy a project through Jarvis"
+  fields:
+    project_name:
+      description: "Name of the project to deploy"
+      example: "my-blog"
+    project_type:
+      description: "Type of project (wordpress, nextjs, flask, etc)"
+      example: "wordpress"
+  sequence:
+    - service: rest_command.jarvis_deploy_website
+      data:
+        command: "deploy"
+        params:
+          project_name: "{{ project_name }}"
+          project_type: "{{ project_type }}"
+    - service: notify.google_assistant_sdk
+      data:
+        message: "Deploying {{ project_name }}. I'll let you know when it's ready."
+
+jarvis_create_db:
+  alias: "Tell Jarvis to Create Database"
+  description: "Create a database through Jarvis"
+  fields:
+    db_name:
+      description: "Name of the database"
+      example: "my_app_db"
+    db_type:
+      description: "Database type (postgres, mysql, mongodb)"
+      example: "postgres"
+  sequence:
+    - service: rest_command.jarvis_create_database
+      data:
+        db_name: "{{ db_name }}"
+        db_type: "{{ db_type }}"
+    - service: notify.google_assistant_sdk
+      data:
+        message: "Creating {{ db_type }} database named {{ db_name }}."

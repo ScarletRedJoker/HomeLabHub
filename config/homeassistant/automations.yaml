@@ -1,0 +1,14 @@
+# Automation configurations
+
+# Example: Jarvis deployment notification
+- id: 'jarvis_deployment_complete'
+  alias: 'Jarvis - Deployment Complete Notification'
+  description: 'Announce when Jarvis completes a deployment'
+  trigger:
+    - platform: webhook
+      webhook_id: jarvis_deployment_webhook
+  action:
+    - service: tts.google_translate_say
+      data:
+        entity_id: media_player.google_home_hub
+        message: "Jarvis has completed deploying {{ trigger.json.project_name }}"

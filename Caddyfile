@@ -113,3 +113,17 @@ scarletredjoker.com {
 www.scarletredjoker.com {
     redir https://scarletredjoker.com{uri} permanent
 }
+
+home.evindrake.net {
+    reverse_proxy homeassistant:8123 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-Host {host}
+        
+        # WebSocket support for Home Assistant
+        header_up Upgrade {>Upgrade}
+        header_up Connection {>Connection}
+    }
+}
