@@ -25,6 +25,14 @@ stream.rig-city.com {
     }
 }
 
+rig-city.com {
+    reverse_proxy rig-city-site:80
+}
+
+www.rig-city.com {
+    redir https://rig-city.com{uri} permanent
+}
+
 plex.evindrake.net {
     reverse_proxy plex-server:32400
 }

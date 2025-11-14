@@ -1,44 +1,85 @@
 import { Client, ActivityType, EmbedBuilder, TextChannel, GuildMember } from 'discord.js';
 import { IStorage } from '../storage';
+import { twitchAPI, type EnrichedStreamData } from './twitch-api';
 
 // Track which users are currently streaming to avoid duplicate notifications
 const currentlyStreaming = new Map<string, Set<string>>(); // serverId -> Set of userIds
 
 /**
- * Creates a rich embed for stream notifications
+ * Get platform-specific embed color
+ */
+function getPlatformColor(platform: string): number {
+  switch (platform.toLowerCase()) {
+    case 'twitch':
+      return 0x9146FF; // Twitch purple
+    case 'youtube':
+      return 0xFF0000; // YouTube red
+    case 'kick':
+      return 0x53FC18; // Kick green
+    default:
+      return 0x9146FF; // Default to Twitch purple
+  }
+}
+
+/**
+ * Creates a rich embed for stream notifications with enhanced data
  */
 export function createStreamNotificationEmbed(
   member: GuildMember,
   streamTitle: string,
   streamUrl: string,
   game: string | null,
-  platform: string
+  platform: string,
+  enrichedData?: EnrichedStreamData | null
 ): EmbedBuilder {
   const embed = new EmbedBuilder()
-    .setColor('#9146FF') // Twitch purple
-    .setTitle(`🔴 ${member.displayName} is now live!`)
+    .setColor(getPlatformColor(platform))
+    .setTitle(`🔴 ${member.displayName} is now LIVE!`)
     .setURL(streamUrl)
-    .setThumbnail(member.user.displayAvatarURL({ size: 256 }))
     .setTimestamp()
-    .setFooter({ text: `Streaming on ${platform}` });
+    .setFooter({ text: 'A member of RigCity went live!' });
 
-  if (streamTitle) {
-    embed.setDescription(`**${streamTitle}**`);
+  // Use enriched data if available, otherwise fall back to Discord presence data
+  const title = enrichedData?.title || streamTitle;
+  const gameName = enrichedData?.game || game;
+  const viewerCount = enrichedData?.viewerCount;
+  const thumbnailUrl = enrichedData?.thumbnailUrl;
+  const profileImageUrl = enrichedData?.profileImageUrl;
+
+  // Set description (stream title)
+  if (title) {
+    embed.setDescription(`**${title}**`);
   }
 
-  if (game) {
+  // Set thumbnail (profile picture)
+  if (profileImageUrl) {
+    embed.setThumbnail(profileImageUrl);
+  } else {
+    embed.setThumbnail(member.user.displayAvatarURL({ size: 256 }));
+  }
+
+  // Set main image (stream thumbnail/preview)
+  if (thumbnailUrl) {
+    embed.setImage(thumbnailUrl);
+  }
+
+  // Add game/category field
+  if (gameName) {
     embed.addFields({
-      name: '🎮 Playing',
-      value: game,
+      name: '🎮 Game/Category',
+      value: gameName,
       inline: true
     });
   }
 
-  embed.addFields({
-    name: '🔗 Watch Stream',
-    value: `[Click here to watch](${streamUrl})`,
-    inline: true
-  });
+  // Add viewer count field (if available)
+  if (viewerCount !== undefined && viewerCount > 0) {
+    embed.addFields({
+      name: '👀 Viewers',
+      value: viewerCount.toLocaleString(),
+      inline: true
+    });
+  }
 
   return embed;
 }
@@ -62,7 +103,7 @@ export async function handlePresenceUpdate(
     // Get server's stream notification settings
     const settings = await storage.getStreamNotificationSettings(serverId);
     
-    if (!settings || !settings.enabled || !settings.channelId) {
+    if (!settings || !settings.isEnabled || !settings.notificationChannelId) {
       return; // Stream notifications not configured for this server
     }
 
@@ -94,16 +135,16 @@ export async function handlePresenceUpdate(
       serverStreaming.add(userId);
 
       try {
-        const channel = await newPresence.guild.channels.fetch(settings.channelId);
+        const channel = await newPresence.guild.channels.fetch(settings.notificationChannelId);
         
         if (!channel || !(channel instanceof TextChannel)) {
-          console.warn(`[Stream Notifications] Channel ${settings.channelId} not found or not a text channel`);
+          console.warn(`[Stream Notifications] Channel ${settings.notificationChannelId} not found or not a text channel`);
           return;
         }
 
         const member = await newPresence.guild.members.fetch(userId);
         
-        // Extract stream information
+        // Extract stream information from Discord presence
         const streamTitle = newStreaming.details || member.displayName + "'s Stream";
         const streamUrl = newStreaming.url || newStreaming.state || '';
         const game = newStreaming.name || null;
@@ -115,18 +156,46 @@ export async function handlePresenceUpdate(
         else if (streamUrl.includes('kick.com')) platform = 'Kick';
         else if (streamUrl.includes('facebook.com')) platform = 'Facebook Gaming';
 
-        // Get user-specific custom message or use server default
-        const trackedUser = trackedUsers.find(u => u.userId === userId);
-        let messageTemplate = trackedUser?.customMessage || settings.customMessage || `{user} just went live!`;
+        // Fetch enriched stream data from platform APIs
+        let enrichedData: EnrichedStreamData | null = null;
         
-        // Substitute placeholders
+        if (platform === 'Twitch' && twitchAPI.isConfigured()) {
+          console.log(`[Stream Notifications] Fetching Twitch API data for ${member.displayName}...`);
+          try {
+            enrichedData = await twitchAPI.getStreamData(streamUrl);
+            if (enrichedData && enrichedData.isLive) {
+              console.log(`[Stream Notifications] Enriched data: ${enrichedData.viewerCount} viewers, playing ${enrichedData.game}`);
+            } else {
+              console.log(`[Stream Notifications] Twitch API returned no live stream data`);
+              enrichedData = null;
+            }
+          } catch (error) {
+            console.error(`[Stream Notifications] Failed to fetch Twitch data:`, error);
+            enrichedData = null;
+          }
+        } else if (platform === 'Twitch' && !twitchAPI.isConfigured()) {
+          console.log(`[Stream Notifications] Twitch API not configured (missing TWITCH_CLIENT_ID or TWITCH_CLIENT_SECRET)`);
+        }
+
+        // Get custom message from server settings or use default
+        let messageTemplate = settings.customMessage || `{user} just went live!`;
+        
+        // Substitute placeholders (use enriched data if available)
+        const gameName = enrichedData?.game || game || 'Unknown Game';
         let content = messageTemplate
           .replace(/{user}/g, member.toString())
-          .replace(/{game}/g, game || 'Unknown Game')
+          .replace(/{game}/g, gameName)
           .replace(/{platform}/g, platform);
 
-        // Create the embed
-        const embed = createStreamNotificationEmbed(member, streamTitle, streamUrl, game, platform);
+        // Create the embed with enriched data
+        const embed = createStreamNotificationEmbed(
+          member,
+          streamTitle,
+          streamUrl,
+          game,
+          platform,
+          enrichedData
+        );
 
         // Send notification
         const message = await channel.send({
@@ -180,7 +249,7 @@ export async function initializeStreamTracking(client: Client, storage: IStorage
   for (const [guildId, guild] of client.guilds.cache) {
     const settings = await storage.getStreamNotificationSettings(guildId);
     
-    if (!settings || !settings.enabled) continue;
+    if (!settings || !settings.isEnabled) continue;
 
     const trackedUsers = await storage.getStreamTrackedUsers(guildId);
     if (trackedUsers.length === 0) continue;

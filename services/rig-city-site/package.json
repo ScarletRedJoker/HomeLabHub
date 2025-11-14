@@ -1,0 +1,15 @@
+{
+  "name": "rig-city-site",
+  "version": "1.0.0",
+  "description": "Rig City Discord Community Homepage",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx http-server . -p 80 -a 0.0.0.0 --cors"
+  },
+  "keywords": ["discord", "community", "rig-city"],
+  "author": "Rig City",
+  "license": "MIT",
+  "dependencies": {
+    "http-server": "^14.1.1"
+  }
+}

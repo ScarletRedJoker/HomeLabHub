@@ -7,14 +7,14 @@ const router = Router();
 
 // Validation schemas
 const streamSettingsSchema = z.object({
-  channelId: z.string(),
+  notificationChannelId: z.string(),
   customMessage: z.string().nullable().optional(),
-  enabled: z.boolean().optional(),
+  isEnabled: z.boolean().optional(),
 });
 
 const trackedUserSchema = z.object({
   userId: z.string(),
-  customMessage: z.string().nullable().optional(),
+  username: z.string().nullable().optional(),
 });
 
 // Helper function to check if user has access to server
@@ -62,9 +62,9 @@ router.get("/settings/:serverId", isAuthenticated, async (req: Request, res: Res
     
     res.json(settings || {
       serverId,
-      channelId: null,
+      notificationChannelId: null,
       customMessage: null,
-      enabled: false
+      isEnabled: false
     });
   } catch (error) {
     console.error("Failed to get stream notification settings:", error);
@@ -98,7 +98,7 @@ router.post("/settings/:serverId", isAuthenticated, async (req: Request, res: Re
       result = await storage.createStreamNotificationSettings({
         serverId,
         ...validatedData,
-        enabled: validatedData.enabled ?? true,
+        isEnabled: validatedData.isEnabled ?? true,
       });
     }
 

@@ -1,0 +1,793 @@
+/* ========================================
+   RIG CITY - CYBERPUNK DARK THEME
+   Discord-inspired colors with tech aesthetic
+   ======================================== */
+
+:root {
+    /* Discord Brand Colors */
+    --discord-blurple: #5865F2;
+    --discord-dark: #23272A;
+    --discord-darker: #1E2124;
+    --discord-darkest: #0D0E10;
+    --discord-green: #57F287;
+    --discord-purple: #7289DA;
+    
+    /* Cyberpunk Accent Colors */
+    --cyber-pink: #FF006E;
+    --cyber-blue: #00F5FF;
+    --cyber-purple: #B026FF;
+    --cyber-green: #00FF9F;
+    
+    /* Theme Colors */
+    --bg-primary: #0D0E10;
+    --bg-secondary: #1A1C20;
+    --bg-card: rgba(30, 33, 36, 0.8);
+    --text-primary: #FFFFFF;
+    --text-secondary: #B9BBBE;
+    --text-muted: #72767D;
+    
+    /* Effects */
+    --glow-color: rgba(88, 101, 242, 0.5);
+    --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.7);
+    
+    /* Transitions */
+    --transition-fast: 0.2s ease;
+    --transition-medium: 0.3s ease;
+    --transition-slow: 0.5s ease;
+}
+
+/* ========================================
+   RESET & BASE STYLES
+   ======================================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+/* ========================================
+   ANIMATED BACKGROUND
+   ======================================== */
+
+.background-animation {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    overflow: hidden;
+}
+
+.cyber-grid {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        linear-gradient(rgba(88, 101, 242, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(88, 101, 242, 0.1) 1px, transparent 1px);
+    background-size: 50px 50px;
+    animation: gridMove 20s linear infinite;
+}
+
+@keyframes gridMove {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(50px); }
+}
+
+.floating-particles {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: radial-gradient(2px 2px at 20% 30%, var(--cyber-blue), transparent),
+                      radial-gradient(2px 2px at 60% 70%, var(--cyber-purple), transparent),
+                      radial-gradient(1px 1px at 50% 50%, var(--discord-green), transparent),
+                      radial-gradient(1px 1px at 80% 10%, var(--cyber-pink), transparent);
+    background-size: 200% 200%;
+    animation: particleFloat 15s ease-in-out infinite;
+    opacity: 0.3;
+}
+
+@keyframes particleFloat {
+    0%, 100% { background-position: 0% 0%; }
+    50% { background-position: 100% 100%; }
+}
+
+/* ========================================
+   HEADER & NAVIGATION
+   ======================================== */
+
+.header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(13, 14, 16, 0.9);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(88, 101, 242, 0.2);
+    z-index: 1000;
+    padding: 1rem 0;
+}
+
+.nav-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo-text {
+    font-size: 1.8rem;
+    font-weight: 900;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, var(--discord-blurple), var(--cyber-purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.nav-links {
+    display: flex;
+    gap: 2rem;
+}
+
+.nav-link {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-weight: 600;
+    transition: var(--transition-fast);
+    position: relative;
+}
+
+.nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: var(--discord-blurple);
+    transition: var(--transition-fast);
+}
+
+.nav-link:hover {
+    color: var(--text-primary);
+}
+
+.nav-link:hover::after {
+    width: 100%;
+}
+
+/* ========================================
+   GLITCH EFFECT
+   ======================================== */
+
+.glitch {
+    position: relative;
+    animation: glitch-skew 3s infinite linear alternate-reverse;
+}
+
+.glitch::before,
+.glitch::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.glitch::before {
+    left: 2px;
+    text-shadow: -2px 0 var(--cyber-pink);
+    clip: rect(24px, 550px, 90px, 0);
+    animation: glitch-anim 2s infinite linear alternate-reverse;
+}
+
+.glitch::after {
+    left: -2px;
+    text-shadow: -2px 0 var(--cyber-blue);
+    clip: rect(85px, 550px, 140px, 0);
+    animation: glitch-anim 2.5s infinite linear alternate-reverse;
+}
+
+@keyframes glitch-anim {
+    0% { clip: rect(51px, 9999px, 28px, 0); }
+    20% { clip: rect(84px, 9999px, 111px, 0); }
+    40% { clip: rect(2px, 9999px, 148px, 0); }
+    60% { clip: rect(127px, 9999px, 82px, 0); }
+    80% { clip: rect(38px, 9999px, 15px, 0); }
+    100% { clip: rect(119px, 9999px, 94px, 0); }
+}
+
+@keyframes glitch-skew {
+    0% { transform: skew(0deg); }
+    10% { transform: skew(-2deg); }
+    20% { transform: skew(0deg); }
+}
+
+.glitch-hover:hover {
+    animation: glitch-skew 0.3s infinite;
+}
+
+/* ========================================
+   HERO SECTION
+   ======================================== */
+
+.hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    position: relative;
+    padding: 8rem 2rem 4rem;
+}
+
+.hero-content {
+    max-width: 800px;
+    z-index: 1;
+}
+
+.hero-title {
+    margin-bottom: 2rem;
+}
+
+.title-line {
+    display: block;
+    font-size: 1.5rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.title-main {
+    display: block;
+    font-size: 5rem;
+    font-weight: 900;
+    letter-spacing: 4px;
+    background: linear-gradient(135deg, var(--discord-blurple), var(--cyber-purple), var(--cyber-pink));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 0 30px rgba(88, 101, 242, 0.5);
+}
+
+.hero-subtitle {
+    font-size: 1.5rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+
+.hero-tagline {
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    margin-bottom: 3rem;
+}
+
+.cta-buttons {
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* ========================================
+   BUTTONS
+   ======================================== */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: var(--transition-medium);
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.btn-icon {
+    width: 24px;
+    height: 24px;
+}
+
+.btn-primary {
+    background: var(--discord-blurple);
+    color: white;
+    box-shadow: 0 4px 15px rgba(88, 101, 242, 0.4);
+}
+
+.btn-primary:hover {
+    background: var(--discord-purple);
+    box-shadow: 0 6px 25px rgba(88, 101, 242, 0.6);
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background: transparent;
+    color: var(--text-primary);
+    border: 2px solid var(--discord-blurple);
+}
+
+.btn-secondary:hover {
+    background: rgba(88, 101, 242, 0.1);
+    border-color: var(--cyber-purple);
+}
+
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { box-shadow: 0 4px 15px rgba(88, 101, 242, 0.4); }
+    50% { box-shadow: 0 4px 25px rgba(88, 101, 242, 0.8); }
+}
+
+/* ========================================
+   SCROLL INDICATOR
+   ======================================== */
+
+.scroll-indicator {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.scroll-arrow {
+    width: 30px;
+    height: 50px;
+    border: 2px solid var(--discord-blurple);
+    border-radius: 25px;
+    position: relative;
+}
+
+.scroll-arrow::before {
+    content: '';
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 6px;
+    background: var(--discord-blurple);
+    border-radius: 50%;
+    animation: scrollDown 2s infinite;
+}
+
+@keyframes scrollDown {
+    0% { top: 10px; opacity: 1; }
+    100% { top: 30px; opacity: 0; }
+}
+
+/* ========================================
+   SECTIONS
+   ======================================== */
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 4rem 2rem;
+}
+
+.section-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.section-title {
+    font-size: 3rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, var(--discord-blurple), var(--cyber-purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.title-underline {
+    width: 100px;
+    height: 4px;
+    background: linear-gradient(90deg, var(--discord-blurple), var(--cyber-purple));
+    margin: 0 auto;
+    border-radius: 2px;
+}
+
+/* ========================================
+   CARDS
+   ======================================== */
+
+.card {
+    background: var(--bg-card);
+    border: 1px solid rgba(88, 101, 242, 0.2);
+    border-radius: 12px;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    transition: var(--transition-medium);
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(88, 101, 242, 0.1), rgba(176, 38, 255, 0.1));
+    opacity: 0;
+    transition: var(--transition-medium);
+}
+
+.card:hover {
+    border-color: var(--discord-blurple);
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+}
+
+.card:hover::before {
+    opacity: 1;
+}
+
+.card-glow {
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(88, 101, 242, 0.3) 0%, transparent 70%);
+    opacity: 0;
+    transition: var(--transition-medium);
+    pointer-events: none;
+}
+
+.card:hover .card-glow {
+    opacity: 1;
+}
+
+/* ========================================
+   ABOUT SECTION
+   ======================================== */
+
+.about {
+    background: var(--bg-secondary);
+    padding: 6rem 0;
+}
+
+.about-content {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.about-text {
+    text-align: center;
+}
+
+.about-description {
+    font-size: 1.3rem;
+    line-height: 1.8;
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+
+.about-tagline {
+    font-size: 1.5rem;
+    font-weight: 600;
+    font-style: italic;
+    color: var(--discord-green);
+    text-shadow: 0 0 10px rgba(87, 242, 135, 0.5);
+}
+
+/* ========================================
+   COMMUNITY SECTION
+   ======================================== */
+
+.community {
+    padding: 6rem 0;
+}
+
+.community-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    align-items: start;
+}
+
+.discord-widget {
+    text-align: center;
+}
+
+.widget-title {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    color: var(--discord-blurple);
+}
+
+.discord-widget iframe {
+    max-width: 100%;
+    border-radius: 8px;
+}
+
+.community-info {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.info-card {
+    text-align: center;
+}
+
+.info-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.info-card h3 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: var(--discord-blurple);
+}
+
+.info-card p {
+    color: var(--text-secondary);
+}
+
+.cta-card {
+    background: linear-gradient(135deg, rgba(88, 101, 242, 0.2), rgba(176, 38, 255, 0.2));
+    border: 2px solid var(--discord-blurple);
+}
+
+.cta-card h3 {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+}
+
+.cta-card p {
+    margin-bottom: 1.5rem;
+    color: var(--text-secondary);
+}
+
+/* ========================================
+   EVENTS SECTION
+   ======================================== */
+
+.events {
+    background: var(--bg-secondary);
+    padding: 6rem 0;
+}
+
+.calendar-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.calendar-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.calendar-header h3 {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    color: var(--discord-blurple);
+}
+
+.calendar-subtitle {
+    color: var(--text-secondary);
+}
+
+.events-list {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.event-item {
+    display: flex;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    background: rgba(88, 101, 242, 0.05);
+    border-left: 4px solid var(--discord-blurple);
+    border-radius: 8px;
+    transition: var(--transition-fast);
+}
+
+.event-item:hover {
+    background: rgba(88, 101, 242, 0.1);
+    transform: translateX(10px);
+}
+
+.event-date {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 80px;
+    padding: 1rem;
+    background: var(--discord-blurple);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.event-day {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.event-number {
+    font-size: 2rem;
+    font-weight: 900;
+    color: white;
+}
+
+.event-details h4 {
+    font-size: 1.3rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.event-details p {
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.event-time {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background: rgba(88, 101, 242, 0.2);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    color: var(--discord-blurple);
+    font-weight: 600;
+}
+
+.calendar-footer {
+    text-align: center;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(88, 101, 242, 0.2);
+}
+
+.calendar-footer p {
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+/* ========================================
+   FOOTER
+   ======================================== */
+
+.footer {
+    background: var(--bg-darkest);
+    border-top: 1px solid rgba(88, 101, 242, 0.2);
+    padding: 3rem 0 1rem;
+}
+
+.footer-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 2rem;
+}
+
+.footer-logo p {
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+}
+
+.footer-links {
+    display: flex;
+    gap: 2rem;
+}
+
+.footer-link {
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: var(--transition-fast);
+}
+
+.footer-link:hover {
+    color: var(--discord-blurple);
+}
+
+.footer-bottom {
+    text-align: center;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(88, 101, 242, 0.1);
+    color: var(--text-muted);
+}
+
+.footer-tagline {
+    margin-top: 0.5rem;
+    font-style: italic;
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+@media (max-width: 768px) {
+    .nav-links {
+        display: none;
+    }
+    
+    .title-main {
+        font-size: 3rem;
+    }
+    
+    .hero-subtitle {
+        font-size: 1.2rem;
+    }
+    
+    .section-title {
+        font-size: 2rem;
+    }
+    
+    .community-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .discord-widget iframe {
+        width: 100%;
+        height: 400px;
+    }
+    
+    .footer-content {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .cta-buttons {
+        flex-direction: column;
+    }
+    
+    .event-item {
+        flex-direction: column;
+    }
+    
+    .event-date {
+        min-width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .title-main {
+        font-size: 2.5rem;
+    }
+    
+    .about-description {
+        font-size: 1.1rem;
+    }
+    
+    .btn {
+        padding: 0.8rem 1.5rem;
+        font-size: 1rem;
+    }
+}
