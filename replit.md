@@ -119,6 +119,20 @@ A single PostgreSQL container manages multiple databases (`ticketbot`, `streambo
 
 ## Recent Changes
 
+### November 15, 2025 - Favicon Integration
+- **Generated Custom Favicons**: Created themed icons for all services
+  - Dashboard: Cosmic theme with stars and nebula (purple/blue gradient)
+  - Discord Bot: Blurple-themed support ticket icon
+  - VNC Desktop: Modern monitor/desktop icon (teal/blue)
+  - Game Streaming: Vibrant game controller (pink/cyan gradient)
+  - Home Assistant: Smart home icon with WiFi waves (orange/green)
+- **Integration**: Added favicon references to base.html templates
+  - Dashboard: `services/dashboard/static/favicons/dashboard.png`
+  - Discord Bot: `services/discord-bot/client/public/favicon.png`
+  - Stream Bot: Already had `favicon.png` (candy theme)
+  - Static Site: Already had multiple favicon formats
+- **Browser Tab Enhancement**: All services now display branded icons in browser tabs
+
 ### November 15, 2025 - DNS Configuration & Page Fixes
 - **Game Streaming Page Fix**: Corrected HTML typo (`</card>` → `</div>`) in `game_streaming.html` that was causing scrolling issues
 - **Caddyfile Cleanup**: Updated Caddyfile to prevent SSL certificate errors for domains without DNS records
