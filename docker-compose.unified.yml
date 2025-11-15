@@ -229,6 +229,12 @@ services:
       OPENAI_BASE_URL: ${STREAMBOT_OPENAI_BASE_URL:-https://api.openai.com/v1}
       NODE_ENV: ${STREAMBOT_NODE_ENV:-production}
       PORT: ${STREAMBOT_PORT:-5000}
+      TWITCH_CLIENT_ID: ${TWITCH_CLIENT_ID}
+      TWITCH_CLIENT_SECRET: ${TWITCH_CLIENT_SECRET}
+      YOUTUBE_CLIENT_ID: ${YOUTUBE_CLIENT_ID:-}
+      YOUTUBE_CLIENT_SECRET: ${YOUTUBE_CLIENT_SECRET:-}
+      KICK_CLIENT_ID: ${KICK_CLIENT_ID:-}
+      KICK_CLIENT_SECRET: ${KICK_CLIENT_SECRET:-}
     volumes:
       - ./services/stream-bot/logs:/app/logs
     healthcheck:
