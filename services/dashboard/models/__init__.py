@@ -23,6 +23,9 @@ from .deployment import Deployment
 from .domain_record import DomainRecord
 from .jarvis import Project, ArtifactBuild, ComposeSpec, SSLCertificate, AISession
 from .google_integration import GoogleServiceStatus, CalendarAutomation, EmailNotification, DriveBackup
+from .jarvis_action import JarvisAction, ActionStatus, ActionType
+from .celery_job_history import CeleryJobHistory, JobStatus
+from .user_preferences import UserPreferences
 
 __all__ = [
     'Base',
@@ -41,5 +44,11 @@ __all__ = [
     'GoogleServiceStatus',
     'CalendarAutomation',
     'EmailNotification',
-    'DriveBackup'
+    'DriveBackup',
+    'JarvisAction',
+    'ActionStatus',
+    'ActionType',
+    'CeleryJobHistory',
+    'JobStatus',
+    'UserPreferences'
 ]

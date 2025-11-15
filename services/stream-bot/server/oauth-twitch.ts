@@ -12,6 +12,7 @@ import {
   decryptToken 
 } from "./crypto-utils";
 import { oauthStorage } from "./oauth-storage";
+import { trackApiCall, waitForQuotaIfNeeded } from "./middleware/quota-tracker";
 
 const router = Router();
 
@@ -108,6 +109,7 @@ router.get('/twitch/callback', async (req, res) => {
     }
 
     // Exchange authorization code for tokens
+    await waitForQuotaIfNeeded('twitch', 1, session.userId);
     const tokenResponse = await axios.post(
       TWITCH_TOKEN_URL,
       querystring.stringify({
@@ -124,15 +126,18 @@ router.get('/twitch/callback', async (req, res) => {
         },
       }
     );
+    await trackApiCall('twitch', 1, session.userId);
 
     const { access_token, refresh_token, expires_in } = tokenResponse.data;
 
     // Validate token and get user info
+    await waitForQuotaIfNeeded('twitch', 1, session.userId);
     const validateResponse = await axios.get(TWITCH_VALIDATE_URL, {
       headers: {
         'Authorization': `Bearer ${access_token}`,
       },
     });
+    await trackApiCall('twitch', 1, session.userId);
 
     const { user_id, login } = validateResponse.data;
 
@@ -197,6 +202,7 @@ export async function refreshTwitchToken(userId: string): Promise<string | null>
     const refreshToken = decryptToken(connection.refreshToken);
 
     // Request new access token
+    await waitForQuotaIfNeeded('twitch', 1, userId);
     const tokenResponse = await axios.post(
       TWITCH_TOKEN_URL,
       querystring.stringify({
@@ -211,6 +217,7 @@ export async function refreshTwitchToken(userId: string): Promise<string | null>
         },
       }
     );
+    await trackApiCall('twitch', 1, userId);
 
     const { access_token, refresh_token: new_refresh_token, expires_in } = tokenResponse.data;
 

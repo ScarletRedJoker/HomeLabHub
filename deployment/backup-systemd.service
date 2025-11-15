@@ -1,0 +1,22 @@
+[Unit]
+Description=Homelab Backup Service
+Documentation=file:///home/evin/contain/HomeLabHub/BACKUP_RESTORE_GUIDE.md
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=evin
+Group=evin
+WorkingDirectory=/home/evin/contain/HomeLabHub
+ExecStartPre=/bin/sleep 10
+ExecStart=/bin/bash -c '/home/evin/contain/HomeLabHub/deployment/backup-databases.sh && /home/evin/contain/HomeLabHub/deployment/backup-configs.sh'
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=homelab-backup
+
+SuccessExitStatus=0
+TimeoutStartSec=30min
+
+[Install]
+WantedBy=multi-user.target

@@ -37,6 +37,7 @@ import { sendTicketNotificationToAdminChannel } from "./discord/commands";
 import devRoutes from "./routes/dev-routes";
 import homelabhubRoutes from "./routes/homelabhub-routes";
 import streamNotificationsRoutes from "./routes/stream-notifications";
+import adminStatusRoutes from "./routes/admin-status";
 import { isDeveloperMiddleware } from "./middleware/developerAuth";
 
 // Configure multer for embed image uploads
@@ -263,14 +264,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`[WebSocket] Event sent to ${broadcastCount}/${totalClients} clients (${deniedCount} denied access)`);
   };
 
-  // Health check endpoint for Docker/monitoring
-  app.get('/health', (req: Request, res: Response) => {
-    res.status(200).json({ 
-      status: 'healthy', 
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      service: 'discord-bot',
-    });
+  // Health check endpoint for Docker/monitoring - Comprehensive health monitoring
+  app.get('/health', async (req: Request, res: Response) => {
+    const { getHealthStatus } = await import('./health');
+    const healthData = await getHealthStatus();
+    const statusCode = healthData.status === 'healthy' ? 200 : healthData.status === 'degraded' ? 200 : 503;
+    res.status(statusCode).json(healthData);
   });
 
   // Readiness check endpoint - verifies database connectivity
@@ -3062,6 +3061,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount developer routes with authentication and developer middleware
   app.use('/api/dev', isAuthenticated, isDeveloperMiddleware, devRoutes);
+
+  // Mount admin status routes with authentication
+  app.use('/api/admin', isAuthenticated, adminStatusRoutes);
 
   // Mount homelabhub orchestration routes (no auth - internal Docker network only)
   app.use('/api/homelabhub', homelabhubRoutes);

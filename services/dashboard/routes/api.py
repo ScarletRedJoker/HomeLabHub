@@ -13,6 +13,7 @@ from config import Config
 import logging
 import os
 import re
+import subprocess
 from datetime import datetime, timedelta
 import redis
 
@@ -74,6 +75,117 @@ def get_disk_info():
     except Exception as e:
         logger.error(f"Error in /api/system/disk: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
+@api_bp.route('/vnc/stats', methods=['GET'])
+@require_auth
+def get_vnc_stats():
+    """
+    Get VNC Desktop resource usage and connection statistics.
+    Executes vnc-monitor.sh script inside the vnc-desktop container.
+    """
+    try:
+        import json
+        
+        # Execute vnc-monitor.sh stats inside the VNC container
+        result = subprocess.run(
+            ['docker', 'exec', 'vnc-desktop', '/usr/local/bin/vnc-monitor.sh', 'stats'],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        
+        if result.returncode != 0:
+            logger.error(f"VNC monitor script failed: {result.stderr}")
+            return jsonify({
+                'success': False,
+                'message': 'VNC Desktop container not responding or monitor script failed',
+                'stats': {
+                    'active_connections': 0,
+                    'max_connections': 3,
+                    'cpu_percent': 0,
+                    'memory_percent': 0,
+                    'idle_timeout_sec': 14400
+                }
+            })
+        
+        # Parse JSON output from the monitor script
+        try:
+            stats = json.loads(result.stdout.strip())
+            return jsonify({
+                'success': True,
+                'stats': stats
+            })
+        except json.JSONDecodeError as je:
+            logger.error(f"Failed to parse VNC stats JSON: {je}, output: {result.stdout}")
+            # Return default stats if parsing fails
+            return jsonify({
+                'success': True,
+                'stats': {
+                    'active_connections': 0,
+                    'max_connections': 3,
+                    'cpu_percent': 0,
+                    'memory_percent': 0,
+                    'idle_timeout_sec': 14400
+                }
+            })
+        
+    except subprocess.TimeoutExpired:
+        logger.error("VNC stats command timed out")
+        return jsonify({
+            'success': False,
+            'message': 'VNC stats command timed out',
+            'stats': {
+                'active_connections': 0,
+                'max_connections': 3,
+                'cpu_percent': 0,
+                'memory_percent': 0,
+                'idle_timeout_sec': 14400
+            }
+        }), 504
+    except Exception as e:
+        logger.error(f"Error in /api/vnc/stats: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Error fetching VNC stats: {str(e)}',
+            'stats': {
+                'active_connections': 0,
+                'max_connections': 3,
+                'cpu_percent': 0,
+                'memory_percent': 0,
+                'idle_timeout_sec': 14400
+            }
+        }), 500
+
+@api_bp.route('/plex/status', methods=['GET'])
+@require_auth
+def get_plex_status():
+    """
+    Get Plex Media Server status, active streams, and resource usage.
+    """
+    try:
+        from services.plex_service import PlexService
+        
+        plex_token = os.environ.get('PLEX_TOKEN')
+        plex_service = PlexService(plex_token=plex_token)
+        
+        status = plex_service.get_server_status()
+        
+        return jsonify({
+            'success': True,
+            'status': status
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in /api/plex/status: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Error fetching Plex status: {str(e)}',
+            'status': {
+                'status': 'error',
+                'healthy': False,
+                'message': str(e)
+            }
+        }), 500
 
 @api_bp.route('/health/celery', methods=['GET'])
 @require_auth
@@ -979,3 +1091,703 @@ def delete_service_favicon(service_id):
     except Exception as e:
         logger.error(f"Error deleting favicon for {service_id}: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
+@api_bp.route('/migrations/status', methods=['GET'])
+@require_auth
+def get_migrations_status():
+    """
+    Get migration status for all services
+    
+    Returns:
+        JSON with migration status for Stream Bot, Discord Bot, and Dashboard
+    """
+    try:
+        status = {
+            'success': True,
+            'timestamp': datetime.utcnow().isoformat(),
+            'services': {}
+        }
+        
+        # Dashboard (Alembic) migration status
+        try:
+            dashboard_status = _get_alembic_status()
+            status['services']['dashboard'] = dashboard_status
+        except Exception as e:
+            logger.error(f"Error getting Dashboard migration status: {e}")
+            status['services']['dashboard'] = {
+                'status': 'error',
+                'error': str(e),
+                'applied': 0,
+                'pending': 0
+            }
+        
+        # Stream Bot migration status
+        try:
+            streambot_status = _get_service_migration_status('stream-bot')
+            status['services']['stream-bot'] = streambot_status
+        except Exception as e:
+            logger.error(f"Error getting Stream Bot migration status: {e}")
+            status['services']['stream-bot'] = {
+                'status': 'error',
+                'error': str(e),
+                'applied': 0,
+                'pending': 0
+            }
+        
+        # Discord Bot migration status
+        try:
+            discordbot_status = _get_service_migration_status('discord-bot')
+            status['services']['discord-bot'] = discordbot_status
+        except Exception as e:
+            logger.error(f"Error getting Discord Bot migration status: {e}")
+            status['services']['discord-bot'] = {
+                'status': 'error',
+                'error': str(e),
+                'applied': 0,
+                'pending': 0
+            }
+        
+        # Calculate overall status
+        total_pending = sum(
+            s.get('pending', 0) 
+            for s in status['services'].values() 
+            if isinstance(s, dict)
+        )
+        
+        status['overall_status'] = 'up_to_date' if total_pending == 0 else 'pending_migrations'
+        status['total_pending'] = total_pending
+        
+        return jsonify(status)
+    
+    except Exception as e:
+        logger.error(f"Error in /api/migrations/status: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e),
+            'overall_status': 'error'
+        }), 500
+
+def _get_alembic_status():
+    """Get Alembic migration status for Dashboard"""
+    try:
+        # Run alembic current to get current revision
+        current_result = subprocess.run(
+            ['alembic', 'current'],
+            cwd='services/dashboard',
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        # Run alembic heads to get latest revision
+        heads_result = subprocess.run(
+            ['alembic', 'heads'],
+            cwd='services/dashboard',
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        current_rev = None
+        if current_result.stdout:
+            # Parse output like: "006 (head)"
+            parts = current_result.stdout.strip().split()
+            if parts:
+                current_rev = parts[0]
+        
+        heads_rev = None
+        if heads_result.stdout:
+            parts = heads_result.stdout.strip().split()
+            if parts:
+                heads_rev = parts[0]
+        
+        # Check if up to date
+        is_current = current_rev == heads_rev if current_rev and heads_rev else False
+        
+        return {
+            'status': 'up_to_date' if is_current else 'pending_migrations',
+            'current_revision': current_rev or 'none',
+            'latest_revision': heads_rev or 'unknown',
+            'applied': len(current_rev) if current_rev else 0,
+            'pending': 0 if is_current else 1,
+            'type': 'alembic'
+        }
+    except subprocess.TimeoutExpired:
+        return {
+            'status': 'error',
+            'error': 'Timeout running alembic command',
+            'applied': 0,
+            'pending': 0,
+            'type': 'alembic'
+        }
+    except Exception as e:
+        return {
+            'status': 'error',
+            'error': str(e),
+            'applied': 0,
+            'pending': 0,
+            'type': 'alembic'
+        }
+
+def _get_service_migration_status(service_name):
+    """Get Drizzle migration status for Stream Bot or Discord Bot"""
+    try:
+        service_path = f'services/{service_name}'
+        
+        # Run npm run migrate:status
+        result = subprocess.run(
+            ['npm', 'run', 'migrate:status'],
+            cwd=service_path,
+            capture_output=True,
+            text=True,
+            timeout=15,
+            env={**os.environ, 'NODE_ENV': 'production'}
+        )
+        
+        # Parse output to extract applied/pending counts
+        applied = 0
+        pending = 0
+        
+        for line in result.stdout.split('\n'):
+            if '✅ Applied' in line:
+                applied += 1
+            elif '⏳ Pending' in line:
+                pending += 1
+        
+        # Also check for summary lines
+        for line in result.stdout.split('\n'):
+            if 'Applied:' in line:
+                try:
+                    applied = int(line.split('Applied:')[1].strip().split()[0])
+                except:
+                    pass
+            if 'Pending:' in line:
+                try:
+                    pending = int(line.split('Pending:')[1].strip().split()[0])
+                except:
+                    pass
+        
+        return {
+            'status': 'up_to_date' if pending == 0 else 'pending_migrations',
+            'applied': applied,
+            'pending': pending,
+            'type': 'drizzle',
+            'last_check': datetime.utcnow().isoformat()
+        }
+    except subprocess.TimeoutExpired:
+        return {
+            'status': 'error',
+            'error': 'Timeout running migration status check',
+            'applied': 0,
+            'pending': 0,
+            'type': 'drizzle'
+        }
+    except Exception as e:
+        return {
+            'status': 'error',
+            'error': str(e),
+            'applied': 0,
+            'pending': 0,
+            'type': 'drizzle'
+        }
+
+@api_bp.route('/backups/status', methods=['GET'])
+@require_auth
+def get_backup_status():
+    """Get backup system status and statistics"""
+    try:
+        import os
+        from pathlib import Path
+        
+        backup_root = Path("/home/evin/contain/backups")
+        db_backup_dir = backup_root / "database"
+        config_backup_dir = backup_root / "config"
+        
+        status = {
+            'success': True,
+            'timestamp': datetime.utcnow().isoformat(),
+            'database_backups': {},
+            'config_backups': {},
+            'disk_usage': {},
+            'last_backup': None,
+            'status': 'unknown'
+        }
+        
+        # Check if backup directories exist
+        if not db_backup_dir.exists():
+            db_backup_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Get database backup status
+        daily_dir = db_backup_dir / "daily"
+        weekly_dir = db_backup_dir / "weekly"
+        status_file = db_backup_dir / "status.txt"
+        
+        if daily_dir.exists():
+            daily_backups = list(daily_dir.glob("*.sql.gz"))
+            status['database_backups']['daily_count'] = len(daily_backups)
+            
+            if daily_backups:
+                latest = max(daily_backups, key=lambda p: p.stat().st_mtime)
+                status['database_backups']['latest_daily'] = {
+                    'file': latest.name,
+                    'size': latest.stat().st_size,
+                    'size_human': f"{latest.stat().st_size / (1024*1024):.2f} MB",
+                    'timestamp': datetime.fromtimestamp(latest.stat().st_mtime).isoformat()
+                }
+                status['last_backup'] = datetime.fromtimestamp(latest.stat().st_mtime).isoformat()
+        
+        if weekly_dir.exists():
+            weekly_backups = list(weekly_dir.glob("*.sql.gz"))
+            status['database_backups']['weekly_count'] = len(weekly_backups)
+        
+        # Read last backup status
+        if status_file.exists():
+            try:
+                with open(status_file, 'r') as f:
+                    last_line = f.readlines()[-1].strip()
+                    if 'SUCCESS' in last_line:
+                        status['status'] = 'healthy'
+                        status['last_status_message'] = last_line
+                    elif 'FAILURE' in last_line:
+                        status['status'] = 'failed'
+                        status['last_status_message'] = last_line
+            except Exception as e:
+                logger.warning(f"Could not read backup status file: {e}")
+        
+        # Get config backup status
+        if config_backup_dir.exists():
+            config_backups = list(config_backup_dir.glob("config_*.tar.gz"))
+            status['config_backups']['count'] = len(config_backups)
+            
+            if config_backups:
+                latest = max(config_backups, key=lambda p: p.stat().st_mtime)
+                status['config_backups']['latest'] = {
+                    'file': latest.name,
+                    'size': latest.stat().st_size,
+                    'size_human': f"{latest.stat().st_size / (1024*1024):.2f} MB",
+                    'timestamp': datetime.fromtimestamp(latest.stat().st_mtime).isoformat()
+                }
+        
+        # Calculate disk usage
+        if backup_root.exists():
+            total_size = sum(f.stat().st_size for f in backup_root.rglob('*') if f.is_file())
+            status['disk_usage'] = {
+                'total_bytes': total_size,
+                'total_human': f"{total_size / (1024*1024*1024):.2f} GB"
+            }
+        
+        # Check if backup is recent (within 25 hours)
+        if status['last_backup']:
+            last_backup_time = datetime.fromisoformat(status['last_backup'])
+            hours_since = (datetime.utcnow() - last_backup_time).total_seconds() / 3600
+            
+            if hours_since > 25 and status['status'] != 'failed':
+                status['status'] = 'warning'
+                status['warning'] = f"Last backup was {hours_since:.1f} hours ago"
+        
+        return jsonify(status)
+        
+    except Exception as e:
+        logger.error(f"Error getting backup status: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'status': 'error'
+        }), 500
+
+@api_bp.route('/api/celery/quick-stats', methods=['GET'])
+@require_auth
+def get_celery_quick_stats():
+    """Get quick Celery stats for dashboard widget"""
+    try:
+        from celery_app import get_queue_lengths, get_active_tasks, celery_app
+        from models import get_session
+        from models.celery_job_history import CeleryJobHistory, JobStatus
+        from datetime import timedelta
+        
+        queue_lengths = get_queue_lengths()
+        active_tasks = get_active_tasks()
+        
+        total_pending = sum(queue_lengths.values())
+        total_active = sum(len(tasks) for tasks in active_tasks.values())
+        worker_count = len(active_tasks) if active_tasks else 0
+        
+        inspect = celery_app.control.inspect(timeout=2.0)
+        workers = inspect.active() if inspect else None
+        workers_healthy = workers is not None and len(workers) > 0
+        
+        session = get_session()
+        try:
+            cutoff = datetime.utcnow() - timedelta(hours=24)
+            
+            recent_failures = session.query(CeleryJobHistory).filter(
+                CeleryJobHistory.status == JobStatus.FAILURE,
+                CeleryJobHistory.created_at >= cutoff
+            ).order_by(
+                CeleryJobHistory.created_at.desc()
+            ).limit(5).all()
+            
+            success_rate = CeleryJobHistory.get_success_rate(session, hours=24)
+            
+            dead_letter_count = session.query(func.count(CeleryJobHistory.id)).filter(
+                CeleryJobHistory.is_dead_letter == 1
+            ).scalar() or 0
+            
+            retry_count = session.query(func.count(CeleryJobHistory.id)).filter(
+                CeleryJobHistory.status == JobStatus.RETRY,
+                CeleryJobHistory.created_at >= cutoff
+            ).scalar() or 0
+            
+        finally:
+            session.close()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'queue_lengths': queue_lengths,
+                'total_pending': total_pending,
+                'total_active': total_active,
+                'total_retry': retry_count,
+                'worker_count': worker_count,
+                'workers_healthy': workers_healthy,
+                'success_rate': round(success_rate, 1),
+                'dead_letter_count': dead_letter_count,
+                'recent_failures': [
+                    {
+                        'task_name': job.task_name,
+                        'error_message': job.error_message,
+                        'created_at': job.created_at.isoformat() if job.created_at else None
+                    }
+                    for job in recent_failures
+                ],
+                'alert': total_pending > 100 or not workers_healthy
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Failed to get quick celery stats: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@api_bp.route('/static-sites/status', methods=['GET'])
+@require_auth
+def get_static_sites_status():
+    """Get status of all static sites (scarletredjoker.com and rig-city.com)"""
+    try:
+        import time
+        import requests
+        from pathlib import Path
+        
+        sites = {
+            'scarletredjoker': {
+                'name': 'scarletredjoker.com',
+                'container': 'scarletredjoker-web',
+                'path': '/app/services/static-site',
+                'url': 'http://scarletredjoker-web:80',
+                'public_url': 'https://scarletredjoker.com'
+            },
+            'rig-city': {
+                'name': 'rig-city.com',
+                'container': 'rig-city-site',
+                'path': '/app/services/rig-city-site',
+                'url': 'http://rig-city-site:80',
+                'public_url': 'https://rig-city.com'
+            }
+        }
+        
+        results = {}
+        
+        for site_id, site_config in sites.items():
+            status = {
+                'name': site_config['name'],
+                'status': 'unknown',
+                'healthy': False,
+                'container_status': None,
+                'response_time_ms': None,
+                'disk_usage': None,
+                'last_modified': None,
+                'has_index': False,
+                'error': None
+            }
+            
+            try:
+                # Check container status
+                container_status = docker_service.get_container_status(site_config['container'])
+                if container_status:
+                    status['container_status'] = container_status['status']
+                    status['healthy'] = container_status['status'] == 'running'
+                    
+                    # Check response time
+                    try:
+                        start_time = time.time()
+                        response = requests.get(site_config['url'], timeout=5)
+                        response_time = (time.time() - start_time) * 1000
+                        
+                        status['response_time_ms'] = round(response_time, 2)
+                        
+                        if response.status_code == 200:
+                            status['status'] = 'healthy'
+                            # Check if response contains expected content
+                            if len(response.text) > 100:
+                                status['has_content'] = True
+                        else:
+                            status['status'] = 'degraded'
+                            status['error'] = f'HTTP {response.status_code}'
+                    except requests.RequestException as e:
+                        status['status'] = 'degraded'
+                        status['error'] = f'Request failed: {str(e)[:50]}'
+                    
+                    # Check disk usage
+                    try:
+                        result = subprocess.run(
+                            ['du', '-sh', site_config['path']],
+                            capture_output=True,
+                            text=True,
+                            timeout=5
+                        )
+                        if result.returncode == 0:
+                            disk_usage = result.stdout.split()[0]
+                            status['disk_usage'] = disk_usage
+                    except Exception as e:
+                        logger.warning(f"Could not get disk usage for {site_id}: {e}")
+                    
+                    # Check last modified time
+                    try:
+                        index_path = Path(site_config['path']) / 'index.html'
+                        if index_path.exists():
+                            status['has_index'] = True
+                            mtime = index_path.stat().st_mtime
+                            status['last_modified'] = datetime.fromtimestamp(mtime).isoformat()
+                    except Exception as e:
+                        logger.warning(f"Could not get last modified time for {site_id}: {e}")
+                        
+                else:
+                    status['status'] = 'down'
+                    status['error'] = 'Container not found'
+                    
+            except Exception as e:
+                status['status'] = 'error'
+                status['error'] = str(e)
+                logger.error(f"Error checking status for {site_id}: {e}")
+            
+            results[site_id] = status
+        
+        return jsonify({
+            'success': True,
+            'sites': results,
+            'timestamp': datetime.utcnow().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in /api/static-sites/status: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@api_bp.route('/static-sites/<site_id>/health', methods=['GET'])
+@require_auth
+def get_static_site_health(site_id):
+    """Get detailed health check for a specific static site"""
+    try:
+        import requests
+        from bs4 import BeautifulSoup
+        
+        site_configs = {
+            'scarletredjoker': {
+                'name': 'scarletredjoker.com',
+                'container': 'scarletredjoker-web',
+                'path': '/app/services/static-site',
+                'url': 'http://scarletredjoker-web:80',
+                'expected_title': 'Evin Drake',
+                'expected_elements': ['navbar', 'portfolio']
+            },
+            'rig-city': {
+                'name': 'rig-city.com',
+                'container': 'rig-city-site',
+                'path': '/app/services/rig-city-site',
+                'url': 'http://rig-city-site:80',
+                'expected_title': 'Rig City',
+                'expected_elements': ['hero', 'community']
+            }
+        }
+        
+        if site_id not in site_configs:
+            return jsonify({
+                'success': False,
+                'error': f'Unknown site: {site_id}'
+            }), 404
+        
+        site_config = site_configs[site_id]
+        health = {
+            'name': site_config['name'],
+            'healthy': True,
+            'checks': {}
+        }
+        
+        # Check container is running
+        container_status = docker_service.get_container_status(site_config['container'])
+        health['checks']['container'] = {
+            'status': 'healthy' if container_status and container_status['status'] == 'running' else 'unhealthy',
+            'details': container_status
+        }
+        
+        if not container_status or container_status['status'] != 'running':
+            health['healthy'] = False
+            return jsonify({
+                'success': True,
+                'health': health
+            })
+        
+        # Check HTTP response
+        try:
+            response = requests.get(site_config['url'], timeout=5)
+            health['checks']['http'] = {
+                'status': 'healthy' if response.status_code == 200 else 'unhealthy',
+                'status_code': response.status_code,
+                'response_size': len(response.content)
+            }
+            
+            if response.status_code != 200:
+                health['healthy'] = False
+            
+            # Parse HTML and check for expected content
+            if response.status_code == 200:
+                try:
+                    soup = BeautifulSoup(response.text, 'html.parser')
+                    
+                    # Check title
+                    title = soup.find('title')
+                    title_check = {
+                        'status': 'healthy',
+                        'found_title': title.text if title else 'None'
+                    }
+                    if title and site_config['expected_title'] in title.text:
+                        title_check['matches_expected'] = True
+                    else:
+                        title_check['matches_expected'] = False
+                        title_check['status'] = 'warning'
+                    
+                    health['checks']['title'] = title_check
+                    
+                    # Check for expected elements
+                    elements_found = []
+                    for element_text in site_config['expected_elements']:
+                        if element_text.lower() in response.text.lower():
+                            elements_found.append(element_text)
+                    
+                    health['checks']['content'] = {
+                        'status': 'healthy' if len(elements_found) > 0 else 'warning',
+                        'expected_elements': site_config['expected_elements'],
+                        'found_elements': elements_found
+                    }
+                    
+                    # Check for broken images (basic check)
+                    images = soup.find_all('img')
+                    health['checks']['images'] = {
+                        'status': 'healthy',
+                        'total_images': len(images),
+                        'images_with_src': len([img for img in images if img.get('src')])
+                    }
+                    
+                except Exception as e:
+                    health['checks']['content_parse'] = {
+                        'status': 'error',
+                        'error': str(e)
+                    }
+                    
+        except requests.RequestException as e:
+            health['checks']['http'] = {
+                'status': 'unhealthy',
+                'error': str(e)
+            }
+            health['healthy'] = False
+        
+        # Check disk usage
+        try:
+            result = subprocess.run(
+                ['du', '-sh', site_config['path']],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            if result.returncode == 0:
+                health['checks']['disk'] = {
+                    'status': 'healthy',
+                    'usage': result.stdout.split()[0]
+                }
+        except Exception as e:
+            health['checks']['disk'] = {
+                'status': 'warning',
+                'error': str(e)
+            }
+        
+        return jsonify({
+            'success': True,
+            'health': health,
+            'timestamp': datetime.utcnow().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in /api/static-sites/{site_id}/health: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@api_bp.route('/static-sites/<site_id>/deployments', methods=['GET'])
+@require_auth
+def get_static_site_deployments(site_id):
+    """Get deployment history for a static site"""
+    try:
+        from pathlib import Path
+        
+        deployment_log = Path('/app/deployment/static-site-deployments.log')
+        
+        if not deployment_log.exists():
+            return jsonify({
+                'success': True,
+                'deployments': [],
+                'message': 'No deployment history found'
+            })
+        
+        # Read last 20 deployments
+        deployments = []
+        with open(deployment_log, 'r') as f:
+            lines = f.readlines()
+            
+        # Filter by site if specified
+        site_name_map = {
+            'scarletredjoker': 'scarletredjoker.com',
+            'rig-city': 'rig-city.com'
+        }
+        
+        site_name = site_name_map.get(site_id, '')
+        
+        for line in reversed(lines[-50:]):  # Get last 50 lines
+            parts = line.strip().split('|')
+            if len(parts) >= 4:
+                timestamp, name, action, status = [p.strip() for p in parts]
+                
+                if site_id == 'all' or name == site_name:
+                    deployments.append({
+                        'timestamp': timestamp,
+                        'site': name,
+                        'action': action,
+                        'status': status
+                    })
+        
+        return jsonify({
+            'success': True,
+            'deployments': deployments[:20],  # Return last 20
+            'total': len(deployments)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in /api/static-sites/{site_id}/deployments: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500

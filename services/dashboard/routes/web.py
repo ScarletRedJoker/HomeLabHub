@@ -1,6 +1,8 @@
 from flask import Blueprint, render_template, request, jsonify, send_from_directory, redirect, url_for, session, make_response
 from utils.auth import require_web_auth
 from config import Config
+from models import get_session, UserPreferences
+from sqlalchemy.exc import SQLAlchemyError
 import os
 import logging
 
@@ -118,6 +120,15 @@ def network():
 def domains():
     return render_template('domains.html')
 
+@web_bp.route('/monitoring')
+@require_web_auth
+def monitoring():
+    response = make_response(render_template('monitoring.html'))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
+
 @web_bp.route('/game-connect')
 def game_connect():
     response = make_response(render_template('game_connect.html',
@@ -127,3 +138,138 @@ def game_connect():
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
     return response
+
+@web_bp.route('/api/preferences', methods=['GET'])
+@require_web_auth
+def get_preferences():
+    """Get user preferences"""
+    try:
+        user_id = session.get('user_id', 'default_user')
+        db_session = get_session()
+        
+        preferences = db_session.query(UserPreferences).filter_by(user_id=user_id).first()
+        
+        if not preferences:
+            default_prefs = UserPreferences.get_default_preferences()
+            return jsonify({'success': True, 'preferences': default_prefs})
+        
+        return jsonify({'success': True, 'preferences': preferences.to_dict()})
+    except SQLAlchemyError as e:
+        logger.error(f"Error getting preferences: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        db_session.close()
+
+@web_bp.route('/api/preferences', methods=['POST'])
+@require_web_auth
+def save_preferences():
+    """Save user preferences"""
+    try:
+        user_id = session.get('user_id', 'default_user')
+        data = request.get_json()
+        db_session = get_session()
+        
+        preferences = db_session.query(UserPreferences).filter_by(user_id=user_id).first()
+        
+        if not preferences:
+            preferences = UserPreferences(user_id=user_id)
+            db_session.add(preferences)
+        
+        if 'dashboard_layout' in data:
+            preferences.dashboard_layout = data['dashboard_layout']
+        if 'widget_visibility' in data:
+            preferences.widget_visibility = data['widget_visibility']
+        if 'widget_order' in data:
+            preferences.widget_order = data['widget_order']
+        if 'active_preset' in data:
+            preferences.active_preset = data['active_preset']
+        if 'collapsed_categories' in data:
+            preferences.collapsed_categories = data['collapsed_categories']
+        if 'pinned_pages' in data:
+            preferences.pinned_pages = data['pinned_pages']
+        if 'recent_pages' in data:
+            preferences.recent_pages = data['recent_pages']
+        if 'theme' in data:
+            preferences.theme = data['theme']
+        if 'sidebar_collapsed' in data:
+            preferences.sidebar_collapsed = data['sidebar_collapsed']
+        if 'show_breadcrumbs' in data:
+            preferences.show_breadcrumbs = data['show_breadcrumbs']
+        if 'compact_mode' in data:
+            preferences.compact_mode = data['compact_mode']
+        if 'custom_shortcuts' in data:
+            preferences.custom_shortcuts = data['custom_shortcuts']
+        
+        db_session.commit()
+        
+        return jsonify({'success': True, 'preferences': preferences.to_dict()})
+    except SQLAlchemyError as e:
+        logger.error(f"Error saving preferences: {str(e)}")
+        db_session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        db_session.close()
+
+@web_bp.route('/api/preferences/preset/<preset_name>', methods=['POST'])
+@require_web_auth
+def apply_preset(preset_name):
+    """Apply a predefined layout preset"""
+    try:
+        user_id = session.get('user_id', 'default_user')
+        db_session = get_session()
+        
+        preset_config = UserPreferences.get_preset(preset_name)
+        if not preset_config:
+            return jsonify({'success': False, 'error': 'Invalid preset'}), 400
+        
+        preferences = db_session.query(UserPreferences).filter_by(user_id=user_id).first()
+        
+        if not preferences:
+            preferences = UserPreferences(user_id=user_id)
+            db_session.add(preferences)
+        
+        preferences.widget_visibility = preset_config.get('widget_visibility', {})
+        preferences.widget_order = preset_config.get('widget_order', [])
+        preferences.active_preset = preset_name
+        
+        db_session.commit()
+        
+        return jsonify({'success': True, 'preferences': preferences.to_dict()})
+    except SQLAlchemyError as e:
+        logger.error(f"Error applying preset: {str(e)}")
+        db_session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        db_session.close()
+
+@web_bp.route('/api/preferences/category/<category_id>/toggle', methods=['POST'])
+@require_web_auth
+def toggle_category(category_id):
+    """Toggle category collapsed state"""
+    try:
+        user_id = session.get('user_id', 'default_user')
+        db_session = get_session()
+        
+        preferences = db_session.query(UserPreferences).filter_by(user_id=user_id).first()
+        
+        if not preferences:
+            preferences = UserPreferences(user_id=user_id)
+            db_session.add(preferences)
+        
+        collapsed_categories = preferences.collapsed_categories or []
+        
+        if category_id in collapsed_categories:
+            collapsed_categories.remove(category_id)
+        else:
+            collapsed_categories.append(category_id)
+        
+        preferences.collapsed_categories = collapsed_categories
+        db_session.commit()
+        
+        return jsonify({'success': True, 'collapsed': category_id in collapsed_categories})
+    except SQLAlchemyError as e:
+        logger.error(f"Error toggling category: {str(e)}")
+        db_session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        db_session.close()

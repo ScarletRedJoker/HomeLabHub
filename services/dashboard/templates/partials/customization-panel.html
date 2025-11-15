@@ -1,0 +1,224 @@
+<div id="customization-panel" class="customization-panel">
+    <div class="customization-header">
+        <h3><i class="bi bi-gear"></i> Dashboard Customization</h3>
+        <button id="close-customization-panel" class="btn-icon">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>
+    
+    <div class="customization-content">
+        <div class="customization-section">
+            <h4><i class="bi bi-layout-three-columns"></i> Layout Presets</h4>
+            <p class="section-description">Choose a predefined layout optimized for your role</p>
+            <div class="preset-buttons">
+                <button class="preset-button" data-preset="admin">
+                    <i class="bi bi-shield-check"></i>
+                    <span>Admin</span>
+                    <small>Focus on system health and container management</small>
+                </button>
+                <button class="preset-button" data-preset="developer">
+                    <i class="bi bi-code-slash"></i>
+                    <span>Developer</span>
+                    <small>Optimized for development and performance monitoring</small>
+                </button>
+                <button class="preset-button" data-preset="monitor">
+                    <i class="bi bi-activity"></i>
+                    <span>Monitor</span>
+                    <small>Comprehensive monitoring and metrics view</small>
+                </button>
+            </div>
+        </div>
+        
+        <div class="customization-section">
+            <h4><i class="bi bi-grid-3x3"></i> Widget Visibility</h4>
+            <p class="section-description">Show or hide dashboard widgets</p>
+            <div class="widget-toggles">
+                <label class="widget-toggle-item">
+                    <input type="checkbox" class="widget-toggle" data-widget-id="cpu" checked>
+                    <span class="toggle-label">
+                        <i class="bi bi-cpu"></i> CPU Usage
+                    </span>
+                </label>
+                <label class="widget-toggle-item">
+                    <input type="checkbox" class="widget-toggle" data-widget-id="memory" checked>
+                    <span class="toggle-label">
+                        <i class="bi bi-memory"></i> Memory Usage
+                    </span>
+                </label>
+                <label class="widget-toggle-item">
+                    <input type="checkbox" class="widget-toggle" data-widget-id="disk" checked>
+                    <span class="toggle-label">
+                        <i class="bi bi-hdd"></i> Disk Usage
+                    </span>
+                </label>
+                <label class="widget-toggle-item">
+                    <input type="checkbox" class="widget-toggle" data-widget-id="containers" checked>
+                    <span class="toggle-label">
+                        <i class="bi bi-box-seam"></i> Active Containers
+                    </span>
+                </label>
+                <label class="widget-toggle-item">
+                    <input type="checkbox" class="widget-toggle" data-widget-id="performance" checked>
+                    <span class="toggle-label">
+                        <i class="bi bi-activity"></i> System Performance
+                    </span>
+                </label>
+                <label class="widget-toggle-item">
+                    <input type="checkbox" class="widget-toggle" data-widget-id="containerStatus" checked>
+                    <span class="toggle-label">
+                        <i class="bi bi-list-check"></i> Container Status
+                    </span>
+                </label>
+                <label class="widget-toggle-item">
+                    <input type="checkbox" class="widget-toggle" data-widget-id="recentActivity" checked>
+                    <span class="toggle-label">
+                        <i class="bi bi-clock-history"></i> Recent Activity
+                    </span>
+                </label>
+                <label class="widget-toggle-item">
+                    <input type="checkbox" class="widget-toggle" data-widget-id="quickActions" checked>
+                    <span class="toggle-label">
+                        <i class="bi bi-lightning"></i> Quick Actions
+                    </span>
+                </label>
+                <label class="widget-toggle-item">
+                    <input type="checkbox" class="widget-toggle" data-widget-id="systemHealth" checked>
+                    <span class="toggle-label">
+                        <i class="bi bi-heart-pulse"></i> System Health
+                    </span>
+                </label>
+                <label class="widget-toggle-item">
+                    <input type="checkbox" class="widget-toggle" data-widget-id="networkStatus" checked>
+                    <span class="toggle-label">
+                        <i class="bi bi-diagram-3"></i> Network Status
+                    </span>
+                </label>
+            </div>
+        </div>
+        
+        <div class="customization-section">
+            <h4><i class="bi bi-keyboard"></i> Keyboard Shortcuts</h4>
+            <p class="section-description">Use these shortcuts to navigate quickly</p>
+            <div class="shortcuts-list">
+                <div class="shortcut-item">
+                    <kbd>Ctrl</kbd> + <kbd>K</kbd>
+                    <span>Open command palette</span>
+                </div>
+                <div class="shortcut-item">
+                    <kbd>Ctrl</kbd> + <kbd>B</kbd>
+                    <span>Toggle sidebar</span>
+                </div>
+                <div class="shortcut-item">
+                    <kbd>Ctrl</kbd> + <kbd>1</kbd>
+                    <span>Go to Dashboard</span>
+                </div>
+                <div class="shortcut-item">
+                    <kbd>Ctrl</kbd> + <kbd>2</kbd>
+                    <span>Go to Containers</span>
+                </div>
+                <div class="shortcut-item">
+                    <kbd>Ctrl</kbd> + <kbd>3</kbd>
+                    <span>Go to System</span>
+                </div>
+                <div class="shortcut-item">
+                    <kbd>Ctrl</kbd> + <kbd>/</kbd>
+                    <span>Toggle customization panel</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="customization-section">
+            <h4><i class="bi bi-info-circle"></i> Tips</h4>
+            <ul class="tips-list">
+                <li>Drag and drop widgets to reorder them on the dashboard</li>
+                <li>Your preferences are automatically saved</li>
+                <li>Collapse categories in the sidebar to save space</li>
+                <li>Use the command palette to quickly find any feature</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div id="command-palette" class="command-palette">
+    <div class="command-palette-content">
+        <div class="command-search">
+            <i class="bi bi-search"></i>
+            <input type="text" placeholder="Type to search pages and features..." id="command-search-input">
+            <button class="btn-icon" onclick="document.getElementById('command-palette').classList.remove('active')">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="command-results" id="command-results">
+            <div class="command-item" data-href="/dashboard">
+                <i class="bi bi-speedometer2"></i>
+                <span>Dashboard</span>
+                <kbd>Ctrl+1</kbd>
+            </div>
+            <div class="command-item" data-href="/containers">
+                <i class="bi bi-box-seam"></i>
+                <span>Containers</span>
+                <kbd>Ctrl+2</kbd>
+            </div>
+            <div class="command-item" data-href="/system">
+                <i class="bi bi-cpu"></i>
+                <span>System Monitor</span>
+                <kbd>Ctrl+3</kbd>
+            </div>
+            <div class="command-item" data-href="/network">
+                <i class="bi bi-diagram-3"></i>
+                <span>Network</span>
+            </div>
+            <div class="command-item" data-href="/domains">
+                <i class="bi bi-globe"></i>
+                <span>Domains</span>
+            </div>
+            <div class="command-item" data-href="/logs">
+                <i class="bi bi-file-text"></i>
+                <span>Logs</span>
+            </div>
+            <div class="command-item" data-href="/ai-assistant">
+                <i class="bi bi-robot"></i>
+                <span>AI Assistant (Jarvis)</span>
+            </div>
+            <div class="command-item" data-href="/smarthome">
+                <i class="bi bi-house-heart"></i>
+                <span>Smart Home</span>
+            </div>
+            <div class="command-item" data-href="/google">
+                <i class="bi bi-google"></i>
+                <span>Google Services</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('command-search-input')?.addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    const items = document.querySelectorAll('.command-item');
+    
+    items.forEach(item => {
+        const text = item.textContent.toLowerCase();
+        if (text.includes(searchTerm)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+});
+
+document.querySelectorAll('.command-item').forEach(item => {
+    item.addEventListener('click', function() {
+        const href = this.dataset.href;
+        if (href) {
+            window.location.href = href;
+        }
+    });
+});
+
+document.getElementById('command-palette')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        this.classList.remove('active');
+    }
+});
+</script>

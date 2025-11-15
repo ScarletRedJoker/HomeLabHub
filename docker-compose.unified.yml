@@ -31,6 +31,12 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:2019/config/", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   # ============================================
   # Redis - Message Broker & Cache
@@ -111,6 +117,12 @@ services:
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ROOT_USER=${MINIO_ROOT_USER:-admin}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minio_admin_password}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; r = requests.get('http://localhost:5000/health', timeout=5); exit(0 if r.status_code == 200 else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   # ============================================
   # Celery Worker - Background Task Processing
@@ -139,6 +151,12 @@ services:
       - ./services/dashboard:/app
       - /var/run/docker.sock:/var/run/docker.sock
       - ./services/dashboard/logs:/app/logs
+    healthcheck:
+      test: ["CMD", "python", "-c", "from celery_app import celery_app; exit(0 if celery_app.control.inspect().active() else 1)"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   # ============================================
   # Discord Ticket Bot + PostgreSQL
@@ -204,6 +222,12 @@ services:
     volumes:
       - ./services/discord-bot/attached_assets:/app/attached_assets
       - ./services/discord-bot/logs:/app/logs
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   # ============================================
   # Stream Bot (Snapple Facts AI)
@@ -280,6 +304,21 @@ services:
       - ./services/plex/media:/media
     devices:
       - /dev/dri:/dev/dri
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 8G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+    shm_size: '2gb'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:32400/identity", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
 
   # ============================================
   # n8n Automation
@@ -302,6 +341,12 @@ services:
       - N8N_RUNNERS_ENABLED=true
     volumes:
       - n8n_data:/home/node/.n8n
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5678/healthz", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   # ============================================
   # Static Website (Scarlet Red Joker)
@@ -314,6 +359,12 @@ services:
       - homelab
     volumes:
       - ./services/static-site:/usr/share/nginx/html:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   # ============================================
   # Rig City Community Website
@@ -326,6 +377,12 @@ services:
       - homelab
     volumes:
       - ./services/rig-city-site:/usr/share/nginx/html:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   # ============================================
   # VNC Remote Desktop (Enhanced Ubuntu Desktop)
@@ -346,11 +403,38 @@ services:
       - PASSWORD=${VNC_USER_PASSWORD}
       - RESOLUTION=1920x1080
       - TZ=America/New_York
+      - MAX_VNC_CONNECTIONS=3
+      - VNC_IDLE_TIMEOUT=14400
     volumes:
       - vnc_home:/home/evin
       - /home/${SERVICE_USER:-evin}/contain:/home/evin/host-projects:ro
       - /home/${SERVICE_USER:-evin}/Downloads:/home/evin/host-downloads
     shm_size: '2gb'
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+          pids: 512
+        reservations:
+          cpus: '0.5'
+          memory: 1536M
+    mem_swappiness: 60
+    oom_score_adj: 500
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:unconfined
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - CHOWN
+      - DAC_OVERRIDE
+      - NET_BIND_SERVICE
+    tmpfs:
+      - /tmp:size=512M,mode=1777
+      - /run:size=128M,mode=0755
     healthcheck:
       test: ["CMD-SHELL", "wget --spider -q http://localhost:6079 || curl -f http://localhost:6079 || exit 1"]
       interval: 30s

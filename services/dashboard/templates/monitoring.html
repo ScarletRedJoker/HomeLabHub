@@ -1,0 +1,1358 @@
+{% extends 'base.html' %}
+
+{% block title %}System Monitoring - Homelab Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .health-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        transition: all 0.3s ease;
+    }
+
+    .health-card:hover {
+        box-shadow: var(--shadow-glow);
+        transform: translateY(-2px);
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .status-healthy {
+        background: rgba(52, 211, 153, 0.15);
+        color: var(--accent-green);
+        border: 1px solid rgba(52, 211, 153, 0.3);
+    }
+
+    .status-degraded {
+        background: rgba(251, 191, 36, 0.15);
+        color: var(--accent-yellow);
+        border: 1px solid rgba(251, 191, 36, 0.3);
+    }
+
+    .status-unhealthy, .status-down {
+        background: rgba(248, 113, 113, 0.15);
+        color: var(--accent-red);
+        border: 1px solid rgba(248, 113, 113, 0.3);
+    }
+
+    .status-idle {
+        background: rgba(156, 163, 175, 0.15);
+        color: #9CA3AF;
+        border: 1px solid rgba(156, 163, 175, 0.3);
+    }
+
+    .metric-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .metric-row:last-child {
+        border-bottom: none;
+    }
+
+    .log-viewer {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 20px;
+    }
+
+    .log-entry {
+        padding: 12px;
+        margin-bottom: 8px;
+        border-left: 3px solid var(--border-color);
+        background: var(--bg-tertiary);
+        border-radius: 6px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.85rem;
+    }
+
+    .log-entry.log-error {
+        border-left-color: var(--accent-red);
+        background: rgba(248, 113, 113, 0.05);
+    }
+
+    .log-entry.log-warn {
+        border-left-color: var(--accent-yellow);
+        background: rgba(251, 191, 36, 0.05);
+    }
+
+    .log-entry.log-info {
+        border-left-color: var(--accent-blue);
+        background: rgba(96, 165, 250, 0.05);
+    }
+
+    .log-entry.log-debug {
+        border-left-color: var(--text-secondary);
+    }
+
+    .log-timestamp {
+        color: var(--text-secondary);
+        font-size: 0.75rem;
+        margin-right: 8px;
+    }
+
+    .log-level {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-right: 8px;
+    }
+
+    .log-level.error { background: var(--accent-red); color: white; }
+    .log-level.warn { background: var(--accent-yellow); color: #1a1a1a; }
+    .log-level.info { background: var(--accent-blue); color: white; }
+    .log-level.debug { background: var(--text-secondary); color: white; }
+
+    .log-component {
+        color: var(--accent-purple);
+        font-weight: 600;
+        margin-right: 8px;
+    }
+
+    .refresh-btn {
+        animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+
+    .dependency-status {
+        display: inline-flex;
+        align-items: center;
+        font-size: 0.9rem;
+        margin-right: 15px;
+    }
+
+    .dependency-status i {
+        margin-right: 5px;
+    }
+
+    .dependency-up { color: var(--accent-green); }
+    .dependency-down { color: var(--accent-red); }
+
+    .performance-bar {
+        height: 8px;
+        background: var(--bg-tertiary);
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 8px;
+    }
+
+    .performance-fill {
+        height: 100%;
+        transition: width 0.3s ease;
+        border-radius: 4px;
+    }
+
+    .performance-fill.low { background: var(--accent-green); }
+    .performance-fill.medium { background: var(--accent-yellow); }
+    .performance-fill.high { background: var(--accent-red); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h2"><i class="bi bi-activity me-2"></i>System Monitoring</h1>
+        <button id="refreshAll" class="btn btn-primary refresh-btn">
+            <i class="bi bi-arrow-clockwise me-2"></i>Refresh All
+        </button>
+    </div>
+
+    <!-- Service Health Status Grid -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3 class="h4 mb-3"><i class="bi bi-heart-pulse me-2"></i>Service Health</h3>
+        </div>
+        
+        <div class="col-lg-4 col-md-6" id="dashboard-health">
+            <div class="health-card">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0">Dashboard</h5>
+                    <span class="status-badge status-healthy">Loading...</span>
+                </div>
+                <div class="health-details">
+                    <div class="metric-row">
+                        <span class="text-secondary">Uptime:</span>
+                        <span class="uptime">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Dependencies:</span>
+                        <div class="dependencies">-</div>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Memory:</span>
+                        <span class="memory">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6" id="discord-bot-health">
+            <div class="health-card">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0">Discord Bot</h5>
+                    <span class="status-badge status-healthy">Loading...</span>
+                </div>
+                <div class="health-details">
+                    <div class="metric-row">
+                        <span class="text-secondary">Uptime:</span>
+                        <span class="uptime">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Dependencies:</span>
+                        <div class="dependencies">-</div>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Memory:</span>
+                        <span class="memory">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6" id="stream-bot-health">
+            <div class="health-card">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0">Stream Bot</h5>
+                    <span class="status-badge status-healthy">Loading...</span>
+                </div>
+                <div class="health-details">
+                    <div class="metric-row">
+                        <span class="text-secondary">Uptime:</span>
+                        <span class="uptime">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Dependencies:</span>
+                        <div class="dependencies">-</div>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Memory:</span>
+                        <span class="memory">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6" id="vnc-desktop-health">
+            <div class="health-card">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0">VNC Desktop</h5>
+                    <span class="status-badge status-healthy">Loading...</span>
+                </div>
+                <div class="health-details">
+                    <div class="metric-row">
+                        <span class="text-secondary">Active Connections:</span>
+                        <span class="vnc-connections">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">CPU Usage:</span>
+                        <span class="vnc-cpu">-</span>
+                        <div class="performance-bar">
+                            <div class="performance-fill low vnc-cpu-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Memory Usage:</span>
+                        <span class="vnc-memory">-</span>
+                        <div class="performance-bar">
+                            <div class="performance-fill low vnc-memory-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Idle Timeout:</span>
+                        <span class="vnc-timeout">4 hours</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6" id="plex-health">
+            <div class="health-card">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0"><i class="bi bi-film me-2"></i>Plex Media Server</h5>
+                    <span class="status-badge status-healthy">Loading...</span>
+                </div>
+                <div class="health-details">
+                    <div class="metric-row">
+                        <span class="text-secondary">Active Streams:</span>
+                        <span class="plex-streams">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Transcoding:</span>
+                        <span class="plex-transcoding">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Library Items:</span>
+                        <span class="plex-library-count">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">CPU Usage:</span>
+                        <span class="plex-cpu">-</span>
+                        <div class="performance-bar">
+                            <div class="performance-fill low plex-cpu-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Memory:</span>
+                        <span class="plex-memory">-</span>
+                        <div class="performance-bar">
+                            <div class="performance-fill low plex-memory-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Version:</span>
+                        <span class="plex-version">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Static Website Status -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3 class="h4 mb-3"><i class="bi bi-globe2 me-2"></i>Static Websites</h3>
+        </div>
+        
+        <div class="col-lg-4 col-md-6" id="scarletredjoker-health">
+            <div class="health-card">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0"><i class="bi bi-person-circle me-2"></i>scarletredjoker.com</h5>
+                    <span class="status-badge status-healthy">Loading...</span>
+                </div>
+                <div class="health-details">
+                    <div class="metric-row">
+                        <span class="text-secondary">Status:</span>
+                        <span class="site-status">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Response Time:</span>
+                        <span class="site-response-time">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Disk Usage:</span>
+                        <span class="site-disk">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Last Modified:</span>
+                        <span class="site-modified">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Last Deployment:</span>
+                        <span class="site-deployment">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6" id="rig-city-health">
+            <div class="health-card">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0"><i class="bi bi-people-fill me-2"></i>rig-city.com</h5>
+                    <span class="status-badge status-healthy">Loading...</span>
+                </div>
+                <div class="health-details">
+                    <div class="metric-row">
+                        <span class="text-secondary">Status:</span>
+                        <span class="site-status">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Response Time:</span>
+                        <span class="site-response-time">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Disk Usage:</span>
+                        <span class="site-disk">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Last Modified:</span>
+                        <span class="site-modified">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Last Deployment:</span>
+                        <span class="site-deployment">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Migration Status -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3 class="h4 mb-3"><i class="bi bi-database-gear me-2"></i>Database Migrations</h3>
+        </div>
+        
+        <div class="col-lg-4 col-md-6">
+            <div class="health-card">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0">Dashboard (Alembic)</h5>
+                    <span class="status-badge" id="dashboard-migration-status">Loading...</span>
+                </div>
+                <div id="dashboard-migration-details">
+                    <div class="metric-row">
+                        <span class="text-secondary">Current:</span>
+                        <span id="dashboard-current-rev">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Latest:</span>
+                        <span id="dashboard-latest-rev">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Pending:</span>
+                        <span id="dashboard-pending-count">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6">
+            <div class="health-card">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0">Stream Bot (Drizzle)</h5>
+                    <span class="status-badge" id="streambot-migration-status">Loading...</span>
+                </div>
+                <div id="streambot-migration-details">
+                    <div class="metric-row">
+                        <span class="text-secondary">Applied:</span>
+                        <span id="streambot-applied-count">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Pending:</span>
+                        <span id="streambot-pending-count">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6">
+            <div class="health-card">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0">Discord Bot (Drizzle)</h5>
+                    <span class="status-badge" id="discordbot-migration-status">Loading...</span>
+                </div>
+                <div id="discordbot-migration-details">
+                    <div class="metric-row">
+                        <span class="text-secondary">Applied:</span>
+                        <span id="discordbot-applied-count">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Pending:</span>
+                        <span id="discordbot-pending-count">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Backup Status -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3 class="h4 mb-3"><i class="bi bi-save me-2"></i>Backup System</h3>
+        </div>
+        
+        <div class="col-lg-4 col-md-6">
+            <div class="health-card" id="backup-status-card">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0">Database Backups</h5>
+                    <span class="status-badge" id="backup-status">Loading...</span>
+                </div>
+                <div id="backup-details">
+                    <div class="metric-row">
+                        <span class="text-secondary">Last Backup:</span>
+                        <span id="last-backup-time">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Daily Backups:</span>
+                        <span id="daily-backup-count">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Weekly Backups:</span>
+                        <span id="weekly-backup-count">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6">
+            <div class="health-card">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0">Configuration Backups</h5>
+                    <span class="status-badge status-healthy" id="config-backup-status">-</span>
+                </div>
+                <div id="config-backup-details">
+                    <div class="metric-row">
+                        <span class="text-secondary">Total Backups:</span>
+                        <span id="config-backup-count">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Latest:</span>
+                        <span id="latest-config-backup">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Size:</span>
+                        <span id="config-backup-size">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6">
+            <div class="health-card">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0">Storage Usage</h5>
+                    <span class="status-badge status-healthy">Info</span>
+                </div>
+                <div id="backup-storage-details">
+                    <div class="metric-row">
+                        <span class="text-secondary">Total Size:</span>
+                        <span id="backup-total-size">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Latest Size:</span>
+                        <span id="latest-backup-size">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Status:</span>
+                        <span id="backup-status-message">-</span>
+                    </div>
+                </div>
+    <!-- Background Jobs (Celery) -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3 class="h4 mb-3"><i class="bi bi-gear-wide-connected me-2"></i>Background Jobs (Celery)</h3>
+        </div>
+        
+        <div class="col-lg-4 col-md-6">
+            <div class="health-card" id="celery-health-card">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0">Job Queue Status</h5>
+                    <span class="status-badge" id="celery-queue-status">Loading...</span>
+                </div>
+                <div id="celery-queue-details">
+                    <div class="metric-row">
+                        <span class="text-secondary">Pending:</span>
+                        <span id="celery-pending">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Active:</span>
+                        <span id="celery-active">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Retry:</span>
+                        <span id="celery-retry">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6">
+            <div class="health-card" id="celery-worker-card">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0">Worker Health</h5>
+                    <span class="status-badge" id="celery-worker-status">Loading...</span>
+                </div>
+                <div id="celery-worker-details">
+                    <div class="metric-row">
+                        <span class="text-secondary">Worker Count:</span>
+                        <span id="celery-worker-count">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Success Rate:</span>
+                        <span id="celery-success-rate">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="text-secondary">Dead Letter:</span>
+                        <span id="celery-dead-letter">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6">
+            <div class="health-card">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0">Recent Failures</h5>
+                    <a href="/celery/analytics" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-graph-up me-1"></i>Analytics
+                    </a>
+                </div>
+                <div id="celery-recent-failures">
+                    <p class="text-secondary small">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Log Viewer -->
+    <div class="row">
+        <div class="col-12">
+            <div class="log-viewer">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="h4 mb-0"><i class="bi bi-terminal me-2"></i>Log Viewer</h3>
+                    <div class="d-flex gap-2">
+                        <select id="serviceFilter" class="form-select form-select-sm" style="width: auto;">
+                            <option value="dashboard">Dashboard</option>
+                            <option value="discord-bot">Discord Bot</option>
+                            <option value="stream-bot">Stream Bot</option>
+                            <option value="n8n">n8n</option>
+                            <option value="plex">Plex</option>
+                            <option value="vnc">VNC</option>
+                            <option value="redis">Redis</option>
+                            <option value="postgres">PostgreSQL</option>
+                        </select>
+                        <select id="levelFilter" class="form-select form-select-sm" style="width: auto;">
+                            <option value="">All Levels</option>
+                            <option value="error">Error</option>
+                            <option value="warn">Warning</option>
+                            <option value="info">Info</option>
+                            <option value="debug">Debug</option>
+                        </select>
+                        <select id="limitFilter" class="form-select form-select-sm" style="width: auto;">
+                            <option value="50">50 logs</option>
+                            <option value="100" selected>100 logs</option>
+                            <option value="200">200 logs</option>
+                            <option value="500">500 logs</option>
+                        </select>
+                        <button id="refreshLogs" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="logEntries" class="mt-3">
+                    <div class="text-center text-secondary py-4">
+                        <i class="bi bi-hourglass-split fs-3 d-block mb-2"></i>
+                        <p class="mb-0">Select a service to view logs</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let autoRefreshInterval;
+
+    // Format uptime
+    function formatUptime(seconds) {
+        const days = Math.floor(seconds / 86400);
+        const hours = Math.floor((seconds % 86400) / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        
+        if (days > 0) {
+            return `${days}d ${hours}h ${minutes}m`;
+        } else if (hours > 0) {
+            return `${hours}h ${minutes}m`;
+        } else {
+            return `${minutes}m`;
+        }
+    }
+
+    // Format memory
+    function formatMemory(bytes) {
+        const mb = bytes / (1024 * 1024);
+        return `${mb.toFixed(1)} MB`;
+    }
+
+    // Fetch health status for a service
+    async function fetchHealth(service, url) {
+        const card = document.querySelector(`#${service}-health`);
+        const statusBadge = card.querySelector('.status-badge');
+        const uptime = card.querySelector('.uptime');
+        const dependencies = card.querySelector('.dependencies');
+        const memory = card.querySelector('.memory');
+
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+
+            // Update status badge
+            statusBadge.textContent = data.status || 'unknown';
+            statusBadge.className = `status-badge status-${data.status || 'unknown'}`;
+
+            // Update uptime
+            if (data.uptime !== undefined) {
+                uptime.textContent = formatUptime(data.uptime);
+            }
+
+            // Update dependencies
+            if (data.dependencies) {
+                const deps = Object.entries(data.dependencies).map(([key, value]) => {
+                    const status = value.status || 'unknown';
+                    const icon = status === 'up' || status === 'operational' ? 'check-circle-fill' : 'x-circle-fill';
+                    const cssClass = status === 'up' || status === 'operational' ? 'dependency-up' : 'dependency-down';
+                    return `<span class="dependency-status ${cssClass}"><i class="bi bi-${icon}"></i>${key}</span>`;
+                }).join('');
+                dependencies.innerHTML = deps;
+            } else if (data.services) {
+                // Dashboard uses 'services' instead of 'dependencies'
+                const deps = Object.entries(data.services).map(([key, value]) => {
+                    const icon = value ? 'check-circle-fill' : 'x-circle-fill';
+                    const cssClass = value ? 'dependency-up' : 'dependency-down';
+                    return `<span class="dependency-status ${cssClass}"><i class="bi bi-${icon}"></i>${key}</span>`;
+                }).join('');
+                dependencies.innerHTML = deps;
+            }
+
+            // Update memory
+            if (data.memory) {
+                const used = formatMemory(data.memory.used);
+                const total = formatMemory(data.memory.total);
+                const percentage = data.memory.percentage || Math.round((data.memory.used / data.memory.total) * 100);
+                memory.innerHTML = `${used} / ${total} (${percentage}%)
+                    <div class="performance-bar">
+                        <div class="performance-fill ${percentage > 80 ? 'high' : percentage > 50 ? 'medium' : 'low'}" style="width: ${percentage}%"></div>
+                    </div>`;
+            }
+        } catch (error) {
+            console.error(`Error fetching health for ${service}:`, error);
+            statusBadge.textContent = 'error';
+            statusBadge.className = 'status-badge status-unhealthy';
+        }
+    }
+
+    // Fetch logs
+    async function fetchLogs() {
+        const service = document.getElementById('serviceFilter').value;
+        const level = document.getElementById('levelFilter').value;
+        const limit = document.getElementById('limitFilter').value;
+        const logEntries = document.getElementById('logEntries');
+
+        logEntries.innerHTML = `
+            <div class="text-center text-secondary py-4">
+                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                <span>Loading logs...</span>
+            </div>
+        `;
+
+        try {
+            let url = `/api/logs?service=${service}&limit=${limit}&since=1h`;
+            if (level) {
+                url += `&level=${level}`;
+            }
+
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (!data.success) {
+                logEntries.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        ${data.message || 'Failed to load logs'}
+                    </div>
+                `;
+                return;
+            }
+
+            if (!data.logs || data.logs.length === 0) {
+                logEntries.innerHTML = `
+                    <div class="text-center text-secondary py-4">
+                        <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                        <p class="mb-0">No logs found</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const logsHtml = data.logs.map(log => {
+                const level = log.level || 'info';
+                const timestamp = new Date(log.timestamp).toLocaleString();
+                const component = log.component ? `<span class="log-component">[${log.component}]</span>` : '';
+                
+                return `
+                    <div class="log-entry log-${level}">
+                        <span class="log-timestamp">${timestamp}</span>
+                        <span class="log-level ${level}">${level}</span>
+                        ${component}
+                        <span class="log-message">${log.message}</span>
+                    </div>
+                `;
+            }).join('');
+
+            logEntries.innerHTML = `
+                <div class="mb-3 text-secondary small">
+                    Showing ${data.count} log entries from ${data.service}
+                </div>
+                ${logsHtml}
+            `;
+        } catch (error) {
+            console.error('Error fetching logs:', error);
+            logEntries.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Error loading logs: ${error.message}
+                </div>
+            `;
+        }
+    }
+
+    // Fetch backup status
+    async function fetchBackupStatus() {
+        try {
+            const response = await fetch('/api/backups/status');
+            const data = await response.json();
+
+            if (!data.success) {
+                console.error('Failed to fetch backup status:', data.error);
+                return;
+            }
+
+            // Update main backup status
+            const statusBadge = document.getElementById('backup-status');
+            let statusText = 'Unknown';
+            let statusClass = 'status-idle';
+
+            if (data.status === 'healthy') {
+                statusText = 'Healthy';
+                statusClass = 'status-healthy';
+            } else if (data.status === 'warning') {
+                statusText = 'Warning';
+                statusClass = 'status-degraded';
+            } else if (data.status === 'failed') {
+                statusText = 'Failed';
+                statusClass = 'status-unhealthy';
+            }
+
+            statusBadge.textContent = statusText;
+            statusBadge.className = `status-badge ${statusClass}`;
+
+            // Update database backup details
+            if (data.last_backup) {
+                const lastBackupDate = new Date(data.last_backup);
+                document.getElementById('last-backup-time').textContent = lastBackupDate.toLocaleString();
+            } else {
+                document.getElementById('last-backup-time').textContent = 'No backups found';
+            }
+
+            document.getElementById('daily-backup-count').textContent = 
+                data.database_backups.daily_count || 0;
+            document.getElementById('weekly-backup-count').textContent = 
+                data.database_backups.weekly_count || 0;
+
+            // Update configuration backup details
+            document.getElementById('config-backup-count').textContent = 
+                data.config_backups.count || 0;
+
+            if (data.config_backups.latest) {
+                const configDate = new Date(data.config_backups.latest.timestamp);
+                document.getElementById('latest-config-backup').textContent = 
+                    configDate.toLocaleDateString();
+                document.getElementById('config-backup-size').textContent = 
+                    data.config_backups.latest.size_human;
+            } else {
+                document.getElementById('latest-config-backup').textContent = 'None';
+                document.getElementById('config-backup-size').textContent = '-';
+            }
+
+            // Update storage details
+            if (data.disk_usage) {
+                document.getElementById('backup-total-size').textContent = 
+                    data.disk_usage.total_human || '0 GB';
+            }
+
+            if (data.database_backups.latest_daily) {
+                document.getElementById('latest-backup-size').textContent = 
+                    data.database_backups.latest_daily.size_human;
+            }
+
+            document.getElementById('backup-status-message').textContent = 
+                data.last_status_message ? 
+                    data.last_status_message.split(':').slice(1).join(':').trim().substring(0, 50) : 
+                    'No status available';
+
+        } catch (error) {
+            console.error('Error fetching backup status:', error);
+            document.getElementById('backup-status').textContent = 'Error';
+            document.getElementById('backup-status').className = 'status-badge status-unhealthy';
+        }
+    }
+
+    // Fetch migration status
+    async function fetchMigrationStatus() {
+        try {
+            const response = await fetch('/api/migrations/status');
+            const data = await response.json();
+
+            if (!data.success) {
+                console.error('Failed to fetch migration status:', data.message);
+                return;
+            }
+
+            // Update Dashboard migration status
+            if (data.services.dashboard) {
+                const dash = data.services.dashboard;
+                const statusBadge = document.getElementById('dashboard-migration-status');
+                statusBadge.textContent = dash.status === 'up_to_date' ? 'Up to date' : 
+                                         dash.status === 'pending_migrations' ? 'Pending' : 'Error';
+                statusBadge.className = `status-badge ${dash.status === 'up_to_date' ? 'status-healthy' : 
+                                                        dash.status === 'pending_migrations' ? 'status-degraded' : 'status-unhealthy'}`;
+                
+                document.getElementById('dashboard-current-rev').textContent = dash.current_revision || '-';
+                document.getElementById('dashboard-latest-rev').textContent = dash.latest_revision || '-';
+                document.getElementById('dashboard-pending-count').textContent = dash.pending || 0;
+            }
+
+            // Update Stream Bot migration status
+            if (data.services['stream-bot']) {
+                const streambot = data.services['stream-bot'];
+                const statusBadge = document.getElementById('streambot-migration-status');
+                statusBadge.textContent = streambot.status === 'up_to_date' ? 'Up to date' : 
+                                         streambot.status === 'pending_migrations' ? 'Pending' : 'Error';
+                statusBadge.className = `status-badge ${streambot.status === 'up_to_date' ? 'status-healthy' : 
+                                                        streambot.status === 'pending_migrations' ? 'status-degraded' : 'status-unhealthy'}`;
+                
+                document.getElementById('streambot-applied-count').textContent = streambot.applied || 0;
+                document.getElementById('streambot-pending-count').textContent = streambot.pending || 0;
+            }
+
+            // Update Discord Bot migration status
+            if (data.services['discord-bot']) {
+                const discordbot = data.services['discord-bot'];
+                const statusBadge = document.getElementById('discordbot-migration-status');
+                statusBadge.textContent = discordbot.status === 'up_to_date' ? 'Up to date' : 
+                                         discordbot.status === 'pending_migrations' ? 'Pending' : 'Error';
+                statusBadge.className = `status-badge ${discordbot.status === 'up_to_date' ? 'status-healthy' : 
+                                                        discordbot.status === 'pending_migrations' ? 'status-degraded' : 'status-unhealthy'}`;
+                
+                document.getElementById('discordbot-applied-count').textContent = discordbot.applied || 0;
+                document.getElementById('discordbot-pending-count').textContent = discordbot.pending || 0;
+            }
+        } catch (error) {
+            console.error('Error fetching migration status:', error);
+        }
+    }
+
+    // Fetch VNC Desktop stats
+    async function fetchVNCStats() {
+        const card = document.querySelector('#vnc-desktop-health');
+        const statusBadge = card.querySelector('.status-badge');
+        const connections = card.querySelector('.vnc-connections');
+        const cpu = card.querySelector('.vnc-cpu');
+        const memory = card.querySelector('.vnc-memory');
+        const timeout = card.querySelector('.vnc-timeout');
+        const cpuBar = card.querySelector('.vnc-cpu-bar');
+        const memoryBar = card.querySelector('.vnc-memory-bar');
+
+        try {
+            const response = await fetch('/api/vnc/stats');
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.message || 'Failed to fetch VNC stats');
+            }
+
+            const stats = data.stats;
+
+            // Update status badge
+            const connCount = stats.active_connections || 0;
+            const maxConn = stats.max_connections || 3;
+            
+            if (connCount === 0) {
+                statusBadge.textContent = 'Idle';
+                statusBadge.className = 'status-badge status-idle';
+            } else if (connCount >= maxConn) {
+                statusBadge.textContent = 'Full';
+                statusBadge.className = 'status-badge status-degraded';
+            } else {
+                statusBadge.textContent = 'Active';
+                statusBadge.className = 'status-badge status-healthy';
+            }
+
+            // Update connections
+            connections.textContent = `${connCount} / ${maxConn}`;
+
+            // Update CPU usage
+            const cpuPercent = parseFloat(stats.cpu_percent || 0).toFixed(1);
+            cpu.textContent = `${cpuPercent}%`;
+            cpuBar.style.width = `${Math.min(cpuPercent, 100)}%`;
+            cpuBar.className = `performance-fill ${cpuPercent > 80 ? 'high' : cpuPercent > 50 ? 'medium' : 'low'} vnc-cpu-bar`;
+
+            // Update memory usage
+            const memPercent = parseFloat(stats.memory_percent || 0).toFixed(1);
+            memory.textContent = `${memPercent}%`;
+            memoryBar.style.width = `${Math.min(memPercent, 100)}%`;
+            memoryBar.className = `performance-fill ${memPercent > 80 ? 'high' : memPercent > 50 ? 'medium' : 'low'} vnc-memory-bar`;
+
+            // Update timeout
+            const timeoutSec = stats.idle_timeout_sec || 14400;
+            const timeoutHours = Math.floor(timeoutSec / 3600);
+            timeout.textContent = `${timeoutHours} hour${timeoutHours !== 1 ? 's' : ''}`;
+
+        } catch (error) {
+            console.error('Error fetching VNC stats:', error);
+            statusBadge.textContent = 'Error';
+            statusBadge.className = 'status-badge status-unhealthy';
+            connections.textContent = 'N/A';
+            cpu.textContent = 'N/A';
+            memory.textContent = 'N/A';
+        }
+    }
+
+    // Fetch Plex Media Server stats
+    async function fetchPlexStats() {
+        const card = document.querySelector('#plex-health');
+        const statusBadge = card.querySelector('.status-badge');
+        const streams = card.querySelector('.plex-streams');
+        const transcoding = card.querySelector('.plex-transcoding');
+        const libraryCount = card.querySelector('.plex-library-count');
+        const cpu = card.querySelector('.plex-cpu');
+        const memory = card.querySelector('.plex-memory');
+        const version = card.querySelector('.plex-version');
+        const cpuBar = card.querySelector('.plex-cpu-bar');
+        const memoryBar = card.querySelector('.plex-memory-bar');
+
+        try {
+            const response = await fetch('/api/plex/status');
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.message || 'Failed to fetch Plex stats');
+            }
+
+            const stats = data.status;
+
+            // Update status badge
+            if (stats.healthy) {
+                if (stats.transcoding_sessions > 0) {
+                    statusBadge.textContent = 'Transcoding';
+                    statusBadge.className = 'status-badge status-degraded';
+                } else if (stats.active_streams > 0) {
+                    statusBadge.textContent = 'Streaming';
+                    statusBadge.className = 'status-badge status-healthy';
+                } else {
+                    statusBadge.textContent = 'Idle';
+                    statusBadge.className = 'status-badge status-idle';
+                }
+            } else {
+                statusBadge.textContent = stats.status || 'Down';
+                statusBadge.className = 'status-badge status-unhealthy';
+            }
+
+            // Update streams
+            streams.textContent = stats.active_streams || 0;
+
+            // Update transcoding
+            const transcodingText = stats.transcoding_sessions > 0 
+                ? `${stats.transcoding_sessions} active` 
+                : 'None';
+            transcoding.textContent = transcodingText;
+            if (stats.transcoding_sessions > 0) {
+                transcoding.style.color = 'var(--accent-yellow)';
+            }
+
+            // Update library count
+            if (stats.library_count !== undefined) {
+                libraryCount.textContent = `${stats.library_count} libraries`;
+            } else {
+                libraryCount.textContent = '-';
+            }
+
+            // Update CPU usage
+            const cpuPercent = parseFloat(stats.cpu_percent || 0).toFixed(1);
+            cpu.textContent = `${cpuPercent}%`;
+            cpuBar.style.width = `${Math.min(cpuPercent, 100)}%`;
+            cpuBar.className = `performance-fill ${cpuPercent > 80 ? 'high' : cpuPercent > 50 ? 'medium' : 'low'} plex-cpu-bar`;
+
+            // Update memory usage
+            const memPercent = parseFloat(stats.memory_percent || 0).toFixed(1);
+            const memUsageMB = parseFloat(stats.memory_usage_mb || 0).toFixed(0);
+            memory.textContent = `${memUsageMB}MB (${memPercent}%)`;
+            memoryBar.style.width = `${Math.min(memPercent, 100)}%`;
+            memoryBar.className = `performance-fill ${memPercent > 80 ? 'high' : memPercent > 50 ? 'medium' : 'low'} plex-memory-bar`;
+
+            // Update version
+            version.textContent = stats.version || 'Unknown';
+
+        } catch (error) {
+            console.error('Error fetching Plex stats:', error);
+            statusBadge.textContent = 'Error';
+            statusBadge.className = 'status-badge status-unhealthy';
+            streams.textContent = 'N/A';
+            transcoding.textContent = 'N/A';
+            libraryCount.textContent = 'N/A';
+            cpu.textContent = 'N/A';
+            memory.textContent = 'N/A';
+            version.textContent = 'N/A';
+        }
+    }
+
+    // Fetch Static Site status
+    async function fetchStaticSitesStatus() {
+        try {
+            const response = await fetch('/api/static-sites/status');
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.message || 'Failed to fetch static sites status');
+            }
+
+            // Update scarletredjoker.com
+            if (data.sites.scarletredjoker) {
+                const site = data.sites.scarletredjoker;
+                const card = document.querySelector('#scarletredjoker-health');
+                const statusBadge = card.querySelector('.status-badge');
+                
+                // Update status badge
+                if (site.status === 'healthy') {
+                    statusBadge.textContent = 'Healthy';
+                    statusBadge.className = 'status-badge status-healthy';
+                } else if (site.status === 'degraded') {
+                    statusBadge.textContent = 'Degraded';
+                    statusBadge.className = 'status-badge status-degraded';
+                } else if (site.status === 'down') {
+                    statusBadge.textContent = 'Down';
+                    statusBadge.className = 'status-badge status-unhealthy';
+                } else {
+                    statusBadge.textContent = 'Unknown';
+                    statusBadge.className = 'status-badge status-idle';
+                }
+
+                // Update metrics
+                card.querySelector('.site-status').textContent = 
+                    site.container_status || 'unknown';
+                
+                card.querySelector('.site-response-time').textContent = 
+                    site.response_time_ms ? `${site.response_time_ms}ms` : 'N/A';
+                
+                card.querySelector('.site-disk').textContent = 
+                    site.disk_usage || 'N/A';
+                
+                card.querySelector('.site-modified').textContent = 
+                    site.last_modified ? new Date(site.last_modified).toLocaleDateString() : 'N/A';
+
+                // Fetch deployment history
+                fetchSiteDeploymentHistory('scarletredjoker', card);
+            }
+
+            // Update rig-city.com
+            if (data.sites['rig-city']) {
+                const site = data.sites['rig-city'];
+                const card = document.querySelector('#rig-city-health');
+                const statusBadge = card.querySelector('.status-badge');
+                
+                // Update status badge
+                if (site.status === 'healthy') {
+                    statusBadge.textContent = 'Healthy';
+                    statusBadge.className = 'status-badge status-healthy';
+                } else if (site.status === 'degraded') {
+                    statusBadge.textContent = 'Degraded';
+                    statusBadge.className = 'status-badge status-degraded';
+                } else if (site.status === 'down') {
+                    statusBadge.textContent = 'Down';
+                    statusBadge.className = 'status-badge status-unhealthy';
+                } else {
+                    statusBadge.textContent = 'Unknown';
+                    statusBadge.className = 'status-badge status-idle';
+                }
+
+                // Update metrics
+                card.querySelector('.site-status').textContent = 
+                    site.container_status || 'unknown';
+                
+                card.querySelector('.site-response-time').textContent = 
+                    site.response_time_ms ? `${site.response_time_ms}ms` : 'N/A';
+                
+                card.querySelector('.site-disk').textContent = 
+                    site.disk_usage || 'N/A';
+                
+                card.querySelector('.site-modified').textContent = 
+                    site.last_modified ? new Date(site.last_modified).toLocaleDateString() : 'N/A';
+
+                // Fetch deployment history
+                fetchSiteDeploymentHistory('rig-city', card);
+            }
+
+        } catch (error) {
+            console.error('Error fetching static sites status:', error);
+            // Update both cards to show error
+            ['scarletredjoker', 'rig-city'].forEach(siteId => {
+                const card = document.querySelector(`#${siteId}-health`);
+                const statusBadge = card.querySelector('.status-badge');
+                statusBadge.textContent = 'Error';
+                statusBadge.className = 'status-badge status-unhealthy';
+            });
+        }
+    }
+
+    // Fetch deployment history for a static site
+    async function fetchSiteDeploymentHistory(siteId, card) {
+        try {
+            const response = await fetch(`/api/static-sites/${siteId}/deployments`);
+            const data = await response.json();
+
+            if (data.success && data.deployments && data.deployments.length > 0) {
+                const lastDeployment = data.deployments[0];
+                const deploymentElement = card.querySelector('.site-deployment');
+                
+                const timestamp = new Date(lastDeployment.timestamp);
+                const timeAgo = getTimeAgo(timestamp);
+                
+                let statusColor = 'var(--text-primary)';
+                if (lastDeployment.status === 'success') {
+                    statusColor = 'var(--accent-green)';
+                } else if (lastDeployment.status.includes('failed')) {
+                    statusColor = 'var(--accent-red)';
+                }
+                
+                deploymentElement.innerHTML = `<span style="color: ${statusColor}">${timeAgo} (${lastDeployment.status})</span>`;
+            } else {
+                card.querySelector('.site-deployment').textContent = 'No deployments';
+            }
+        } catch (error) {
+            console.error(`Error fetching deployment history for ${siteId}:`, error);
+            card.querySelector('.site-deployment').textContent = 'N/A';
+        }
+    }
+
+    // Helper function to get time ago string
+    function getTimeAgo(date) {
+        const seconds = Math.floor((new Date() - date) / 1000);
+        
+        const intervals = [
+            { label: 'year', seconds: 31536000 },
+            { label: 'month', seconds: 2592000 },
+            { label: 'day', seconds: 86400 },
+            { label: 'hour', seconds: 3600 },
+            { label: 'minute', seconds: 60 },
+            { label: 'second', seconds: 1 }
+        ];
+        
+        for (const interval of intervals) {
+            const count = Math.floor(seconds / interval.seconds);
+            if (count >= 1) {
+                return count === 1 ? `1 ${interval.label} ago` : `${count} ${interval.label}s ago`;
+            }
+        }
+        
+        return 'just now';
+    }
+
+    // Refresh all health statuses
+    async function refreshAllHealth() {
+        await Promise.all([
+            fetchHealth('dashboard', '/health'),
+            fetchHealth('discord-bot', 'https://bot.rig-city.com/health'),
+            fetchHealth('stream-bot', 'https://stream.rig-city.com/health'),
+            fetchVNCStats(),
+            fetchPlexStats(),
+            fetchStaticSitesStatus(),
+            fetchMigrationStatus(),
+            fetchBackupStatus()
+        ]);
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initial load
+        refreshAllHealth();
+        fetchLogs();
+
+        // Event listeners
+        document.getElementById('refreshAll').addEventListener('click', () => {
+            refreshAllHealth();
+            fetchLogs();
+        });
+
+        document.getElementById('refreshLogs').addEventListener('click', fetchLogs);
+        document.getElementById('serviceFilter').addEventListener('change', fetchLogs);
+        document.getElementById('levelFilter').addEventListener('change', fetchLogs);
+        document.getElementById('limitFilter').addEventListener('change', fetchLogs);
+
+        // Auto-refresh every 30 seconds
+        autoRefreshInterval = setInterval(refreshAllHealth, 30000);
+    });
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+        }
+    });
+
+async function loadCeleryStats() {
+    try {
+        const response = await fetch('/api/celery/quick-stats');
+        const result = await response.json();
+        
+        if (result.success) {
+            const data = result.data;
+            
+            const queueStatus = document.getElementById('celery-queue-status');
+            const workerStatus = document.getElementById('celery-worker-status');
+            
+            if (data.alert) {
+                queueStatus.className = 'status-badge status-unhealthy';
+                queueStatus.textContent = 'Alert';
+            } else {
+                queueStatus.className = 'status-badge status-healthy';
+                queueStatus.textContent = 'Normal';
+            }
+            
+            if (data.workers_healthy) {
+                workerStatus.className = 'status-badge status-healthy';
+                workerStatus.textContent = 'Healthy';
+            } else {
+                workerStatus.className = 'status-badge status-unhealthy';
+
+// Load Celery stats in monitoring page
+if (typeof loadCeleryStats === 'function') {
+    loadCeleryStats();
+    setInterval(loadCeleryStats, 15000);  // Refresh every 15 seconds
+}
+                workerStatus.textContent = 'No Workers';
+            }
+            
+            document.getElementById('celery-pending').textContent = data.total_pending;
+            document.getElementById('celery-active').textContent = data.total_active;
+            document.getElementById('celery-retry').textContent = data.total_retry;
+            document.getElementById('celery-worker-count').textContent = data.worker_count;
+            document.getElementById('celery-success-rate').textContent = data.success_rate + '%';
+            document.getElementById('celery-dead-letter').textContent = data.dead_letter_count;
+            
+            const failuresDiv = document.getElementById('celery-recent-failures');
+            if (data.recent_failures.length === 0) {
+                failuresDiv.innerHTML = '<p class="text-success small"><i class="bi bi-check-circle me-1"></i>No recent failures</p>';
+            } else {
+                failuresDiv.innerHTML = data.recent_failures.slice(0, 3).map(f => `
+                    <div class="small mb-2">
+                        <div class="text-danger"><i class="bi bi-x-circle me-1"></i>${f.task_name}</div>
+                        <div class="text-secondary" style="font-size: 0.7rem;">${f.error_message ? f.error_message.substring(0, 60) + '...' : 'Unknown error'}</div>
+                    </div>
+                `).join('');
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load Celery stats:', error);
+    }
+}
+</script>
+{% endblock %}

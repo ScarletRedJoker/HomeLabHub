@@ -35,8 +35,13 @@ RUN apt-get update && apt-get install -y \
     xdg-utils \
     # Terminal for debugging if needed
     gnome-terminal \
+    # Connection monitoring tools
+    lsof \
+    psmisc \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /tmp/* /var/tmp/* \
+    && rm -rf /var/cache/apt/*
 
 # Create RDP launcher script with reconnection logic
 RUN cat > /usr/local/bin/rdp-launcher.sh << 'RDPEOF'
@@ -133,6 +138,68 @@ done
 RDPEOF
 
 RUN chmod +x /usr/local/bin/rdp-launcher.sh
+
+# Create VNC connection monitor script
+RUN cat > /usr/local/bin/vnc-monitor.sh << 'VNCMON'
+#!/bin/bash
+# VNC Connection Monitor - Tracks and limits connections
+
+MAX_CONNECTIONS=${MAX_VNC_CONNECTIONS:-3}
+IDLE_TIMEOUT=${VNC_IDLE_TIMEOUT:-14400}  # 4 hours in seconds
+LOG_FILE="/tmp/vnc-connections.log"
+
+# Count active VNC connections
+count_connections() {
+    lsof -i :5900 -i :6080 -i :6079 2>/dev/null | grep ESTABLISHED | wc -l
+}
+
+# Log connection info
+log_connections() {
+    local count=$(count_connections)
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    echo "$timestamp - Active VNC connections: $count/$MAX_CONNECTIONS" >> "$LOG_FILE"
+    echo "$count"
+}
+
+# Get stats for monitoring dashboard
+get_stats() {
+    local active=$(count_connections)
+    local cpu=$(ps aux | grep -E '(Xvnc|websockify|xfreerdp)' | grep -v grep | awk '{sum+=$3} END {print sum}')
+    local mem=$(ps aux | grep -E '(Xvnc|websockify|xfreerdp)' | grep -v grep | awk '{sum+=$4} END {print sum}')
+    
+    cat << STATS
+{
+  "active_connections": ${active:-0},
+  "max_connections": ${MAX_CONNECTIONS},
+  "cpu_percent": ${cpu:-0},
+  "memory_percent": ${mem:-0},
+  "idle_timeout_sec": ${IDLE_TIMEOUT}
+}
+STATS
+}
+
+case "$1" in
+    count)
+        log_connections
+        ;;
+    stats)
+        get_stats
+        ;;
+    check-limit)
+        count=$(count_connections)
+        if [ "$count" -ge "$MAX_CONNECTIONS" ]; then
+            echo "ERROR: Maximum VNC connections ($MAX_CONNECTIONS) reached"
+            exit 1
+        fi
+        ;;
+    *)
+        echo "Usage: $0 {count|stats|check-limit}"
+        exit 1
+        ;;
+esac
+VNCMON
+
+RUN chmod +x /usr/local/bin/vnc-monitor.sh
 
 # Create user
 RUN groupadd -g ${USER_GID} ${VNC_USER} || true && \

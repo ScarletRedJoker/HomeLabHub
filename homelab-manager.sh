@@ -39,6 +39,12 @@ show_menu() {
     echo -e "    ${GREEN}1)${NC} 🚀 Full Deploy (build and start all services)"
     echo -e "    ${GREEN}2)${NC} 🔄 Quick Restart (restart without rebuilding)"
     echo -e "    ${GREEN}3)${NC} ⚡ Rebuild & Deploy (force rebuild + restart)"
+    echo -e "    ${GREEN}21)${NC} 🛡️  Deploy with Auto-Rollback (safe deployment)"
+    echo -e "    ${GREEN}22)${NC} 📜 View Deployment History"
+    echo -e "    ${GREEN}23)${NC} ⏪ Rollback to Previous Version"
+    echo -e "    ${GREEN}24)${NC} 🔍 Deployment Dry-Run (preview changes)"
+    echo -e "    ${GREEN}25)${NC} ✅ Validate Deployment (pre-flight check)"
+    echo -e "    ${GREEN}26)${NC} 🚀 Run CI/CD Pipeline (automated full pipeline)"
     echo ""
     echo -e "  ${BOLD}Service Control:${NC}"
     echo -e "    ${GREEN}4)${NC} ▶️  Start All Services"
@@ -48,6 +54,7 @@ show_menu() {
     echo -e "  ${BOLD}Database:${NC}"
     echo -e "    ${GREEN}7)${NC} 🗄️  Ensure Databases Exist (fix DB issues)"
     echo -e "    ${GREEN}8)${NC} 📊 Check Database Status"
+    echo -e "    ${GREEN}20)${NC} 🔄 Migration Manager (check/apply/rollback migrations)"
     echo ""
     echo -e "  ${BOLD}Configuration:${NC}"
     echo -e "    ${GREEN}9)${NC} ⚙️  Generate/Edit .env File"
@@ -569,6 +576,246 @@ check_sync_status() {
     pause
 }
 
+# Run CI/CD Pipeline
+run_cicd_pipeline() {
+    echo ""
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}${BLUE}  🚀 RUN CI/CD PIPELINE${NC}"
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    
+    if [ ! -f "./deployment/unified-pipeline.sh" ]; then
+        echo -e "${RED}Error: unified-pipeline.sh not found${NC}"
+        pause
+        return
+    fi
+    
+    echo -e "  ${BOLD}Environment:${NC}"
+    echo -e "    ${GREEN}1)${NC} 🔧 Development (dev)"
+    echo -e "    ${GREEN}2)${NC} 🧪 Staging"
+    echo -e "    ${GREEN}3)${NC} 🚀 Production"
+    echo ""
+    echo -n "Select environment [1-3]: "
+    read env_choice
+    
+    case $env_choice in
+        1) PIPELINE_ENV="dev" ;;
+        2) PIPELINE_ENV="staging" ;;
+        3) PIPELINE_ENV="production" ;;
+        *)
+            echo -e "${RED}Invalid choice${NC}"
+            pause
+            return
+            ;;
+    esac
+    
+    echo ""
+    echo -e "  ${BOLD}Pipeline Options:${NC}"
+    echo -e "    ${GREEN}1)${NC} 🚀 Full Pipeline (all stages)"
+    echo -e "    ${GREEN}2)${NC} 🔍 Validate Only"
+    echo -e "    ${GREEN}3)${NC} 🧪 Test Only"
+    echo -e "    ${GREEN}4)${NC} 🔨 Build Only"
+    echo -e "    ${GREEN}5)${NC} 📦 Deploy Only"
+    echo -e "    ${GREEN}6)${NC} ✅ Verify Only"
+    echo -e "    ${GREEN}7)${NC} 👀 Dry-Run (preview without changes)"
+    echo ""
+    echo -n "Select option [1-7]: "
+    read pipeline_choice
+    
+    PIPELINE_ARGS="--env $PIPELINE_ENV"
+    
+    case $pipeline_choice in
+        1)
+            echo ""
+            echo -e "${YELLOW}Running full CI/CD pipeline for ${PIPELINE_ENV}...${NC}"
+            ;;
+        2)
+            PIPELINE_ARGS="$PIPELINE_ARGS --stage validate"
+            echo ""
+            echo -e "${YELLOW}Running validation stage...${NC}"
+            ;;
+        3)
+            PIPELINE_ARGS="$PIPELINE_ARGS --stage test"
+            echo ""
+            echo -e "${YELLOW}Running test stage...${NC}"
+            ;;
+        4)
+            PIPELINE_ARGS="$PIPELINE_ARGS --stage build"
+            echo ""
+            echo -e "${YELLOW}Running build stage...${NC}"
+            ;;
+        5)
+            PIPELINE_ARGS="$PIPELINE_ARGS --stage deploy"
+            echo ""
+            echo -e "${YELLOW}Running deploy stage...${NC}"
+            ;;
+        6)
+            PIPELINE_ARGS="$PIPELINE_ARGS --stage verify"
+            echo ""
+            echo -e "${YELLOW}Running verify stage...${NC}"
+            ;;
+        7)
+            PIPELINE_ARGS="$PIPELINE_ARGS --dry-run"
+            echo ""
+            echo -e "${YELLOW}Running dry-run mode...${NC}"
+            ;;
+        *)
+            echo -e "${RED}Invalid choice${NC}"
+            pause
+            return
+            ;;
+    esac
+    
+    # Ask for additional options for full pipeline
+    if [ "$pipeline_choice" = "1" ]; then
+        echo ""
+        echo -e "${BOLD}Additional Options (optional):${NC}"
+        echo -n "Skip tests? (y/N): "
+        read skip_tests
+        if [[ "$skip_tests" =~ ^[Yy]$ ]]; then
+            PIPELINE_ARGS="$PIPELINE_ARGS --skip-tests"
+        fi
+        
+        echo -n "Build in parallel? (Y/n): "
+        read parallel_build
+        if [[ ! "$parallel_build" =~ ^[Nn]$ ]]; then
+            PIPELINE_ARGS="$PIPELINE_ARGS --parallel-build"
+        fi
+        
+        if [ "$PIPELINE_ENV" = "production" ]; then
+            echo -n "Require approval before deploy? (Y/n): "
+            read require_approval
+            if [[ ! "$require_approval" =~ ^[Nn]$ ]]; then
+                PIPELINE_ARGS="$PIPELINE_ARGS --require-approval"
+            fi
+        fi
+    fi
+    
+    echo ""
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}Executing: ./deployment/unified-pipeline.sh $PIPELINE_ARGS${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    
+    # Execute the pipeline
+    ./deployment/unified-pipeline.sh $PIPELINE_ARGS
+    
+    echo ""
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    
+    # Show where to find reports
+    if [ -f "./deployment/pipeline-report.html" ]; then
+        echo ""
+        echo -e "${GREEN}✓ Pipeline execution complete!${NC}"
+        echo ""
+        echo -e "${BOLD}Reports Generated:${NC}"
+        echo -e "  📊 HTML Report: ${CYAN}deployment/pipeline-report.html${NC}"
+        echo -e "  📋 Execution Log: ${CYAN}deployment/pipeline-execution.log${NC}"
+        echo -e "  📜 Pipeline History: ${CYAN}deployment/pipeline-history.log${NC}"
+        echo ""
+        echo -n "Open HTML report in browser? (Y/n): "
+        read open_report
+        if [[ ! "$open_report" =~ ^[Nn]$ ]]; then
+            if command -v xdg-open &> /dev/null; then
+                xdg-open "./deployment/pipeline-report.html" 2>/dev/null &
+            elif command -v open &> /dev/null; then
+                open "./deployment/pipeline-report.html" 2>/dev/null &
+            else
+                echo -e "${YELLOW}Could not auto-open. Please open manually: deployment/pipeline-report.html${NC}"
+            fi
+        fi
+    fi
+    
+    pause
+}
+
+# Migration Manager
+migration_manager() {
+    echo ""
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}${BLUE}  🔄 DATABASE MIGRATION MANAGER${NC}"
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    
+    echo -e "  ${BOLD}Options:${NC}"
+    echo -e "    ${GREEN}1)${NC} 📊 Check Migration Status (all services)"
+    echo -e "    ${GREEN}2)${NC} ⬆️  Apply Pending Migrations"
+    echo -e "    ${GREEN}3)${NC} ⬇️  Rollback Last Migration"
+    echo -e "    ${GREEN}4)${NC} 📝 View Migration Guide"
+    echo -e "    ${GREEN}0)${NC} ⬅️  Back to Main Menu"
+    echo ""
+    echo -n "Enter your choice: "
+    read migration_choice
+    
+    case $migration_choice in
+        1)
+            echo ""
+            if [ -f "./deployment/migrate-all.sh" ]; then
+                ./deployment/migrate-all.sh status
+            else
+                echo -e "${RED}Error: migrate-all.sh not found${NC}"
+            fi
+            pause
+            ;;
+        2)
+            echo ""
+            if [ -f "./deployment/migrate-all.sh" ]; then
+                ./deployment/migrate-all.sh
+            else
+                echo -e "${RED}Error: migrate-all.sh not found${NC}"
+            fi
+            pause
+            ;;
+        3)
+            echo ""
+            echo -e "${YELLOW}Select service to rollback:${NC}"
+            echo -e "  ${GREEN}1)${NC} Dashboard"
+            echo -e "  ${GREEN}2)${NC} Stream Bot"
+            echo -e "  ${GREEN}3)${NC} Discord Bot"
+            echo -n "Enter your choice: "
+            read service_choice
+            
+            case $service_choice in
+                1) service="dashboard" ;;
+                2) service="stream-bot" ;;
+                3) service="discord-bot" ;;
+                *)
+                    echo -e "${RED}Invalid choice${NC}"
+                    pause
+                    return
+                    ;;
+            esac
+            
+            if [ -f "./deployment/migrate-all.sh" ]; then
+                ./deployment/migrate-all.sh rollback "$service"
+            else
+                echo -e "${RED}Error: migrate-all.sh not found${NC}"
+            fi
+            pause
+            ;;
+        4)
+            echo ""
+            if [ -f "./MIGRATION_GUIDE.md" ]; then
+                less MIGRATION_GUIDE.md
+            else
+                echo -e "${YELLOW}MIGRATION_GUIDE.md not found${NC}"
+                echo ""
+                echo "Available migration documentation:"
+                echo "  - services/stream-bot/migrations/README.md"
+                echo "  - services/discord-bot/migrations/README.md"
+            fi
+            pause
+            ;;
+        0)
+            return
+            ;;
+        *)
+            echo -e "${RED}Invalid choice${NC}"
+            sleep 1
+            ;;
+    esac
+}
+
 # Pause helper
 pause() {
     echo ""
@@ -601,6 +848,13 @@ main() {
             17) sync_from_replit ;;
             18) install_auto_sync ;;
             19) check_sync_status ;;
+            20) migration_manager ;;
+            21) deploy_with_auto_rollback ;;
+            22) view_deployment_history ;;
+            23) rollback_to_previous ;;
+            24) deployment_dry_run ;;
+            25) validate_deployment ;;
+            26) run_cicd_pipeline ;;
             0) 
                 echo ""
                 echo -e "${GREEN}Goodbye! 👋${NC}"
@@ -612,6 +866,145 @@ main() {
                 ;;
         esac
     done
+}
+
+# Deploy with Auto-Rollback
+deploy_with_auto_rollback() {
+    echo ""
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}${BLUE}  🛡️  DEPLOY WITH AUTO-ROLLBACK${NC}"
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    
+    if [ -f "./deployment/deploy-with-health-check.sh" ]; then
+        ./deployment/deploy-with-health-check.sh
+    else
+        echo -e "${RED}Error: deploy-with-health-check.sh not found${NC}"
+    fi
+    
+    pause
+}
+
+# View Deployment History
+view_deployment_history() {
+    echo ""
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}${BLUE}  📜 DEPLOYMENT HISTORY${NC}"
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    
+    if [ -f "./deployment/deployment-history.log" ]; then
+        echo "Last 10 deployments:"
+        echo ""
+        grep -E '^\[' ./deployment/deployment-history.log | tail -10 | while IFS= read -r line; do
+            status=$(echo "$line" | awk '{print $2}')
+            case "$status" in
+                SUCCESS)
+                    echo -e "${GREEN}✓${NC} $line"
+                    ;;
+                *FAILED*|*ROLLBACK*)
+                    echo -e "${RED}✗${NC} $line"
+                    ;;
+                *)
+                    echo -e "${YELLOW}⚠${NC} $line"
+                    ;;
+            esac
+        done
+        echo ""
+        echo "Full history: ./deployment/deployment-history.log"
+    else
+        echo -e "${YELLOW}No deployment history found${NC}"
+        echo "History will be created on first deployment with auto-rollback"
+    fi
+    
+    pause
+}
+
+# Rollback to Previous Version
+rollback_to_previous() {
+    echo ""
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}${BLUE}  ⏪ ROLLBACK TO PREVIOUS VERSION${NC}"
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    
+    if [ -f "./deployment/rollback-deployment.sh" ]; then
+        # List available snapshots
+        ./deployment/rollback-deployment.sh list
+        echo ""
+        echo -e "${YELLOW}Select a snapshot to restore:${NC}"
+        echo -e "  ${GREEN}1)${NC} Restore latest snapshot"
+        echo -e "  ${GREEN}2)${NC} Select specific snapshot"
+        echo -e "  ${GREEN}0)${NC} Cancel"
+        echo ""
+        read -p "Enter your choice: " rollback_choice
+        
+        case $rollback_choice in
+            1)
+                echo ""
+                read -p "Are you sure you want to rollback to the latest snapshot? (y/N) " -n 1 -r
+                echo
+                if [[ $REPLY =~ ^[Yy]$ ]]; then
+                    ./deployment/rollback-deployment.sh restore latest
+                else
+                    echo "Cancelled"
+                fi
+                ;;
+            2)
+                echo ""
+                read -p "Enter snapshot name: " snapshot_name
+                if [ -n "$snapshot_name" ]; then
+                    ./deployment/rollback-deployment.sh restore "$snapshot_name"
+                else
+                    echo "No snapshot name provided"
+                fi
+                ;;
+            0)
+                echo "Cancelled"
+                ;;
+            *)
+                echo -e "${RED}Invalid choice${NC}"
+                ;;
+        esac
+    else
+        echo -e "${RED}Error: rollback-deployment.sh not found${NC}"
+    fi
+    
+    pause
+}
+
+# Deployment Dry-Run
+deployment_dry_run() {
+    echo ""
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}${BLUE}  🔍 DEPLOYMENT DRY-RUN${NC}"
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    
+    if [ -f "./deployment/deploy-with-health-check.sh" ]; then
+        DRY_RUN=true ./deployment/deploy-with-health-check.sh
+    else
+        echo -e "${RED}Error: deploy-with-health-check.sh not found${NC}"
+    fi
+    
+    pause
+}
+
+# Validate Deployment
+validate_deployment() {
+    echo ""
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}${BLUE}  ✅ VALIDATE DEPLOYMENT${NC}"
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    
+    if [ -f "./deployment/validate-deployment.sh" ]; then
+        ./deployment/validate-deployment.sh
+    else
+        echo -e "${RED}Error: validate-deployment.sh not found${NC}"
+    fi
+    
+    pause
 }
 
 # Run main

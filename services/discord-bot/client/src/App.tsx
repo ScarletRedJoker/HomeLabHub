@@ -9,6 +9,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import OnboardingFlow from "@/components/OnboardingFlow";
 import Dashboard from "@/pages/Dashboard";
 import DeveloperDashboard from "@/pages/DeveloperDashboard";
+import StatusDashboard from "@/pages/StatusDashboard";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -18,6 +19,7 @@ function Router() {
     <>
       <Switch>
         <Route path="/dev" component={DeveloperDashboard} />
+        <Route path="/status" component={StatusDashboard} />
         <Route path="/" component={Dashboard} />
         <Route component={NotFound} />
       </Switch>

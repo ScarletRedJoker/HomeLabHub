@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Homelab Backup Timer
+Documentation=file:///home/evin/contain/HomeLabHub/BACKUP_RESTORE_GUIDE.md
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+RandomizedDelaySec=15min
+
+[Install]
+WantedBy=timers.target

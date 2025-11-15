@@ -33,6 +33,8 @@ import { AlertsService } from "./alerts-service";
 import { ChatbotService } from "./chatbot-service";
 import { analyticsService } from "./analytics-service";
 import { tokenRefreshService } from "./token-refresh-service";
+import { quotaService } from "./quota-service";
+import { getHealthStatus } from "./health";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/auth", oauthSignInRoutes);
@@ -111,14 +113,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Health Check - Simple endpoint for container health monitoring
+  // Health Check - Comprehensive health monitoring endpoint
   app.get("/health", async (req, res) => {
-    res.status(200).json({ 
-      status: "healthy",
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      service: 'stream-bot',
-    });
+    const healthData = await getHealthStatus();
+    const statusCode = healthData.status === 'healthy' ? 200 : healthData.status === 'degraded' ? 200 : 503;
+    res.status(statusCode).json(healthData);
   });
 
   // Readiness Check - Checks database connectivity
@@ -507,6 +506,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[Analytics] Health score endpoint error:', error);
       res.status(500).json({ error: "Failed to calculate health score" });
+    }
+  });
+
+  // Quota Management - Admin endpoints for monitoring API quota usage
+  app.get("/api/admin/quota/status", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const includeGlobal = req.query.global === 'true';
+      
+      const userQuotas = await quotaService.getAllQuotaStatus(userId);
+      
+      let globalQuotas = null;
+      if (includeGlobal) {
+        globalQuotas = await quotaService.getAllQuotaStatus();
+      }
+
+      res.json({
+        user: {
+          quotas: userQuotas,
+          summary: {
+            hasWarnings: userQuotas.some(q => q.status === 'warning' || q.status === 'alert'),
+            hasCircuitBreaker: userQuotas.some(q => q.isCircuitBreakerActive),
+            totalPlatforms: userQuotas.length,
+          },
+        },
+        ...(globalQuotas && {
+          global: {
+            quotas: globalQuotas,
+            summary: {
+              hasWarnings: globalQuotas.some(q => q.status === 'warning' || q.status === 'alert'),
+              hasCircuitBreaker: globalQuotas.some(q => q.isCircuitBreakerActive),
+              totalPlatforms: globalQuotas.length,
+            },
+          },
+        }),
+      });
+    } catch (error: any) {
+      console.error('[Quota] Failed to fetch quota status:', error);
+      res.status(500).json({ error: "Failed to fetch quota status" });
+    }
+  });
+
+  app.post("/api/admin/quota/reset", requireAuth, async (req, res) => {
+    try {
+      const { platform } = req.body;
+      const userId = req.user!.id;
+
+      if (!platform || !['twitch', 'youtube', 'kick'].includes(platform)) {
+        return res.status(400).json({ 
+          error: "Invalid platform. Must be 'twitch', 'youtube', or 'kick'" 
+        });
+      }
+
+      await quotaService.resetQuota(platform as 'twitch' | 'youtube' | 'kick', userId);
+      
+      res.json({ 
+        success: true, 
+        message: `Quota reset for ${platform}`,
+        platform,
+      });
+    } catch (error: any) {
+      console.error('[Quota] Failed to reset quota:', error);
+      res.status(500).json({ error: "Failed to reset quota" });
+    }
+  });
+
+  app.post("/api/admin/quota/reset-all", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      
+      await quotaService.resetAllQuotas(userId);
+      
+      res.json({ 
+        success: true, 
+        message: "All quotas reset successfully",
+      });
+    } catch (error: any) {
+      console.error('[Quota] Failed to reset all quotas:', error);
+      res.status(500).json({ error: "Failed to reset all quotas" });
     }
   });
 

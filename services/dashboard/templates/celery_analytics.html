@@ -1,0 +1,383 @@
+{% extends 'base.html' %}
+
+{% block title %}Celery Analytics - Homelab Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .analytics-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .stat-box {
+        text-align: center;
+        padding: 15px;
+        background: var(--bg-tertiary);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--accent-blue);
+    }
+    
+    .stat-label {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin-top: 5px;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin-top: 20px;
+    }
+    
+    .task-list-item {
+        padding: 12px;
+        margin-bottom: 10px;
+        background: var(--bg-tertiary);
+        border-radius: 8px;
+        border-left: 3px solid var(--accent-blue);
+    }
+    
+    .task-list-item.failure {
+        border-left-color: var(--accent-red);
+    }
+    
+    .dead-letter-badge {
+        background: var(--accent-red);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h2"><i class="bi bi-graph-up me-2"></i>Celery Job Analytics</h1>
+        <div>
+            <button id="refreshAnalytics" class="btn btn-primary me-2">
+                <i class="bi bi-arrow-clockwise me-2"></i>Refresh
+            </button>
+            <a href="/monitoring" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-2"></i>Back to Monitoring
+            </a>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-box">
+                <div class="stat-value" id="total-jobs">-</div>
+                <div class="stat-label">Total Jobs</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-box">
+                <div class="stat-value text-success" id="success-rate">-</div>
+                <div class="stat-label">Success Rate</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-box">
+                <div class="stat-value text-warning" id="avg-exec-time">-</div>
+                <div class="stat-label">Avg Execution (s)</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-box">
+                <div class="stat-value text-danger" id="dead-letter-count">-</div>
+                <div class="stat-label">Dead Letter Queue</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="analytics-card">
+                <h4><i class="bi bi-graph-up me-2"></i>Jobs Executed Per Hour</h4>
+                <div class="chart-container">
+                    <canvas id="hourlyChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="analytics-card">
+                <h4><i class="bi bi-pie-chart me-2"></i>Job Status Distribution</h4>
+                <div class="chart-container">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="analytics-card">
+                <h4><i class="bi bi-list-task me-2"></i>Top Tasks by Volume</h4>
+                <div id="topTasksList"></div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6">
+            <div class="analytics-card">
+                <h4><i class="bi bi-exclamation-triangle me-2"></i>Most Frequently Failing Tasks</h4>
+                <div id="failingTasksList"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="analytics-card">
+                <h4><i class="bi bi-x-circle me-2"></i>Recent Failures</h4>
+                <div id="recentFailuresList"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="analytics-card">
+                <h4><i class="bi bi-inbox-fill me-2"></i>Dead Letter Queue</h4>
+                <div id="deadLetterList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+let hourlyChart = null;
+let statusChart = null;
+
+async function loadAnalytics() {
+    try {
+        const response = await fetch('/api/celery/analytics');
+        const result = await response.json();
+        
+        if (result.success) {
+            const data = result.data;
+            
+            document.getElementById('total-jobs').textContent = data.summary.total_jobs.toLocaleString();
+            document.getElementById('success-rate').textContent = data.summary.success_rate.toFixed(1) + '%';
+            document.getElementById('avg-exec-time').textContent = data.summary.avg_execution_time.toFixed(2);
+            document.getElementById('dead-letter-count').textContent = data.summary.dead_letter_jobs.toLocaleString();
+            
+            renderHourlyChart(data.hourly_stats);
+            renderStatusChart(data.summary);
+            renderTopTasks(data.task_stats);
+            renderFailingTasks(data.most_failing);
+            renderRecentFailures(data.recent_failures);
+            renderDeadLetterQueue(data.dead_letter_queue);
+        }
+    } catch (error) {
+        console.error('Failed to load analytics:', error);
+    }
+}
+
+function renderHourlyChart(stats) {
+    const ctx = document.getElementById('hourlyChart').getContext('2d');
+    
+    if (hourlyChart) {
+        hourlyChart.destroy();
+    }
+    
+    hourlyChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: stats.map(s => new Date(s.hour).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})),
+            datasets: [
+                {
+                    label: 'Total Jobs',
+                    data: stats.map(s => s.total),
+                    borderColor: '#60a5fa',
+                    backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                    tension: 0.4
+                },
+                {
+                    label: 'Success',
+                    data: stats.map(s => s.success),
+                    borderColor: '#34d399',
+                    backgroundColor: 'rgba(52, 211, 153, 0.1)',
+                    tension: 0.4
+                },
+                {
+                    label: 'Failure',
+                    data: stats.map(s => s.failure),
+                    borderColor: '#f87171',
+                    backgroundColor: 'rgba(248, 113, 113, 0.1)',
+                    tension: 0.4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { color: '#e5e7eb' }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: '#e5e7eb' },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                },
+                x: {
+                    ticks: { color: '#e5e7eb' },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                }
+            }
+        }
+    });
+}
+
+function renderStatusChart(summary) {
+    const ctx = document.getElementById('statusChart').getContext('2d');
+    
+    if (statusChart) {
+        statusChart.destroy();
+    }
+    
+    statusChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Success', 'Failed', 'Retry'],
+            datasets: [{
+                data: [summary.successful_jobs, summary.failed_jobs, summary.retry_jobs],
+                backgroundColor: ['#34d399', '#f87171', '#fbbf24']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { color: '#e5e7eb' }
+                }
+            }
+        }
+    });
+}
+
+function renderTopTasks(tasks) {
+    const container = document.getElementById('topTasksList');
+    
+    if (tasks.length === 0) {
+        container.innerHTML = '<p class="text-secondary">No tasks executed yet</p>';
+        return;
+    }
+    
+    container.innerHTML = tasks.map(task => `
+        <div class="task-list-item">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <strong>${task.task_name}</strong>
+                    <div class="text-secondary small">
+                        Success: ${task.success} | Failure: ${task.failure} | Avg Time: ${task.avg_time.toFixed(2)}s
+                    </div>
+                </div>
+                <span class="badge bg-primary">${task.total} total</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderFailingTasks(tasks) {
+    const container = document.getElementById('failingTasksList');
+    
+    if (tasks.length === 0) {
+        container.innerHTML = '<p class="text-secondary">No failing tasks</p>';
+        return;
+    }
+    
+    container.innerHTML = tasks.map(task => `
+        <div class="task-list-item failure">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <strong>${task.task_name}</strong>
+                    <div class="text-secondary small">
+                        Total: ${task.total} | Failures: ${task.failures}
+                    </div>
+                </div>
+                <span class="badge bg-danger">${((task.failures / task.total) * 100).toFixed(1)}% fail</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderRecentFailures(failures) {
+    const container = document.getElementById('recentFailuresList');
+    
+    if (failures.length === 0) {
+        container.innerHTML = '<p class="text-secondary">No recent failures</p>';
+        return;
+    }
+    
+    container.innerHTML = failures.map(job => `
+        <div class="task-list-item failure mb-2">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="flex-grow-1">
+                    <strong>${job.task_name}</strong>
+                    ${job.is_dead_letter ? '<span class="dead-letter-badge ms-2">DEAD LETTER</span>' : ''}
+                    <div class="text-secondary small mt-1">
+                        Task ID: ${job.task_id}<br>
+                        ${job.error_message ? `Error: ${job.error_message}` : ''}
+                    </div>
+                </div>
+                <div class="text-end">
+                    <small class="text-secondary">${new Date(job.created_at).toLocaleString()}</small>
+                    ${job.retry_count > 0 ? `<br><span class="badge bg-warning">${job.retry_count} retries</span>` : ''}
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderDeadLetterQueue(tasks) {
+    const container = document.getElementById('deadLetterList');
+    
+    if (tasks.length === 0) {
+        container.innerHTML = '<p class="text-success"><i class="bi bi-check-circle me-2"></i>No tasks in dead letter queue</p>';
+        return;
+    }
+    
+    container.innerHTML = tasks.map(job => `
+        <div class="task-list-item failure mb-2">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="flex-grow-1">
+                    <strong>${job.task_name}</strong>
+                    <span class="dead-letter-badge ms-2">DEAD LETTER</span>
+                    <div class="text-secondary small mt-1">
+                        Task ID: ${job.task_id}<br>
+                        Reason: ${job.dead_letter_reason}<br>
+                        ${job.error_message ? `Error: ${job.error_message}` : ''}
+                    </div>
+                </div>
+                <div class="text-end">
+                    <small class="text-secondary">${new Date(job.created_at).toLocaleString()}</small>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+document.getElementById('refreshAnalytics').addEventListener('click', loadAnalytics);
+
+loadAnalytics();
+setInterval(loadAnalytics, 30000);
+</script>
+{% endblock %}

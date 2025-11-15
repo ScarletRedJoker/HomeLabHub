@@ -94,6 +94,147 @@ Navigate to: **https://vnc.evindrake.net**
 
 The RDP connection will launch automatically and display your Windows desktop.
 
+## Resource Limits and Performance
+
+The VNC Desktop container is configured with strict resource limits to prevent excessive resource consumption and ensure fair usage across your homelab infrastructure.
+
+### Configured Resource Limits
+
+#### Memory Limits
+- **Maximum Memory**: 2GB (hard limit)
+- **Reserved Memory**: 1.5GB (guaranteed allocation)
+- **Swap Limit**: Controlled via `mem_swappiness: 60`
+- **Shared Memory**: 2GB (for X11 operations)
+
+When memory limits are reached:
+- Container will experience slowdowns before hitting the limit
+- OOM (Out of Memory) killer may terminate the container if limit exceeded
+- Logs will show `oom_score_adj: 500` prioritizing this container for termination
+
+#### CPU Limits
+- **Maximum CPU**: 2.0 cores (200% of one core)
+- **Reserved CPU**: 0.5 cores (guaranteed allocation)
+- **Process Limit**: 512 concurrent processes (pids limit)
+
+#### Connection Limits
+- **Maximum Concurrent VNC Connections**: 3
+- **Idle Timeout**: 4 hours (14,400 seconds)
+- **Auto-disconnect**: Enabled after idle timeout expires
+
+#### Security Limits
+- **Capabilities**: Minimal required capabilities only (SETUID, SETGID, CHOWN, DAC_OVERRIDE, NET_BIND_SERVICE)
+- **No New Privileges**: Enabled (`no-new-privileges:true`)
+- **Temporary Filesystem**: `/tmp` limited to 512MB, `/run` limited to 128MB
+
+### Performance Expectations
+
+#### Idle State
+- CPU Usage: <5%
+- Memory Usage: ~800MB - 1.2GB
+- Network: Minimal (<1 MB/s)
+
+#### Active RDP Connection (1920x1080)
+- CPU Usage: 15-40% (varies with remote activity)
+- Memory Usage: 1.2GB - 1.8GB
+- Network: 5-15 MB/s (depends on motion and graphics)
+
+#### Multiple Connections (3 concurrent)
+- CPU Usage: 40-80%
+- Memory Usage: 1.8GB - 2.0GB (approaching limit)
+- Network: 15-30 MB/s
+
+### Monitoring Resource Usage
+
+#### Via Homelab Dashboard
+Navigate to **System Monitoring** page to view:
+- Active VNC connections (real-time)
+- CPU usage percentage
+- Memory usage percentage  
+- Idle timeout status
+
+#### Via Container Desktop
+Double-click the **VNC Monitor** desktop shortcut to view connection statistics in JSON format.
+
+#### Via Docker Commands
+```bash
+# View container resource usage
+docker stats vnc-desktop
+
+# Check connection count
+docker exec vnc-desktop /usr/local/bin/vnc-monitor.sh count
+
+# Get full statistics
+docker exec vnc-desktop /usr/local/bin/vnc-monitor.sh stats
+
+# View idle timeout logs
+docker exec vnc-desktop tail -f /tmp/vnc-idle-monitor.log
+```
+
+### Handling Resource Limit Errors
+
+#### "Maximum VNC Connections Reached"
+**Error**: `ERROR: Cannot accept new connection - maximum limit reached`
+
+**Cause**: 3 active VNC connections already established
+
+**Solutions**:
+1. Wait for an existing connection to close
+2. Check for zombie connections:
+   ```bash
+   docker exec vnc-desktop /usr/local/bin/vnc-monitor.sh count
+   ```
+3. Restart container to clear all connections:
+   ```bash
+   docker compose -f docker-compose.unified.yml restart vnc-desktop
+   ```
+
+#### Container Killed by OOM
+**Symptoms**: Container stops unexpectedly, logs show "Killed" or OOM errors
+
+**Cause**: Memory usage exceeded 2GB hard limit
+
+**Solutions**:
+1. Reduce RDP resolution in environment variables:
+   ```bash
+   RESOLUTION=1600x900  # Instead of 1920x1080
+   ```
+2. Limit concurrent connections (already set to 3)
+3. Close unnecessary applications in Windows RDP session
+4. Monitor memory usage before hitting limit:
+   ```bash
+   docker stats vnc-desktop
+   ```
+
+#### High CPU Usage
+**Symptoms**: RDP session is laggy, container CPU at 100%+
+
+**Cause**: Resource-intensive operations in Windows session or multiple active connections
+
+**Solutions**:
+1. Reduce graphics quality in Windows session
+2. Disable Windows visual effects (animations, transparency)
+3. Limit concurrent connections
+4. Check for runaway processes:
+   ```bash
+   docker exec vnc-desktop ps aux --sort=-%cpu | head -20
+   ```
+
+#### Idle Timeout Disconnection
+**Symptoms**: VNC session disconnects after several hours of inactivity
+
+**Cause**: Idle timeout (default 4 hours) triggered
+
+**Solutions**:
+1. Adjust timeout via environment variable:
+   ```bash
+   VNC_IDLE_TIMEOUT=28800  # 8 hours instead of 4
+   ```
+2. Keep session active with periodic mouse/keyboard input
+3. Disable idle timeout (not recommended for resource conservation):
+   ```bash
+   VNC_IDLE_TIMEOUT=0  # Disable timeout
+   ```
+
 ## Docker Compose Configuration
 
 Add to your `docker-compose.unified.yml`:

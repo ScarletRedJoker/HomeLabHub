@@ -1,11 +1,11 @@
-modules = ["python-3.11", "nodejs-20", "postgresql-16"]
+modules = ["python-3.11", "nodejs-20", "postgresql-16", "python3"]
 [agent]
 expertMode = true
 integrations = ["python_openai_ai_integrations:1.0.0", "spotify:1.0.0", "google-calendar:1.0.0", "google-mail:1.0.0", "discord:1.0.0"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["cacert", "iana-etc", "libyaml", "unzip", "xcodebuild", "zlib"]
+packages = ["cacert", "iana-etc", "libyaml", "unzip", "xcodebuild", "zlib", "shellcheck"]
 
 [workflows]
 runButton = "Project"
@@ -27,13 +27,13 @@ args = "stream-bot"
 name = "dashboard"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd services/dashboard && python main.py"
-waitForPort = 5000
-
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd services/dashboard && JARVIS_DATABASE_URL=\"${DATABASE_URL}\" python main.py"
+waitForPort = 5000
 
 [[workflows.workflow]]
 name = "stream-bot"
@@ -58,6 +58,10 @@ externalPort = 80
 [[ports]]
 localPort = 24678
 externalPort = 3001
+
+[[ports]]
+localPort = 35199
+externalPort = 3002
 
 [[ports]]
 localPort = 46877

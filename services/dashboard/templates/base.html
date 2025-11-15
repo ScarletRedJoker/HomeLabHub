@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/spaceship.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/cosmic-theme.css') }}?v=2">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=1">
     <style>
         :root[data-theme="dark"] {
             --bg-primary: #0a0e1a;
@@ -411,6 +412,7 @@
         <div class="sidebar-brand">
             <h4><i class="bi bi-stars"></i> Cosmic Homelab</h4>
         </div>
+        
         <ul>
             <li class="nav-item">
                 <a href="/" class="nav-link cosmic {% if request.path == '/' %}active{% endif %}">
@@ -424,6 +426,16 @@
                     <span>Dashboard</span>
                 </a>
             </li>
+        </ul>
+        
+        <div class="category-header" data-category="system">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <i class="bi bi-gear-fill" style="color: #60a5fa;"></i>
+                <span style="color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;">System Management</span>
+            </div>
+            <i class="bi bi-chevron-down"></i>
+        </div>
+        <ul class="category-content">
             <li class="nav-item">
                 <a href="/containers" class="nav-link cosmic {% if request.path == '/containers' %}active{% endif %}">
                     <i class="bi bi-box-seam"></i>
@@ -449,11 +461,49 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a href="/databases" class="nav-link cosmic {% if request.path == '/databases' %}active{% endif %}">
+                    <i class="bi bi-database"></i>
+                    <span>Databases</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/remote-desktop" class="nav-link cosmic {% if request.path == '/remote-desktop' %}active{% endif %}">
+                    <i class="bi bi-display"></i>
+                    <span>Remote Desktop</span>
+                </a>
+            </li>
+        </ul>
+        
+        <div class="category-header" data-category="monitoring">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <i class="bi bi-activity" style="color: #34d399;"></i>
+                <span style="color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;">Monitoring</span>
+            </div>
+            <i class="bi bi-chevron-down"></i>
+        </div>
+        <ul class="category-content">
+            <li class="nav-item">
+                <a href="/monitoring" class="nav-link cosmic {% if request.path == '/monitoring' %}active{% endif %}">
+                    <i class="bi bi-heart-pulse"></i>
+                    <span>Health Dashboard</span>
+                </a>
+            </li>
+            <li class="nav-item">
                 <a href="/logs" class="nav-link cosmic {% if request.path == '/logs' %}active{% endif %}">
                     <i class="bi bi-file-text"></i>
                     <span>Logs</span>
                 </a>
             </li>
+        </ul>
+        
+        <div class="category-header" data-category="automation">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <i class="bi bi-robot" style="color: #a78bfa;"></i>
+                <span style="color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;">Automation</span>
+            </div>
+            <i class="bi bi-chevron-down"></i>
+        </div>
+        <ul class="category-content">
             <li class="nav-item">
                 <a href="/ai-assistant" class="nav-link cosmic {% if request.path == '/ai-assistant' %}active{% endif %}">
                     <i class="bi bi-robot"></i>
@@ -461,24 +511,32 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a href="/game-streaming" class="nav-link cosmic {% if request.path == '/game-streaming' %}active{% endif %}">
-                    <i class="bi bi-controller"></i>
-                    <span>Game Streaming</span>
+                <a href="/scripts" class="nav-link cosmic {% if request.path == '/scripts' %}active{% endif %}">
+                    <i class="bi bi-terminal"></i>
+                    <span>Scripts</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="https://n8n.evindrake.net" target="_blank" rel="noopener noreferrer" class="nav-link" style="opacity: 0.9;">
+                    <i class="bi bi-lightning"></i>
+                    <span>n8n Workflows</span>
+                    <i class="bi bi-box-arrow-up-right" style="margin-left: auto; font-size: 0.75rem;"></i>
                 </a>
             </li>
         </ul>
         
-        <div style="padding: 20px 20px 12px; margin: 20px 0 0; border-top: 1px solid var(--border-color);">
-            <div style="color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; margin-bottom: 12px;">
-                <i class="bi bi-house-heart"></i> Smart Home
+        <div class="category-header" data-category="integrations">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <i class="bi bi-puzzle" style="color: #fbbf24;"></i>
+                <span style="color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;">Integrations</span>
             </div>
+            <i class="bi bi-chevron-down"></i>
         </div>
-        
-        <ul>
+        <ul class="category-content">
             <li class="nav-item">
                 <a href="/smarthome" class="nav-link cosmic {% if request.path.startswith('/smarthome') %}active{% endif %}">
                     <i class="bi bi-house-heart"></i>
-                    <span>Home Control</span>
+                    <span>Smart Home</span>
                 </a>
             </li>
             <li class="nav-item">
@@ -496,13 +554,20 @@
             </li>
         </ul>
         
-        <div style="padding: 20px 20px 12px; margin: 20px 0 0; border-top: 1px solid var(--border-color);">
-            <div style="color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; margin-bottom: 12px;">
-                <i class="bi bi-grid-3x3-gap"></i> Network Services
+        <div class="category-header" data-category="services">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <i class="bi bi-grid-3x3-gap" style="color: #ec4899;"></i>
+                <span style="color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;">Services</span>
             </div>
+            <i class="bi bi-chevron-down"></i>
         </div>
-        
-        <ul>
+        <ul class="category-content">
+            <li class="nav-item">
+                <a href="/game-streaming" class="nav-link cosmic {% if request.path == '/game-streaming' %}active{% endif %}">
+                    <i class="bi bi-controller"></i>
+                    <span>Game Streaming</span>
+                </a>
+            </li>
             <li class="nav-item">
                 <a href="https://bot.rig-city.com" target="_blank" rel="noopener noreferrer" class="nav-link" style="opacity: 0.9;">
                     <i class="bi bi-discord"></i>
@@ -525,13 +590,6 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a href="https://n8n.evindrake.net" target="_blank" rel="noopener noreferrer" class="nav-link" style="opacity: 0.9;">
-                    <i class="bi bi-lightning"></i>
-                    <span>n8n Automation</span>
-                    <i class="bi bi-box-arrow-up-right" style="margin-left: auto; font-size: 0.75rem;"></i>
-                </a>
-            </li>
-            <li class="nav-item">
                 <a href="https://scarletredjoker.com" target="_blank" rel="noopener noreferrer" class="nav-link" style="opacity: 0.9;">
                     <i class="bi bi-globe"></i>
                     <span>Portfolio Site</span>
@@ -546,9 +604,33 @@
                 </a>
             </li>
         </ul>
+        
+        <div class="category-header" data-category="settings">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <i class="bi bi-sliders" style="color: #f87171;"></i>
+                <span style="color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;">Settings</span>
+            </div>
+            <i class="bi bi-chevron-down"></i>
+        </div>
+        <ul class="category-content">
+            <li class="nav-item">
+                <a href="/file-manager" class="nav-link cosmic {% if request.path == '/file-manager' %}active{% endif %}">
+                    <i class="bi bi-folder"></i>
+                    <span>File Manager</span>
+                </a>
+            </li>
+        </ul>
     </nav>
 
     <div class="main-content">
+        {% block breadcrumb %}
+        <nav class="breadcrumb-nav">
+            <a href="/"><i class="bi bi-house-door"></i> Home</a>
+            <i class="bi bi-chevron-right"></i>
+            <span class="current">{% block breadcrumb_current %}Dashboard{% endblock %}</span>
+        </nav>
+        {% endblock %}
+        
         <div class="header">
             <h2>{% block page_title %}Dashboard{% endblock %}</h2>
             <button class="theme-toggle" onclick="toggleTheme()">
@@ -598,6 +680,10 @@
 
         {% block content %}{% endblock %}
     </div>
+
+    <button id="customization-toggle" title="Customize Dashboard (Ctrl+/)">
+        <i class="bi bi-sliders"></i>
+    </button>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/starfield.js') }}"></script>

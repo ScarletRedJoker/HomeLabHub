@@ -1,0 +1,340 @@
+# Unified CI/CD Pipeline Configuration
+# 
+# This file defines the configuration for the unified deployment pipeline.
+# Customize these settings to match your deployment requirements.
+
+# Pipeline metadata
+pipeline:
+  name: "HomeLabHub Unified Pipeline"
+  version: "1.0.0"
+  description: "Automated CI/CD pipeline for multi-service homelab deployment"
+
+# Environment configurations
+environments:
+  dev:
+    name: "Development"
+    auto_rollback: true
+    require_approval: false
+    skip_tests: false
+    parallel_build: true
+    push_images: false
+    run_security_scan: false
+    health_check_timeout: 60
+    
+  staging:
+    name: "Staging"
+    auto_rollback: true
+    require_approval: false
+    skip_tests: false
+    parallel_build: true
+    push_images: true
+    run_security_scan: true
+    health_check_timeout: 120
+    image_registry: "registry.example.com/staging"
+    
+  production:
+    name: "Production"
+    auto_rollback: true
+    require_approval: true
+    skip_tests: false
+    parallel_build: false  # Sequential for safety
+    push_images: true
+    run_security_scan: true
+    health_check_timeout: 180
+    image_registry: "registry.example.com/production"
+
+# Pipeline stages configuration
+stages:
+  validate:
+    enabled: true
+    timeout: 300  # 5 minutes
+    fail_fast: true
+    checks:
+      - docker_running
+      - docker_compose_syntax
+      - env_variables
+      - port_availability
+      - disk_space
+      - migration_status
+    
+  test:
+    enabled: true
+    timeout: 600  # 10 minutes
+    fail_fast: true
+    suites:
+      - name: "Infrastructure Tests"
+        script: "deployment/test-deployment.sh"
+        coverage: false
+        
+      - name: "Dashboard Tests"
+        path: "services/dashboard"
+        command: "pytest --maxfail=1 -q"
+        coverage: true
+        coverage_threshold: 70
+        
+      - name: "Discord Bot Tests"
+        path: "services/discord-bot"
+        command: "npm test"
+        coverage: true
+        coverage_threshold: 60
+        
+      - name: "Stream Bot Tests"
+        path: "services/stream-bot"
+        command: "npm test"
+        coverage: true
+        coverage_threshold: 60
+    
+  build:
+    enabled: true
+    timeout: 900  # 15 minutes
+    fail_fast: true
+    docker:
+      compose_file: "docker-compose.unified.yml"
+      build_args:
+        - "NODE_ENV=production"
+        - "PYTHON_ENV=production"
+      cache_from: true
+      pull: true
+    
+    tagging:
+      strategies:
+        - "latest"
+        - "git_commit"
+        - "environment"
+        - "timestamp"
+      
+    security_scan:
+      enabled: true
+      tool: "trivy"
+      severity:  # For now, use on later
+        - "HIGH"
+        - "CRITICAL"
+      fail_on_critical: false  # Don't fail build, just warn
+      
+  deploy:
+    enabled: true
+    timeout: 1200  # 20 minutes
+    fail_fast: false
+    
+    pre_deploy:
+      - name: "Create Snapshot"
+        script: "deployment/rollback-deployment.sh create"
+        required: true
+        
+      - name: "Backup Databases"
+        script: "deployment/backup-databases.sh"
+        required: true
+        
+      - name: "Run Migrations"
+        script: "deployment/migrate-all.sh"
+        required: true
+    
+    deployment:
+      script: "deployment/deploy-with-health-check.sh"
+      strategy: "rolling"  # rolling, blue-green, canary
+      health_check_retries: 10
+      health_check_interval: 5
+      
+    post_deploy:
+      - name: "Verify Services"
+        required: true
+        
+  verify:
+    enabled: true
+    timeout: 300  # 5 minutes
+    fail_fast: false
+    
+    checks:
+      - name: "Smoke Tests"
+        script: "deployment/test-deployment.sh --smoke"
+        required: true
+        
+      - name: "Service Health"
+        required: true
+        services:
+          - "homelab-dashboard"
+          - "discord-bot"
+          - "stream-bot"
+          - "caddy"
+          - "discord-bot-db"
+          
+      - name: "Endpoint Verification"
+        required: false
+        endpoints:
+          - url: "http://localhost:5000/health"
+            expected_status: 200
+          - url: "http://localhost:3001/api/health"
+            expected_status: 200
+          - url: "http://localhost:3000/api/health"
+            expected_status: 200
+
+# Rollback configuration
+rollback:
+  enabled: true
+  automatic: true
+  trigger_on:
+    - deployment_failure
+    - health_check_failure
+  max_retries: 1
+  verify_after_rollback: true
+
+# Notification configuration
+notifications:
+  enabled: false  # Set to true to enable notifications
+  
+  console:
+    enabled: true
+    verbose: true
+    
+  email:
+    enabled: false
+    smtp_server: "smtp.example.com"
+    smtp_port: 587
+    from: "pipeline@example.com"
+    to:
+      - "team@example.com"
+    on_success: false
+    on_failure: true
+    
+  slack:
+    enabled: false
+    webhook_url: "${SLACK_WEBHOOK_URL}"
+    channel: "#deployments"
+    on_success: true
+    on_failure: true
+    
+  discord:
+    enabled: false
+    webhook_url: "${DISCORD_WEBHOOK_URL}"
+    on_success: true
+    on_failure: true
+
+# Reporting configuration
+reporting:
+  generate_html: true
+  generate_json: true
+  generate_junit: false
+  
+  html_report:
+    path: "deployment/pipeline-report.html"
+    include_logs: true
+    include_metrics: true
+    
+  json_report:
+    path: "deployment/pipeline-report.json"
+    
+  history:
+    enabled: true
+    path: "deployment/pipeline-history.log"
+    max_entries: 1000
+
+# Service-specific configuration
+services:
+  homelab-dashboard:
+    health_check_endpoint: "/health"
+    health_check_port: 5000
+    startup_timeout: 60
+    critical: true
+    
+  discord-bot:
+    health_check_endpoint: "/api/health"
+    health_check_port: 3001
+    startup_timeout: 45
+    critical: true
+    
+  stream-bot:
+    health_check_endpoint: "/api/health"
+    health_check_port: 3000
+    startup_timeout: 45
+    critical: true
+    
+  caddy:
+    health_check_port: 80
+    startup_timeout: 30
+    critical: true
+    
+  discord-bot-db:
+    health_check_command: "pg_isready"
+    startup_timeout: 30
+    critical: true
+    
+  homelab-redis:
+    health_check_command: "redis-cli ping"
+    startup_timeout: 20
+    critical: false
+    
+  homelab-minio:
+    health_check_endpoint: "/minio/health/live"
+    health_check_port: 9000
+    startup_timeout: 30
+    critical: false
+
+# Advanced options
+advanced:
+  # Concurrent operations
+  max_parallel_tests: 4
+  max_parallel_builds: 3
+  
+  # Retry logic
+  retry_failed_tests: false
+  retry_attempts: 3
+  retry_delay: 5
+  
+  # Cache management
+  docker_cache: true
+  npm_cache: true
+  pip_cache: true
+  
+  # Resource limits
+  max_memory_usage: "80%"
+  max_disk_usage: "85%"
+  
+  # Timeout behavior
+  timeout_action: "fail"  # fail, warn, continue
+  
+  # Logging
+  log_level: "info"  # debug, info, warn, error
+  log_rotation: true
+  max_log_size: "100M"
+  max_log_files: 10
+
+# CI/CD integration
+ci_integration:
+  github_actions:
+    enabled: true
+    workflow_file: ".github/workflows/deploy.yml"
+    triggers:
+      - push:
+          branches:
+            - main
+            - develop
+      - pull_request:
+          branches:
+            - main
+      - workflow_dispatch
+    
+  gitlab_ci:
+    enabled: false
+    pipeline_file: ".gitlab-ci.yml"
+    
+  jenkins:
+    enabled: false
+    jenkinsfile: "Jenkinsfile"
+
+# Maintenance windows (optional - prevent deployments during these times)
+maintenance_windows:
+  - name: "Weekly Maintenance"
+    day: "Sunday"
+    start_time: "02:00"
+    end_time: "04:00"
+    timezone: "UTC"
+    block_deployments: false
+
+# Feature flags
+features:
+  parallel_testing: true
+  parallel_building: true
+  blue_green_deployment: false
+  canary_deployment: false
+  ab_testing: false
+  progressive_rollout: false

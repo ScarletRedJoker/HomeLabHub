@@ -128,6 +128,75 @@ else
     echo "Running as non-root user, skipping chown"
 fi
 
+echo "Setting up connection monitoring..."
+cat > /tmp/vnc-idle-monitor.sh << 'IDLEMON'
+#!/bin/bash
+# Monitor VNC idle connections and disconnect after timeout
+
+IDLE_TIMEOUT=${VNC_IDLE_TIMEOUT:-14400}  # 4 hours default
+CHECK_INTERVAL=300  # Check every 5 minutes
+
+while true; do
+    sleep $CHECK_INTERVAL
+    
+    # Find idle VNC sessions
+    for pid in $(pgrep -f 'websockify|Xvnc'); do
+        # Get process start time
+        start_time=$(ps -p $pid -o etimes= 2>/dev/null | tr -d ' ')
+        
+        if [ -n "$start_time" ] && [ "$start_time" -gt "$IDLE_TIMEOUT" ]; then
+            # Check if there's actual activity (keyboard/mouse events)
+            activity=$(find /tmp/.X11-unix -mmin -$((IDLE_TIMEOUT/60)) 2>/dev/null | wc -l)
+            
+            if [ "$activity" -eq 0 ]; then
+                echo "[$(date)] Terminating idle VNC process $pid (idle for ${start_time}s, timeout: ${IDLE_TIMEOUT}s)"
+                kill -TERM $pid 2>/dev/null || true
+            fi
+        fi
+    done
+done
+IDLEMON
+
+chmod +x /tmp/vnc-idle-monitor.sh
+
+# Start idle monitor in background
+if [ "$(id -u)" = "0" ]; then
+    nohup /tmp/vnc-idle-monitor.sh > /tmp/vnc-idle-monitor.log 2>&1 &
+    echo "Idle timeout monitor started (timeout: ${VNC_IDLE_TIMEOUT:-14400}s)"
+fi
+
+# Create connection limit check wrapper
+cat > /tmp/vnc-connection-wrapper.sh << 'CONNWRAP'
+#!/bin/bash
+# Check connection limits before allowing new VNC connection
+
+/usr/local/bin/vnc-monitor.sh check-limit
+if [ $? -ne 0 ]; then
+    echo "ERROR: Cannot accept new connection - maximum limit reached"
+    exit 1
+fi
+
+# Log new connection
+/usr/local/bin/vnc-monitor.sh count > /dev/null
+CONNWRAP
+
+chmod +x /tmp/vnc-connection-wrapper.sh
+
+# Add VNC monitoring desktop shortcut
+cat > "${USER_HOME}/Desktop/VNC-Monitor.desktop" << 'EOF'
+[Desktop Entry]
+Version=1.0
+Name=VNC Connection Monitor
+Comment=View VNC connection statistics
+Exec=gnome-terminal -- bash -c "/usr/local/bin/vnc-monitor.sh stats | python3 -m json.tool; echo ''; echo 'Press Enter to close'; read"
+Icon=utilities-system-monitor
+Type=Application
+Terminal=false
+EOF
+
+chmod +x "${USER_HOME}/Desktop/VNC-Monitor.desktop"
+chown ${VNC_USER}:${VNC_USER} "${USER_HOME}/Desktop/VNC-Monitor.desktop" 2>/dev/null || true
+
 echo "============================================"
 echo "  Bootstrap Complete!"
 echo ""
@@ -136,6 +205,12 @@ echo "    Windows Host: ${WINDOWS_RDP_HOST:-NOT SET}"
 echo "    Windows User: ${WINDOWS_RDP_USER:-NOT SET}"
 echo "    Windows Port: ${WINDOWS_RDP_PORT:-3389}"
 echo "    RDP Domain:   ${WINDOWS_RDP_DOMAIN:-none}"
+echo ""
+echo "  Resource Limits:"
+echo "    Max Connections: ${MAX_VNC_CONNECTIONS:-3}"
+echo "    Idle Timeout:    ${VNC_IDLE_TIMEOUT:-14400}s (4 hours)"
+echo "    CPU Limit:       2.0 cores"
+echo "    Memory Limit:    2GB (1.5GB reserved)"
 echo ""
 echo "  Access via: https://vnc.evindrake.net"
 echo "  RDP will launch automatically"

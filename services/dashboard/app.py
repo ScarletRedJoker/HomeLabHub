@@ -6,6 +6,7 @@ from logging.handlers import RotatingFileHandler
 import sys
 import os
 from datetime import timedelta
+import structlog
 from config import Config
 from routes.api import api_bp
 from routes.web import web_bp
@@ -18,12 +19,33 @@ from routes.artifact_routes import artifact_bp
 from routes.jarvis_voice_api import jarvis_voice_bp
 from routes.smart_home_api import smart_home_bp, limiter
 from routes.google_services_api import google_services_bp
+from routes.jarvis_approval_api import jarvis_approval_bp
+from routes.logs_api import logs_api_bp
+from routes.celery_analytics_api import celery_analytics_bp
 from services.activity_service import activity_service
 from services.db_service import db_service
 from services.websocket_service import websocket_service
 import redis
 
-# Basic logging configuration (console)
+# Configure structlog for structured JSON logging
+structlog.configure(
+    processors=[
+        structlog.stdlib.filter_by_level,
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.UnicodeDecoder(),
+        structlog.processors.JSONRenderer()
+    ],
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    cache_logger_on_first_use=True,
+)
+
+# Basic logging configuration (console) - for non-structlog loggers
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -32,7 +54,9 @@ logging.basicConfig(
     ]
 )
 
-logger = logging.getLogger(__name__)
+# Create structlog logger with service metadata
+logger = structlog.get_logger('dashboard')
+logger = logger.bind(service='dashboard')
 
 app = Flask(__name__, 
             template_folder='templates',
@@ -117,6 +141,9 @@ app.register_blueprint(artifact_bp)
 app.register_blueprint(jarvis_voice_bp)
 app.register_blueprint(smart_home_bp)
 app.register_blueprint(google_services_bp)
+app.register_blueprint(jarvis_approval_bp)
+app.register_blueprint(celery_analytics_bp)
+app.register_blueprint(logs_api_bp)
 
 # Initialize WebSocket service
 websocket_service.init_app(app)
@@ -192,23 +219,91 @@ activity_service.log_activity(
 
 @app.route('/health')
 def health():
-    """Health check endpoint with service status"""
+    """Enhanced health check endpoint with service status and dependencies"""
+    import time
+    from datetime import datetime
+    start_time = time.time()
+    
     health_status = {
         'status': 'healthy',
-        'message': 'Homelab Dashboard is running',
-        'services': {
-            'database': db_service.is_available,
-            'redis': False,
-            'websocket': True
+        'uptime': int(time.time() - app.config.get('START_TIME', time.time())),
+        'timestamp': datetime.utcnow().isoformat() + 'Z',
+        'service': 'dashboard',
+        'version': '1.0.0',
+        'dependencies': {
+            'database': {
+                'status': 'down'
+            },
+            'redis': {
+                'status': 'down'
+            }
+        },
+        'memory': {
+            'used': 0,
+            'total': 0,
+            'percentage': 0
         }
     }
     
+    # Check database connection
     try:
+        if db_service.is_available:
+            db_start = time.time()
+            db_status = db_service.health_check()
+            health_status['dependencies']['database'] = {
+                'status': 'up' if db_status['healthy'] else 'down',
+                'latency': int((time.time() - db_start) * 1000),
+                'error': db_status.get('error')
+            }
+            logger.debug('database_health_check', status='up', latency=health_status['dependencies']['database']['latency'])
+        else:
+            health_status['dependencies']['database']['error'] = 'Not configured'
+            health_status['status'] = 'degraded'
+    except Exception as e:
+        health_status['dependencies']['database'] = {
+            'status': 'down',
+            'error': str(e)
+        }
+        health_status['status'] = 'degraded'
+        logger.error('database_health_check_failed', error=str(e))
+    
+    # Check Redis connection
+    try:
+        redis_start = time.time()
         redis_client = redis.from_url(Config.REDIS_URL)
         redis_client.ping()
-        health_status['services']['redis'] = True
-    except:
+        health_status['dependencies']['redis'] = {
+            'status': 'up',
+            'latency': int((time.time() - redis_start) * 1000)
+        }
+        logger.debug('redis_health_check', status='up', latency=health_status['dependencies']['redis']['latency'])
+    except Exception as e:
+        health_status['dependencies']['redis'] = {
+            'status': 'down',
+            'error': str(e)
+        }
+        health_status['status'] = 'degraded'
+        logger.error('redis_health_check_failed', error=str(e))
+    
+    # Get memory usage
+    try:
+        import psutil
+        process = psutil.Process()
+        mem_info = process.memory_info()
+        health_status['memory'] = {
+            'used': mem_info.rss,
+            'total': psutil.virtual_memory().total,
+            'percentage': int((mem_info.rss / psutil.virtual_memory().total) * 100)
+        }
+        
+        if health_status['memory']['percentage'] > 90:
+            health_status['status'] = 'degraded'
+            logger.warning('high_memory_usage', percentage=health_status['memory']['percentage'])
+    except ImportError:
         pass
+    
+    duration = int((time.time() - start_time) * 1000)
+    logger.info('health_check_completed', status=health_status['status'], duration=duration)
     
     return health_status
 

@@ -8,7 +8,17 @@
     "build": "vite build && node esbuild.config.mjs",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "db:generate": "drizzle-kit generate",
+    "migrate:up": "tsx scripts/migrate.ts up",
+    "migrate:down": "tsx scripts/migrate.ts down",
+    "migrate:status": "tsx scripts/migrate.ts status",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "NODE_ENV=test MOCK_EXTERNAL_APIS=true vitest run tests/e2e",
+    "test:unit": "vitest run tests --exclude tests/e2e",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui"
   },
   "dependencies": {
     "@googleapis/youtube": "^29.0.0",
