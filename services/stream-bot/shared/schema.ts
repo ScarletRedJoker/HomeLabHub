@@ -36,6 +36,7 @@ export const platformConnections = pgTable("platform_connections", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({
   userPlatformIdx: uniqueIndex("platform_connections_user_id_platform_unique").on(table.userId, table.platform),
+  platformUserIdx: uniqueIndex("platform_connections_platform_platform_user_id_unique").on(table.platform, table.platformUserId),
 }));
 
 // Bot configs - per-user bot configuration (replaces singleton botSettings)
