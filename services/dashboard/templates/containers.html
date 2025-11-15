@@ -3,6 +3,29 @@
 {% block title %}Containers - Homelab Dashboard{% endblock %}
 {% block page_title %}Docker Containers{% endblock %}
 
+{% block extra_css %}
+<style>
+    #container-list {
+        overflow-x: auto;
+    }
+    
+    #container-list .table {
+        min-width: 800px;
+        white-space: nowrap;
+    }
+    
+    #container-list .table td {
+        max-width: 300px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    #container-list .table td:first-child {
+        min-width: 150px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="card cosmic cosmic-fade-in mb-4">
     <div class="card-header">

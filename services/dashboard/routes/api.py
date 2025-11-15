@@ -531,6 +531,14 @@ def get_services_status():
 @require_auth
 def analyze_logs():
     try:
+        if not ai_service.enabled:
+            logger.warning("AI analyze-logs request rejected - OpenAI API not configured")
+            return jsonify({
+                'success': False, 
+                'message': 'OpenAI API is not configured. Please set up your OpenAI API key in the integrations settings.',
+                'error_code': 'API_NOT_CONFIGURED'
+            }), 503
+        
         data = request.get_json()
         logs = data.get('logs', '')
         context = data.get('context', '')
@@ -548,6 +556,14 @@ def analyze_logs():
 @require_auth
 def ai_chat():
     try:
+        if not ai_service.enabled:
+            logger.warning("AI chat request rejected - OpenAI API not configured")
+            return jsonify({
+                'success': False, 
+                'message': 'OpenAI API is not configured. Please set up your OpenAI API key in the integrations settings.',
+                'error_code': 'API_NOT_CONFIGURED'
+            }), 503
+        
         data = request.get_json()
         message = data.get('message', '')
         history = data.get('history', [])
@@ -565,6 +581,14 @@ def ai_chat():
 @require_auth
 def troubleshoot():
     try:
+        if not ai_service.enabled:
+            logger.warning("AI troubleshoot request rejected - OpenAI API not configured")
+            return jsonify({
+                'success': False, 
+                'message': 'OpenAI API is not configured. Please set up your OpenAI API key in the integrations settings.',
+                'error_code': 'API_NOT_CONFIGURED'
+            }), 503
+        
         data = request.get_json()
         issue = data.get('issue', '')
         service = data.get('service', '')
@@ -576,6 +600,21 @@ def troubleshoot():
         return jsonify({'success': True, 'data': advice})
     except Exception as e:
         logger.error(f"Error getting troubleshooting advice: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@api_bp.route('/ai/status', methods=['GET'])
+@require_auth
+def ai_status():
+    """Check if AI service is available and configured"""
+    try:
+        return jsonify({
+            'success': True,
+            'enabled': ai_service.enabled,
+            'configured': ai_service.enabled,
+            'message': 'AI service is ready' if ai_service.enabled else 'OpenAI API key not configured'
+        })
+    except Exception as e:
+        logger.error(f"Error checking AI status: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
 ALLOWED_COMMANDS = [

@@ -1,4 +1,48 @@
 const conversationHistory = [];
+let aiServiceEnabled = false;
+
+async function checkAIStatus() {
+    try {
+        const response = await fetch('/api/ai/status');
+        const data = await response.json();
+        
+        aiServiceEnabled = data.enabled || false;
+        
+        if (!aiServiceEnabled) {
+            const warningBanner = document.createElement('div');
+            warningBanner.id = 'aiStatusWarning';
+            warningBanner.className = 'alert alert-warning';
+            warningBanner.style.cssText = 'margin: 10px 0; padding: 12px; border-radius: 8px; background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3);';
+            warningBanner.innerHTML = `
+                <strong>⚙️ OpenAI API Not Configured</strong><br>
+                The AI assistant requires an OpenAI API key to function.<br><br>
+                <strong>How to fix:</strong>
+                <ol style="margin: 8px 0 0 20px; padding: 0;">
+                    <li>Go to your Replit project's <strong>Tools → Secrets</strong></li>
+                    <li>Add <code>AI_INTEGRATIONS_OPENAI_API_KEY</code> with your OpenAI API key</li>
+                    <li>Add <code>AI_INTEGRATIONS_OPENAI_BASE_URL</code> with value <code>https://api.openai.com/v1</code></li>
+                    <li>Restart the dashboard workflow</li>
+                </ol>
+                <small>Get an API key from <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a></small>
+            `;
+            
+            const chatContainer = document.getElementById('chatMessages');
+            if (chatContainer && chatContainer.parentElement) {
+                chatContainer.parentElement.insertBefore(warningBanner, chatContainer);
+            }
+            
+            const chatInput = document.getElementById('chatInput');
+            if (chatInput) {
+                chatInput.disabled = true;
+                chatInput.placeholder = 'AI service is not configured. See instructions above.';
+            }
+        }
+    } catch (error) {
+        console.error('Error checking AI status:', error);
+    }
+}
+
+window.addEventListener('DOMContentLoaded', checkAIStatus);
 
 function addMessage(role, content) {
     const messagesDiv = document.getElementById('chatMessages');
@@ -45,18 +89,35 @@ async function sendMessage() {
             return;
         }
         
-        // Check for HTTP errors before parsing JSON
-        if (!response.ok) {
-            const messages = document.getElementById('chatMessages');
-            messages.removeChild(messages.lastChild);
-            addMessage('assistant', `⚠️ Server error (${response.status}). Please try again or contact support.`);
-            return;
-        }
-        
+        // Parse JSON response
         const data = await response.json();
         
         const messages = document.getElementById('chatMessages');
         messages.removeChild(messages.lastChild);
+        
+        // Check for HTTP errors with specific handling
+        if (!response.ok) {
+            let errorMessage = data.message || `Server error (${response.status}). Please try again.`;
+            
+            // Provide specific guidance for common errors
+            if (response.status === 503 && data.error_code === 'API_NOT_CONFIGURED') {
+                errorMessage = `
+                    <div class="alert alert-warning" style="margin: 10px 0; padding: 12px; border-radius: 8px; background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3);">
+                        <strong>⚙️ Configuration Required</strong><br>
+                        ${errorMessage}<br><br>
+                        <strong>How to fix:</strong>
+                        <ol style="margin: 8px 0 0 20px; padding: 0;">
+                            <li>Go to your Replit project's Tools → Secrets</li>
+                            <li>Add the OpenAI API key (get one from <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI</a>)</li>
+                            <li>Restart the dashboard workflow</li>
+                        </ol>
+                    </div>
+                `;
+            }
+            
+            addMessage('assistant', `⚠️ ${errorMessage}`);
+            return;
+        }
         
         if (data.success) {
             addMessage('assistant', data.data);

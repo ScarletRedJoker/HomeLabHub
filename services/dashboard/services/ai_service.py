@@ -1,5 +1,5 @@
 import os
-from openai import OpenAI
+from openai import OpenAI, AuthenticationError, RateLimitError, APIError, APIConnectionError
 from typing import List, Dict
 import logging
 
@@ -20,7 +20,7 @@ class AIService:
         else:
             self.client = None
             self.enabled = False
-            logger.warning("AI Service not initialized - missing API credentials")
+            logger.warning("AI Service not initialized - missing API credentials. Set AI_INTEGRATIONS_OPENAI_API_KEY and AI_INTEGRATIONS_OPENAI_BASE_URL environment variables.")
     
     def analyze_logs(self, logs: str, context: str = "") -> str:
         if not self.enabled:
@@ -52,8 +52,20 @@ Provide a clear, actionable response."""
             )
             
             return response.choices[0].message.content or "No response generated"
+        except AuthenticationError as e:
+            logger.error(f"OpenAI authentication error in analyze_logs: {e}")
+            return "Authentication failed. Your OpenAI API key may be invalid or expired."
+        except RateLimitError as e:
+            logger.error(f"OpenAI rate limit error in analyze_logs: {e}")
+            return "Rate limit exceeded. Please try again in a few moments."
+        except APIConnectionError as e:
+            logger.error(f"OpenAI connection error in analyze_logs: {e}")
+            return "Cannot connect to OpenAI API. Please check your internet connection."
+        except APIError as e:
+            logger.error(f"OpenAI API error in analyze_logs: {e}")
+            return f"OpenAI API error: {str(e)}"
         except Exception as e:
-            logger.error(f"Error analyzing logs with AI: {e}")
+            logger.error(f"Unexpected error analyzing logs: {e}", exc_info=True)
             return f"Error analyzing logs: {str(e)}"
     
     def get_troubleshooting_advice(self, issue_description: str, service_name: str = "") -> str:
@@ -79,8 +91,20 @@ Provide specific troubleshooting steps and potential solutions."""
             )
             
             return response.choices[0].message.content or "No response generated"
+        except AuthenticationError as e:
+            logger.error(f"OpenAI authentication error in get_troubleshooting_advice: {e}")
+            return "Authentication failed. Your OpenAI API key may be invalid or expired."
+        except RateLimitError as e:
+            logger.error(f"OpenAI rate limit error in get_troubleshooting_advice: {e}")
+            return "Rate limit exceeded. Please try again in a few moments."
+        except APIConnectionError as e:
+            logger.error(f"OpenAI connection error in get_troubleshooting_advice: {e}")
+            return "Cannot connect to OpenAI API. Please check your internet connection."
+        except APIError as e:
+            logger.error(f"OpenAI API error in get_troubleshooting_advice: {e}")
+            return f"OpenAI API error: {str(e)}"
         except Exception as e:
-            logger.error(f"Error getting troubleshooting advice: {e}")
+            logger.error(f"Unexpected error getting troubleshooting advice: {e}", exc_info=True)
             return f"Error: {str(e)}"
     
     def chat(self, message: str, conversation_history: List[Dict] = None) -> str:
@@ -113,6 +137,18 @@ Be concise, practical, and action-oriented. When diagnosing issues, suggest spec
             )
             
             return response.choices[0].message.content or "No response generated"
+        except AuthenticationError as e:
+            logger.error(f"OpenAI authentication error: {e}")
+            return "Authentication failed. Your OpenAI API key may be invalid or expired. Please check your API key in the Replit Secrets."
+        except RateLimitError as e:
+            logger.error(f"OpenAI rate limit error: {e}")
+            return "Rate limit exceeded. Please try again in a few moments. If this persists, check your OpenAI account usage limits."
+        except APIConnectionError as e:
+            logger.error(f"OpenAI connection error: {e}")
+            return "Cannot connect to OpenAI API. Please check your internet connection and try again."
+        except APIError as e:
+            logger.error(f"OpenAI API error: {e}")
+            return f"OpenAI API error: {str(e)}. Please try again or contact support if the issue persists."
         except Exception as e:
-            logger.error(f"Error in AI chat: {e}")
-            return f"Error: {str(e)}"
+            logger.error(f"Unexpected error in AI chat: {e}", exc_info=True)
+            return f"An unexpected error occurred: {str(e)}. Please try again."
