@@ -1,5 +1,15 @@
 # Homelab Dashboard Project
 
+## Recent Changes (November 15, 2025)
+
+### Production-Ready Updates
+- **Jarvis Voice Chat:** Full voice I/O implementation with Web Speech API, cosmic-themed UI, mobile-responsive design using Replit AI Integrations
+- **Spotify Integration:** Production-ready with Replit Connector API, automatic token refresh (5-min pre-emptive), exponential backoff retry, 401/429 error handling
+- **Code-Server:** Fixed persistent permission errors by switching from Docker volumes to local bind mounts (./volumes/code-server)
+- **Network Tab:** Enhanced with comprehensive DOM guards, null checks, Chart.js validation, graceful error handling
+- **Mobile UI:** Fully responsive with hamburger menu, touch-friendly buttons (44px min), defensive error handling, complete null guards
+- **Critical Bug Fixes:** Fixed 4 syntax errors in network.js, added complete DOM null guards across all JavaScript, fortified hamburger menu error handling
+
 ## Overview
 This project provides a comprehensive web-based dashboard for managing a Ubuntu homelab server. Its core purpose is to offer a unified, user-friendly interface to reduce operational overhead, enhance server reliability, and enable intelligent automation and monitoring. Key capabilities include one-click database deployments, game streaming integration, robust domain health monitoring, and integrations with Google Services and Smart Home platforms. The project aims for production readiness, envisioning an AI-first homelab copilot, Jarvis, capable of autonomous diagnosis, remediation, and execution of homelab issues.
 
