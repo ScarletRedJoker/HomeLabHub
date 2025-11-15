@@ -115,3 +115,27 @@ A single PostgreSQL container manages multiple databases (`ticketbot`, `streambo
 - PostgreSQL 16 Alpine
 - Docker & Docker Compose
 - Let's Encrypt
+
+## Recent Changes
+
+### November 14, 2025 - AI Assistant Improvements & Accessibility Fixes
+- **WCAG AA Accessibility**: Comprehensive text contrast fixes ensuring all text meets 4.5:1 contrast ratio minimum
+  - Override all Bootstrap color utilities with high-contrast alternatives
+  - Improved readability on mobile devices and dark backgrounds
+  - Fixed chat interface, forms, buttons, alerts, and modal text visibility
+- **AI Assistant Enhancements**:
+  - Upgraded from gpt-5-mini to gpt-5 (latest model released August 2025)
+  - Improved error handling for unauthenticated users - shows friendly "Please log in" instead of JSON parse errors
+  - Enhanced system prompts to make Jarvis more action-oriented and solution-focused
+  - Better network error handling with user-friendly messages
+- **Jarvis Platform Vision**: Established AI-first homelab copilot direction
+  - Primary goal: Enable autonomous diagnosis and remediation of homelab issues
+  - Next phase: AI Ops execution layer allowing Jarvis to run safe commands with user confirmation
+  - Future capabilities: Self-healing workflows, guided remediation, environment drift detection
+
+### Vision: AI-First Homelab Copilot
+Jarvis is designed to be an intelligent automation platform that pairs high-contrast observability dashboards with conversational AI workflows. The platform prioritizes:
+1. **AI-Orchestrated Operations**: Self-diagnosing issues, suggesting fixes, and executing remediation with user approval
+2. **Mission Control UI**: Dashboard serves as command center with real-time status, not just a static monitoring tool
+3. **Actionable Intelligence**: AI assistant integrates with Docker SDK, system logs, and network tools to provide real solutions
+4. **Safe Automation**: Policy-checked execution layer with confirmation loops, audit logging, and rollback capabilities

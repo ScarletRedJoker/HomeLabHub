@@ -23,7 +23,6 @@ from .deployment import Deployment
 from .domain_record import DomainRecord
 from .jarvis import Project, ArtifactBuild, ComposeSpec, SSLCertificate, AISession
 from .google_integration import GoogleServiceStatus, CalendarAutomation, EmailNotification, DriveBackup
-from .service_favicon import ServiceFavicon
 
 __all__ = [
     'Base',
@@ -42,6 +41,5 @@ __all__ = [
     'GoogleServiceStatus',
     'CalendarAutomation',
     'EmailNotification',
-    'DriveBackup',
-    'ServiceFavicon'
+    'DriveBackup'
 ]
