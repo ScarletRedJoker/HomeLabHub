@@ -1,226 +1,423 @@
-# Enhanced VNC Desktop
+# NoVNC X11 Viewer for Windows WinApps/XRDP
 
-Custom Ubuntu desktop environment with pre-installed applications and shortcuts for seamless homelab management.
-
-## Features
-
-### Pre-installed Applications
-
-#### Web Browsers
-- **Firefox** - Full-featured web browser
-- **Chromium** - Open-source Chrome
-
-#### Development Tools
-- **Git** - Version control
-- **Python 3** with pip - Python development
-- **Node.js** with npm - JavaScript development
-- **build-essential** - C/C++ compilation (gcc, g++, make)
-- **tmux** - Terminal multiplexer for persistent sessions
-- **Vim & Nano** - Text editors
-- **Gedit** - GUI text editor
-- **OpenSSH Client** - SSH remote access
-
-#### Graphics & Media  
-- **GIMP** - Advanced image editing
-- **VLC** - Universal media player
-- **OBS Studio** - Screen recording & streaming (software mode)
-- **Audacity** - Audio editing & recording
-
-#### Productivity & Office
-- **LibreOffice Suite** - Writer, Calc, Impress, Draw
-- **Evince** - PDF viewer
-- **Mousepad** - Lightweight text editor
-- **KeePassXC** - Password manager with KeePass compatibility
-
-#### System Monitoring & Tools
-- **htop** - Interactive process viewer
-- **glances** - Advanced system monitor (CPU, RAM, network, disk)
-- **gnome-system-monitor** - GUI system resource monitor
-- **nmap** - Network discovery & security scanner
-- **neofetch** - System information display
-- **Thunar** - File manager
-- **GNOME Terminal** - Full-featured terminal
-
-#### Remote Access
-- **Remmina** - Remote desktop client (RDP, VNC, SSH support)
-
-#### Gaming (Optional - ~500MB)
-- **Steam** - Game platform with 32-bit library support
-  - ⚠️ **Note**: GPU acceleration NOT available in containers
-  - Best for: Steam Link, lightweight/2D games
-  - For GPU gaming: Use **game.evindrake.net** (Windows KVM + RTX 3060)
-  - **Status**: Enabled by default (`INSTALL_STEAM=true` in Dockerfile)
-  - **Verify after rebuild**: Check Applications menu or run `which steam` in terminal
-  - **To disable**: Edit `services/vnc-desktop/Dockerfile` and set `INSTALL_STEAM=false`
-
-### Desktop Environment
-- **Window Manager**: LXDE/LXQt (lightweight and responsive)
-- **Desktop Shortcuts**: 
-  - Firefox Web Browser
-  - Terminal
-  - File Manager (Thunar)
-  - Homelab Dashboard (direct link to host.evindrake.net)
-  - Projects Folder (linked to host projects)
-- **Panel**: Custom LXQt panel with quick launch bar
-
-### Persistent Storage
-- **vnc_home** volume: Stores user settings, desktop configurations, and installed apps
-- **Selective Host Mounts**: 
-  - `/home/evin/contain` → `~/host-projects` (read-only)
-  - `/home/evin/Downloads` → `~/host-downloads` (read-write)
-
-## Build & Deploy
-
-### Build Custom Image
-```bash
-cd /home/evin/contain
-docker compose -f docker-compose.unified.yml build vnc-desktop
-```
-
-### Deploy
-```bash
-./homelab-manager.sh
-# Select: Deploy Options → Full Deployment
-# Or: Service Control → Restart vnc-desktop
-```
-
-## First-Time Setup
-
-When the container starts for the first time:
-1. Bootstrap script runs automatically
-2. Creates XDG user directories (Desktop, Documents, Downloads, etc.)
-3. Provisions desktop shortcuts
-4. Configures LXQt panel
-5. Sets up file manager favorites
-6. Creates `.desktop_provisioned` flag to prevent re-provisioning
-
-## Access
-
-### Web Browser (noVNC)
-- **URL**: https://vnc.evindrake.net
-- **Port**: 6080 (proxied via Caddy)
-- **Security**: VNC password required + HTTPS
-
-### Native VNC Client (Optional)
-Not exposed externally for security. Use noVNC web interface.
-
-## Security
-
-- **VNC Password**: Set via `VNC_PASSWORD` environment variable
-- **User Password**: Set via `VNC_USER_PASSWORD` environment variable
-- **Network**: Internal Docker network only
-- **Reverse Proxy**: Caddy handles HTTPS and SSL termination
-- **No Direct Exposure**: VNC ports not exposed to internet
-
-## Installing Additional Apps
-
-### Apps NOT Included (Manual Installation)
-These require AppImage or .deb downloads due to repository issues:
-
-#### Discord (AppImage)
-```bash
-cd ~/Downloads
-wget "https://discord.com/api/download?platform=linux&format=tar.gz" -O discord.tar.gz
-tar -xvzf discord.tar.gz
-./Discord/Discord
-```
-
-#### VS Code (.deb)
-```bash
-cd ~/Downloads  
-wget "https://code.visualstudio.com/sha/download?build=stable&os=linux-deb-x64" -O vscode.deb
-sudo dpkg -i vscode.deb
-```
-
-#### Spotify (Web Player Recommended)
-Use https://open.spotify.com in Firefox for best experience.
-
-## Customization
-
-### Add More Applications
-Edit `services/vnc-desktop/Dockerfile`:
-```dockerfile
-RUN apt-get update && apt-get install -y \
-    your-package-here \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-```
-
-### Disable Steam (Save ~500MB)
-Edit `services/vnc-desktop/Dockerfile`, change:
-```dockerfile
-ENV INSTALL_STEAM=false
-```
-
-### Add Desktop Shortcuts
-Edit `services/vnc-desktop/bootstrap.sh`:
-```bash
-cat > "${USER_HOME}/Desktop/YourApp.desktop" << 'EOF'
-[Desktop Entry]
-Name=Your Application
-Exec=/path/to/your/app
-Icon=app-icon
-Type=Application
-EOF
-```
-
-### Rebuild After Changes
-```bash
-docker compose -f docker-compose.unified.yml build vnc-desktop
-docker compose -f docker-compose.unified.yml up -d vnc-desktop
-```
-
-## Troubleshooting
-
-### Desktop Not Showing Apps
-1. Check if bootstrap script ran: `docker logs vnc-desktop | grep "VNC Desktop Bootstrap"`
-2. Verify volume persistence: `docker volume inspect vnc_home`
-3. Remove provisioning flag to re-run: 
-   ```bash
-   docker exec vnc-desktop rm /home/evin/.desktop_provisioned
-   docker restart vnc-desktop
-   ```
-
-### Permission Issues
-1. Ensure UID/GID match: Set `USER_UID=1000` and `USER_GID=1000` in .env
-2. Check volume ownership: `docker exec vnc-desktop ls -la /home/evin`
-
-### Can't Access Web UI
-1. Check container status: `docker ps | grep vnc-desktop`
-2. View logs: `docker logs vnc-desktop`
-3. Verify Caddy routing: `docker logs caddy`
-4. Test health check: `docker exec vnc-desktop curl -f http://localhost:6080`
+X11 VNC Desktop configured as a **client viewer** that connects to a Windows KVM XRDP server, accessible through a web browser via NoVNC.
 
 ## Architecture
 
 ```
-Internet → Caddy (HTTPS/443)
-    ↓
-vnc-desktop:80 (noVNC web interface)
-    ↓
-vnc-desktop:5900 (VNC server)
-    ↓
-X Server + LXDE Desktop
-    ↓
-User Applications
+Browser (HTTPS) → NoVNC Web Interface (Port 6080)
+                     ↓
+                  VNC Server (X11)
+                     ↓
+                  FreeRDP Client
+                     ↓
+          Windows XRDP Server (WinApps/KVM)
 ```
 
-## Performance
+**Key Concept**: This container does NOT run its own desktop. Instead, it acts as an X11 client that displays a Windows desktop from your XRDP server, making it accessible through any web browser via NoVNC.
 
-- **RAM**: 2GB shared memory allocated
-- **Resolution**: 1920x1080 (configurable via RESOLUTION env var)
-- **Timezone**: America/New_York (configurable via TZ env var)
+## Features
 
-## Backup & Restore
+### Core Functionality
+- **FreeRDP Client**: Latest FreeRDP2 with X11 support
+- **Auto-Connect**: Automatically connects to Windows XRDP on startup
+- **Fullscreen Mode**: RDP session fills entire NoVNC viewport
+- **Auto-Reconnection**: Infinite retry with configurable delay
+- **Dynamic Resolution**: Adapts to browser window size changes
+- **Clipboard Sharing**: Copy/paste between browser and Windows
 
-### Backup VNC Home
+### Security
+- **HTTPS Access**: Secured via Caddy reverse proxy
+- **VNC Password**: Protected VNC server
+- **Certificate Bypass**: Auto-accepts RDP certificates (internal network)
+- **Environment Variables**: Credentials stored in Docker secrets
+
+### Performance
+- **Smart Sizing**: Automatically scales RDP session to fit viewport
+- **Compression**: Enabled for lower bandwidth usage
+- **AVC444 Graphics**: Hardware-accelerated video codec (if supported)
+- **Network Auto-Detection**: Adapts to connection quality
+
+## Environment Variables
+
+### Required Variables
 ```bash
-docker run --rm -v vnc_home:/data -v $(pwd):/backup \
-    ubuntu tar czf /backup/vnc_home_backup.tar.gz /data
+WINDOWS_RDP_HOST=192.168.1.100    # Windows XRDP server IP or hostname
+WINDOWS_RDP_USER=administrator     # Windows username
+WINDOWS_RDP_PASSWORD=your_password # Windows password (optional, can prompt)
 ```
 
-### Restore VNC Home
+### Optional Variables
 ```bash
-docker run --rm -v vnc_home:/data -v $(pwd):/backup \
-    ubuntu tar xzf /backup/vnc_home_backup.tar.gz -C /
+WINDOWS_RDP_PORT=3389             # RDP port (default: 3389)
+WINDOWS_RDP_DOMAIN=""             # Windows domain (if domain-joined)
+RDP_RECONNECT_DELAY=5             # Seconds to wait before reconnect (default: 5)
+RDP_MAX_RETRIES=0                 # Max reconnect attempts, 0 = infinite (default: 0)
 ```
+
+### VNC Server Variables (inherited from base image)
+```bash
+VNC_PASSWORD=your_vnc_password    # VNC server password
+VNC_USER=evin                     # VNC user (default: evin)
+USER_UID=1000                     # User UID (default: 1000)
+USER_GID=1000                     # User GID (default: 1000)
+RESOLUTION=1920x1080              # Desktop resolution (default: 1920x1080)
+```
+
+## Quick Start
+
+### 1. Configure Environment Variables
+
+Edit your `.env` file or Docker Compose:
+```bash
+# Windows XRDP Connection
+WINDOWS_RDP_HOST=192.168.1.100
+WINDOWS_RDP_USER=administrator
+WINDOWS_RDP_PASSWORD=MySecurePassword123
+WINDOWS_RDP_PORT=3389
+
+# VNC Server (for NoVNC access)
+VNC_PASSWORD=vnc_password_here
+```
+
+### 2. Deploy Container
+
+```bash
+cd /home/evin/contain
+docker compose -f docker-compose.unified.yml build vnc-desktop
+docker compose -f docker-compose.unified.yml up -d vnc-desktop
+```
+
+### 3. Access via Browser
+
+Navigate to: **https://vnc.evindrake.net**
+
+The RDP connection will launch automatically and display your Windows desktop.
+
+## Docker Compose Configuration
+
+Add to your `docker-compose.unified.yml`:
+
+```yaml
+vnc-desktop:
+  build:
+    context: ./services/vnc-desktop
+    dockerfile: Dockerfile
+  container_name: vnc-desktop
+  hostname: vnc-desktop
+  restart: unless-stopped
+  environment:
+    # VNC Server Settings
+    - VNC_PASSWORD=${VNC_PASSWORD}
+    - VNC_USER=evin
+    - USER_UID=1000
+    - USER_GID=1000
+    - RESOLUTION=1920x1080
+    
+    # Windows XRDP Connection
+    - WINDOWS_RDP_HOST=${WINDOWS_RDP_HOST}
+    - WINDOWS_RDP_PORT=${WINDOWS_RDP_PORT:-3389}
+    - WINDOWS_RDP_USER=${WINDOWS_RDP_USER}
+    - WINDOWS_RDP_PASSWORD=${WINDOWS_RDP_PASSWORD}
+    - WINDOWS_RDP_DOMAIN=${WINDOWS_RDP_DOMAIN:-}
+    
+    # Reconnection Settings
+    - RDP_RECONNECT_DELAY=${RDP_RECONNECT_DELAY:-5}
+    - RDP_MAX_RETRIES=${RDP_MAX_RETRIES:-0}
+  ports:
+    - "6080:80"  # NoVNC web interface (proxied by Caddy)
+  volumes:
+    - vnc_home:/home/evin
+  shm_size: 2gb
+  networks:
+    - homelab
+```
+
+## Connection Modes
+
+### Standard Connection (No Domain)
+```bash
+WINDOWS_RDP_HOST=192.168.1.100
+WINDOWS_RDP_USER=LocalAdmin
+WINDOWS_RDP_PASSWORD=password123
+```
+
+### Domain-Joined Windows
+```bash
+WINDOWS_RDP_HOST=192.168.1.100
+WINDOWS_RDP_USER=john.doe
+WINDOWS_RDP_PASSWORD=password123
+WINDOWS_RDP_DOMAIN=CORP
+```
+
+### Password Prompt (More Secure)
+```bash
+WINDOWS_RDP_HOST=192.168.1.100
+WINDOWS_RDP_USER=administrator
+# Leave WINDOWS_RDP_PASSWORD empty - FreeRDP will prompt
+```
+
+## Advanced Configuration
+
+### FreeRDP Command Options
+
+The launcher script (`/usr/local/bin/rdp-launcher.sh`) builds this command:
+
+```bash
+xfreerdp \
+  /v:192.168.1.100:3389 \           # Server and port
+  /u:administrator \                 # Username
+  /p:password \                      # Password (if set)
+  /d:DOMAIN \                        # Domain (if set)
+  /f \                               # Fullscreen
+  /smart-sizing \                    # Scale to fit window
+  /dynamic-resolution \              # Adjust on window resize
+  /gfx:AVC444 \                      # Video codec
+  /network:auto \                    # Auto-detect connection type
+  /compression \                     # Enable compression
+  /cert:ignore \                     # Ignore certificate warnings
+  /timeout:60000 \                   # Connection timeout (60s)
+  +clipboard \                       # Enable clipboard sharing
+  /audio-mode:0                      # Redirect audio to client
+```
+
+### Custom FreeRDP Options
+
+To add custom options, modify `/usr/local/bin/rdp-launcher.sh` in the Dockerfile:
+
+```dockerfile
+RDP_CMD="$RDP_CMD /drive:share,/path/to/share"  # Mount local drive
+RDP_CMD="$RDP_CMD /usb:id,dev:054c:0268"        # USB passthrough
+RDP_CMD="$RDP_CMD /multimon"                     # Multi-monitor
+```
+
+## Troubleshooting
+
+### Connection Issues
+
+#### RDP Not Connecting
+1. Check container logs:
+   ```bash
+   docker logs vnc-desktop
+   ```
+
+2. Verify environment variables:
+   ```bash
+   docker exec vnc-desktop env | grep WINDOWS_RDP
+   ```
+
+3. Test network connectivity:
+   ```bash
+   docker exec vnc-desktop ping -c 3 $WINDOWS_RDP_HOST
+   docker exec vnc-desktop nc -zv $WINDOWS_RDP_HOST 3389
+   ```
+
+#### Black Screen in NoVNC
+- **Cause**: RDP client not launched or crashed
+- **Fix**: Check logs for FreeRDP errors
+  ```bash
+  docker logs vnc-desktop | grep -i freerdp
+  ```
+
+#### "Connection Failed" Message
+- **Cause**: Invalid credentials or XRDP server not running
+- **Fix**: 
+  1. Verify Windows XRDP server is running
+  2. Test credentials from another RDP client
+  3. Check Windows firewall allows port 3389
+
+#### Authentication Failures
+- **Cause**: Incorrect username/password or domain
+- **Fix**:
+  1. Verify credentials in `.env` file
+  2. For domain users, ensure domain is set correctly
+  3. Check Windows event logs for authentication failures
+
+### Reconnection Issues
+
+#### Client Keeps Disconnecting
+- **Cause**: Network instability or Windows session limits
+- **Fix**: Adjust reconnection settings
+  ```bash
+  RDP_RECONNECT_DELAY=10  # Wait longer between retries
+  ```
+
+#### Want Manual Control (No Auto-Reconnect)
+- **Fix**: Set max retries to 1
+  ```bash
+  RDP_MAX_RETRIES=1
+  ```
+
+### Performance Issues
+
+#### Laggy or Slow Response
+1. Reduce resolution:
+   ```bash
+   RESOLUTION=1600x900  # Instead of 1920x1080
+   ```
+
+2. Disable graphics features in rdp-launcher.sh:
+   ```bash
+   # Remove or change:
+   /gfx:AVC444  →  /gfx:RFX
+   ```
+
+3. Check network latency:
+   ```bash
+   docker exec vnc-desktop ping $WINDOWS_RDP_HOST
+   ```
+
+#### Clipboard Not Working
+- **Cause**: Clipboard redirection disabled
+- **Fix**: Ensure `+clipboard` option is in rdp-launcher.sh
+
+## Debugging
+
+### View RDP Connection Status
+Access the desktop and click "RDP Status" icon to see:
+- Current FreeRDP process
+- Connection state
+- Last error messages
+
+### Manual RDP Test
+```bash
+# Enter container
+docker exec -it vnc-desktop bash
+
+# Test manual connection
+xfreerdp /v:192.168.1.100:3389 /u:administrator /cert:ignore
+```
+
+### Check Autostart Configuration
+```bash
+docker exec vnc-desktop cat /home/evin/.config/autostart/rdp-launcher.desktop
+```
+
+### View Launcher Script
+```bash
+docker exec vnc-desktop cat /usr/local/bin/rdp-launcher.sh
+```
+
+## Security Considerations
+
+### Best Practices
+1. **Use Strong Passwords**: Both VNC and Windows passwords
+2. **Internal Network Only**: Don't expose RDP server to internet
+3. **HTTPS Only**: Always use Caddy reverse proxy with SSL
+4. **Rotate Credentials**: Regularly update passwords
+5. **Monitor Logs**: Watch for failed connection attempts
+
+### Network Isolation
+```yaml
+networks:
+  homelab:
+    internal: true  # Prevent external access
+```
+
+### Password Management
+Store sensitive credentials in Docker secrets:
+```bash
+echo "my_password" | docker secret create rdp_password -
+```
+
+Then reference in compose:
+```yaml
+secrets:
+  - rdp_password
+environment:
+  - WINDOWS_RDP_PASSWORD_FILE=/run/secrets/rdp_password
+```
+
+## Use Cases
+
+### WinApps Streaming
+Access Windows applications (Adobe, MS Office, etc.) through your browser without a Windows license on the client machine.
+
+### Remote Administration
+Manage Windows servers from any device with a web browser - no VPN or RDP client required.
+
+### Gaming (Limited)
+Stream Windows games that don't require high-end GPU (e.g., indie games, older titles). For modern gaming, use native GPU passthrough.
+
+### Development
+Access Windows development environments (Visual Studio, .NET) from Linux/Mac/Chromebook.
+
+## Upgrading
+
+### From Ubuntu Desktop VNC
+If migrating from the full desktop setup:
+
+1. **Backup Data**:
+   ```bash
+   docker run --rm -v vnc_home:/data -v $(pwd):/backup \
+       ubuntu tar czf /backup/vnc_home_backup.tar.gz /data
+   ```
+
+2. **Remove Old Container**:
+   ```bash
+   docker compose -f docker-compose.unified.yml down vnc-desktop
+   ```
+
+3. **Deploy New Configuration**:
+   ```bash
+   docker compose -f docker-compose.unified.yml build vnc-desktop
+   docker compose -f docker-compose.unified.yml up -d vnc-desktop
+   ```
+
+### Update FreeRDP Version
+Rebuild container to get latest packages:
+```bash
+docker compose -f docker-compose.unified.yml build --no-cache vnc-desktop
+docker compose -f docker-compose.unified.yml up -d vnc-desktop
+```
+
+## Technical Details
+
+### Base Image
+- **Image**: `dorowu/ubuntu-desktop-lxde-vnc:latest`
+- **Desktop**: LXDE (lightweight, auto-hides for fullscreen RDP)
+- **VNC Server**: TigerVNC
+- **NoVNC**: Web-based VNC client with websockets
+
+### Installed Packages
+- `freerdp2-x11` - FreeRDP client with X11 support
+- `freerdp2-shadow-x11` - Shadow server (optional features)
+- `gnome-terminal` - Terminal for debugging
+- `vim`, `nano` - Text editors
+- `curl`, `wget`, `net-tools` - Network utilities
+
+### Ports
+- **80**: NoVNC web interface (internal, proxied by Caddy)
+- **5900**: VNC server (internal only, not exposed)
+
+### Volume
+- `vnc_home` - Persists `/home/evin` including:
+  - FreeRDP connection history
+  - Desktop configuration
+  - User preferences
+
+## Support
+
+### Common Questions
+
+**Q: Can I run local applications alongside RDP?**
+A: No, this is designed as a pure RDP viewer. For a hybrid setup, use the original Ubuntu desktop image.
+
+**Q: Does this work with non-Windows RDP servers?**
+A: Yes! Works with xrdp on Linux, macOS Remote Desktop, or any RDP-compatible server.
+
+**Q: Can I connect to multiple Windows servers?**
+A: Not simultaneously in one container. Deploy multiple containers with different configurations.
+
+**Q: What about GPU acceleration?**
+A: GPU rendering happens on the Windows server. This container only displays the output.
+
+### Related Documentation
+- [FreeRDP Wiki](https://github.com/FreeRDP/FreeRDP/wiki)
+- [NoVNC Documentation](https://novnc.com/info.html)
+- [Windows XRDP Setup](https://docs.microsoft.com/en-us/windows-server/remote/remote-desktop-services/)
+
+## License
+
+Based on `dorowu/ubuntu-desktop-lxde-vnc` image.
+FreeRDP is licensed under Apache License 2.0.
