@@ -56,6 +56,7 @@ HomeLabHub/
 **Discord Ticket Bot (services/discord-bot/)**
 - **Stack**: TypeScript, React, Express, Discord.js, Drizzle ORM, PostgreSQL.
 - **Purpose**: Support ticket system and multi-platform streamer go-live notifications.
+- **Stream Notifications**: Automatic detection of server members with connected Twitch/YouTube/Kick accounts via Discord presence data. Auto-detects users when they go live (passive detection), eliminating manual user tracking. Features configurable scan intervals, manual scan triggers via `/stream-scan` command, and dashboard UI with auto-detected user badges showing connected platforms.
 
 **Stream Bot / SnappleBotAI (services/stream-bot/)**
 - **Stack**: TypeScript, React, Express, tmi.js, @retconned/kick-js, OpenAI GPT-5, Spotify Web API, Drizzle ORM, PostgreSQL.
@@ -117,6 +118,22 @@ A single PostgreSQL container manages multiple databases (`ticketbot`, `streambo
 - Let's Encrypt
 
 ## Recent Changes
+
+### November 15, 2025 - Discord Bot: Auto-Detection for Stream Notifications
+- **Automatic Streamer Discovery**: Implemented passive presence-based detection that automatically discovers server members with connected Twitch, YouTube, or Kick accounts
+  - Eliminates manual user tracking by scanning Discord presence data when users go live
+  - Requires GuildPresences intent in Discord Developer Portal
+  - Optimized for scalability with O(n) complexity (single presence fetch, Map-based lookups)
+- **Database Schema**: Added auto-detection fields to stream notification settings and tracked users tables
+  - Migration 0002 creates/updates tables with `auto_detect_enabled`, `auto_sync_interval_minutes`, `connected_platforms`, `platform_usernames`
+- **UI Enhancements**: Stream Notifications tab now includes:
+  - Auto-detection toggle with configurable scan interval (15-1440 minutes)
+  - Manual "Scan Now" button for on-demand detection
+  - Auto-detected user badges showing Twitch/YouTube/Kick platform connections
+  - Platform usernames displayed in tracked user list
+- **Slash Command**: Added `/stream-scan` command for manual scanning triggers
+- **API Endpoint**: POST `/api/stream-notifications/scan/:serverId` for manual scans with proper authentication
+- **Performance**: Efficient chunked presence fetching, no redundant REST calls, scales to large guilds
 
 ### November 14, 2025 - AI Assistant Improvements & Accessibility Fixes
 - **WCAG AA Accessibility**: Comprehensive text contrast fixes ensuring all text meets 4.5:1 contrast ratio minimum
