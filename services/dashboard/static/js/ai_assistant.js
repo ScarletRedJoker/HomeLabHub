@@ -37,6 +37,22 @@ async function sendMessage() {
             })
         });
         
+        // Check if we were redirected to login (not logged in)
+        if (response.redirected || response.url.includes('/login')) {
+            const messages = document.getElementById('chatMessages');
+            messages.removeChild(messages.lastChild);
+            addMessage('assistant', '⚠️ Please <a href="/login">log in</a> to use the AI assistant.');
+            return;
+        }
+        
+        // Check for HTTP errors before parsing JSON
+        if (!response.ok) {
+            const messages = document.getElementById('chatMessages');
+            messages.removeChild(messages.lastChild);
+            addMessage('assistant', `⚠️ Server error (${response.status}). Please try again or contact support.`);
+            return;
+        }
+        
         const data = await response.json();
         
         const messages = document.getElementById('chatMessages');
@@ -49,13 +65,19 @@ async function sendMessage() {
                 content: data.data
             });
         } else {
-            addMessage('assistant', `Error: ${data.message}`);
+            addMessage('assistant', `⚠️ Error: ${data.message}`);
         }
     } catch (error) {
         console.error('Error sending message:', error);
         const messages = document.getElementById('chatMessages');
-        messages.removeChild(messages.lastChild);
-        addMessage('assistant', `Error: ${error.message}`);
+        if (messages.lastChild && messages.lastChild.className.includes('assistant')) {
+            messages.removeChild(messages.lastChild);
+        }
+        if (error.message.includes('JSON')) {
+            addMessage('assistant', '⚠️ Please <a href="/login">log in</a> to use the AI assistant.');
+        } else {
+            addMessage('assistant', `⚠️ Connection error: ${error.message}. Please check your network.`);
+        }
     }
 }
 

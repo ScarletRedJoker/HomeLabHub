@@ -40,8 +40,10 @@ Logs:
 
 Provide a clear, actionable response."""
             
+            # the newest OpenAI model is "gpt-5" which was released August 7, 2025.
+            # do not change this unless explicitly requested by the user
             response = self.client.chat.completions.create(
-                model="gpt-5-mini",
+                model="gpt-5",
                 messages=[
                     {"role": "system", "content": "You are an expert DevOps engineer helping troubleshoot server and container issues."},
                     {"role": "user", "content": prompt}
@@ -65,8 +67,10 @@ Issue: {issue_description}
 
 Provide specific troubleshooting steps and potential solutions."""
             
+            # the newest OpenAI model is "gpt-5" which was released August 7, 2025.
+            # do not change this unless explicitly requested by the user
             response = self.client.chat.completions.create(
-                model="gpt-5-mini",
+                model="gpt-5",
                 messages=[
                     {"role": "system", "content": "You are an expert homelab administrator helping with Docker, networking, and server management."},
                     {"role": "user", "content": prompt}
@@ -85,7 +89,14 @@ Provide specific troubleshooting steps and potential solutions."""
         
         try:
             messages = [
-                {"role": "system", "content": "You are a helpful homelab assistant. You help with Docker containers, server management, networking, and troubleshooting. Be concise and practical."}
+                {"role": "system", "content": """You are Jarvis, an AI-first homelab copilot assistant. You help with:
+- Docker container management and troubleshooting
+- Server health monitoring and diagnostics
+- Network configuration and debugging
+- Log analysis and error resolution
+- Service deployment and orchestration
+
+Be concise, practical, and action-oriented. When diagnosing issues, suggest specific commands or checks the user can perform. Focus on real solutions, not just general advice."""}
             ]
             
             if conversation_history:
@@ -93,8 +104,10 @@ Provide specific troubleshooting steps and potential solutions."""
             
             messages.append({"role": "user", "content": message})
             
+            # the newest OpenAI model is "gpt-5" which was released August 7, 2025.
+            # do not change this unless explicitly requested by the user
             response = self.client.chat.completions.create(
-                model="gpt-5-mini",
+                model="gpt-5",
                 messages=messages,
                 max_completion_tokens=1024
             )
