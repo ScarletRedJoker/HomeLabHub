@@ -10,6 +10,15 @@ from celery_app import celery_app
 from services.google.calendar_service import calendar_service
 from services.google.gmail_service import gmail_service
 from services.google.drive_service import drive_service
+from services.google.exceptions import (
+    GoogleServiceError,
+    GoogleAuthenticationError,
+    GooglePermissionError,
+    GoogleRateLimitError,
+    GoogleQuotaExceededError,
+    GoogleConnectionUnavailableError,
+    GoogleTokenRefreshError
+)
 from services.home_assistant_service import home_assistant_service
 from services.db_service import db_service
 from services.websocket_service import websocket_service
@@ -28,23 +37,47 @@ logger = logging.getLogger(__name__)
 class GoogleTask(Task):
     """Base class for Google service tasks with error handling"""
     
-    autoretry_for = (Exception,)
-    retry_kwargs = {'max_retries': 3, 'countdown': 5}
+    # Don't auto-retry on user-facing errors (auth, permissions, quota)
+    # Only retry on transient errors (network, rate limit, server errors)
+    autoretry_for = (GoogleRateLimitError,)
+    retry_kwargs = {'max_retries': 5, 'countdown': 60}
     retry_backoff = True
     retry_backoff_max = 600
     retry_jitter = True
     
     def on_failure(self, exc, task_id, args, kwargs, einfo):
-        """Handle task failure"""
-        logger.error(f"Google task {task_id} failed: {exc}")
+        """Handle task failure with user-friendly messages"""
+        # Determine error type and create appropriate message
+        user_message = str(exc)
+        error_type = 'unknown'
         
-        # Publish failure event
+        if isinstance(exc, GoogleAuthenticationError):
+            error_type = 'authentication'
+        elif isinstance(exc, GooglePermissionError):
+            error_type = 'permission'
+        elif isinstance(exc, GoogleQuotaExceededError):
+            error_type = 'quota'
+        elif isinstance(exc, GoogleConnectionUnavailableError):
+            error_type = 'connection'
+        elif isinstance(exc, GoogleTokenRefreshError):
+            error_type = 'token_refresh'
+        elif isinstance(exc, GoogleRateLimitError):
+            error_type = 'rate_limit'
+        elif isinstance(exc, GoogleServiceError):
+            user_message = exc.user_message
+            error_type = 'google_service'
+        
+        logger.error(f"Google task {task_id} failed ({error_type}): {user_message}")
+        
+        # Publish failure event with user-friendly message
         try:
             websocket_service.publish_event('google_services', {
                 'type': 'task_failed',
                 'task_id': task_id,
-                'error': str(exc),
-                'timestamp': datetime.utcnow().isoformat()
+                'error': user_message,
+                'error_type': error_type,
+                'timestamp': datetime.utcnow().isoformat(),
+                'requires_reconnect': isinstance(exc, (GoogleAuthenticationError, GoogleTokenRefreshError, GoogleConnectionUnavailableError))
             })
         except Exception as e:
             logger.error(f"Failed to publish failure event: {e}")

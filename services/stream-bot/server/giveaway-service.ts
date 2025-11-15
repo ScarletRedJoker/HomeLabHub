@@ -1,12 +1,16 @@
 import { randomBytes } from "crypto";
-import { storage } from "./storage";
-import type {
-  Giveaway,
-  GiveawayEntry,
-  GiveawayWinner,
-  InsertGiveaway,
-  InsertGiveawayEntry,
+import { db } from "./db";
+import {
+  giveaways,
+  giveawayEntries,
+  giveawayWinners,
+  giveawayEntryAttempts,
+  type Giveaway,
+  type GiveawayEntry,
+  type GiveawayWinner,
+  type InsertGiveaway,
 } from "@shared/schema";
+import { eq, and, sql, gte } from "drizzle-orm";
 
 export interface GiveawayWithStats extends Giveaway {
   entriesCount: number;
@@ -14,19 +18,41 @@ export interface GiveawayWithStats extends Giveaway {
   winners?: GiveawayWinner[];
 }
 
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const MAX_ENTRIES_PER_MINUTE = 10;
+
 export class GiveawayService {
   async createGiveaway(userId: string, data: InsertGiveaway): Promise<Giveaway> {
-    const activeGiveaway = await storage.getActiveGiveaway(userId);
-    if (activeGiveaway) {
-      throw new Error("You already have an active giveaway. Please end it before starting a new one.");
-    }
+    return await db.transaction(async (tx) => {
+      const [activeGiveaway] = await tx
+        .select()
+        .from(giveaways)
+        .where(
+          and(
+            eq(giveaways.userId, userId),
+            eq(giveaways.isActive, true)
+          )
+        )
+        .limit(1);
 
-    const keyword = data.keyword.startsWith("!") ? data.keyword : `!${data.keyword}`;
-    
-    return await storage.createGiveaway(userId, {
-      ...data,
-      keyword,
-      isActive: true,
+      if (activeGiveaway) {
+        throw new Error("You already have an active giveaway. Please end it before starting a new one.");
+      }
+
+      const keyword = data.keyword.startsWith("!") ? data.keyword : `!${data.keyword}`;
+
+      const [giveaway] = await tx
+        .insert(giveaways)
+        .values({
+          ...data,
+          userId,
+          keyword,
+          isActive: true,
+          entryCount: 0,
+        })
+        .returning();
+
+      return giveaway;
     });
   }
 
@@ -37,102 +63,217 @@ export class GiveawayService {
     platform: string,
     isSubscriber: boolean = false
   ): Promise<{ success: boolean; message: string; entry?: GiveawayEntry }> {
-    const giveaway = await storage.getGiveaway(userId, giveawayId);
-    
-    if (!giveaway) {
-      return { success: false, message: "Giveaway not found" };
+    try {
+      const result = await db.transaction(async (tx) => {
+        const [giveaway] = await tx
+          .select()
+          .from(giveaways)
+          .where(
+            and(
+              eq(giveaways.id, giveawayId),
+              eq(giveaways.userId, userId)
+            )
+          )
+          .limit(1)
+          .for("update");
+
+        if (!giveaway) {
+          return { success: false, message: "Giveaway not found" };
+        }
+
+        if (!giveaway.isActive) {
+          return { success: false, message: "This giveaway has ended" };
+        }
+
+        if (giveaway.requiresSubscription && !isSubscriber) {
+          return { success: false, message: "This giveaway is for subscribers only" };
+        }
+
+        const [existingEntry] = await tx
+          .select()
+          .from(giveawayEntries)
+          .where(
+            and(
+              eq(giveawayEntries.giveawayId, giveawayId),
+              eq(giveawayEntries.username, username),
+              eq(giveawayEntries.platform, platform)
+            )
+          )
+          .limit(1);
+
+        if (existingEntry) {
+          return { success: false, message: "You have already entered this giveaway" };
+        }
+
+        const rateLimitCheck = await this.checkRateLimit(tx, userId, username, platform);
+        if (!rateLimitCheck.allowed) {
+          return { success: false, message: rateLimitCheck.message };
+        }
+
+        await tx
+          .insert(giveawayEntryAttempts)
+          .values({
+            userId,
+            username,
+            platform,
+            giveawayId,
+          });
+
+        const [entry] = await tx
+          .insert(giveawayEntries)
+          .values({
+            giveawayId,
+            userId,
+            username,
+            platform,
+            subscriberStatus: isSubscriber,
+          })
+          .returning();
+
+        await tx
+          .update(giveaways)
+          .set({
+            entryCount: sql`${giveaways.entryCount} + 1`,
+          })
+          .where(eq(giveaways.id, giveawayId));
+
+        return {
+          success: true,
+          message: `@${username}, you're entered in the giveaway!`,
+          entry,
+        };
+      });
+
+      return result;
+    } catch (error: any) {
+      if (error.code === '23505') {
+        return { success: false, message: "You have already entered this giveaway" };
+      }
+      console.error("Error entering giveaway:", error);
+      return { success: false, message: "An error occurred while entering the giveaway" };
+    }
+  }
+
+  private async checkRateLimit(
+    tx: any,
+    userId: string,
+    username: string,
+    platform: string
+  ): Promise<{ allowed: boolean; message: string }> {
+    const oneMinuteAgo = new Date(Date.now() - RATE_LIMIT_WINDOW_MS);
+
+    const attempts = await tx
+      .select()
+      .from(giveawayEntryAttempts)
+      .where(
+        and(
+          eq(giveawayEntryAttempts.userId, userId),
+          eq(giveawayEntryAttempts.username, username),
+          eq(giveawayEntryAttempts.platform, platform),
+          gte(giveawayEntryAttempts.attemptedAt, oneMinuteAgo)
+        )
+      );
+
+    if (attempts.length >= MAX_ENTRIES_PER_MINUTE) {
+      return {
+        allowed: false,
+        message: `Rate limit exceeded. You can only enter ${MAX_ENTRIES_PER_MINUTE} giveaways per minute. Please wait and try again.`,
+      };
     }
 
-    if (!giveaway.isActive) {
-      return { success: false, message: "This giveaway has ended" };
-    }
-
-    if (giveaway.requiresSubscription && !isSubscriber) {
-      return { success: false, message: "This giveaway is for subscribers only" };
-    }
-
-    const existingEntry = await storage.getGiveawayEntryByUsername(
-      giveawayId,
-      username,
-      platform
-    );
-
-    if (existingEntry) {
-      return { success: false, message: "You are already entered in this giveaway" };
-    }
-
-    const entry = await storage.createGiveawayEntry(userId, {
-      giveawayId,
-      userId,
-      username,
-      platform,
-      subscriberStatus: isSubscriber,
-    });
-
-    return {
-      success: true,
-      message: `@${username}, you're entered in the giveaway!`,
-      entry,
-    };
+    return { allowed: true, message: "" };
   }
 
   async endGiveaway(
     userId: string,
     giveawayId: string
   ): Promise<{ giveaway: Giveaway; winners: GiveawayWinner[] }> {
-    const giveaway = await storage.getGiveaway(userId, giveawayId);
-    
-    if (!giveaway) {
-      throw new Error("Giveaway not found");
-    }
+    return await db.transaction(async (tx) => {
+      const [giveaway] = await tx
+        .select()
+        .from(giveaways)
+        .where(
+          and(
+            eq(giveaways.id, giveawayId),
+            eq(giveaways.userId, userId)
+          )
+        )
+        .limit(1)
+        .for("update");
 
-    if (!giveaway.isActive) {
-      throw new Error("This giveaway has already ended");
-    }
+      if (!giveaway) {
+        throw new Error("Giveaway not found");
+      }
 
-    const entries = await storage.getGiveawayEntries(giveawayId);
-    
-    if (entries.length === 0) {
-      throw new Error("No entries to select winners from");
-    }
+      if (!giveaway.isActive) {
+        throw new Error("This giveaway has already ended");
+      }
 
-    const maxWinners = Math.min(giveaway.maxWinners, entries.length);
-    const winners = this.selectRandomWinners(entries, maxWinners);
+      const entries = await tx
+        .select()
+        .from(giveawayEntries)
+        .where(eq(giveawayEntries.giveawayId, giveawayId));
 
-    const winnerRecords: GiveawayWinner[] = [];
-    for (const entry of winners) {
-      const winner = await storage.createGiveawayWinner({
-        giveawayId,
-        username: entry.username,
-        platform: entry.platform,
-      });
-      winnerRecords.push(winner);
-    }
+      if (entries.length === 0) {
+        throw new Error("No entries to select winners from");
+      }
 
-    const updatedGiveaway = await storage.updateGiveaway(userId, giveawayId, {
-      isActive: false,
-      endedAt: new Date(),
+      const maxWinners = Math.min(giveaway.maxWinners, entries.length);
+      const selectedWinners = this.selectRandomWinners(entries, maxWinners);
+
+      const winnerRecords: GiveawayWinner[] = [];
+      for (const entry of selectedWinners) {
+        const [winner] = await tx
+          .insert(giveawayWinners)
+          .values({
+            giveawayId,
+            username: entry.username,
+            platform: entry.platform,
+          })
+          .returning();
+        winnerRecords.push(winner);
+      }
+
+      const [updatedGiveaway] = await tx
+        .update(giveaways)
+        .set({
+          isActive: false,
+          endedAt: new Date(),
+        })
+        .where(eq(giveaways.id, giveawayId))
+        .returning();
+
+      return {
+        giveaway: updatedGiveaway,
+        winners: winnerRecords,
+      };
     });
-
-    return {
-      giveaway: updatedGiveaway,
-      winners: winnerRecords,
-    };
   }
 
   async getActiveGiveaway(userId: string): Promise<GiveawayWithStats | null> {
-    const giveaway = await storage.getActiveGiveaway(userId);
-    
+    const [giveaway] = await db
+      .select()
+      .from(giveaways)
+      .where(
+        and(
+          eq(giveaways.userId, userId),
+          eq(giveaways.isActive, true)
+        )
+      )
+      .limit(1);
+
     if (!giveaway) {
       return null;
     }
 
-    const entries = await storage.getGiveawayEntries(giveaway.id);
-    const winners = await storage.getGiveawayWinners(giveaway.id);
+    const winners = await db
+      .select()
+      .from(giveawayWinners)
+      .where(eq(giveawayWinners.giveawayId, giveaway.id));
 
     return {
       ...giveaway,
-      entriesCount: entries.length,
+      entriesCount: giveaway.entryCount,
       winnersCount: winners.length,
       winners,
     };
@@ -142,16 +283,23 @@ export class GiveawayService {
     userId: string,
     limit: number = 50
   ): Promise<GiveawayWithStats[]> {
-    const giveaways = await storage.getGiveaways(userId, limit);
-    
+    const allGiveaways = await db
+      .select()
+      .from(giveaways)
+      .where(eq(giveaways.userId, userId))
+      .orderBy(sql`${giveaways.createdAt} DESC`)
+      .limit(limit);
+
     const giveawaysWithStats = await Promise.all(
-      giveaways.map(async (giveaway) => {
-        const entries = await storage.getGiveawayEntries(giveaway.id);
-        const winners = await storage.getGiveawayWinners(giveaway.id);
-        
+      allGiveaways.map(async (giveaway) => {
+        const winners = await db
+          .select()
+          .from(giveawayWinners)
+          .where(eq(giveawayWinners.giveawayId, giveaway.id));
+
         return {
           ...giveaway,
-          entriesCount: entries.length,
+          entriesCount: giveaway.entryCount,
           winnersCount: winners.length,
           winners,
         };
@@ -162,35 +310,67 @@ export class GiveawayService {
   }
 
   async getGiveaway(userId: string, giveawayId: string): Promise<GiveawayWithStats | null> {
-    const giveaway = await storage.getGiveaway(userId, giveawayId);
-    
+    const [giveaway] = await db
+      .select()
+      .from(giveaways)
+      .where(
+        and(
+          eq(giveaways.id, giveawayId),
+          eq(giveaways.userId, userId)
+        )
+      )
+      .limit(1);
+
     if (!giveaway) {
       return null;
     }
 
-    const entries = await storage.getGiveawayEntries(giveaway.id);
-    const winners = await storage.getGiveawayWinners(giveaway.id);
+    const winners = await db
+      .select()
+      .from(giveawayWinners)
+      .where(eq(giveawayWinners.giveawayId, giveaway.id));
 
     return {
       ...giveaway,
-      entriesCount: entries.length,
+      entriesCount: giveaway.entryCount,
       winnersCount: winners.length,
       winners,
     };
   }
 
   async cancelGiveaway(userId: string, giveawayId: string): Promise<void> {
-    const giveaway = await storage.getGiveaway(userId, giveawayId);
-    
-    if (!giveaway) {
-      throw new Error("Giveaway not found");
-    }
+    await db.transaction(async (tx) => {
+      const [giveaway] = await tx
+        .select()
+        .from(giveaways)
+        .where(
+          and(
+            eq(giveaways.id, giveawayId),
+            eq(giveaways.userId, userId)
+          )
+        )
+        .limit(1)
+        .for("update");
 
-    if (!giveaway.isActive) {
-      throw new Error("Cannot cancel a giveaway that has already ended");
-    }
+      if (!giveaway) {
+        throw new Error("Giveaway not found");
+      }
 
-    await storage.deleteGiveaway(userId, giveawayId);
+      if (!giveaway.isActive) {
+        throw new Error("Cannot cancel a giveaway that has already ended");
+      }
+
+      await tx
+        .delete(giveaways)
+        .where(eq(giveaways.id, giveawayId));
+    });
+  }
+
+  async cleanupOldAttempts(): Promise<void> {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    await db
+      .delete(giveawayEntryAttempts)
+      .where(sql`${giveawayEntryAttempts.attemptedAt} < ${oneHourAgo}`);
   }
 
   private selectRandomWinners(entries: GiveawayEntry[], count: number): GiveawayEntry[] {

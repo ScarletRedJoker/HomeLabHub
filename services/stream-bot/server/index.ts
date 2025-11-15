@@ -175,6 +175,10 @@ app.use((req, res, next) => {
   async function gracefulShutdown(signal: string) {
     log(`${signal} received, shutting down gracefully...`);
     
+    // Stop token refresh service
+    const { tokenRefreshService } = await import('./token-refresh-service');
+    tokenRefreshService.stop();
+    
     server.close(async () => {
       try {
         await pool.end();

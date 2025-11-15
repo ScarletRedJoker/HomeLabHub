@@ -183,6 +183,101 @@ router.get('/youtube/callback', async (req, res) => {
 });
 
 /**
+ * Refresh YouTube access token using refresh_token grant
+ */
+export async function refreshYouTubeToken(userId: string): Promise<string | null> {
+  try {
+    const connection = await storage.getPlatformConnectionByPlatform(userId, 'youtube');
+    if (!connection || !connection.refreshToken) {
+      console.error('[YouTube OAuth] No refresh token available');
+      return null;
+    }
+
+    const clientId = getEnv('YOUTUBE_CLIENT_ID');
+    const clientSecret = getEnv('YOUTUBE_CLIENT_SECRET');
+
+    if (!clientId || !clientSecret) {
+      throw new Error('YouTube OAuth credentials not configured');
+    }
+
+    // Decrypt refresh token
+    const refreshToken = decryptToken(connection.refreshToken);
+
+    // Request new access token
+    const tokenResponse = await axios.post(
+      GOOGLE_TOKEN_URL,
+      querystring.stringify({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+        client_id: clientId,
+        client_secret: clientSecret,
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      }
+    );
+
+    const { access_token, refresh_token: new_refresh_token, expires_in } = tokenResponse.data;
+
+    // Encrypt new tokens
+    const encryptedAccessToken = encryptToken(access_token);
+    const encryptedRefreshToken = new_refresh_token ? encryptToken(new_refresh_token) : connection.refreshToken;
+
+    // Update stored tokens
+    const tokenExpiresAt = new Date(Date.now() + expires_in * 1000);
+    await storage.updatePlatformConnection(userId, connection.id, {
+      accessToken: encryptedAccessToken,
+      refreshToken: encryptedRefreshToken,
+      tokenExpiresAt,
+    });
+
+    console.log(`[YouTube OAuth] Refreshed token for user ${userId}`);
+    return access_token;
+  } catch (error: any) {
+    console.error('[YouTube OAuth] Token refresh error:', error.response?.data || error.message);
+    
+    // Mark connection as disconnected if refresh fails
+    const connection = await storage.getPlatformConnectionByPlatform(userId, 'youtube');
+    if (connection) {
+      await storage.updatePlatformConnection(userId, connection.id, {
+        isConnected: false,
+      });
+    }
+    
+    return null;
+  }
+}
+
+/**
+ * Get valid YouTube access token (auto-refresh if expired)
+ */
+export async function getYouTubeAccessToken(userId: string): Promise<string | null> {
+  try {
+    const connection = await storage.getPlatformConnectionByPlatform(userId, 'youtube');
+    if (!connection || !connection.accessToken) {
+      return null;
+    }
+
+    // Check if token is expired or about to expire (within 5 minutes)
+    const now = new Date();
+    const expiryBuffer = new Date(now.getTime() + 5 * 60 * 1000);
+    
+    if (connection.tokenExpiresAt && connection.tokenExpiresAt <= expiryBuffer) {
+      console.log('[YouTube OAuth] Token expired or expiring soon, refreshing...');
+      return await refreshYouTubeToken(userId);
+    }
+
+    // Token is still valid, decrypt and return
+    return decryptToken(connection.accessToken);
+  } catch (error: any) {
+    console.error('[YouTube OAuth] Error getting access token:', error.message);
+    return null;
+  }
+}
+
+/**
  * Disconnect YouTube
  * DELETE /auth/youtube/disconnect
  */

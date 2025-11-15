@@ -1,4 +1,5 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import passport from "./passport-oauth-config";
 import { requireAuth } from "./middleware";
 import { db } from "../db";
@@ -8,6 +9,22 @@ import { encryptToken } from "../crypto-utils";
 
 const router = Router();
 
+const oauthLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const path = req.path;
+    console.warn(`[OAuth Rate Limit] Too many OAuth attempts from IP ${ip} to ${path}`);
+    res.status(429).redirect('/login?error=too_many_oauth_attempts');
+  },
+  skip: (req) => {
+    return false;
+  },
+});
+
 router.get('/twitch', 
   passport.authenticate('twitch-signin', { 
     scope: ['user:read:email', 'user:read:chat', 'user:write:chat', 'user:bot', 'channel:bot'] 
@@ -15,6 +32,7 @@ router.get('/twitch',
 );
 
 router.get('/twitch/callback',
+  oauthLimiter,
   passport.authenticate('twitch-signin', { 
     failureRedirect: '/login?error=twitch_auth_failed',
     failureMessage: true 
@@ -49,6 +67,7 @@ router.get('/youtube',
 );
 
 router.get('/youtube/callback',
+  oauthLimiter,
   passport.authenticate('google-youtube-signin', {
     failureRedirect: '/login?error=youtube_auth_failed',
     failureMessage: true
@@ -77,6 +96,7 @@ router.get('/kick',
 );
 
 router.get('/kick/callback',
+  oauthLimiter,
   passport.authenticate('kick-signin', { 
     failureRedirect: '/login?error=kick_auth_failed',
     failureMessage: true 

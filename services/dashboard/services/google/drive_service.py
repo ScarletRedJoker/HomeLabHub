@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 from .google_client import google_client_manager
+from .error_handler import handle_google_api_errors
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,7 @@ class DriveService:
             logger.error(f"Error getting/creating backup folder: {e}")
             raise
     
+    @handle_google_api_errors('drive')
     def upload_backup(
         self,
         file_path: str,
@@ -153,6 +155,7 @@ class DriveService:
             logger.error(f"Unexpected error uploading backup: {e}", exc_info=True)
             raise
     
+    @handle_google_api_errors('drive')
     def list_backups(
         self,
         folder_id: Optional[str] = None,
@@ -208,6 +211,7 @@ class DriveService:
             logger.error(f"Unexpected error listing backups: {e}", exc_info=True)
             raise
     
+    @handle_google_api_errors('drive')
     def download_backup(
         self,
         file_id: str,
@@ -331,6 +335,7 @@ class DriveService:
             logger.error(f"Error during cleanup: {e}", exc_info=True)
             raise
     
+    @handle_google_api_errors('drive')
     def get_storage_info(self) -> Dict[str, Any]:
         """
         Get Drive storage quota information

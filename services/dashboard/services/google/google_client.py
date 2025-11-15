@@ -9,6 +9,14 @@ import requests
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+
+from .exceptions import (
+    GoogleAuthenticationError,
+    GoogleTokenRefreshError,
+    GoogleConnectionUnavailableError,
+    GoogleNetworkError
+)
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +31,27 @@ class GoogleClientManager:
         'drive': 'google-drive'
     }
     
+    # Required scopes for each service (for documentation)
+    REQUIRED_SCOPES = {
+        'calendar': [
+            'https://www.googleapis.com/auth/calendar.readonly',  # Read calendar events
+            'https://www.googleapis.com/auth/calendar.events'     # Create/modify calendar events
+        ],
+        'gmail': [
+            'https://www.googleapis.com/auth/gmail.send',          # Send emails
+            'https://www.googleapis.com/auth/gmail.readonly'       # Read email profile
+        ],
+        'drive': [
+            'https://www.googleapis.com/auth/drive.file',          # Access files created by this app
+            'https://www.googleapis.com/auth/drive.metadata.readonly'  # Read file metadata
+        ]
+    }
+    
     # Token cache TTL in seconds (55 minutes - tokens expire in 1 hour)
     TOKEN_CACHE_TTL = 3300
+    
+    # Proactive refresh buffer (refresh if token expires in next 5 minutes)
+    REFRESH_BUFFER_SECONDS = 300
     
     def __init__(self, redis_client: Optional[redis.Redis] = None):
         """
@@ -53,29 +80,45 @@ class GoogleClientManager:
         """Get Redis cache key for service token"""
         return f'google:token:{service}'
     
+    @retry(
+        retry=retry_if_exception_type((requests.exceptions.RequestException, requests.exceptions.Timeout)),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10)
+    )
     def _fetch_access_token(self, service: str) -> Optional[Dict[str, Any]]:
         """
-        Fetch access token from Replit connectors API
+        Fetch access token from Replit connectors API with retry logic
         
         Args:
             service: Service name (calendar, gmail, drive)
             
         Returns:
             Dictionary with access_token and expires_at
+            
+        Raises:
+            GoogleConnectionUnavailableError: If service not connected
+            GoogleTokenRefreshError: If unable to fetch token
+            GoogleNetworkError: If network error occurs
         """
         if not self.replit_hostname:
-            logger.error("REPLIT_CONNECTORS_HOSTNAME not configured")
-            return None
+            logger.error(f"REPLIT_CONNECTORS_HOSTNAME not configured for {service}")
+            raise GoogleConnectionUnavailableError(
+                service=service,
+                technical_details="REPLIT_CONNECTORS_HOSTNAME environment variable not set"
+            )
         
         replit_token = self._get_replit_token()
         if not replit_token:
-            logger.error("No Replit authentication token available")
-            return None
+            logger.error(f"No Replit authentication token available for {service}")
+            raise GoogleConnectionUnavailableError(
+                service=service,
+                technical_details="No REPL_IDENTITY or WEB_REPL_RENEWAL found"
+            )
         
         connector_name = self.SERVICE_CONNECTORS.get(service)
         if not connector_name:
             logger.error(f"Unknown service: {service}")
-            return None
+            raise ValueError(f"Unknown service: {service}")
         
         try:
             url = f'https://{self.replit_hostname}/api/v2/connection'
@@ -88,6 +131,7 @@ class GoogleClientManager:
                 'X_REPLIT_TOKEN': replit_token
             }
             
+            logger.debug(f"Fetching token for {service} from Replit connectors")
             response = requests.get(url, params=params, headers=headers, timeout=10)
             response.raise_for_status()
             
@@ -96,7 +140,10 @@ class GoogleClientManager:
             
             if not items:
                 logger.warning(f"No connection found for {connector_name}")
-                return None
+                raise GoogleConnectionUnavailableError(
+                    service=service,
+                    technical_details=f"No connection found for connector: {connector_name}"
+                )
             
             connection_settings = items[0]
             settings = connection_settings.get('settings', {})
@@ -108,8 +155,11 @@ class GoogleClientManager:
             )
             
             if not access_token:
-                logger.error(f"No access token found for {service}")
-                return None
+                logger.error(f"No access token found in connector settings for {service}")
+                raise GoogleTokenRefreshError(
+                    service=service,
+                    technical_details=f"No access token in connector settings for {connector_name}"
+                )
             
             expires_at = settings.get('expires_at')
             
@@ -129,28 +179,53 @@ class GoogleClientManager:
                         self.TOKEN_CACHE_TTL,
                         json.dumps(token_data)
                     )
-                    logger.info(f"Cached token for {service}")
+                    logger.info(f"Successfully fetched and cached token for {service}")
                 except Exception as e:
-                    logger.warning(f"Failed to cache token: {e}")
+                    logger.warning(f"Failed to cache token for {service}: {e}")
+            else:
+                logger.info(f"Successfully fetched token for {service} (no cache available)")
             
             return token_data
         
-        except requests.RequestException as e:
-            logger.error(f"Failed to fetch token for {service}: {e}")
-            return None
+        except requests.exceptions.Timeout as e:
+            logger.error(f"Timeout fetching token for {service}: {e}")
+            raise GoogleNetworkError(
+                service=service,
+                technical_details=f"Timeout connecting to Replit connectors: {e}"
+            )
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Network error fetching token for {service}: {e}")
+            raise GoogleNetworkError(
+                service=service,
+                technical_details=f"Request error: {e}"
+            )
+        except GoogleConnectionUnavailableError:
+            raise
+        except GoogleTokenRefreshError:
+            raise
         except Exception as e:
             logger.error(f"Unexpected error fetching token for {service}: {e}", exc_info=True)
-            return None
+            raise GoogleTokenRefreshError(
+                service=service,
+                technical_details=f"Unexpected error: {str(e)}"
+            )
     
-    def _get_access_token(self, service: str) -> Optional[str]:
+    def _get_access_token(self, service: str) -> str:
         """
-        Get access token for service (from cache or fetch new)
+        Get access token for service with proactive refresh
+        
+        This method implements proactive token refresh by refreshing tokens
+        before they expire (using REFRESH_BUFFER_SECONDS).
         
         Args:
             service: Service name (calendar, gmail, drive)
             
         Returns:
-            Access token string or None
+            Access token string
+            
+        Raises:
+            GoogleConnectionUnavailableError: If service not connected
+            GoogleTokenRefreshError: If unable to get/refresh token
         """
         # Try to get from cache first
         if self.redis_client:
@@ -162,50 +237,96 @@ class GoogleClientManager:
                     token_data = json.loads(cached_data)
                     expires_at = token_data.get('expires_at')
                     
-                    # Check if token is still valid
+                    # Check if token is still valid with buffer
                     if expires_at:
-                        expiry_time = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
-                        if expiry_time > datetime.utcnow():
-                            logger.debug(f"Using cached token for {service}")
-                            return token_data['access_token']
-                        else:
-                            logger.info(f"Cached token for {service} expired, fetching new one")
+                        try:
+                            expiry_time = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+                            time_until_expiry = (expiry_time - datetime.utcnow()).total_seconds()
+                            
+                            # Proactive refresh: refresh if token expires in next 5 minutes
+                            if time_until_expiry > self.REFRESH_BUFFER_SECONDS:
+                                logger.debug(
+                                    f"Using cached token for {service} "
+                                    f"(expires in {int(time_until_expiry/60)} minutes)"
+                                )
+                                return token_data['access_token']
+                            elif time_until_expiry > 0:
+                                logger.info(
+                                    f"Token for {service} expires soon "
+                                    f"({int(time_until_expiry/60)} minutes), proactively refreshing"
+                                )
+                            else:
+                                logger.info(f"Cached token for {service} expired, fetching new one")
+                        except (ValueError, TypeError) as e:
+                            logger.warning(f"Error parsing expiry time for {service}: {e}")
+                    else:
+                        logger.debug(f"Cached token for {service} has no expiry, using it")
+                        return token_data['access_token']
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning(f"Error parsing cached token data for {service}: {e}")
             except Exception as e:
-                logger.warning(f"Error reading token from cache: {e}")
+                logger.warning(f"Error reading token from cache for {service}: {e}")
         
-        # Fetch new token
+        # Fetch new token (with retry logic built into _fetch_access_token)
         token_data = self._fetch_access_token(service)
-        if token_data:
-            return token_data['access_token']
-        
-        return None
+        return token_data['access_token']
     
     def get_calendar_client(self):
-        """Get authenticated Google Calendar client"""
-        access_token = self._get_access_token('calendar')
-        if not access_token:
-            raise RuntimeError("Google Calendar not connected or token unavailable")
+        """
+        Get authenticated Google Calendar client
         
-        credentials = Credentials(token=access_token)
-        return build('calendar', 'v3', credentials=credentials)
+        Returns:
+            Authenticated Calendar API client
+            
+        Raises:
+            GoogleConnectionUnavailableError: If Calendar not connected
+            GoogleTokenRefreshError: If unable to refresh token
+        """
+        try:
+            access_token = self._get_access_token('calendar')
+            credentials = Credentials(token=access_token)
+            return build('calendar', 'v3', credentials=credentials)
+        except Exception as e:
+            logger.error(f"Error creating Calendar client: {e}")
+            raise
     
     def get_gmail_client(self):
-        """Get authenticated Gmail client"""
-        access_token = self._get_access_token('gmail')
-        if not access_token:
-            raise RuntimeError("Gmail not connected or token unavailable")
+        """
+        Get authenticated Gmail client
         
-        credentials = Credentials(token=access_token)
-        return build('gmail', 'v1', credentials=credentials)
+        Returns:
+            Authenticated Gmail API client
+            
+        Raises:
+            GoogleConnectionUnavailableError: If Gmail not connected
+            GoogleTokenRefreshError: If unable to refresh token
+        """
+        try:
+            access_token = self._get_access_token('gmail')
+            credentials = Credentials(token=access_token)
+            return build('gmail', 'v1', credentials=credentials)
+        except Exception as e:
+            logger.error(f"Error creating Gmail client: {e}")
+            raise
     
     def get_drive_client(self):
-        """Get authenticated Google Drive client"""
-        access_token = self._get_access_token('drive')
-        if not access_token:
-            raise RuntimeError("Google Drive not connected or token unavailable")
+        """
+        Get authenticated Google Drive client
         
-        credentials = Credentials(token=access_token)
-        return build('drive', 'v3', credentials=credentials)
+        Returns:
+            Authenticated Drive API client
+            
+        Raises:
+            GoogleConnectionUnavailableError: If Drive not connected
+            GoogleTokenRefreshError: If unable to refresh token
+        """
+        try:
+            access_token = self._get_access_token('drive')
+            credentials = Credentials(token=access_token)
+            return build('drive', 'v3', credentials=credentials)
+        except Exception as e:
+            logger.error(f"Error creating Drive client: {e}")
+            raise
     
     def test_connection(self, service: str) -> Dict[str, Any]:
         """

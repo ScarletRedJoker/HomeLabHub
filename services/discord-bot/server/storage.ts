@@ -62,6 +62,7 @@ export interface IStorage {
   getDiscordUser(id: string): Promise<DiscordUser | undefined>;
   createDiscordUser(user: InsertDiscordUser): Promise<DiscordUser>;
   updateDiscordUser(id: string, updates: Partial<InsertDiscordUser>): Promise<DiscordUser | undefined>;
+  findOrCreateDiscordUserAtomic(discordId: string, createData: InsertDiscordUser): Promise<{ user: DiscordUser; created: boolean }>;
   
   // Server operations
   getAllServers(): Promise<Server[]>;

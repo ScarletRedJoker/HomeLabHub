@@ -117,6 +117,66 @@ app.use(cors({
 }));
 
 /**
+ * Security Headers Middleware
+ * 
+ * Adds critical security headers to protect against common web vulnerabilities:
+ * - X-Frame-Options: Prevents clickjacking by disabling iframe embedding
+ * - X-Content-Type-Options: Prevents MIME-sniffing attacks
+ * - X-XSS-Protection: Legacy XSS filter for older browsers (CSP is primary defense)
+ * - Referrer-Policy: Controls referrer information sent with requests
+ * - Permissions-Policy: Disables unnecessary browser features
+ * - Content-Security-Policy: Primary XSS defense (strict policy)
+ */
+app.use((req, res, next) => {
+  // Prevent clickjacking - don't allow our site to be embedded in iframes
+  res.setHeader('X-Frame-Options', 'DENY');
+  
+  // Prevent MIME-sniffing - browser must respect declared Content-Type
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  
+  // Enable XSS filter in older browsers (defense in depth)
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  
+  // Control referrer information
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  
+  // Disable unnecessary browser features
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  
+  /**
+   * Content Security Policy (CSP)
+   * 
+   * Strict policy to prevent XSS attacks:
+   * - default-src 'self': Only load resources from our domain by default
+   * - script-src 'self' 'unsafe-inline': Allow inline scripts (needed for Vite dev)
+   * - style-src 'self' 'unsafe-inline': Allow inline styles (needed for React)
+   * - img-src 'self' data: https: Allow images from our domain, data URIs, and HTTPS
+   * - connect-src 'self' wss: Allow WebSocket connections and same-origin fetch/XHR
+   * - font-src 'self': Only load fonts from our domain
+   * - object-src 'none': Disable Flash and other plugins
+   * - frame-ancestors 'none': Redundant with X-Frame-Options but CSP takes precedence
+   * 
+   * Note: 'unsafe-inline' for scripts/styles is needed for Vite/React dev mode
+   * In production, consider stricter policy with nonces or hashes
+   */
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+    "style-src 'self' 'unsafe-inline'; " +
+    "img-src 'self' data: https: cdn.discordapp.com; " +
+    "connect-src 'self' wss: https:; " +
+    "font-src 'self'; " +
+    "object-src 'none'; " +
+    "frame-ancestors 'none'; " +
+    "base-uri 'self'; " +
+    "form-action 'self'"
+  );
+  
+  next();
+});
+
+/**
  * Rate Limiting
  */
 const apiLimiter = rateLimit({

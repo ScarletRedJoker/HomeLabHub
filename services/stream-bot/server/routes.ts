@@ -32,6 +32,7 @@ import { PollsService } from "./polls-service";
 import { AlertsService } from "./alerts-service";
 import { ChatbotService } from "./chatbot-service";
 import { analyticsService } from "./analytics-service";
+import { tokenRefreshService } from "./token-refresh-service";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/auth", oauthSignInRoutes);
@@ -45,6 +46,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Bootstrap botManager
   await botManager.bootstrap();
+
+  // Start token refresh service
+  tokenRefreshService.start();
 
   // Initialize WebSocket server on /ws path (Reference: javascript_websocket blueprint)
   const wss = new WebSocketServer({ noServer: true });
@@ -634,6 +638,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/giveaways/:id/entries", requireAuth, async (req, res) => {
     try {
+      const giveaway = await giveawayService.getGiveaway(req.user!.id, req.params.id);
+      if (!giveaway) {
+        return res.status(404).json({ error: "Giveaway not found" });
+      }
+      
       const entries = await storage.getGiveawayEntries(req.params.id);
       res.json(entries);
     } catch (error) {
@@ -2459,6 +2468,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Failed to dismiss welcome:", error);
       res.status(500).json({ error: error.message || "Failed to dismiss welcome" });
+    }
+  });
+
+  // Token Lifecycle Management - Admin/Testing Endpoints
+  app.post("/api/admin/tokens/refresh", requireAuth, async (req, res) => {
+    try {
+      console.log(`[Admin API] Manual token refresh triggered by user ${req.user!.id}`);
+      await tokenRefreshService.triggerRefresh();
+      res.json({ success: true, message: "Token refresh check completed" });
+    } catch (error: any) {
+      console.error("Failed to trigger token refresh:", error);
+      res.status(500).json({ error: error.message || "Failed to trigger token refresh" });
+    }
+  });
+
+  app.get("/api/admin/tokens/status", requireAuth, async (req, res) => {
+    try {
+      const connections = await storage.getPlatformConnections(req.user!.id);
+      const now = new Date();
+      const status = connections.map(conn => {
+        const expiresIn = conn.tokenExpiresAt 
+          ? Math.round((conn.tokenExpiresAt.getTime() - now.getTime()) / 1000 / 60) 
+          : null;
+        return {
+          platform: conn.platform,
+          isConnected: conn.isConnected,
+          platformUsername: conn.platformUsername,
+          tokenExpiresAt: conn.tokenExpiresAt,
+          expiresInMinutes: expiresIn,
+          needsRefresh: expiresIn !== null && expiresIn < (24 * 60),
+        };
+      });
+      res.json(status);
+    } catch (error: any) {
+      console.error("Failed to get token status:", error);
+      res.status(500).json({ error: error.message || "Failed to get token status" });
     }
   });
 

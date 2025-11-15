@@ -117,6 +117,32 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return updatedUser;
   }
+
+  async findOrCreateDiscordUserAtomic(
+    discordId: string,
+    createData: InsertDiscordUser
+  ): Promise<{ user: DiscordUser; created: boolean }> {
+    return await db.transaction(async (tx) => {
+      const [existingUser] = await tx
+        .select()
+        .from(discordUsers)
+        .where(eq(discordUsers.id, discordId));
+
+      if (existingUser) {
+        return { user: existingUser, created: false };
+      }
+
+      const [newUser] = await tx
+        .insert(discordUsers)
+        .values({
+          ...createData,
+          serverId: createData.serverId || null
+        })
+        .returning();
+
+      return { user: newUser, created: true };
+    });
+  }
   
   // Server operations
   async getAllServers(): Promise<Server[]> {

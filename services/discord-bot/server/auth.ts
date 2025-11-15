@@ -201,25 +201,31 @@ export function setupAuth(app: Express, storage: IStorage): void {
               console.log('Discord auth: Profile data:', { id: profile.id, username: profile.username, guilds: Array.isArray(profile.guilds) ? profile.guilds.length : 'none' });
               
               /**
-               * Retrieve or create user in database
+               * SECURITY: Atomically retrieve or create user in database
+               * 
+               * Why use atomic operation:
+               * - Prevents race condition between getUser and createUser
+               * - Similar vulnerability as Stream Bot: concurrent requests could create duplicates
+               * - Database transaction ensures only one user record is created per Discord ID
+               * - Prevents account hijacking if Discord ID gets reassigned
                * 
                * Why create if not exists:
                * - First-time users need a database record
                * - Stores user profile data and preferences
                * - Tracks onboarding status and permissions
                */
-              let user = await storage.getDiscordUser(profile.id);
+              const { user, created } = await storage.findOrCreateDiscordUserAtomic(profile.id, {
+                id: profile.id,
+                username: profile.username,
+                discriminator: profile.discriminator,
+                avatar: profile.avatar,
+                isAdmin: null // Will be updated after checking guild permissions
+              });
               
-              if (!user) {
-                console.log(`Discord auth: Creating new user for ${profile.username}`);
-                // Create new user with null isAdmin (will be set below)
-                user = await storage.createDiscordUser({
-                  id: profile.id,
-                  username: profile.username,
-                  discriminator: profile.discriminator,
-                  avatar: profile.avatar,
-                  isAdmin: null // Will be updated after checking guild permissions
-                });
+              if (created) {
+                console.log(`Discord auth: Created new user for ${profile.username}`);
+              } else {
+                console.log(`Discord auth: Found existing user for ${profile.username}`);
               }
               
               /**
@@ -493,6 +499,11 @@ export function setupAuth(app: Express, storage: IStorage): void {
      * 
      * Manually constructs Discord OAuth URL and redirects user to Discord.
      * 
+     * SECURITY: CSRF Protection with State Parameter
+     * - Generates cryptographically random state token
+     * - Stores in session before redirect
+     * - Validated in callback to prevent CSRF attacks
+     * 
      * Why manual redirect instead of passport.authenticate:
      * - Works around bugs in passport-discord v0.1.4
      * - Gives us full control over OAuth parameters
@@ -501,12 +512,33 @@ export function setupAuth(app: Express, storage: IStorage): void {
      * Flow:
      * 1. User clicks "Login with Discord" button
      * 2. Frontend redirects to /auth/discord
-     * 3. This handler redirects to Discord OAuth page
+     * 3. This handler generates state token and redirects to Discord OAuth page
      * 4. User authorizes app on Discord
-     * 5. Discord redirects back to /auth/discord/callback
+     * 5. Discord redirects back to /auth/discord/callback with state
+     * 6. Callback validates state matches session
      */
     app.get('/auth/discord', (req, res) => {
       const clientId = process.env.DISCORD_CLIENT_ID;
+      
+      /**
+       * Generate CSRF state token
+       * 
+       * Why cryptographically secure random:
+       * - Prevents attackers from guessing state values
+       * - 32 bytes = 256 bits of entropy (highly secure)
+       * - URL-safe base64 encoding
+       */
+      const crypto = require('crypto');
+      const state = crypto.randomBytes(32).toString('base64url');
+      
+      /**
+       * Store state in session for validation in callback
+       * 
+       * SECURITY: Critical for CSRF protection
+       * - Session is server-side, attacker cannot access
+       * - Will be validated in callback route
+       */
+      (req.session as any).oauthState = state;
       
       /**
        * Determine callback URL (same logic as strategy config)
@@ -522,18 +554,20 @@ export function setupAuth(app: Express, storage: IStorage): void {
       }
       
       /**
-       * Build Discord OAuth URL
+       * Build Discord OAuth URL with state parameter
        * 
        * Parameters:
        * - response_type=code: Use authorization code flow (most secure)
        * - client_id: Our Discord application ID
        * - redirect_uri: Where Discord sends user after authorization
        * - scope: Permissions we're requesting (identify + guilds)
+       * - state: CSRF protection token (validated in callback)
        */
       const redirectUri = encodeURIComponent(callbackURL);
       const scope = encodeURIComponent('identify guilds');
+      const encodedState = encodeURIComponent(state);
       
-      const discordAuthUrl = `https://discord.com/api/oauth2/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}`;
+      const discordAuthUrl = `https://discord.com/api/oauth2/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&state=${encodedState}`;
       console.log('Discord OAuth redirect initiated with callback:', callbackURL);
       
       res.redirect(discordAuthUrl);
@@ -545,16 +579,48 @@ export function setupAuth(app: Express, storage: IStorage): void {
      * Discord redirects here after user authorizes the app.
      * Passport exchanges authorization code for access token and user profile.
      * 
+     * SECURITY: CSRF State Validation
+     * - Validates state parameter matches session value
+     * - Prevents CSRF attacks during OAuth flow
+     * - Rejects requests with missing or mismatched state
+     * 
      * Success: User is logged in, redirected to homepage
      * Failure: Redirected to homepage (login button will still show)
      */
     app.get(
       '/auth/discord/callback',
+      (req, res, next) => {
+        /**
+         * CSRF State Validation Middleware
+         * 
+         * SECURITY: Validate state parameter before processing OAuth callback
+         * - Prevents CSRF attacks where attacker tricks user into authorizing attacker's account
+         * - state parameter must match what we stored in session during /auth/discord
+         */
+        const receivedState = req.query.state as string;
+        const sessionState = (req.session as any).oauthState;
+        
+        if (!receivedState || !sessionState || receivedState !== sessionState) {
+          console.error('Discord OAuth: CSRF state validation failed', {
+            hasReceivedState: !!receivedState,
+            hasSessionState: !!sessionState,
+            statesMatch: receivedState === sessionState
+          });
+          return res.redirect('/?error=oauth_csrf_validation_failed');
+        }
+        
+        // Clear state from session after successful validation (one-time use)
+        delete (req.session as any).oauthState;
+        
+        console.log('Discord OAuth: CSRF state validation passed');
+        next();
+      },
       passport.authenticate('discord', {
-        failureRedirect: '/' // Return to homepage if auth fails
+        failureRedirect: '/?error=discord_auth_failed' // Return to homepage if auth fails
       }),
       (_req, res) => {
         // Authentication succeeded, redirect to homepage
+        console.log('Discord OAuth: Authentication successful, redirecting to homepage');
         res.redirect('/');
       }
     );

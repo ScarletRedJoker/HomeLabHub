@@ -173,13 +173,13 @@ router.get('/twitch/callback', async (req, res) => {
 });
 
 /**
- * Refresh Twitch access token
+ * Refresh Twitch access token using refresh_token grant
  */
 export async function refreshTwitchToken(userId: string): Promise<string | null> {
   try {
     const connection = await storage.getPlatformConnection(userId, 'twitch');
     if (!connection || !connection.refreshToken) {
-      console.error('[Twitch OAuth] No refresh token available');
+      console.error('[Twitch OAuth] No refresh token available for user', userId);
       return null;
     }
 
@@ -187,8 +187,11 @@ export async function refreshTwitchToken(userId: string): Promise<string | null>
     const clientSecret = getEnv('TWITCH_CLIENT_SECRET');
 
     if (!clientId || !clientSecret) {
+      console.error('[Twitch OAuth] OAuth credentials not configured');
       throw new Error('Twitch OAuth credentials not configured');
     }
+
+    console.log(`[Twitch OAuth] Attempting to refresh token for user ${userId}...`);
 
     // Decrypt refresh token
     const refreshToken = decryptToken(connection.refreshToken);
@@ -215,18 +218,31 @@ export async function refreshTwitchToken(userId: string): Promise<string | null>
     const encryptedAccessToken = encryptToken(access_token);
     const encryptedRefreshToken = new_refresh_token ? encryptToken(new_refresh_token) : connection.refreshToken;
 
-    // Update stored tokens
+    // Update stored tokens atomically
     const tokenExpiresAt = new Date(Date.now() + expires_in * 1000);
     await storage.upsertPlatformConnection(userId, 'twitch', {
       accessToken: encryptedAccessToken,
       refreshToken: encryptedRefreshToken,
       tokenExpiresAt,
+      isConnected: true,
     });
 
-    console.log(`[Twitch OAuth] Refreshed token for user ${userId}`);
+    console.log(`[Twitch OAuth] ✓ Successfully refreshed token for user ${userId} (expires at ${tokenExpiresAt.toISOString()})`);
     return access_token;
   } catch (error: any) {
-    console.error('[Twitch OAuth] Token refresh error:', error.response?.data || error.message);
+    const errorData = error.response?.data;
+    const statusCode = error.response?.status;
+
+    // Check for revoked token errors
+    if (statusCode === 400 || statusCode === 401) {
+      if (errorData?.message?.includes('Invalid refresh token') || errorData?.error === 'invalid_grant') {
+        console.error(`[Twitch OAuth] ✗ Token has been revoked for user ${userId}:`, errorData);
+      } else {
+        console.error(`[Twitch OAuth] ✗ Authentication error for user ${userId}:`, errorData || error.message);
+      }
+    } else {
+      console.error(`[Twitch OAuth] ✗ Token refresh error for user ${userId}:`, error.message);
+    }
     
     // Mark connection as disconnected if refresh fails
     await storage.upsertPlatformConnection(userId, 'twitch', {

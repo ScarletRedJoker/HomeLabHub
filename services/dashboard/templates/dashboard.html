@@ -622,6 +622,25 @@
         </div>
     </div>
     
+    <!-- Celery/Redis Health -->
+    <div class="widget">
+        <div class="widget-header">
+            <span class="status-led" id="celery-status-led"></span>
+            <div class="widget-icon" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.2));">
+                <i class="bi bi-lightning-charge" style="color: var(--accent-red);"></i>
+            </div>
+            <div class="widget-title">Background Jobs</div>
+        </div>
+        <div id="celery-health" style="font-size: 0.875rem;">
+            <div class="activity-item">
+                <div class="activity-icon"><i class="bi bi-hourglass-split"></i></div>
+                <div>
+                    <div style="font-weight: 500;">Checking health...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Service Health -->
     <div class="widget">
         <div class="widget-header">
@@ -931,12 +950,115 @@ async function updateActivityFeed() {
     }
 }
 
+async function updateCeleryHealth() {
+    try {
+        const response = await fetch('/api/health/celery', {
+            credentials: 'include'
+        });
+        const health = await response.json();
+        
+        const statusLed = document.getElementById('celery-status-led');
+        const healthContainer = document.getElementById('celery-health');
+        
+        if (health.status === 'healthy') {
+            statusLed.className = 'status-led online blink';
+            
+            const redisInfo = health.checks?.redis?.info || {};
+            const workerInfo = health.checks?.workers?.info || {};
+            const queueInfo = health.checks?.queue?.info || {};
+            
+            let html = `
+                <div class="activity-item">
+                    <div class="activity-icon" style="color: var(--accent-green);"><i class="bi bi-database-check"></i></div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 500;">Redis</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                            ${redisInfo.connected_clients || 0} clients • ${redisInfo.used_memory_human || 'N/A'}
+                        </div>
+                    </div>
+                    <span class="status-indicator status-online"></span>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-icon" style="color: var(--accent-blue);"><i class="bi bi-cpu"></i></div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 500;">Workers</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                            ${workerInfo.worker_count || 0} active • ${workerInfo.registered_tasks || 0} tasks
+                        </div>
+                    </div>
+                    <span class="status-indicator status-online"></span>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-icon" style="color: var(--accent-yellow);"><i class="bi bi-list-task"></i></div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 500;">Queue</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                            ${queueInfo.total_pending || 0} pending tasks
+                        </div>
+                    </div>
+                    <span class="status-indicator ${queueInfo.total_pending > 50 ? 'status-offline' : 'status-online'}"></span>
+                </div>
+            `;
+            
+            healthContainer.innerHTML = html;
+        } else {
+            statusLed.className = 'status-led offline';
+            
+            let html = `
+                <div class="activity-item">
+                    <div class="activity-icon" style="color: var(--accent-red);"><i class="bi bi-exclamation-triangle"></i></div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 500; color: var(--accent-red);">System Unhealthy</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 8px;">
+            `;
+            
+            if (health.checks?.redis?.status === 'unhealthy') {
+                html += `<div style="margin-bottom: 4px;"><i class="bi bi-x-circle"></i> Redis: ${health.checks.redis.error || 'Connection failed'}</div>`;
+            }
+            if (health.checks?.workers?.status === 'unhealthy') {
+                html += `<div style="margin-bottom: 4px;"><i class="bi bi-x-circle"></i> Workers: ${health.checks.workers.error || 'No workers responding'}</div>`;
+            }
+            if (health.checks?.queue?.status === 'warning') {
+                html += `<div style="margin-bottom: 4px;"><i class="bi bi-exclamation-circle"></i> Queue: ${health.checks.queue.error || 'High queue depth'}</div>`;
+            }
+            if (health.checks?.stuck_tasks?.status === 'warning') {
+                html += `<div style="margin-bottom: 4px;"><i class="bi bi-exclamation-circle"></i> Stuck Tasks: ${health.checks.stuck_tasks.error || 'Tasks running too long'}</div>`;
+            }
+            
+            html += `
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            healthContainer.innerHTML = html;
+        }
+    } catch (error) {
+        console.error('Failed to update Celery health:', error);
+        const statusLed = document.getElementById('celery-status-led');
+        const healthContainer = document.getElementById('celery-health');
+        
+        statusLed.className = 'status-led offline';
+        healthContainer.innerHTML = `
+            <div class="activity-item">
+                <div class="activity-icon" style="color: var(--accent-red);"><i class="bi bi-exclamation-triangle"></i></div>
+                <div>
+                    <div style="font-weight: 500; color: var(--accent-red);">Health Check Failed</div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary);">Unable to connect to health endpoint</div>
+                </div>
+            </div>
+        `;
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     initCharts();
     updateDashboard();
     updateActivityFeed();
+    updateCeleryHealth();
     setInterval(updateDashboard, 3000);
     setInterval(updateActivityFeed, 10000);
+    setInterval(updateCeleryHealth, 5000);
 });
 </script>
 {% endblock %}

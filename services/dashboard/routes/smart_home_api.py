@@ -61,6 +61,64 @@ def get_csrf_token():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@smart_home_bp.route('/api/connection-status', methods=['GET'])
+@require_auth
+def get_connection_status():
+    """Get Home Assistant connection status with detailed diagnostics"""
+    try:
+        status = home_assistant_service.get_connection_status()
+        
+        status_message = "Home Assistant is disabled"
+        if status['enabled']:
+            if status['state'] == 'connected':
+                status_message = "Connected and healthy"
+            elif status['state'] == 'reconnecting':
+                status_message = "Attempting to reconnect..."
+            elif status['state'] == 'failed':
+                status_message = "Connection failed - check configuration"
+            else:
+                status_message = "Connection status unknown"
+        
+        return jsonify({
+            'success': True,
+            'status': status,
+            'message': status_message,
+            'timestamp': datetime.utcnow().isoformat()
+        }), 200
+    
+    except Exception as e:
+        logger.error(f"Error getting connection status: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@smart_home_bp.route('/api/test-connection', methods=['POST'])
+@require_auth
+@limiter.limit("10 per minute")
+def test_connection():
+    """Manually test Home Assistant connection"""
+    try:
+        if not home_assistant_service.enabled:
+            return jsonify({
+                'success': False,
+                'error': 'Home Assistant not configured. Please set HOME_ASSISTANT_URL and HOME_ASSISTANT_TOKEN environment variables.'
+            }), 503
+        
+        connection_ok = home_assistant_service.check_connection()
+        status = home_assistant_service.get_connection_status()
+        
+        return jsonify({
+            'success': connection_ok,
+            'connected': connection_ok,
+            'status': status,
+            'message': 'Connection test successful' if connection_ok else f'Connection test failed: {status.get("last_error", "Unknown error")}',
+            'timestamp': datetime.utcnow().isoformat()
+        }), 200 if connection_ok else 503
+    
+    except Exception as e:
+        logger.error(f"Error testing connection: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @smart_home_bp.route('/api/devices', methods=['GET'])
 @require_auth
 def get_all_devices():

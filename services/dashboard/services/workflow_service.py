@@ -3,11 +3,120 @@ from models.workflow import Workflow, WorkflowStatus
 from services.websocket_service import websocket_service
 from sqlalchemy import desc
 import logging
-from datetime import datetime
-from typing import Optional, Dict, List
+from datetime import datetime, timedelta
+from typing import Optional, Dict, List, Callable, Any
 import uuid
+import redis
+from config import Config
+import time
 
 logger = logging.getLogger(__name__)
+
+class CircuitBreaker:
+    def __init__(self, failure_threshold=3, timeout=60, half_open_attempts=1):
+        self.failure_threshold = failure_threshold
+        self.timeout = timeout
+        self.half_open_attempts = half_open_attempts
+        self.failure_count = 0
+        self.last_failure_time = None
+        self.state = 'closed'
+        self.pending_tasks = []
+    
+    def call(self, func: Callable, *args, **kwargs) -> Any:
+        if self.state == 'open':
+            if self._should_attempt_reset():
+                self.state = 'half_open'
+                logger.info("Circuit breaker entering half-open state", extra={
+                    'component': 'circuit_breaker',
+                    'state': 'half_open'
+                })
+            else:
+                time_remaining = self.timeout - (datetime.now() - self.last_failure_time).seconds
+                error_msg = f"Background job system temporarily unavailable. Tasks will be queued and processed when service recovers (retry in {time_remaining}s)"
+                logger.warning(error_msg, extra={
+                    'component': 'circuit_breaker',
+                    'state': 'open',
+                    'time_remaining': time_remaining
+                })
+                raise CircuitBreakerError(error_msg)
+        
+        try:
+            result = func(*args, **kwargs)
+            self._on_success()
+            return result
+        except Exception as e:
+            self._on_failure()
+            raise
+    
+    def _should_attempt_reset(self):
+        return (self.last_failure_time and 
+                (datetime.now() - self.last_failure_time).seconds >= self.timeout)
+    
+    def _on_success(self):
+        if self.state == 'half_open':
+            self.state = 'closed'
+            self.failure_count = 0
+            logger.info("Circuit breaker closed - service recovered", extra={
+                'component': 'circuit_breaker',
+                'state': 'closed'
+            })
+            self._process_pending_tasks()
+    
+    def _on_failure(self):
+        self.failure_count += 1
+        self.last_failure_time = datetime.now()
+        
+        if self.failure_count >= self.failure_threshold:
+            self.state = 'open'
+            logger.error(f"Circuit breaker opened after {self.failure_count} failures", extra={
+                'component': 'circuit_breaker',
+                'state': 'open',
+                'failure_count': self.failure_count
+            })
+    
+    def queue_task(self, task_info: Dict):
+        self.pending_tasks.append({
+            'task_info': task_info,
+            'queued_at': datetime.now()
+        })
+        logger.info(f"Task queued locally (circuit breaker open): {task_info.get('name', 'unknown')}", extra={
+            'component': 'circuit_breaker',
+            'pending_count': len(self.pending_tasks)
+        })
+    
+    def _process_pending_tasks(self):
+        if not self.pending_tasks:
+            return
+        
+        logger.info(f"Processing {len(self.pending_tasks)} pending tasks", extra={
+            'component': 'circuit_breaker',
+            'pending_count': len(self.pending_tasks)
+        })
+        
+        processed = []
+        for pending in self.pending_tasks:
+            try:
+                task_info = pending['task_info']
+                logger.info(f"Retrying queued task: {task_info.get('name', 'unknown')}")
+                processed.append(pending)
+            except Exception as e:
+                logger.error(f"Failed to process pending task: {e}")
+        
+        for task in processed:
+            self.pending_tasks.remove(task)
+    
+    def get_status(self) -> Dict:
+        return {
+            'state': self.state,
+            'failure_count': self.failure_count,
+            'pending_tasks_count': len(self.pending_tasks),
+            'last_failure': self.last_failure_time.isoformat() if self.last_failure_time else None
+        }
+
+class CircuitBreakerError(Exception):
+    pass
+
+celery_circuit_breaker = CircuitBreaker(failure_threshold=3, timeout=60)
 
 class WorkflowService:
     """Service for managing workflows and publishing real-time updates"""

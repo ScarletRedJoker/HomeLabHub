@@ -46,6 +46,15 @@ class Config:
     NOVNC_URL = os.environ.get('NOVNC_URL', 'https://vnc.evindrake.net')
     WINDOWS_KVM_IP = os.environ.get('WINDOWS_KVM_IP', '')
     
+    # Home Assistant configuration
+    HOME_ASSISTANT_URL = os.environ.get('HOME_ASSISTANT_URL', 'https://home.evindrake.net')
+    HOME_ASSISTANT_TOKEN = os.environ.get('HOME_ASSISTANT_TOKEN')
+    HOME_ASSISTANT_VERIFY_SSL = os.environ.get('HOME_ASSISTANT_VERIFY_SSL', 'True').lower() == 'true'
+    HOME_ASSISTANT_TIMEOUT_CONNECT = int(os.environ.get('HOME_ASSISTANT_TIMEOUT_CONNECT', '10'))
+    HOME_ASSISTANT_TIMEOUT_READ = int(os.environ.get('HOME_ASSISTANT_TIMEOUT_READ', '30'))
+    HOME_ASSISTANT_HEALTH_CHECK_INTERVAL = int(os.environ.get('HOME_ASSISTANT_HEALTH_CHECK_INTERVAL', '300'))  # 5 minutes
+    HOME_ASSISTANT_MAX_RETRIES = int(os.environ.get('HOME_ASSISTANT_MAX_RETRIES', '3'))
+    
     # MinIO configuration
     MINIO_ENDPOINT = os.environ.get('MINIO_ENDPOINT', 'minio:9000')
     MINIO_ACCESS_KEY = os.environ.get('MINIO_ROOT_USER', 'admin')

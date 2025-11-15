@@ -169,6 +169,7 @@ export const giveaways = pgTable("giveaways", {
   isActive: boolean("is_active").default(true).notNull(),
   requiresSubscription: boolean("requires_subscription").default(false).notNull(),
   maxWinners: integer("max_winners").default(1).notNull(),
+  entryCount: integer("entry_count").default(0).notNull(),
   startedAt: timestamp("started_at").defaultNow().notNull(),
   endedAt: timestamp("ended_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -199,6 +200,22 @@ export const giveawayWinners = pgTable("giveaway_winners", {
   platform: text("platform").notNull(),
   selectedAt: timestamp("selected_at").defaultNow().notNull(),
 });
+
+// Giveaway Entry Attempts - Rate limiting tracking for giveaway entries
+export const giveawayEntryAttempts = pgTable("giveaway_entry_attempts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  username: text("username").notNull(),
+  platform: text("platform").notNull(),
+  giveawayId: varchar("giveaway_id").references(() => giveaways.id, { onDelete: "cascade" }),
+  attemptedAt: timestamp("attempted_at").defaultNow().notNull(),
+}, (table) => ({
+  userAttemptIdx: uniqueIndex("giveaway_entry_attempts_username_platform_attempted_at_idx").on(
+    table.username,
+    table.platform,
+    table.attemptedAt
+  ),
+}));
 
 // Shoutouts - Track shoutout history and custom messages
 export const shoutouts = pgTable("shoutouts", {
@@ -375,6 +392,9 @@ export const userBalances = pgTable("user_balances", {
     table.username,
     table.platform
   ),
+  balanceCheck: sql`CONSTRAINT user_balances_balance_check CHECK (balance >= 0)`,
+  totalEarnedCheck: sql`CONSTRAINT user_balances_total_earned_check CHECK (total_earned >= 0)`,
+  totalSpentCheck: sql`CONSTRAINT user_balances_total_spent_check CHECK (total_spent >= 0)`,
 }));
 
 // Currency Transactions - History of all currency transactions
@@ -765,6 +785,11 @@ export const insertGiveawayWinnerSchema = createInsertSchema(giveawayWinners).om
   selectedAt: true,
 });
 
+export const insertGiveawayEntryAttemptSchema = createInsertSchema(giveawayEntryAttempts).omit({
+  id: true,
+  attemptedAt: true,
+});
+
 export const insertShoutoutSchema = createInsertSchema(shoutouts, {
   targetUsername: z.string().min(1, "Target username is required").max(100, "Username too long"),
   targetPlatform: z.enum(["twitch", "youtube", "kick"]),
@@ -1144,6 +1169,7 @@ export type LinkWhitelist = typeof linkWhitelist.$inferSelect;
 export type Giveaway = typeof giveaways.$inferSelect;
 export type GiveawayEntry = typeof giveawayEntries.$inferSelect;
 export type GiveawayWinner = typeof giveawayWinners.$inferSelect;
+export type GiveawayEntryAttempt = typeof giveawayEntryAttempts.$inferSelect;
 export type Shoutout = typeof shoutouts.$inferSelect;
 export type ShoutoutSettings = typeof shoutoutSettings.$inferSelect;
 export type ShoutoutHistory = typeof shoutoutHistory.$inferSelect;
@@ -1188,6 +1214,7 @@ export type InsertLinkWhitelist = z.infer<typeof insertLinkWhitelistSchema>;
 export type InsertGiveaway = z.infer<typeof insertGiveawaySchema>;
 export type InsertGiveawayEntry = z.infer<typeof insertGiveawayEntrySchema>;
 export type InsertGiveawayWinner = z.infer<typeof insertGiveawayWinnerSchema>;
+export type InsertGiveawayEntryAttempt = z.infer<typeof insertGiveawayEntryAttemptSchema>;
 export type InsertShoutout = z.infer<typeof insertShoutoutSchema>;
 export type InsertShoutoutSettings = z.infer<typeof insertShoutoutSettingsSchema>;
 export type InsertShoutoutHistory = z.infer<typeof insertShoutoutHistorySchema>;

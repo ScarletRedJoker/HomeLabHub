@@ -13,6 +13,8 @@ from config import Config
 import logging
 import os
 import re
+from datetime import datetime, timedelta
+import redis
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +74,218 @@ def get_disk_info():
     except Exception as e:
         logger.error(f"Error in /api/system/disk: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
+@api_bp.route('/health/celery', methods=['GET'])
+@require_auth
+def celery_health():
+    try:
+        from celery_app import celery_app
+        
+        health_status = {
+            'status': 'healthy',
+            'timestamp': datetime.utcnow().isoformat(),
+            'checks': {}
+        }
+        
+        redis_healthy = False
+        redis_error = None
+        redis_info = {}
+        
+        try:
+            redis_client = redis.Redis.from_url(Config.CELERY_BROKER_URL)
+            redis_client.ping()
+            redis_healthy = True
+            
+            info = redis_client.info()
+            redis_info = {
+                'connected_clients': info.get('connected_clients', 0),
+                'used_memory_human': info.get('used_memory_human', 'Unknown'),
+                'uptime_days': info.get('uptime_in_days', 0)
+            }
+            
+            logger.info("Celery health check: Redis is healthy", extra={
+                'component': 'celery_health',
+                'redis_clients': redis_info['connected_clients']
+            })
+        except Exception as e:
+            redis_error = str(e)
+            logger.error(f"Celery health check: Redis connection failed - {redis_error}", extra={
+                'component': 'celery_health',
+                'error': redis_error
+            })
+        
+        health_status['checks']['redis'] = {
+            'status': 'healthy' if redis_healthy else 'unhealthy',
+            'error': redis_error,
+            'info': redis_info if redis_healthy else {}
+        }
+        
+        workers_healthy = False
+        workers_error = None
+        worker_info = {}
+        
+        try:
+            inspect = celery_app.control.inspect(timeout=2.0)
+            active_workers = inspect.active()
+            registered_tasks = inspect.registered()
+            stats = inspect.stats()
+            
+            if active_workers is not None:
+                workers_healthy = len(active_workers) > 0
+                worker_info = {
+                    'worker_count': len(active_workers) if active_workers else 0,
+                    'workers': list(active_workers.keys()) if active_workers else [],
+                    'registered_tasks': len(registered_tasks.get(list(active_workers.keys())[0], [])) if active_workers and registered_tasks else 0
+                }
+                
+                logger.info(f"Celery health check: {worker_info['worker_count']} workers active", extra={
+                    'component': 'celery_health',
+                    'worker_count': worker_info['worker_count'],
+                    'workers': worker_info['workers']
+                })
+            else:
+                workers_error = "No workers responding"
+                logger.warning("Celery health check: No workers responding", extra={
+                    'component': 'celery_health'
+                })
+        except Exception as e:
+            workers_error = str(e)
+            logger.error(f"Celery health check: Worker inspection failed - {workers_error}", extra={
+                'component': 'celery_health',
+                'error': workers_error
+            })
+        
+        health_status['checks']['workers'] = {
+            'status': 'healthy' if workers_healthy else 'unhealthy',
+            'error': workers_error,
+            'info': worker_info if workers_healthy else {}
+        }
+        
+        queue_healthy = False
+        queue_error = None
+        queue_info = {}
+        
+        if redis_healthy:
+            try:
+                redis_client = redis.Redis.from_url(Config.CELERY_BROKER_URL)
+                
+                queue_lengths = {}
+                total_pending = 0
+                for queue_name in ['default', 'deployments', 'dns', 'analysis', 'google']:
+                    key = f'celery'
+                    queue_length = redis_client.llen(queue_name)
+                    queue_lengths[queue_name] = queue_length
+                    total_pending += queue_length
+                
+                queue_healthy = total_pending < 100
+                queue_info = {
+                    'total_pending': total_pending,
+                    'queues': queue_lengths,
+                    'threshold': 100
+                }
+                
+                if not queue_healthy:
+                    queue_error = f"Queue depth ({total_pending}) exceeds threshold (100)"
+                    logger.warning(f"Celery health check: High queue depth - {total_pending} tasks", extra={
+                        'component': 'celery_health',
+                        'queue_depth': total_pending
+                    })
+                else:
+                    logger.info(f"Celery health check: Queue depth normal - {total_pending} tasks", extra={
+                        'component': 'celery_health',
+                        'queue_depth': total_pending
+                    })
+            except Exception as e:
+                queue_error = str(e)
+                logger.error(f"Celery health check: Queue inspection failed - {queue_error}", extra={
+                    'component': 'celery_health',
+                    'error': queue_error
+                })
+        else:
+            queue_error = "Redis unavailable"
+        
+        health_status['checks']['queue'] = {
+            'status': 'healthy' if queue_healthy else 'warning',
+            'error': queue_error,
+            'info': queue_info
+        }
+        
+        stuck_tasks_healthy = True
+        stuck_tasks_error = None
+        stuck_tasks_info = {}
+        
+        if workers_healthy:
+            try:
+                inspect = celery_app.control.inspect(timeout=2.0)
+                active_tasks = inspect.active()
+                
+                if active_tasks:
+                    stuck_count = 0
+                    stuck_tasks_list = []
+                    now = datetime.utcnow()
+                    
+                    for worker, tasks in active_tasks.items():
+                        for task in tasks:
+                            task_id = task.get('id')
+                            time_start = task.get('time_start')
+                            
+                            if time_start:
+                                start_time = datetime.fromtimestamp(time_start)
+                                if (now - start_time) > timedelta(minutes=5):
+                                    stuck_count += 1
+                                    stuck_tasks_list.append({
+                                        'task_id': task_id,
+                                        'worker': worker,
+                                        'duration_minutes': (now - start_time).total_seconds() / 60
+                                    })
+                    
+                    stuck_tasks_healthy = stuck_count == 0
+                    stuck_tasks_info = {
+                        'stuck_count': stuck_count,
+                        'stuck_tasks': stuck_tasks_list[:10]
+                    }
+                    
+                    if not stuck_tasks_healthy:
+                        stuck_tasks_error = f"{stuck_count} tasks stuck for > 5 minutes"
+                        logger.warning(f"Celery health check: {stuck_count} stuck tasks detected", extra={
+                            'component': 'celery_health',
+                            'stuck_count': stuck_count
+                        })
+            except Exception as e:
+                stuck_tasks_error = str(e)
+                logger.error(f"Celery health check: Stuck task inspection failed - {stuck_tasks_error}", extra={
+                    'component': 'celery_health',
+                    'error': stuck_tasks_error
+                })
+        
+        health_status['checks']['stuck_tasks'] = {
+            'status': 'healthy' if stuck_tasks_healthy else 'warning',
+            'error': stuck_tasks_error,
+            'info': stuck_tasks_info
+        }
+        
+        all_healthy = redis_healthy and workers_healthy and queue_healthy and stuck_tasks_healthy
+        health_status['status'] = 'healthy' if all_healthy else 'unhealthy'
+        
+        status_code = 200 if all_healthy else 503
+        
+        logger.info(f"Celery health check complete: {health_status['status']}", extra={
+            'component': 'celery_health',
+            'overall_status': health_status['status']
+        })
+        
+        return jsonify(health_status), status_code
+        
+    except Exception as e:
+        logger.error(f"Celery health check failed: {e}", exc_info=True, extra={
+            'component': 'celery_health',
+            'error': str(e)
+        })
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e),
+            'timestamp': datetime.utcnow().isoformat()
+        }), 503
 
 @api_bp.route('/containers', methods=['GET'])
 @require_auth

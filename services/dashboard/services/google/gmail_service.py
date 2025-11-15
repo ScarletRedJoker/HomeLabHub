@@ -6,6 +6,7 @@ from email.mime.multipart import MIMEMultipart
 from typing import Dict, Any, Optional, List
 from googleapiclient.errors import HttpError
 from .google_client import google_client_manager
+from .error_handler import handle_google_api_errors
 
 logger = logging.getLogger(__name__)
 
@@ -156,6 +157,7 @@ class GmailService:
 """
         return html
     
+    @handle_google_api_errors('gmail')
     def send_email(
         self,
         to: str,
@@ -231,6 +233,7 @@ class GmailService:
             logger.error(f"Unexpected error sending email: {e}", exc_info=True)
             raise
     
+    @handle_google_api_errors('gmail')
     def send_deployment_notification(
         self,
         to: str,
@@ -272,6 +275,7 @@ class GmailService:
             html=True
         )
     
+    @handle_google_api_errors('gmail')
     def send_error_notification(
         self,
         to: str,
