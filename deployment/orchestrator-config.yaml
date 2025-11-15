@@ -1,0 +1,276 @@
+# Homelab Orchestrator Configuration
+# Configuration file for the unified deployment orchestrator
+
+# ===== DEPLOYMENT SETTINGS =====
+deployment:
+  # Default compose file
+  compose_file: docker-compose.unified.yml
+  
+  # Default git branch
+  git_branch: main
+  
+  # Default git remote
+  git_remote: origin
+  
+  # Automatic rollback on failure
+  auto_rollback: true
+  
+  # Skip backup (faster but riskier)
+  skip_backup: false
+  
+  # Skip health checks
+  skip_health_check: false
+
+# ===== HEALTH CHECK SETTINGS =====
+health_check:
+  # Timeout for health checks (seconds)
+  timeout: 120
+  
+  # Interval between health check attempts (seconds)
+  interval: 5
+  
+  # Retry count before marking as failed
+  retries: 3
+  
+  # Services to skip health checks (if they don't have health endpoints)
+  skip_services:
+    - caddy  # Caddy doesn't expose health endpoint easily
+    - postgres
+
+# ===== ROLLING RESTART SETTINGS =====
+rolling_restart:
+  # Delay between service restarts (seconds)
+  delay: 10
+  
+  # Order of service restarts (services started in this order)
+  order:
+    - discord-bot-db      # Database first
+    - postgres            # Postgres next
+    - homelab-dashboard   # Core services
+    - discord-bot         
+    - stream-bot
+    - n8n
+    - plex-server
+    - vnc-desktop
+    - scarletredjoker-web
+    - caddy               # Reverse proxy last
+
+# ===== CIRCUIT BREAKER SETTINGS =====
+circuit_breaker:
+  # Number of failures before circuit opens
+  threshold: 3
+  
+  # Time window for counting failures (seconds)
+  window: 3600  # 1 hour
+  
+  # Cool-down period after circuit opens (seconds)
+  cooldown: 1800  # 30 minutes
+
+# ===== BACKUP SETTINGS =====
+backup:
+  # Backup retention (keep last N backups)
+  retention: 10
+  
+  # Backup directory (relative to project root)
+  directory: var/backups/deployments
+  
+  # Include database backups
+  include_databases: true
+  
+  # Include configuration files
+  include_configs: true
+  
+  # Databases to backup
+  databases:
+    - name: ticketbot
+      type: postgresql
+      container: discord-bot-db
+    
+    - name: streambot
+      type: postgresql
+      container: stream-bot-db
+    
+    - name: jarvis
+      type: postgresql
+      container: discord-bot-db
+
+# ===== NOTIFICATION SETTINGS =====
+notifications:
+  # Enable notifications
+  enabled: false
+  
+  # Notification methods
+  methods:
+    - email
+    - discord
+  
+  # Events to notify on
+  events:
+    - deployment_failed
+    - deployment_success
+    - rollback_triggered
+    - circuit_breaker_open
+  
+  # Email settings (if email method enabled)
+  email:
+    smtp_host: smtp.gmail.com
+    smtp_port: 587
+    smtp_user: ${EMAIL_USER}
+    smtp_password: ${EMAIL_PASSWORD}
+    from: homelab@example.com
+    to: admin@example.com
+  
+  # Discord webhook (if discord method enabled)
+  discord:
+    webhook_url: ${DISCORD_WEBHOOK_URL}
+
+# ===== GITOPS SETTINGS =====
+gitops:
+  # Enable tag-based deployments
+  tag_based_deploy: true
+  
+  # Tag pattern for production deployments
+  production_tag_pattern: "^v[0-9]+\\.[0-9]+\\.[0-9]+$"  # e.g., v1.2.3
+  
+  # Tag pattern for staging deployments
+  staging_tag_pattern: "^v[0-9]+\\.[0-9]+\\.[0-9]+-rc\\.[0-9]+$"  # e.g., v1.2.3-rc.1
+  
+  # Require signed commits
+  require_signed_commits: false
+  
+  # Auto-deploy on tag push
+  auto_deploy_on_tag: false
+
+# ===== CRON SETTINGS =====
+cron:
+  # Enable automatic sync
+  auto_sync_enabled: false
+  
+  # Auto-sync interval (minutes)
+  auto_sync_interval: 5
+  
+  # Auto-deploy only on tagged commits
+  auto_deploy_only_tags: true
+  
+  # Lock timeout for cron jobs (seconds)
+  lock_timeout: 300  # 5 minutes
+
+# ===== SERVICE DEFINITIONS =====
+services:
+  homelab-dashboard:
+    type: python
+    health_check:
+      endpoint: http://localhost:5000/health
+      method: GET
+    dependencies:
+      - discord-bot-db
+  
+  discord-bot:
+    type: nodejs
+    health_check:
+      endpoint: http://localhost:5000/health
+      method: GET
+    dependencies:
+      - discord-bot-db
+  
+  stream-bot:
+    type: nodejs
+    health_check:
+      endpoint: http://localhost:3000/health
+      method: GET
+  
+  n8n:
+    type: external
+    health_check:
+      endpoint: http://localhost:5678/healthz
+      method: GET
+  
+  plex-server:
+    type: external
+    health_check:
+      enabled: false  # Plex has complex health check
+  
+  vnc-desktop:
+    type: external
+    health_check:
+      port: 6080
+  
+  caddy:
+    type: external
+    health_check:
+      port: 80
+  
+  scarletredjoker-web:
+    type: static
+    health_check:
+      port: 80
+
+# ===== AUDIT LOGGING =====
+audit:
+  # Enable audit logging
+  enabled: true
+  
+  # Audit log file (relative to project root)
+  log_file: var/log/deployment-audit.log
+  
+  # Log rotation
+  rotation:
+    max_size: 10M
+    max_files: 10
+  
+  # Include in audit log
+  include:
+    - git_commit
+    - git_tag
+    - user
+    - timestamp
+    - command
+    - result
+    - duration
+    - services_affected
+
+# ===== VALIDATION RULES =====
+validation:
+  # Required environment variables
+  required_env_vars:
+    - LETSENCRYPT_EMAIL
+    - DOMAIN
+  
+  # Minimum disk space (GB)
+  min_disk_space: 5
+  
+  # Minimum memory (GB)
+  min_memory: 2
+  
+  # Check Docker version
+  check_docker_version: true
+  min_docker_version: "20.10.0"
+  
+  # Check Docker Compose version
+  check_compose_version: true
+  min_compose_version: "2.0.0"
+
+# ===== PERFORMANCE SETTINGS =====
+performance:
+  # Parallel build (number of services to build simultaneously)
+  parallel_build: 2
+  
+  # Build timeout (seconds)
+  build_timeout: 600  # 10 minutes
+  
+  # Deploy timeout (seconds)
+  deploy_timeout: 300  # 5 minutes
+  
+  # Pull timeout for images (seconds)
+  pull_timeout: 300  # 5 minutes
+
+# ===== DRY-RUN SETTINGS =====
+dry_run:
+  # Show detailed output in dry-run
+  verbose: true
+  
+  # Generate dry-run report
+  generate_report: true
+  
+  # Report file (relative to project root)
+  report_file: var/reports/dry-run-report.txt

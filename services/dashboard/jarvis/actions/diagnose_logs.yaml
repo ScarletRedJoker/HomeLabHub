@@ -1,0 +1,40 @@
+name: diagnose_error_logs
+tier: 1
+tier_name: DIAGNOSE
+risk_level: low
+category: diagnostics
+description: Scan recent logs for errors and critical issues
+requires_approval: false
+auto_execute: true
+execution_interval_minutes: 10
+timeout_seconds: 30
+
+command: tail -100 /tmp/jarvis_audit.log 2>/dev/null | grep -E '(ERROR|CRITICAL|FAILED)' || echo "No critical errors found"
+
+rollback_plan: null
+checkpoint_required: false
+
+safety_checks:
+  - type: read_only
+    description: Only reads log files
+  - type: no_system_changes
+    description: Does not modify system state
+
+expected_outputs:
+  - type: log_entries
+    pattern: ".*ERROR.*|.*CRITICAL.*"
+
+alerting:
+  error_count_threshold: 10
+  metric_name: error_log_count
+  alert_message: "High error count detected in logs"
+
+metadata:
+  tags:
+    - diagnostics
+    - logs
+    - errors
+    - tier1
+  author: jarvis
+  version: "1.0"
+  last_updated: "2025-11-15"

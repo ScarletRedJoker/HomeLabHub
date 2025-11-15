@@ -1,0 +1,42 @@
+name: health_check_endpoints
+tier: 1
+tier_name: DIAGNOSE
+risk_level: low
+category: diagnostics
+description: Check health of all service endpoints
+requires_approval: false
+auto_execute: true
+execution_interval_minutes: 5
+timeout_seconds: 30
+
+command: |
+  curl -s http://localhost:5000/health 2>/dev/null && echo "Dashboard: OK" || echo "Dashboard: FAIL"
+  curl -s http://localhost:3000/api/health 2>/dev/null && echo "Stream-bot: OK" || echo "Stream-bot: FAIL"
+
+rollback_plan: null
+checkpoint_required: false
+
+safety_checks:
+  - type: read_only
+    description: Only performs health checks
+  - type: no_modifications
+    description: Does not modify any services
+
+expected_outputs:
+  - type: health_status
+    pattern: "OK|FAIL"
+
+alerting:
+  on_failure: true
+  metric_name: endpoint_health_failures
+  alert_message: "Service endpoint health check failed"
+
+metadata:
+  tags:
+    - diagnostics
+    - health
+    - endpoints
+    - tier1
+  author: jarvis
+  version: "1.0"
+  last_updated: "2025-11-15"

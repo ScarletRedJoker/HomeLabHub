@@ -7,9 +7,11 @@
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicons/dashboard.png') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/spaceship.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/cosmic-theme.css') }}?v=2">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/cosmic-theme.css') }}?v=3">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=2">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/presentation-mode.css') }}">
     <style>
         :root[data-theme="dark"] {
             --bg-primary: #0a0e1a;
@@ -697,6 +699,13 @@
         </div>
         <ul class="category-content">
             <li class="nav-item">
+                <a href="#" class="nav-link cosmic" onclick="togglePresentationMode(); return false;">
+                    <i class="bi bi-easel"></i>
+                    <span>Presentation Mode</span>
+                    <i class="bi bi-toggle-off" id="presentation-mode-icon" style="margin-left: auto; font-size: 1.1rem;"></i>
+                </a>
+            </li>
+            <li class="nav-item">
                 <a href="/file-manager" class="nav-link cosmic {% if request.path == '/file-manager' %}active{% endif %}">
                     <i class="bi bi-folder"></i>
                     <span>File Manager</span>
@@ -716,10 +725,16 @@
         
         <div class="header">
             <h2>{% block page_title %}Dashboard{% endblock %}</h2>
-            <button class="theme-toggle" onclick="toggleTheme()">
-                <i class="bi bi-moon-stars" id="theme-icon"></i>
-                <span id="theme-text">Dark Mode</span>
-            </button>
+            <div style="display: flex; gap: 12px;">
+                <button class="theme-toggle" onclick="togglePresentationMode()" title="Toggle Presentation Mode (Ctrl+P)">
+                    <i class="bi bi-easel" id="presentation-icon"></i>
+                    <span id="presentation-text">Presentation</span>
+                </button>
+                <button class="theme-toggle" onclick="toggleTheme()">
+                    <i class="bi bi-moon-stars" id="theme-icon"></i>
+                    <span id="theme-text">Dark Mode</span>
+                </button>
+            </div>
         </div>
 
         <div class="status-bar">
@@ -764,6 +779,11 @@
         {% block content %}{% endblock %}
     </div>
 
+    <div class="presentation-mode-indicator">
+        <i class="bi bi-easel"></i>
+        <span>Presentation Mode Active</span>
+    </div>
+
     <button id="customization-toggle" title="Customize Dashboard (Ctrl+/)">
         <i class="bi bi-sliders"></i>
     </button>
@@ -771,6 +791,46 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/starfield.js') }}"></script>
     <script>
+        function togglePresentationMode() {
+            const body = document.body;
+            const isPresentation = body.classList.toggle('presentation-mode');
+            const icon = document.getElementById('presentation-icon');
+            const text = document.getElementById('presentation-text');
+            const sidebarIcon = document.getElementById('presentation-mode-icon');
+            
+            if (isPresentation) {
+                if (icon) icon.className = 'bi bi-easel-fill';
+                if (text) text.textContent = 'Exit Demo';
+                if (sidebarIcon) sidebarIcon.className = 'bi bi-toggle-on';
+            } else {
+                if (icon) icon.className = 'bi bi-easel';
+                if (text) text.textContent = 'Presentation';
+                if (sidebarIcon) sidebarIcon.className = 'bi bi-toggle-off';
+            }
+            
+            localStorage.setItem('presentationMode', isPresentation);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const isPresentationMode = localStorage.getItem('presentationMode') === 'true';
+            if (isPresentationMode) {
+                document.body.classList.add('presentation-mode');
+                const icon = document.getElementById('presentation-icon');
+                const text = document.getElementById('presentation-text');
+                const sidebarIcon = document.getElementById('presentation-mode-icon');
+                if (icon) icon.className = 'bi bi-easel-fill';
+                if (text) text.textContent = 'Exit Demo';
+                if (sidebarIcon) sidebarIcon.className = 'bi bi-toggle-on';
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'p') {
+                e.preventDefault();
+                togglePresentationMode();
+            }
+        });
+
         function toggleTheme() {
             const html = document.documentElement;
             const currentTheme = html.getAttribute('data-theme');

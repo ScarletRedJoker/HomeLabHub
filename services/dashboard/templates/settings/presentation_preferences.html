@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+
+{% block title %}Presentation Mode Settings{% endblock %}
+{% block page_title %}Presentation Mode Settings{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card professional-card">
+            <div class="card-header">
+                <i class="bi bi-easel"></i> Presentation Mode Configuration
+            </div>
+            <div class="card-body">
+                <p class="text-secondary mb-4">
+                    Configure presentation mode for investor demos and screenshares. 
+                    Presentation mode provides a clean, minimal interface with larger text and reduced visual effects.
+                </p>
+
+                <div class="clean-stack">
+                    <!-- Quick Toggle -->
+                    <div class="settings-section">
+                        <h5><i class="bi bi-toggle-on"></i> Quick Toggle</h5>
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Keyboard Shortcut:</strong> Press <kbd>Ctrl</kbd> + <kbd>P</kbd> to toggle presentation mode on/off
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="presentationModeToggle" onchange="togglePresentationMode()">
+                            <label class="form-check-label" for="presentationModeToggle">
+                                Enable Presentation Mode
+                            </label>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Theme Selection -->
+                    <div class="settings-section">
+                        <h5><i class="bi bi-palette"></i> Presentation Theme</h5>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="presentationTheme" id="themeDark" value="dark" checked onchange="setPresentationTheme('dark')">
+                            <label class="btn btn-outline-primary" for="themeDark">
+                                <i class="bi bi-moon-stars"></i> Dark Theme
+                            </label>
+                            
+                            <input type="radio" class="btn-check" name="presentationTheme" id="themeLight" value="light" onchange="setPresentationTheme('light')">
+                            <label class="btn btn-outline-primary" for="themeLight">
+                                <i class="bi bi-sun"></i> Light Theme
+                            </label>
+                        </div>
+                        <small class="text-muted mt-2 d-block">
+                            Light theme is recommended for projectors and well-lit rooms
+                        </small>
+                    </div>
+
+                    <hr>
+
+                    <!-- Display Settings -->
+                    <div class="settings-section">
+                        <h5><i class="bi bi-display"></i> Display Settings</h5>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="hideLEDPanel" checked onchange="savePresentationSettings()">
+                            <label class="form-check-label" for="hideLEDPanel">
+                                Hide LED status panel (reduces visual clutter)
+                            </label>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="disableAnimations" checked onchange="savePresentationSettings()">
+                            <label class="form-check-label" for="disableAnimations">
+                                Disable decorative animations (improves performance)
+                            </label>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="largerText" checked onchange="savePresentationSettings()">
+                            <label class="form-check-label" for="largerText">
+                                Use larger text for better visibility
+                            </label>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="simplifiedCards" checked onchange="savePresentationSettings()">
+                            <label class="form-check-label" for="simplifiedCards">
+                                Show simplified card designs
+                            </label>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Information Density -->
+                    <div class="settings-section">
+                        <h5><i class="bi bi-layers"></i> Information Density</h5>
+                        <label for="infoDensity" class="form-label">Content Detail Level</label>
+                        <select class="form-select" id="infoDensity" onchange="savePresentationSettings()">
+                            <option value="minimal">Minimal - Key metrics only</option>
+                            <option value="standard" selected>Standard - Essential information</option>
+                            <option value="detailed">Detailed - Full information</option>
+                        </select>
+                        <small class="text-muted mt-2 d-block">
+                            Minimal is recommended for investor presentations
+                        </small>
+                    </div>
+
+                    <hr>
+
+                    <!-- Preview -->
+                    <div class="settings-section">
+                        <h5><i class="bi bi-eye"></i> Preview</h5>
+                        <div class="preview-container p-4 rounded" style="background: rgba(26, 35, 50, 0.5); border: 1px solid rgba(255, 255, 255, 0.1);">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="metric-display">
+                                        <div class="metric-icon" style="color: var(--color-info);">
+                                            <i class="bi bi-box-seam"></i>
+                                        </div>
+                                        <div style="flex: 1;">
+                                            <div class="metric-value">12</div>
+                                            <div class="metric-label">CONTAINERS</div>
+                                        </div>
+                                        <span class="status-led active"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="metric-display">
+                                        <div class="metric-icon" style="color: var(--color-success);">
+                                            <i class="bi bi-play-circle-fill"></i>
+                                        </div>
+                                        <div style="flex: 1;">
+                                            <div class="metric-value">8</div>
+                                            <div class="metric-label">RUNNING</div>
+                                        </div>
+                                        <span class="status-led online"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Tips -->
+                    <div class="settings-section">
+                        <h5><i class="bi bi-lightbulb"></i> Presentation Tips</h5>
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="bi bi-check-circle text-success"></i>
+                                Test presentation mode before your demo to ensure everything looks good
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-check-circle text-success"></i>
+                                Use light theme for projectors; dark theme for screen shares
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-check-circle text-success"></i>
+                                Close unnecessary browser tabs to reduce distractions
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-check-circle text-success"></i>
+                                Test with the actual display setup you'll be using
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-check-circle text-success"></i>
+                                Presentation mode automatically hides customization panels
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex gap-3 mt-4">
+                        <button class="btn btn-primary flex-grow-1" onclick="applyAndTest()">
+                            <i class="bi bi-check-circle"></i> Apply & Test
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="resetToDefaults()">
+                            <i class="bi bi-arrow-counterclockwise"></i> Reset to Defaults
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Message -->
+        <div id="statusMessage" class="alert alert-success mt-3" style="display: none;">
+            <i class="bi bi-check-circle"></i> <span id="statusText"></span>
+        </div>
+    </div>
+</div>
+
+<script>
+// Load saved settings on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadPresentationSettings();
+});
+
+function togglePresentationMode() {
+    const isEnabled = document.getElementById('presentationModeToggle').checked;
+    
+    if (isEnabled) {
+        document.body.classList.add('presentation-mode');
+        showStatus('Presentation mode enabled');
+    } else {
+        document.body.classList.remove('presentation-mode');
+        showStatus('Presentation mode disabled');
+    }
+    
+    // Save to localStorage
+    localStorage.setItem('presentationMode', isEnabled);
+}
+
+function setPresentationTheme(theme) {
+    if (theme === 'light') {
+        document.body.classList.add('light-theme');
+    } else {
+        document.body.classList.remove('light-theme');
+    }
+    
+    localStorage.setItem('presentationTheme', theme);
+    showStatus(`Theme changed to ${theme}`);
+}
+
+function savePresentationSettings() {
+    const settings = {
+        hideLEDPanel: document.getElementById('hideLEDPanel').checked,
+        disableAnimations: document.getElementById('disableAnimations').checked,
+        largerText: document.getElementById('largerText').checked,
+        simplifiedCards: document.getElementById('simplifiedCards').checked,
+        infoDensity: document.getElementById('infoDensity').value
+    };
+    
+    localStorage.setItem('presentationSettings', JSON.stringify(settings));
+    showStatus('Settings saved successfully');
+}
+
+function loadPresentationSettings() {
+    // Load presentation mode state
+    const isPresentationMode = localStorage.getItem('presentationMode') === 'true';
+    document.getElementById('presentationModeToggle').checked = isPresentationMode;
+    if (isPresentationMode) {
+        document.body.classList.add('presentation-mode');
+    }
+    
+    // Load theme
+    const theme = localStorage.getItem('presentationTheme') || 'dark';
+    document.querySelector(`input[name="presentationTheme"][value="${theme}"]`).checked = true;
+    if (theme === 'light') {
+        document.body.classList.add('light-theme');
+    }
+    
+    // Load other settings
+    const settingsStr = localStorage.getItem('presentationSettings');
+    if (settingsStr) {
+        try {
+            const settings = JSON.parse(settingsStr);
+            document.getElementById('hideLEDPanel').checked = settings.hideLEDPanel ?? true;
+            document.getElementById('disableAnimations').checked = settings.disableAnimations ?? true;
+            document.getElementById('largerText').checked = settings.largerText ?? true;
+            document.getElementById('simplifiedCards').checked = settings.simplifiedCards ?? true;
+            document.getElementById('infoDensity').value = settings.infoDensity || 'standard';
+        } catch (e) {
+            console.error('Error loading presentation settings:', e);
+        }
+    }
+}
+
+function applyAndTest() {
+    savePresentationSettings();
+    
+    if (!document.getElementById('presentationModeToggle').checked) {
+        document.getElementById('presentationModeToggle').checked = true;
+        togglePresentationMode();
+    }
+    
+    showStatus('Settings applied! Presentation mode is now active.');
+    
+    // Navigate to dashboard to see the changes
+    setTimeout(() => {
+        window.location.href = '/';
+    }, 1500);
+}
+
+function resetToDefaults() {
+    if (!confirm('Reset all presentation settings to defaults?')) {
+        return;
+    }
+    
+    // Clear localStorage
+    localStorage.removeItem('presentationMode');
+    localStorage.removeItem('presentationTheme');
+    localStorage.removeItem('presentationSettings');
+    
+    // Reload page
+    window.location.reload();
+}
+
+function showStatus(message) {
+    const statusDiv = document.getElementById('statusMessage');
+    const statusText = document.getElementById('statusText');
+    
+    statusText.textContent = message;
+    statusDiv.style.display = 'block';
+    
+    setTimeout(() => {
+        statusDiv.style.display = 'none';
+    }, 3000);
+}
+</script>
+
+<style>
+.settings-section {
+    padding: var(--spacing-lg) 0;
+}
+
+.settings-section h5 {
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-semibold);
+    margin-bottom: var(--spacing-md);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.form-check-input {
+    cursor: pointer;
+}
+
+.form-check-label {
+    cursor: pointer;
+}
+
+kbd {
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.875rem;
+    color: var(--color-primary);
+    font-family: monospace;
+}
+
+.preview-container {
+    min-height: 150px;
+}
+</style>
+{% endblock %}

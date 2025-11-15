@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS AI Assistant - IDE</title>
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
+    <!-- Cosmic Theme -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/cosmic-theme.css') }}?v=1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/jarvis-chat.css') }}?v=1">
+    
+    <style>
+        /* IDE-specific minimal styling */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            background: linear-gradient(180deg, #0a0e1a 0%, #111827 50%, #0a0e1a 100%);
+            color: #e5e7eb;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        
+        /* Override container height for full viewport */
+        .jarvis-chat-container {
+            height: 100vh;
+            border-radius: 0;
+            margin: 0;
+        }
+        
+        /* Compact header for IDE use */
+        .jarvis-header {
+            padding: 12px 20px;
+            min-height: 50px;
+        }
+        
+        .jarvis-title h2 {
+            font-size: 1.3rem;
+        }
+        
+        .jarvis-title i {
+            font-size: 1.5rem;
+        }
+        
+        /* Hide quick actions by default to save space */
+        .quick-actions {
+            display: none;
+        }
+        
+        /* Show quick actions on toggle */
+        .quick-actions.show {
+            display: flex;
+        }
+        
+        /* Add toggle button for quick actions */
+        .toggle-quick-actions {
+            background: none;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+        }
+        
+        .toggle-quick-actions:hover {
+            background: rgba(139, 92, 246, 0.2);
+            border-color: rgba(139, 92, 246, 0.5);
+        }
+        
+        /* Compact input area */
+        .jarvis-input-area {
+            padding: 16px 20px;
+        }
+        
+        .input-hint {
+            margin-top: 6px;
+            font-size: 0.75rem;
+        }
+        
+        /* Adjust messages area */
+        .jarvis-messages {
+            padding: 16px;
+        }
+        
+        .message {
+            max-width: 90%;
+        }
+        
+        /* IDE keyboard shortcut indicator */
+        .keyboard-hint {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(31, 41, 55, 0.9);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        
+        .keyboard-hint.show {
+            opacity: 1;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .jarvis-header {
+                padding: 10px 15px;
+            }
+            
+            .jarvis-title h2 {
+                font-size: 1.1rem;
+            }
+            
+            .control-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="jarvis-chat-container">
+        <!-- Header with controls -->
+        <div class="jarvis-header">
+            <div class="jarvis-title">
+                <i class="bi bi-cpu"></i>
+                <h2>JARVIS</h2>
+                <span class="jarvis-status" id="jarvisStatus">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Initializing...</span>
+                </span>
+            </div>
+            <div class="jarvis-controls">
+                <button class="control-btn" id="toggleQuickActions" title="Toggle Quick Actions">
+                    <i class="bi bi-lightning"></i>
+                </button>
+                <button class="control-btn" id="voiceToggle" title="Toggle Auto-Speak">
+                    <i class="bi bi-volume-up"></i>
+                </button>
+                <button class="control-btn" id="settingsBtn" title="Voice Settings">
+                    <i class="bi bi-gear"></i>
+                </button>
+                <button class="control-btn" id="clearChat" title="Clear Chat">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Voice Settings Panel -->
+        <div class="settings-panel" id="settingsPanel">
+            <div class="settings-content">
+                <h3><i class="bi bi-sliders"></i> Voice Settings</h3>
+                
+                <div class="setting-group">
+                    <label>Voice</label>
+                    <select id="voiceSelect" class="form-control">
+                        <option value="">Loading voices...</option>
+                    </select>
+                </div>
+
+                <div class="setting-group">
+                    <label>Speech Rate: <span id="rateValue">1.0</span>x</label>
+                    <input type="range" id="speechRate" min="0.5" max="2" step="0.1" value="1" class="form-range">
+                </div>
+
+                <div class="setting-group">
+                    <label>Pitch: <span id="pitchValue">1.0</span></label>
+                    <input type="range" id="speechPitch" min="0" max="2" step="0.1" value="1" class="form-range">
+                </div>
+
+                <div class="setting-group">
+                    <label>Volume: <span id="volumeValue">100</span>%</label>
+                    <input type="range" id="speechVolume" min="0" max="1" step="0.1" value="1" class="form-range">
+                </div>
+
+                <div class="setting-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="autoSpeak" checked>
+                        Auto-speak responses
+                    </label>
+                </div>
+
+                <div class="setting-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="continuousListening">
+                        Continuous listening mode
+                    </label>
+                </div>
+
+                <button class="btn-close-settings" id="closeSettings">
+                    <i class="bi bi-x"></i> Close
+                </button>
+            </div>
+        </div>
+
+        <!-- Chat Messages Area -->
+        <div class="jarvis-messages" id="chatMessages">
+            <!-- Messages will be dynamically added here -->
+        </div>
+
+        <!-- Quick Actions (Hidden by default to save space) -->
+        <div class="quick-actions" id="quickActions">
+            <button class="quick-action-btn" data-prompt="What can you help me with?">
+                <i class="bi bi-question-circle"></i> What can you do?
+            </button>
+            <button class="quick-action-btn" data-prompt="Check my server health and status">
+                <i class="bi bi-heart-pulse"></i> Server Health
+            </button>
+            <button class="quick-action-btn" data-prompt="How do I deploy a new website?">
+                <i class="bi bi-rocket-takeoff"></i> Deploy Help
+            </button>
+            <button class="quick-action-btn" data-prompt="Show me recent errors in my logs">
+                <i class="bi bi-bug"></i> Check Errors
+            </button>
+            <button class="quick-action-btn" data-prompt="Optimize my Docker containers">
+                <i class="bi bi-speedometer"></i> Optimize
+            </button>
+        </div>
+
+        <!-- Input Area -->
+        <div class="jarvis-input-area">
+            <div class="input-wrapper">
+                <button class="mic-button" id="micButton" title="Click to speak (Ctrl+J)">
+                    <div class="mic-icon">
+                        <i class="bi bi-mic"></i>
+                    </div>
+                    <div class="mic-pulse"></div>
+                </button>
+                
+                <div class="text-input-wrapper">
+                    <input 
+                        type="text" 
+                        id="chatInput" 
+                        class="chat-input" 
+                        placeholder="Type or press Ctrl+J to speak..."
+                        autocomplete="off"
+                    >
+                    <div class="transcription-status" id="transcriptionStatus"></div>
+                </div>
+                
+                <button class="send-button" id="sendButton" title="Send message (Enter)">
+                    <i class="bi bi-send-fill"></i>
+                </button>
+            </div>
+            <div class="input-hint">
+                <span id="speechSupport">
+                    <i class="bi bi-mic-fill"></i> Voice input ready • <strong>Ctrl+J</strong> to activate
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Keyboard shortcut hint -->
+    <div class="keyboard-hint" id="keyboardHint">
+        Press <strong>Ctrl+J</strong> to toggle voice input
+    </div>
+
+    <script src="{{ url_for('static', filename='js/jarvis-voice.js') }}?v=1"></script>
+    
+    <script>
+        // IDE-specific enhancements
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add keyboard shortcut (Ctrl+J) for voice toggle
+            document.addEventListener('keydown', function(e) {
+                if (e.ctrlKey && e.key === 'j') {
+                    e.preventDefault();
+                    const micButton = document.getElementById('micButton');
+                    if (micButton) {
+                        micButton.click();
+                    }
+                    
+                    // Show hint briefly
+                    const hint = document.getElementById('keyboardHint');
+                    hint.classList.add('show');
+                    setTimeout(() => {
+                        hint.classList.remove('show');
+                    }, 2000);
+                }
+            });
+            
+            // Toggle quick actions
+            const toggleBtn = document.getElementById('toggleQuickActions');
+            const quickActions = document.getElementById('quickActions');
+            
+            toggleBtn.addEventListener('click', function() {
+                quickActions.classList.toggle('show');
+                toggleBtn.classList.toggle('active');
+            });
+            
+            // Auto-hide welcome modal for IDE (users coming from code-server likely know what Jarvis is)
+            const welcomeModal = document.getElementById('welcomeModal');
+            if (welcomeModal) {
+                welcomeModal.classList.remove('show');
+            }
+            localStorage.setItem('jarvis-welcomed', 'true');
+            
+            // Focus input on load
+            setTimeout(() => {
+                const chatInput = document.getElementById('chatInput');
+                if (chatInput) {
+                    chatInput.focus();
+                }
+            }, 500);
+        });
+    </script>
+</body>
+</html>

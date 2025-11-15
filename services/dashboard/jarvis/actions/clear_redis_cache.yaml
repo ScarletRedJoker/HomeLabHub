@@ -1,0 +1,46 @@
+name: clear_redis_cache
+tier: 2
+tier_name: REMEDIATE
+risk_level: medium
+category: remediation
+description: Clear Redis cache when memory usage is high
+requires_approval: false
+auto_execute: true
+execution_interval_minutes: 60
+timeout_seconds: 30
+
+preconditions:
+  - type: redis_memory_threshold
+    threshold: 85
+    description: Only execute when Redis memory exceeds 85%
+
+command: redis-cli FLUSHDB 2>/dev/null && echo "Redis cache cleared" || echo "Redis not available"
+
+rollback_plan: "Cache will rebuild automatically from database"
+checkpoint_required: false
+
+safety_checks:
+  - type: cache_only
+    description: Only clears cache, not persistent data
+  - type: non_destructive
+    description: Data can be rebuilt from source
+
+expected_outputs:
+  - type: success_message
+    pattern: "cache cleared|not available"
+
+alerting:
+  on_execution: true
+  metric_name: redis_cache_clear_count
+  alert_message: "Redis cache cleared due to high memory usage"
+
+metadata:
+  tags:
+    - remediate
+    - redis
+    - cache
+    - tier2
+  author: jarvis
+  version: "1.0"
+  last_updated: "2025-11-15"
+  autonomous_execution: true

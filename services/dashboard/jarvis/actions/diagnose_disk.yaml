@@ -1,0 +1,42 @@
+name: diagnose_disk_space
+tier: 1
+tier_name: DIAGNOSE
+risk_level: low
+category: diagnostics
+description: Check disk space usage across all mounted filesystems
+requires_approval: false
+auto_execute: true
+execution_interval_minutes: 5
+timeout_seconds: 30
+
+command: df -h && du -sh /tmp/* 2>/dev/null | sort -h | tail -10
+
+rollback_plan: null
+checkpoint_required: false
+
+safety_checks:
+  - type: read_only
+    description: This is a read-only diagnostic command
+  - type: no_data_modification
+    description: Does not modify any data
+
+expected_outputs:
+  - type: filesystem_usage
+    pattern: "^Filesystem.*"
+  - type: disk_percentage
+    pattern: "\\d+%"
+
+alerting:
+  critical_threshold: 90
+  warning_threshold: 80
+  metric_name: disk_usage_percent
+  alert_message: "Disk space usage exceeds threshold"
+
+metadata:
+  tags:
+    - diagnostics
+    - disk
+    - tier1
+  author: jarvis
+  version: "1.0"
+  last_updated: "2025-11-15"

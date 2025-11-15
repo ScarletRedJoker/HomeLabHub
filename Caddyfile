@@ -87,15 +87,27 @@ vnc.evindrake.net {
 # ============================================
 code.evindrake.net {
     reverse_proxy code-server:8080 {
+        # Standard proxy headers
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}
         header_up X-Forwarded-Proto {scheme}
         header_up X-Forwarded-Host {host}
+        header_up X-Forwarded-Port {server_port}
         
-        # WebSocket support for VS Code
+        # WebSocket support - CRITICAL for code-server
         header_up Upgrade {>Upgrade}
         header_up Connection {>Connection}
+        
+        # Timeouts for long-running connections
+        transport http {
+            read_timeout 3600s
+            write_timeout 3600s
+            dial_timeout 30s
+        }
+        
+        # Flush responses immediately for real-time updates
+        flush_interval -1
     }
     
     # Security headers
@@ -110,6 +122,12 @@ code.evindrake.net {
         Cache-Control "no-cache, no-store, must-revalidate"
         Pragma "no-cache"
         Expires "0"
+    }
+    
+    # Enable detailed logging for troubleshooting
+    log {
+        output file /var/log/caddy/code-server-access.log
+        format json
     }
 }
 

@@ -1,0 +1,51 @@
+name: clean_tmp_files
+tier: 2
+tier_name: REMEDIATE
+risk_level: medium
+category: maintenance
+description: Clean temporary files older than 7 days to free disk space
+requires_approval: false
+auto_execute: true
+execution_interval_minutes: 1440
+timeout_seconds: 60
+
+preconditions:
+  - type: disk_usage_threshold
+    threshold: 80
+    description: Only execute when disk usage exceeds 80%
+
+command: find /tmp -type f -mtime +7 -not -path '*/.*' -delete && echo "Cleaned old temporary files"
+
+rollback_plan: "No rollback - files are temporary and safe to delete"
+checkpoint_required: false
+
+safety_checks:
+  - type: path_whitelist
+    paths:
+      - /tmp
+    description: Only operates on /tmp directory
+  - type: age_requirement
+    min_age_days: 7
+    description: Only deletes files older than 7 days
+  - type: exclude_system_files
+    description: Excludes hidden system files
+
+expected_outputs:
+  - type: success_message
+    pattern: "Cleaned.*files"
+
+alerting:
+  on_success: true
+  metric_name: tmp_cleanup_success
+  alert_message: "Temporary files cleaned successfully"
+
+metadata:
+  tags:
+    - remediate
+    - cleanup
+    - disk
+    - tier2
+  author: jarvis
+  version: "1.0"
+  last_updated: "2025-11-15"
+  autonomous_execution: true

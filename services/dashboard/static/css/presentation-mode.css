@@ -1,0 +1,378 @@
+/* ==================== PRESENTATION MODE STYLES ==================== */
+/* Clean, minimal interface optimized for investor demos and presentations */
+
+body.presentation-mode {
+  /* Disable starfield and cosmic effects */
+  --cosmic-effects-enabled: 0;
+}
+
+/* ===== DISABLE STARFIELD & BACKGROUND EFFECTS ===== */
+
+body.presentation-mode #starfield-canvas {
+  display: none !important;
+}
+
+body.presentation-mode .cosmic-bg::before {
+  display: none !important;
+}
+
+body.presentation-mode .nebula-overlay {
+  display: none !important;
+}
+
+/* ===== SIMPLIFIED BACKGROUNDS ===== */
+
+body.presentation-mode {
+  background: linear-gradient(180deg, #0a0e1a 0%, #111827 100%);
+}
+
+body.presentation-mode .sidebar {
+  background: rgba(17, 24, 39, 0.98);
+  backdrop-filter: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+
+body.presentation-mode .main-content {
+  background: transparent;
+}
+
+/* ===== SIMPLIFIED CARDS ===== */
+
+body.presentation-mode .card,
+body.presentation-mode .cosmic-glass-card,
+body.presentation-mode .control-panel-card {
+  background: rgba(26, 35, 50, 0.7) !important;
+  backdrop-filter: blur(4px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+body.presentation-mode .card:hover,
+body.presentation-mode .cosmic-glass-card:hover,
+body.presentation-mode .control-panel-card:hover {
+  border-color: rgba(99, 102, 241, 0.3) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+  transform: translateY(-2px);
+}
+
+/* ===== DISABLE NON-ESSENTIAL ANIMATIONS ===== */
+
+body.presentation-mode * {
+  animation-duration: 0.2s !important;
+  transition-duration: 0.2s !important;
+}
+
+body.presentation-mode .cosmic-fade-in,
+body.presentation-mode .cosmic-slide-in,
+body.presentation-mode .cosmic-float,
+body.presentation-mode .cosmic-shimmer,
+body.presentation-mode .cosmic-pulse {
+  animation: none !important;
+}
+
+body.presentation-mode .status-led.blink,
+body.presentation-mode .activity-dot {
+  animation: none !important;
+  opacity: 1 !important;
+}
+
+/* Keep essential pulse only */
+body.presentation-mode .status-led::before {
+  animation: none !important;
+}
+
+/* ===== SIMPLIFIED GRADIENTS ===== */
+
+body.presentation-mode .btn-primary,
+body.presentation-mode .cosmic-button {
+  background: #6366f1 !important;
+  animation: none !important;
+  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3) !important;
+}
+
+body.presentation-mode .btn-primary:hover,
+body.presentation-mode .cosmic-button:hover {
+  background: #4f46e5 !important;
+  box-shadow: 0 4px 8px rgba(99, 102, 241, 0.4) !important;
+}
+
+body.presentation-mode .metric-value,
+body.presentation-mode .stat-value-gradient,
+body.presentation-mode .sidebar-brand h4 {
+  background: #6366f1 !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+  animation: none !important;
+}
+
+body.presentation-mode .header h2 {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+  animation: none !important;
+}
+
+/* ===== CLEAN STATUS INDICATORS ===== */
+
+body.presentation-mode .status-led {
+  width: 10px;
+  height: 10px;
+  box-shadow: none !important;
+}
+
+body.presentation-mode .status-led.online {
+  background: #10b981;
+}
+
+body.presentation-mode .status-led.warning {
+  background: #f59e0b;
+}
+
+body.presentation-mode .status-led.offline {
+  background: #ef4444;
+}
+
+body.presentation-mode .status-led.active {
+  background: #3b82f6;
+}
+
+/* ===== LARGER TEXT FOR VISIBILITY ===== */
+
+body.presentation-mode {
+  font-size: 16px;
+}
+
+body.presentation-mode h1 {
+  font-size: 2.25rem;
+}
+
+body.presentation-mode h2 {
+  font-size: 1.875rem;
+}
+
+body.presentation-mode h3 {
+  font-size: 1.5rem;
+}
+
+body.presentation-mode .metric-value {
+  font-size: 2.25rem;
+}
+
+body.presentation-mode .data-readout {
+  font-size: 1rem;
+}
+
+/* ===== HIDE NON-ESSENTIAL ELEMENTS ===== */
+
+body.presentation-mode .led-panel {
+  display: none;
+}
+
+body.presentation-mode #customization-toggle {
+  display: none;
+}
+
+body.presentation-mode .customization-panel {
+  display: none !important;
+}
+
+/* Hide diagnostic details in presentation mode */
+body.presentation-mode .system-status {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+/* ===== SIMPLIFIED NAVIGATION ===== */
+
+body.presentation-mode .nav-link {
+  transition: all 0.15s ease;
+}
+
+body.presentation-mode .nav-link.active {
+  background: rgba(99, 102, 241, 0.15);
+  border-left: 3px solid #6366f1;
+}
+
+body.presentation-mode .nav-link:hover {
+  background: rgba(99, 102, 241, 0.1);
+}
+
+/* ===== CLEAN BUTTONS ===== */
+
+body.presentation-mode .control-btn {
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  transition: all 0.2s ease;
+}
+
+body.presentation-mode .control-btn::before {
+  display: none;
+}
+
+body.presentation-mode .control-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.2);
+}
+
+/* ===== SIMPLIFIED GLOW EFFECTS ===== */
+
+body.presentation-mode .glow-border::before {
+  display: none;
+}
+
+body.presentation-mode .cosmic-glow,
+body.presentation-mode .cosmic-glow-subtle {
+  box-shadow: none !important;
+}
+
+/* ===== CLEAN METRICS ===== */
+
+body.presentation-mode .metric-display {
+  background: rgba(26, 35, 50, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+body.presentation-mode .metric-display:hover {
+  border-color: rgba(99, 102, 241, 0.3);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.15);
+}
+
+/* ===== PRESENTATION MODE INDICATOR ===== */
+
+.presentation-mode-indicator {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  background: rgba(99, 102, 241, 0.9);
+  color: white;
+  border-radius: 20px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  z-index: var(--z-notification);
+  display: none;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+body.presentation-mode .presentation-mode-indicator {
+  display: flex;
+}
+
+.presentation-mode-indicator i {
+  font-size: 1rem;
+}
+
+/* ===== LIGHT THEME FOR PRESENTATION MODE ===== */
+
+body.presentation-mode.light-theme {
+  background: linear-gradient(180deg, #f9fafb 0%, #ffffff 100%);
+  color: #111827;
+}
+
+body.presentation-mode.light-theme .sidebar {
+  background: rgba(255, 255, 255, 0.98);
+  border-right: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+body.presentation-mode.light-theme .card,
+body.presentation-mode.light-theme .cosmic-glass-card,
+body.presentation-mode.light-theme .control-panel-card {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  color: #111827 !important;
+}
+
+body.presentation-mode.light-theme .nav-link {
+  color: #4b5563;
+}
+
+body.presentation-mode.light-theme .nav-link:hover {
+  color: #111827;
+  background: rgba(99, 102, 241, 0.1);
+}
+
+body.presentation-mode.light-theme .nav-link.active {
+  color: #6366f1;
+  background: rgba(99, 102, 241, 0.1);
+}
+
+/* ===== FOCUS ON KEY METRICS ===== */
+
+body.presentation-mode .metric-display,
+body.presentation-mode .status-indicator-box {
+  padding: 20px;
+  border-radius: 12px;
+}
+
+body.presentation-mode .metric-icon {
+  width: 48px;
+  height: 48px;
+  font-size: 1.5rem;
+}
+
+/* ===== CLEAN TABLES ===== */
+
+body.presentation-mode .table {
+  border-collapse: collapse;
+}
+
+body.presentation-mode .table th {
+  background: rgba(99, 102, 241, 0.1);
+  font-weight: 600;
+}
+
+body.presentation-mode .table td,
+body.presentation-mode .table th {
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ===== RESPONSIVE PRESENTATION MODE ===== */
+
+@media (max-width: 768px) {
+  body.presentation-mode {
+    font-size: 15px;
+  }
+  
+  body.presentation-mode h1 {
+    font-size: 1.875rem;
+  }
+  
+  body.presentation-mode h2 {
+    font-size: 1.5rem;
+  }
+  
+  body.presentation-mode .metric-value {
+    font-size: 1.875rem;
+  }
+}
+
+/* ===== PRINT STYLES FOR PRESENTATIONS ===== */
+
+@media print {
+  body.presentation-mode {
+    background: white;
+    color: black;
+  }
+  
+  body.presentation-mode .sidebar {
+    display: none;
+  }
+  
+  body.presentation-mode .main-content {
+    margin-left: 0;
+  }
+  
+  body.presentation-mode .card {
+    border: 1px solid #ddd;
+    page-break-inside: avoid;
+  }
+}

@@ -3,15 +3,36 @@
 # ======================================================================
 # Unified Homelab Deployment Script
 # Deploys all services with Caddy for automatic SSL and routing
+#
+# NOTE: For production deployments with advanced features, use:
+#   ./scripts/homelab-orchestrator.sh deploy
+#
+# Orchestrator provides:
+#   - Zero-downtime rolling restarts
+#   - Automatic health checks and gates
+#   - Automatic rollback on failure
+#   - Circuit breaker protection
+#   - Comprehensive audit logging
+#   - 6-stage deployment pipeline
+#
+# This script is kept for:
+#   - Initial setup and bootstrapping
+#   - Development/testing environments
+#   - Manual deployments when needed
 # ======================================================================
 
 set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
 NC='\033[0m'
 
 SERVICE_USER=${SERVICE_USER:-evin}
@@ -43,6 +64,26 @@ echo -e "${BLUE}║   Unified Homelab Deployment         ║${NC}"
 echo -e "${BLUE}║   All Services with Auto SSL         ║${NC}"
 echo -e "${BLUE}╚═══════════════════════════════════════╝${NC}"
 echo ""
+
+# Check if orchestrator is available
+if [ -f "$PROJECT_DIR/scripts/homelab-orchestrator.sh" ]; then
+    echo -e "${CYAN}${BOLD}💡 TIP:${NC} For production deployments with health checks and auto-rollback:"
+    echo -e "   ${CYAN}→${NC} Use: ${BOLD}./scripts/homelab-orchestrator.sh deploy${NC}"
+    echo ""
+    echo -e "   Orchestrator provides:"
+    echo -e "     • Zero-downtime rolling restarts"
+    echo -e "     • Automatic health checks"
+    echo -e "     • Auto-rollback on failure"
+    echo -e "     • Circuit breaker protection"
+    echo ""
+    read -p "Continue with basic deployment anyway? [y/N] " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Exiting. Run orchestrator with: ./scripts/homelab-orchestrator.sh deploy"
+        exit 0
+    fi
+    echo ""
+fi
 
 # Check if running as correct user
 if [[ "$USER" != "$SERVICE_USER" ]]; then

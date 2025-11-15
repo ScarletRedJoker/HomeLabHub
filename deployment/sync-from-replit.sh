@@ -1,11 +1,12 @@
 #!/bin/bash
 # Automated Replit → Ubuntu Sync & Deploy Script
-# Implements safe fast-forward-only sync with comprehensive validation
+# Uses hardened-sync.sh for bulletproof git synchronization
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+SCRIPTS_DIR="$PROJECT_DIR/scripts"
 LOG_DIR="$PROJECT_DIR/var/log"
 LOG_FILE="$LOG_DIR/replit-sync.log"
 STATE_DIR="$PROJECT_DIR/var/state"
@@ -16,6 +17,7 @@ COMPOSE_FILE="docker-compose.unified.yml"
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Ensure log/state directories exist
@@ -39,96 +41,123 @@ abort() {
     exit 1
 }
 
-# ===== PREFLIGHT CHECKS =====
+log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+log "Replit → Ubuntu Sync & Deploy"
+log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-log "Starting preflight checks..."
-
-# Check we're in the right directory
 cd "$PROJECT_DIR" || abort "Failed to change to project directory: $PROJECT_DIR"
-if [ ! -d ".git" ]; then
-    abort "Not a git repository. Expected: $PROJECT_DIR/.git"
-fi
 
-# Check required binaries exist
-for cmd in git docker; do
-    if ! command -v "$cmd" &> /dev/null; then
-        abort "Required command not found: $cmd"
+# ===== USE HARDENED SYNC =====
+
+if [ -f "$SCRIPTS_DIR/hardened-sync.sh" ]; then
+    log "Using hardened-sync.sh for bulletproof git synchronization..."
+    echo ""
+    
+    # Save current commit for comparison
+    PREV_COMMIT=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+    
+    # Run hardened sync
+    if bash "$SCRIPTS_DIR/hardened-sync.sh" --force; then
+        log "✓ Hardened sync completed successfully"
+        
+        # Get new commit
+        NEW_COMMIT=$(git rev-parse HEAD)
+        
+        # Save successful sync
+        echo "$NEW_COMMIT" > "$LAST_SYNC_FILE"
+        
+        # Check if anything changed
+        if [ "$PREV_COMMIT" = "$NEW_COMMIT" ]; then
+            log "No changes - sync complete"
+            exit 0
+        fi
+    else
+        abort "Hardened sync failed - check logs above"
     fi
-done
-
-# Check docker-compose (try both 'docker compose' and 'docker-compose')
-if docker compose version &> /dev/null; then
-    DOCKER_COMPOSE="docker compose"
-elif command -v docker-compose &> /dev/null; then
-    DOCKER_COMPOSE="docker-compose"
 else
-    abort "docker-compose or 'docker compose' not found"
+    # ===== FALLBACK TO LEGACY SYNC =====
+    warn "hardened-sync.sh not found - using legacy sync (not recommended)"
+    
+    log "Starting preflight checks..."
+    
+    # Check required binaries
+    for cmd in git docker; do
+        if ! command -v "$cmd" &> /dev/null; then
+            abort "Required command not found: $cmd"
+        fi
+    done
+    
+    # Check docker-compose
+    if docker compose version &> /dev/null; then
+        DOCKER_COMPOSE="docker compose"
+    elif command -v docker-compose &> /dev/null; then
+        DOCKER_COMPOSE="docker-compose"
+    else
+        abort "docker-compose or 'docker compose' not found"
+    fi
+    log "Using: $DOCKER_COMPOSE"
+    
+    # Check docker daemon
+    if ! docker info &> /dev/null; then
+        abort "Docker daemon not running"
+    fi
+    
+    # Check compose file
+    if [ ! -f "$COMPOSE_FILE" ]; then
+        abort "Compose file not found: $COMPOSE_FILE"
+    fi
+    
+    # Check network access
+    if ! git ls-remote --exit-code origin main &> /dev/null; then
+        abort "Cannot reach git remote 'origin main'"
+    fi
+    
+    log "✓ Preflight checks passed"
+    
+    # Check for dirty files
+    if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+        abort "Working directory has uncommitted changes"
+    fi
+    
+    # Fetch latest
+    log "Fetching from origin..."
+    if ! git fetch origin main; then
+        abort "Failed to fetch from origin"
+    fi
+    
+    # Compare commits
+    LOCAL=$(git rev-parse HEAD)
+    REMOTE=$(git rev-parse origin/main)
+    
+    if [ "$LOCAL" = "$REMOTE" ]; then
+        log "Already up to date"
+        exit 0
+    fi
+    
+    # Check if we can fast-forward
+    if ! git merge-base --is-ancestor HEAD origin/main; then
+        abort "Local branch has diverged from origin/main"
+    fi
+    
+    # Save previous commit
+    PREV_COMMIT="$LOCAL"
+    
+    # Fast-forward sync
+    log "Syncing to origin/main (${REMOTE:0:8})..."
+    git checkout main --quiet 2>/dev/null || git checkout -b main --quiet
+    git reset --hard origin/main
+    
+    # Fix permissions
+    log "Fixing execute permissions..."
+    chmod +x deployment/*.sh homelab-manager.sh scripts/*.sh 2>/dev/null || true
+    find services -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
+    
+    log "✓ Sync complete: ${PREV_COMMIT:0:8} → ${REMOTE:0:8}"
+    
+    # Save successful sync
+    NEW_COMMIT="$REMOTE"
+    echo "$NEW_COMMIT" > "$LAST_SYNC_FILE"
 fi
-log "Using: $DOCKER_COMPOSE"
-
-# Check docker daemon is running
-if ! docker info &> /dev/null; then
-    abort "Docker daemon not running or not accessible"
-fi
-
-# Check compose file exists
-if [ ! -f "$COMPOSE_FILE" ]; then
-    abort "Compose file not found: $PROJECT_DIR/$COMPOSE_FILE"
-fi
-
-# Check network access to git remote
-if ! git ls-remote --exit-code origin main &> /dev/null; then
-    abort "Cannot reach git remote 'origin main'. Check network connectivity."
-fi
-
-log "✓ All preflight checks passed"
-
-# ===== GIT SYNC =====
-
-log "Checking for changes..."
-
-# Check for dirty tracked files (ignored files are fine)
-if ! git diff-index --quiet HEAD -- 2>/dev/null; then
-    abort "Working directory has uncommitted changes to tracked files. Commit or reset them first."
-fi
-
-# Fetch latest
-log "Fetching from origin..."
-if ! git fetch origin main; then
-    abort "Failed to fetch from origin"
-fi
-
-# Compare commits
-LOCAL=$(git rev-parse HEAD)
-REMOTE=$(git rev-parse origin/main)
-
-if [ "$LOCAL" = "$REMOTE" ]; then
-    log "Already up to date (commit: ${LOCAL:0:8})"
-    exit 0
-fi
-
-# Check if we can fast-forward
-if ! git merge-base --is-ancestor HEAD origin/main; then
-    abort "Local branch has diverged from origin/main. Fast-forward not possible. Manual reconciliation required."
-fi
-
-# Save previous commit for comparison
-PREV_COMMIT="$LOCAL"
-
-# Fast-forward sync (stay on main branch)
-log "Syncing to origin/main (${REMOTE:0:8})..."
-git checkout main --quiet 2>/dev/null || git checkout -b main --quiet
-git reset --hard origin/main
-
-# Fix execute permissions on all shell scripts
-log "Fixing execute permissions on shell scripts..."
-chmod +x deployment/*.sh homelab-manager.sh *.sh 2>/dev/null || true
-find services -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
-
-log "✓ Sync complete: ${PREV_COMMIT:0:8} → ${REMOTE:0:8}"
-
-# Save successful sync
-echo "$REMOTE" > "$LAST_SYNC_FILE"
 
 # ===== DETERMINE CHANGED SERVICES =====
 

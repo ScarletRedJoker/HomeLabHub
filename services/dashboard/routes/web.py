@@ -1,10 +1,16 @@
 from flask import Blueprint, render_template, request, jsonify, send_from_directory, redirect, url_for, session, make_response
+from typing import List, Any
 from utils.auth import require_web_auth
-from config import Config
 from models import get_session, UserPreferences
 from sqlalchemy.exc import SQLAlchemyError
 import os
 import logging
+
+# Import Config from parent directory
+import sys
+import pathlib
+sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
+from config import Config  # type: ignore[import]
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +78,16 @@ def ai_assistant():
 @require_web_auth
 def ai_assistant_chat():
     response = make_response(render_template('ai_assistant_chat.html'))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
+
+@web_bp.route('/jarvis/ide')
+@require_web_auth
+def jarvis_ide():
+    """Minimal Jarvis chat interface optimized for IDE use"""
+    response = make_response(render_template('jarvis_ide.html'))
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
@@ -264,15 +280,24 @@ def toggle_category(category_id):
         if not preferences:
             preferences = UserPreferences(user_id=user_id)
             db_session.add(preferences)
+            db_session.flush()
         
-        collapsed_categories = preferences.collapsed_categories or []
+        # Get current collapsed categories, handling SQLAlchemy column properly
+        current_categories: Any = preferences.collapsed_categories
+        if current_categories is None:
+            collapsed_categories: List[str] = []
+        elif isinstance(current_categories, list):
+            collapsed_categories = list(current_categories)
+        else:
+            collapsed_categories = []
         
         if category_id in collapsed_categories:
             collapsed_categories.remove(category_id)
         else:
             collapsed_categories.append(category_id)
         
-        preferences.collapsed_categories = collapsed_categories
+        # Assign the updated list back using setattr to avoid type issues
+        setattr(preferences, 'collapsed_categories', collapsed_categories)
         db_session.commit()
         
         return jsonify({'success': True, 'collapsed': category_id in collapsed_categories})

@@ -355,10 +355,20 @@ def create_database():
             
             logger.info(f"Created {db_type} database container: {container_name}")
             
-            # Get container ID safely
-            container_id = container.id if hasattr(container, 'id') else 'unknown'
-            if isinstance(container_id, str) and len(container_id) > 12:
-                container_id = container_id[:12]
+            # Get container ID safely with proper type checking
+            container_id = 'unknown'
+            if container is not None:
+                try:
+                    cid = getattr(container, 'id', None)
+                    if cid is not None:
+                        if isinstance(cid, bytes):
+                            container_id = cid.decode('utf-8')[:12]
+                        elif isinstance(cid, str):
+                            container_id = cid[:12] if len(cid) > 12 else cid
+                        else:
+                            container_id = str(cid)[:12]
+                except AttributeError:
+                    container_id = 'unknown'
             
             enhanced = personality.enhance_database_response(
                 success=True,
@@ -402,7 +412,7 @@ def create_database():
         }), 500
 
 
-@jarvis_voice_bp.route('/voice/ssl', methods=['POST'])
+@jarvis_voice_bp.route('/voice/ssl', methods=['POST'])  # type: ignore[misc]
 @require_auth
 def manage_ssl():
     """
@@ -648,8 +658,16 @@ def conversational_query():
                 session.commit()
                 session.refresh(ai_session)
             
-            # Get conversation history
-            conversation_history = ai_session.messages or []
+            # Get conversation history, ensure it's a list
+            messages_data = ai_session.messages
+            if messages_data is None:
+                conversation_history = []
+            elif isinstance(messages_data, dict):
+                conversation_history = []
+            elif isinstance(messages_data, list):
+                conversation_history = list(messages_data)
+            else:
+                conversation_history = []
             
             # Add greeting for new sessions
             greeting = ""
@@ -683,8 +701,8 @@ def conversational_query():
             }
             conversation_history.append(assistant_msg)
             
-            # Update session
-            ai_session.messages = conversation_history
+            # Update session using setattr to avoid type checking issues
+            setattr(ai_session, 'messages', conversation_history)
             ai_session.updated_at = datetime.utcnow()
             session.commit()
             
@@ -750,9 +768,10 @@ def get_jarvis_status():
         
         # Check Docker
         try:
-            docker_client = docker.from_env()
-            docker_client.ping()
-            services['docker'] = True
+            if docker is not None and DOCKER_AVAILABLE:
+                docker_client = docker.from_env()
+                docker_client.ping()
+                services['docker'] = True
         except:
             pass
         

@@ -13,7 +13,7 @@ celery_app = Celery(
     'jarvis_workflow_engine',
     broker=Config.CELERY_BROKER_URL,
     backend=Config.CELERY_RESULT_BACKEND,
-    include=['workers.workflow_worker', 'workers.analysis_worker', 'workers.google_tasks']
+    include=['workers.workflow_worker', 'workers.analysis_worker', 'workers.google_tasks', 'workers.autonomous_worker']
 )
 
 def save_job_history(task_id, task_name, status, **kwargs):
@@ -181,10 +181,31 @@ celery_app.conf.update(
         'workers.google_tasks.send_email_task': {'queue': 'google'},
         'workers.google_tasks.backup_to_drive_task': {'queue': 'google'},
         'workers.google_tasks.cleanup_old_backups': {'queue': 'google'},
+        'autonomous.run_diagnostics': {'queue': 'autonomous'},
+        'autonomous.run_remediation': {'queue': 'autonomous'},
+        'autonomous.run_proactive_maintenance': {'queue': 'autonomous'},
+        'autonomous.execute_single_action': {'queue': 'autonomous'},
     },
     task_default_queue='default',
     task_default_exchange='tasks',
     task_default_routing_key='task.default',
+    beat_schedule={
+        'autonomous-tier1-diagnostics': {
+            'task': 'autonomous.run_diagnostics',
+            'schedule': 300.0,
+            'options': {'queue': 'autonomous'}
+        },
+        'autonomous-tier2-remediation': {
+            'task': 'autonomous.run_remediation',
+            'schedule': 900.0,
+            'options': {'queue': 'autonomous'}
+        },
+        'autonomous-tier3-proactive': {
+            'task': 'autonomous.run_proactive_maintenance',
+            'schedule': 86400.0,
+            'options': {'queue': 'autonomous'}
+        },
+    },
 )
 
 @signals.task_prerun.connect

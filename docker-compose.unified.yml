@@ -31,7 +31,7 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:2019/config/", "||", "exit", "1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:2019/config/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -74,7 +74,7 @@ services:
       - "9000:9000"
       - "9001:9001"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/live || exit 1"]
       interval: 30s
       timeout: 20s
       retries: 3
@@ -117,7 +117,7 @@ services:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER:-admin}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minio_admin_password}
     healthcheck:
-      test: ["CMD", "python", "-c", "import requests; r = requests.get('http://localhost:5000/health', timeout=5); exit(0 if r.status_code == 200 else 1)"]
+      test: ["CMD-SHELL", "python -c 'import requests; r = requests.get(\"http://localhost:5000/health\", timeout=5); exit(0 if r.status_code == 200 else 1)'"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -151,9 +151,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./services/dashboard/logs:/app/logs
     healthcheck:
-      test: ["CMD", "python", "-c", "from celery_app import celery_app; exit(0 if celery_app.control.inspect().active() else 1)"]
+      test: ["CMD-SHELL", "python -c 'from celery_app import celery_app; i=celery_app.control.inspect(); p=i.ping(timeout=5) if i else None; exit(0 if p and any(p.values()) else 1)'"]
       interval: 60s
-      timeout: 10s
+      timeout: 15s
       retries: 3
       start_period: 30s
 
@@ -222,7 +222,7 @@ services:
       - ./services/discord-bot/attached_assets:/app/attached_assets
       - ./services/discord-bot/logs:/app/logs
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health", "||", "exit", "1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -265,7 +265,7 @@ services:
     volumes:
       - ./services/stream-bot/logs:/app/logs
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health", "||", "exit", "1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -313,7 +313,7 @@ services:
           memory: 2G
     shm_size: '2gb'
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:32400/identity", "||", "exit", "1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:32400/identity || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -341,7 +341,7 @@ services:
     volumes:
       - n8n_data:/home/node/.n8n
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5678/healthz", "||", "exit", "1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5678/healthz || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -359,7 +359,7 @@ services:
     volumes:
       - ./services/static-site:/usr/share/nginx/html:ro
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/", "||", "exit", "1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -377,7 +377,7 @@ services:
     volumes:
       - ./services/rig-city-site:/usr/share/nginx/html:ro
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/", "||", "exit", "1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -451,9 +451,19 @@ services:
     user: "1000:1000"
     networks:
       - homelab
+    command: 
+      - --bind-addr
+      - 0.0.0.0:8080
+      - --proxy-domain
+      - code.evindrake.net
+      - --auth
+      - password
+      - --disable-telemetry
     environment:
       - PASSWORD=${CODE_SERVER_PASSWORD}
       - TZ=America/New_York
+      - PROXY_DOMAIN=code.evindrake.net
+      - CS_DISABLE_GETTING_STARTED_OVERRIDE=true
     volumes:
       - ./volumes/code-server:/home/coder/.config
       - /home/${SERVICE_USER:-evin}/contain:/home/coder/projects
@@ -473,18 +483,27 @@ services:
     container_name: homeassistant
     restart: unless-stopped
     privileged: true
+    user: "1000:1000"
     networks:
       - homelab
+    depends_on:
+      homelab-dashboard:
+        condition: service_healthy
     environment:
       - TZ=America/New_York
+      - HOMEASSISTANT_EXTERNAL_URL=https://home.evindrake.net
+      - HOMEASSISTANT_INTERNAL_URL=http://homeassistant:8123
+      - JARVIS_DASHBOARD_URL=http://homelab-dashboard:5000
+      - JARVIS_API_KEY=${HOME_ASSISTANT_API_KEY:-}
     volumes:
-      - homeassistant_config:/config
+      - ./volumes/homeassistant:/config
+      - ./scripts/bootstrap-homeassistant.sh:/scripts/bootstrap-homeassistant.sh:ro
       - /run/dbus:/run/dbus:ro
     ports:
       - "8123:8123"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8123/"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8123/api/ -H 'Accept: application/json' || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 90s

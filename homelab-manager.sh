@@ -73,6 +73,9 @@ show_menu() {
     echo -e "  ${BOLD}Updates:${NC}"
     echo -e "    ${GREEN}16)${NC} 📦 Update Service (pull latest image)"
     echo ""
+    echo -e "  ${BOLD}Smart Home:${NC}"
+    echo -e "    ${GREEN}27)${NC} 🏠 Bootstrap Home Assistant (setup configs & secrets)"
+    echo ""
     echo -e "  ${BOLD}Information:${NC}"
     echo -e "    ${GREEN}14)${NC} 📊 Show Container Details"
     echo -e "    ${GREEN}15)${NC} 🌐 Show Service URLs"
@@ -103,6 +106,15 @@ full_deploy() {
     echo -e "${BOLD}${BLUE}  🚀 FULL DEPLOYMENT${NC}"
     echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
+    
+    # Bootstrap Home Assistant before deployment
+    if [ -f "./scripts/bootstrap-homeassistant.sh" ]; then
+        echo -e "${CYAN}Bootstrapping Home Assistant...${NC}"
+        ./scripts/bootstrap-homeassistant.sh || {
+            echo -e "${YELLOW}Warning: Home Assistant bootstrap had issues (continuing anyway)${NC}"
+        }
+        echo ""
+    fi
     
     if [ -f "./deployment/deploy-unified.sh" ]; then
         ./deployment/deploy-unified.sh
@@ -816,6 +828,26 @@ migration_manager() {
     esac
 }
 
+# Bootstrap Home Assistant
+bootstrap_homeassistant() {
+    echo ""
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}${BLUE}  🏠 HOME ASSISTANT BOOTSTRAP${NC}"
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    
+    if [ -f "./scripts/bootstrap-homeassistant.sh" ]; then
+        echo -e "${CYAN}Running Home Assistant bootstrap script...${NC}"
+        echo ""
+        ./scripts/bootstrap-homeassistant.sh
+    else
+        echo -e "${RED}Error: bootstrap-homeassistant.sh not found${NC}"
+        echo -e "${YELLOW}Expected location: ./scripts/bootstrap-homeassistant.sh${NC}"
+    fi
+    
+    pause
+}
+
 # Pause helper
 pause() {
     echo ""
@@ -855,6 +887,7 @@ main() {
             24) deployment_dry_run ;;
             25) validate_deployment ;;
             26) run_cicd_pipeline ;;
+            27) bootstrap_homeassistant ;;
             0) 
                 echo ""
                 echo -e "${GREEN}Goodbye! 👋${NC}"
@@ -876,10 +909,16 @@ deploy_with_auto_rollback() {
     echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     
-    if [ -f "./deployment/deploy-with-health-check.sh" ]; then
+    if [ -f "./scripts/homelab-orchestrator.sh" ]; then
+        echo -e "${CYAN}Using Homelab Orchestrator for safe deployment...${NC}"
+        echo ""
+        ./scripts/homelab-orchestrator.sh deploy
+    elif [ -f "./deployment/deploy-with-health-check.sh" ]; then
+        echo -e "${YELLOW}Using legacy deploy-with-health-check.sh${NC}"
         ./deployment/deploy-with-health-check.sh
     else
-        echo -e "${RED}Error: deploy-with-health-check.sh not found${NC}"
+        echo -e "${RED}Error: No deployment script found${NC}"
+        echo "Please ensure scripts/homelab-orchestrator.sh exists"
     fi
     
     pause
@@ -893,7 +932,9 @@ view_deployment_history() {
     echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     
-    if [ -f "./deployment/deployment-history.log" ]; then
+    if [ -f "./scripts/homelab-orchestrator.sh" ]; then
+        ./scripts/homelab-orchestrator.sh history
+    elif [ -f "./deployment/deployment-history.log" ]; then
         echo "Last 10 deployments:"
         echo ""
         grep -E '^\[' ./deployment/deployment-history.log | tail -10 | while IFS= read -r line; do
@@ -914,7 +955,7 @@ view_deployment_history() {
         echo "Full history: ./deployment/deployment-history.log"
     else
         echo -e "${YELLOW}No deployment history found${NC}"
-        echo "History will be created on first deployment with auto-rollback"
+        echo "History will be created on first deployment"
     fi
     
     pause
@@ -928,8 +969,18 @@ rollback_to_previous() {
     echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     
-    if [ -f "./deployment/rollback-deployment.sh" ]; then
-        # List available snapshots
+    if [ -f "./scripts/homelab-orchestrator.sh" ]; then
+        echo -e "${YELLOW}This will rollback to the previous deployment${NC}"
+        echo ""
+        read -p "Are you sure you want to rollback? (y/N) " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            ./scripts/homelab-orchestrator.sh rollback
+        else
+            echo "Cancelled"
+        fi
+    elif [ -f "./deployment/rollback-deployment.sh" ]; then
+        echo -e "${YELLOW}Using legacy rollback script${NC}"
         ./deployment/rollback-deployment.sh list
         echo ""
         echo -e "${YELLOW}Select a snapshot to restore:${NC}"
@@ -942,12 +993,10 @@ rollback_to_previous() {
         case $rollback_choice in
             1)
                 echo ""
-                read -p "Are you sure you want to rollback to the latest snapshot? (y/N) " -n 1 -r
+                read -p "Are you sure? (y/N) " -n 1 -r
                 echo
                 if [[ $REPLY =~ ^[Yy]$ ]]; then
                     ./deployment/rollback-deployment.sh restore latest
-                else
-                    echo "Cancelled"
                 fi
                 ;;
             2)
@@ -955,19 +1004,11 @@ rollback_to_previous() {
                 read -p "Enter snapshot name: " snapshot_name
                 if [ -n "$snapshot_name" ]; then
                     ./deployment/rollback-deployment.sh restore "$snapshot_name"
-                else
-                    echo "No snapshot name provided"
                 fi
-                ;;
-            0)
-                echo "Cancelled"
-                ;;
-            *)
-                echo -e "${RED}Invalid choice${NC}"
                 ;;
         esac
     else
-        echo -e "${RED}Error: rollback-deployment.sh not found${NC}"
+        echo -e "${RED}Error: No rollback script found${NC}"
     fi
     
     pause
@@ -981,10 +1022,15 @@ deployment_dry_run() {
     echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     
-    if [ -f "./deployment/deploy-with-health-check.sh" ]; then
+    if [ -f "./scripts/homelab-orchestrator.sh" ]; then
+        echo -e "${CYAN}Running dry-run with Homelab Orchestrator...${NC}"
+        echo ""
+        ./scripts/homelab-orchestrator.sh deploy --dry-run
+    elif [ -f "./deployment/deploy-with-health-check.sh" ]; then
+        echo -e "${YELLOW}Using legacy deploy script${NC}"
         DRY_RUN=true ./deployment/deploy-with-health-check.sh
     else
-        echo -e "${RED}Error: deploy-with-health-check.sh not found${NC}"
+        echo -e "${RED}Error: No deployment script found${NC}"
     fi
     
     pause
@@ -998,10 +1044,15 @@ validate_deployment() {
     echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     
-    if [ -f "./deployment/validate-deployment.sh" ]; then
+    if [ -f "./scripts/homelab-orchestrator.sh" ]; then
+        echo -e "${CYAN}Running validation checks...${NC}"
+        echo ""
+        ./scripts/homelab-orchestrator.sh validate
+    elif [ -f "./deployment/validate-deployment.sh" ]; then
+        echo -e "${YELLOW}Using legacy validation script${NC}"
         ./deployment/validate-deployment.sh
     else
-        echo -e "${RED}Error: validate-deployment.sh not found${NC}"
+        echo -e "${RED}Error: No validation script found${NC}"
     fi
     
     pause

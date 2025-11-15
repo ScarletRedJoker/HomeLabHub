@@ -1,0 +1,41 @@
+name: monitor_system_resources
+tier: 1
+tier_name: DIAGNOSE
+risk_level: low
+category: diagnostics
+description: Monitor CPU, memory, and network usage
+requires_approval: false
+auto_execute: true
+execution_interval_minutes: 5
+timeout_seconds: 30
+
+command: top -bn1 | head -20 && free -h && ss -s 2>/dev/null || netstat -s 2>/dev/null || echo "Network stats unavailable"
+
+rollback_plan: null
+checkpoint_required: false
+
+safety_checks:
+  - type: read_only
+    description: Only reads system metrics
+  - type: non_invasive
+    description: Does not affect system performance
+
+expected_outputs:
+  - type: resource_metrics
+    pattern: "Cpu|Mem|ESTAB"
+
+alerting:
+  cpu_threshold: 90
+  memory_threshold: 85
+  metric_name: resource_usage
+  alert_message: "System resource usage exceeds threshold"
+
+metadata:
+  tags:
+    - diagnostics
+    - resources
+    - monitoring
+    - tier1
+  author: jarvis
+  version: "1.0"
+  last_updated: "2025-11-15"

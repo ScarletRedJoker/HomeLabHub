@@ -13,15 +13,15 @@ function createStarfield(canvasId) {
   resizeCanvas();
   
   const stars = [];
-  const starCount = 200;
+  const starCount = 50;
   
   for (let i = 0; i < starCount; i++) {
     stars.push({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height,
-      radius: Math.random() * 1.5,
-      opacity: Math.random(),
-      twinkleSpeed: Math.random() * 0.02 + 0.01,
+      radius: Math.random() * 1.2,
+      opacity: Math.random() * 0.6 + 0.2,
+      twinkleSpeed: Math.random() * 0.008 + 0.004,
       twinkleDirection: Math.random() > 0.5 ? 1 : -1
     });
   }
@@ -33,8 +33,8 @@ function createStarfield(canvasId) {
       ctx.beginPath();
       ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
       ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
-      ctx.shadowBlur = star.radius * 2;
-      ctx.shadowColor = `rgba(255, 255, 255, ${star.opacity * 0.8})`;
+      ctx.shadowBlur = star.radius * 1.2;
+      ctx.shadowColor = `rgba(255, 255, 255, ${star.opacity * 0.5})`;
       ctx.fill();
       
       star.opacity += star.twinkleSpeed * star.twinkleDirection;

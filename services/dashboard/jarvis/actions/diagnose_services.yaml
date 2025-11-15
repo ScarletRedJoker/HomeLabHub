@@ -1,0 +1,42 @@
+name: diagnose_service_health
+tier: 1
+tier_name: DIAGNOSE
+risk_level: low
+category: diagnostics
+description: Check health status of all running services and containers
+requires_approval: false
+auto_execute: true
+execution_interval_minutes: 5
+timeout_seconds: 45
+
+command: ps aux | grep -E '(python|node|celery)' | grep -v grep && docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' 2>/dev/null || echo "Docker not available"
+
+rollback_plan: null
+checkpoint_required: false
+
+safety_checks:
+  - type: read_only
+    description: Read-only health check
+  - type: no_network_changes
+    description: Does not modify network configuration
+
+expected_outputs:
+  - type: process_list
+    pattern: ".*python.*"
+  - type: container_status
+    pattern: "Up.*"
+
+alerting:
+  on_failure: true
+  alert_message: "Service health check failed"
+  metric_name: service_health_status
+
+metadata:
+  tags:
+    - diagnostics
+    - services
+    - containers
+    - tier1
+  author: jarvis
+  version: "1.0"
+  last_updated: "2025-11-15"

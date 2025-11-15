@@ -1,0 +1,49 @@
+name: restart_celery_worker
+tier: 2
+tier_name: REMEDIATE
+risk_level: medium
+category: remediation
+description: Restart Celery worker if unhealthy or stuck
+requires_approval: false
+auto_execute: true
+execution_interval_minutes: 15
+timeout_seconds: 45
+
+preconditions:
+  - type: celery_health_check
+    description: Only execute if Celery worker is unhealthy
+  - type: max_failures
+    max_count: 3
+    description: Only restart if health check failed 3+ times
+
+command: pkill -f celery || true && sleep 2 && echo "Celery worker restart triggered"
+
+rollback_plan: "Celery will auto-restart via process manager"
+checkpoint_required: true
+
+safety_checks:
+  - type: graceful_shutdown
+    description: Uses SIGTERM for graceful shutdown
+  - type: restart_limit
+    max_per_hour: 4
+    description: Limits restarts to prevent loops
+
+expected_outputs:
+  - type: success_message
+    pattern: "restart triggered"
+
+alerting:
+  on_execution: true
+  metric_name: celery_restart_count
+  alert_message: "Celery worker restarted automatically"
+
+metadata:
+  tags:
+    - remediate
+    - celery
+    - restart
+    - tier2
+  author: jarvis
+  version: "1.0"
+  last_updated: "2025-11-15"
+  autonomous_execution: true

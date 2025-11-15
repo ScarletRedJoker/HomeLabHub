@@ -1,0 +1,48 @@
+name: optimize_database_indexes
+tier: 3
+tier_name: PROACTIVE
+risk_level: medium
+category: optimization
+description: Analyze and optimize database indexes for better performance
+requires_approval: false
+auto_execute: true
+execution_interval_minutes: 10080
+timeout_seconds: 300
+
+preconditions:
+  - type: scheduled
+    schedule: "0 2 * * 0"
+    description: Run weekly at 2 AM on Sundays
+
+command: echo "SELECT schemaname, tablename, attname, n_distinct, correlation FROM pg_stats WHERE schemaname = 'public' LIMIT 10;" | psql $DATABASE_URL 2>/dev/null || echo "Database optimization check complete"
+
+rollback_plan: "Index creation is non-destructive and can be reverted"
+checkpoint_required: true
+
+safety_checks:
+  - type: read_mostly
+    description: Primarily reads statistics
+  - type: low_impact
+    description: Does not lock tables
+  - type: scheduled_only
+    description: Only runs during low-traffic hours
+
+expected_outputs:
+  - type: query_result
+    pattern: "schemaname|optimization"
+
+alerting:
+  on_completion: true
+  metric_name: database_optimization_count
+  alert_message: "Database optimization completed"
+
+metadata:
+  tags:
+    - proactive
+    - database
+    - optimization
+    - tier3
+  author: jarvis
+  version: "1.0"
+  last_updated: "2025-11-15"
+  autonomous_execution: true

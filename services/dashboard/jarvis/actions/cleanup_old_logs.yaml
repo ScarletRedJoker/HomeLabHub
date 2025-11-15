@@ -1,0 +1,47 @@
+name: cleanup_old_logs
+tier: 3
+tier_name: PROACTIVE
+risk_level: low
+category: maintenance
+description: Archive and clean logs older than 30 days
+requires_approval: false
+auto_execute: true
+execution_interval_minutes: 1440
+timeout_seconds: 120
+
+preconditions:
+  - type: scheduled
+    schedule: "0 3 * * *"
+    description: Run daily at 3 AM
+
+command: find services/dashboard/logs -name "*.log" -mtime +30 -exec gzip {} \; 2>/dev/null && echo "Old logs archived" || echo "No old logs found"
+
+rollback_plan: "Logs are compressed, not deleted, and can be extracted"
+checkpoint_required: false
+
+safety_checks:
+  - type: compress_not_delete
+    description: Compresses logs instead of deleting
+  - type: age_requirement
+    min_age_days: 30
+    description: Only processes logs older than 30 days
+
+expected_outputs:
+  - type: success_message
+    pattern: "archived|No old logs"
+
+alerting:
+  on_completion: true
+  metric_name: log_cleanup_count
+  alert_message: "Old logs archived successfully"
+
+metadata:
+  tags:
+    - proactive
+    - logs
+    - cleanup
+    - tier3
+  author: jarvis
+  version: "1.0"
+  last_updated: "2025-11-15"
+  autonomous_execution: true

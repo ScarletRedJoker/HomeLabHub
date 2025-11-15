@@ -9,13 +9,20 @@ from services.domain_service import DomainService
 from services.activity_service import activity_service
 from utils.auth import require_auth
 from utils.favicon_manager import get_favicon_manager
-from config import Config
+from sqlalchemy import func
+from typing import Any, Dict
 import logging
 import os
 import re
 import subprocess
 from datetime import datetime, timedelta
 import redis
+
+# Import Config from parent directory
+import sys
+import pathlib
+sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
+from config import Config  # type: ignore[import]
 
 logger = logging.getLogger(__name__)
 
@@ -208,11 +215,19 @@ def celery_health():
             redis_client.ping()
             redis_healthy = True
             
-            info = redis_client.info()
+            # Get redis info - handle bytes keys from redis
+            info_raw = redis_client.info()
+            # Convert bytes keys to strings
+            info_data: Dict[str, Any] = {}
+            if isinstance(info_raw, dict):
+                for k, v in info_raw.items():
+                    key = k.decode('utf-8') if isinstance(k, bytes) else str(k)
+                    info_data[key] = v
+            
             redis_info = {
-                'connected_clients': info.get('connected_clients', 0),
-                'used_memory_human': info.get('used_memory_human', 'Unknown'),
-                'uptime_days': info.get('uptime_in_days', 0)
+                'connected_clients': info_data.get('connected_clients', 0),
+                'used_memory_human': info_data.get('used_memory_human', 'Unknown'),
+                'uptime_days': info_data.get('uptime_in_days', 0)
             }
             
             logger.info("Celery health check: Redis is healthy", extra={
@@ -285,7 +300,12 @@ def celery_health():
                 total_pending = 0
                 for queue_name in ['default', 'deployments', 'dns', 'analysis', 'google']:
                     key = f'celery'
-                    queue_length = redis_client.llen(queue_name)
+                    # Get queue length and ensure it's an int
+                    try:
+                        # Cast to int directly to avoid type checker issues with redis
+                        queue_length: int = int(redis_client.llen(queue_name) or 0)  # type: ignore[arg-type]
+                    except (ValueError, TypeError):
+                        queue_length = 0
                     queue_lengths[queue_name] = queue_length
                     total_pending += queue_length
                 
@@ -853,10 +873,11 @@ def get_connection_examples(container_name):
         examples = database_service.get_connection_examples(
             db_type=db_type,
             container_name=container_name,
-            host_port=int(port),
+            port=int(port),
             password=password,
-            username=username,
-            database=database
+            username=username if username else 'admin',
+            database=database if database else 'mydb',
+            host_port=int(port)
         )
         
         return jsonify({'success': True, 'data': examples})
@@ -1495,7 +1516,7 @@ def get_celery_quick_stats():
                     {
                         'task_name': job.task_name,
                         'error_message': job.error_message,
-                        'created_at': job.created_at.isoformat() if job.created_at else None
+                        'created_at': job.created_at.isoformat() if job.created_at is not None else None
                     }
                     for job in recent_failures
                 ],
