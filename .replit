@@ -44,16 +44,12 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd services/stream-bot && TWITCH_REDIRECT_URI=\"https://${REPLIT_DEV_DOMAIN}/api/auth/twitch/callback\" APP_URL=\"https://${REPLIT_DEV_DOMAIN}\" PORT=3000 npm run dev"
+args = "cd services/stream-bot && APP_URL=\"https://${REPLIT_DEV_DOMAIN}\" TWITCH_SIGNIN_CALLBACK_URL=\"https://${REPLIT_DEV_DOMAIN}/api/auth/twitch/callback\" YOUTUBE_SIGNIN_CALLBACK_URL=\"https://${REPLIT_DEV_DOMAIN}/api/auth/youtube/callback\" KICK_SIGNIN_CALLBACK_URL=\"https://${REPLIT_DEV_DOMAIN}/api/auth/kick/callback\" PORT=3000 npm run dev"
 waitForPort = 3000
 
 [[ports]]
 localPort = 3000
 externalPort = 3000
-
-[[ports]]
-localPort = 24678
-externalPort = 3001
 
 [[ports]]
 localPort = 46555
@@ -62,3 +58,7 @@ externalPort = 80
 [[ports]]
 localPort = 46877
 externalPort = 3000
+
+[[ports]]
+localPort = 5000
+externalPort = 80
