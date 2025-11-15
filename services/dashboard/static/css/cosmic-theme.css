@@ -264,7 +264,6 @@ code, pre, .code-block {
 .cosmic-bg {
   background: var(--cosmic-darker);
   position: relative;
-  overflow: hidden;
 }
 
 .cosmic-bg::before {
