@@ -136,6 +136,29 @@ A single PostgreSQL container manages multiple databases (`ticketbot`, `streambo
 - **Backup Created**: Original Caddyfile saved to `Caddyfile.backup`
 - **Next Step**: Restart Caddy after DNS propagation (15-30 min) to obtain SSL certificates
 
+### November 15, 2025 - Stream Bot OAuth Deployment & Dashboard Scrolling Fix
+- **OAuth Credentials Secured**: Migrated YouTube and Kick OAuth credentials to Replit Secrets for enhanced security
+  - YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET stored securely
+  - KICK_CLIENT_ID, KICK_CLIENT_SECRET stored securely
+  - Twitch credentials already configured (TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET)
+- **Database Schema Migration**: Fixed stream-bot users table missing columns
+  - Added `onboarding_completed` (boolean, default false)
+  - Added `onboarding_step` (integer, default 0)
+  - Added `dismissed_welcome` (boolean, default false)
+  - Fixed `primary_platform` column for OAuth platform tracking
+  - Applied via direct SQL to PostgreSQL on Ubuntu server
+- **OAuth Ready**: All three platforms now fully configured for authentication
+  - ✅ Twitch OAuth: https://stream.rig-city.com/api/auth/twitch/callback
+  - ✅ YouTube OAuth: https://stream.rig-city.com/api/auth/youtube/callback (Testing mode)
+  - ✅ Kick OAuth: https://stream.rig-city.com/api/auth/kick/callback
+- **Dashboard Scrolling Fixed**: Resolved overflow CSS preventing page scrolling
+  - Changed `.cosmic-bg` from `overflow: hidden` to `overflow-x: hidden; overflow-y: auto`
+  - Preserves starfield animation while allowing vertical scroll
+  - Prevents horizontal scrollbar from oversized pseudo-element
+- **Deployment Documentation**: Created comprehensive guides
+  - `REPLIT_DEPLOYMENT_GUIDE.md`: Replit-specific setup and OAuth configuration
+  - `UBUNTU_DEPLOYMENT_CHECKLIST.md`: Step-by-step Ubuntu deployment procedures
+
 ### November 15, 2025 - Discord Bot: Auto-Detection for Stream Notifications
 - **Automatic Streamer Discovery**: Implemented passive presence-based detection that automatically discovers server members with connected Twitch, YouTube, or Kick accounts
   - Eliminates manual user tracking by scanning Discord presence data when users go live
