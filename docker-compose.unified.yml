@@ -449,12 +449,11 @@ services:
     image: codercom/code-server:latest
     container_name: code-server
     restart: unless-stopped
+    user: "1000:1000"
     networks:
       - homelab
     environment:
       - PASSWORD=${CODE_SERVER_PASSWORD}
-      - PUID=1000
-      - PGID=1000
       - TZ=America/New_York
     volumes:
       - code_server_data:/home/coder/.config
