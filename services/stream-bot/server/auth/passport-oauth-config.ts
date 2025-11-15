@@ -19,104 +19,161 @@ export interface OAuthProfile {
   expiresIn?: number;
 }
 
-async function findOrCreateUserFromOAuth(profile: OAuthProfile): Promise<User> {
+async function findOrCreateUserFromOAuth(profile: OAuthProfile, existingUserId?: string): Promise<User> {
   const email = profile.email.toLowerCase();
 
-  let user = await db.query.users.findFirst({
-    where: eq(users.email, email),
-  });
-
-  if (user) {
-    console.log(`[OAuth] Existing user found for email ${email}`);
-    
-    const existingConnection = await db.query.platformConnections.findFirst({
-      where: and(
-        eq(platformConnections.userId, user.id),
-        eq(platformConnections.platform, profile.platform)
-      ),
-    });
-
-    if (!existingConnection) {
-      const encryptedAccessToken = encryptToken(profile.accessToken);
-      const encryptedRefreshToken = profile.refreshToken ? encryptToken(profile.refreshToken) : null;
-      const tokenExpiresAt = profile.expiresIn 
-        ? new Date(Date.now() + profile.expiresIn * 1000) 
-        : null;
-
-      await db.insert(platformConnections).values({
-        userId: user.id,
-        platform: profile.platform,
-        platformUserId: profile.id,
-        platformUsername: profile.username || profile.displayName || email,
-        accessToken: encryptedAccessToken,
-        refreshToken: encryptedRefreshToken,
-        tokenExpiresAt,
-        isConnected: true,
-        lastConnectedAt: new Date(),
-        connectionData: { email: profile.email },
+  try {
+    // CASE 1: User is already authenticated - link platform to existing account
+    if (existingUserId) {
+      console.log(`[OAuth] Linking ${profile.platform} to authenticated user ${existingUserId}`);
+      
+      let user = await db.query.users.findFirst({
+        where: eq(users.id, existingUserId),
       });
 
-      console.log(`[OAuth] Auto-linked ${profile.platform} to existing user ${user.id}`);
-    } else {
-      console.log(`[OAuth] ${profile.platform} already linked to user ${user.id}`);
+      if (!user) {
+        throw new Error('Authenticated user not found in database');
+      }
+
+      const existingConnection = await db.query.platformConnections.findFirst({
+        where: and(
+          eq(platformConnections.userId, user.id),
+          eq(platformConnections.platform, profile.platform)
+        ),
+      });
+
+      if (!existingConnection) {
+        const encryptedAccessToken = encryptToken(profile.accessToken);
+        const encryptedRefreshToken = profile.refreshToken ? encryptToken(profile.refreshToken) : null;
+        const tokenExpiresAt = profile.expiresIn 
+          ? new Date(Date.now() + profile.expiresIn * 1000) 
+          : null;
+
+        await db.insert(platformConnections).values({
+          userId: user.id,
+          platform: profile.platform,
+          platformUserId: profile.id,
+          platformUsername: profile.username || profile.displayName || email,
+          accessToken: encryptedAccessToken,
+          refreshToken: encryptedRefreshToken,
+          tokenExpiresAt,
+          isConnected: true,
+          lastConnectedAt: new Date(),
+          connectionData: { email: profile.email },
+        });
+
+        console.log(`[OAuth] Successfully linked ${profile.platform} to user ${user.id} (email: ${profile.email})`);
+      } else {
+        console.log(`[OAuth] ${profile.platform} already linked to user ${user.id}`);
+      }
+
+      return user;
     }
-  } else {
-    const [newUser] = await db
-      .insert(users)
-      .values({
-        email,
-        primaryPlatform: profile.platform,
-        role: "user",
-        isActive: true,
-      })
-      .returning();
 
-    user = newUser;
-
-    const encryptedAccessToken = encryptToken(profile.accessToken);
-    const encryptedRefreshToken = profile.refreshToken ? encryptToken(profile.refreshToken) : null;
-    const tokenExpiresAt = profile.expiresIn 
-      ? new Date(Date.now() + profile.expiresIn * 1000) 
-      : null;
-
-    await db.insert(platformConnections).values({
-      userId: user.id,
-      platform: profile.platform,
-      platformUserId: profile.id,
-      platformUsername: profile.username || profile.displayName || email,
-      accessToken: encryptedAccessToken,
-      refreshToken: encryptedRefreshToken,
-      tokenExpiresAt,
-      isConnected: true,
-      lastConnectedAt: new Date(),
-      connectionData: { email: profile.email },
+    // CASE 2: Find existing user by email
+    let user = await db.query.users.findFirst({
+      where: eq(users.email, email),
     });
 
-    await db.insert(botConfigs).values({
-      userId: user.id,
-      intervalMode: "manual",
-      fixedIntervalMinutes: 30,
-      randomMinMinutes: 15,
-      randomMaxMinutes: 60,
-      aiModel: "gpt-5-mini",
-      aiPromptTemplate:
-        "Generate a fun, interesting, and engaging fact similar to a Snapple fact. Keep it under 200 characters.",
-      aiTemperature: 1,
-      enableChatTriggers: true,
-      chatKeywords: ["!snapple", "!fact"],
-      activePlatforms: [],
-      isActive: false,
-    });
+    if (user) {
+      console.log(`[OAuth] Existing user found for email ${email}`);
+      
+      const existingConnection = await db.query.platformConnections.findFirst({
+        where: and(
+          eq(platformConnections.userId, user.id),
+          eq(platformConnections.platform, profile.platform)
+        ),
+      });
 
-    await db.insert(botInstances).values({
-      userId: user.id,
-      status: "stopped",
-    });
+      if (!existingConnection) {
+        const encryptedAccessToken = encryptToken(profile.accessToken);
+        const encryptedRefreshToken = profile.refreshToken ? encryptToken(profile.refreshToken) : null;
+        const tokenExpiresAt = profile.expiresIn 
+          ? new Date(Date.now() + profile.expiresIn * 1000) 
+          : null;
 
-    console.log(`[OAuth] Created new user ${user.id} with ${profile.platform} as primary platform`);
+        await db.insert(platformConnections).values({
+          userId: user.id,
+          platform: profile.platform,
+          platformUserId: profile.id,
+          platformUsername: profile.username || profile.displayName || email,
+          accessToken: encryptedAccessToken,
+          refreshToken: encryptedRefreshToken,
+          tokenExpiresAt,
+          isConnected: true,
+          lastConnectedAt: new Date(),
+          connectionData: { email: profile.email },
+        });
+
+        console.log(`[OAuth] Auto-linked ${profile.platform} to existing user ${user.id}`);
+      } else {
+        console.log(`[OAuth] ${profile.platform} already linked to user ${user.id}`);
+      }
+    } else {
+      // CASE 3: Create new user (atomic transaction)
+      console.log(`[OAuth] Creating new user with email ${email} and platform ${profile.platform}`);
+      
+      user = await db.transaction(async (tx) => {
+        const [newUser] = await tx
+          .insert(users)
+          .values({
+            email,
+            primaryPlatform: profile.platform,
+            role: "user",
+            isActive: true,
+          })
+          .returning();
+
+        const encryptedAccessToken = encryptToken(profile.accessToken);
+        const encryptedRefreshToken = profile.refreshToken ? encryptToken(profile.refreshToken) : null;
+        const tokenExpiresAt = profile.expiresIn 
+          ? new Date(Date.now() + profile.expiresIn * 1000) 
+          : null;
+
+        await tx.insert(platformConnections).values({
+          userId: newUser.id,
+          platform: profile.platform,
+          platformUserId: profile.id,
+          platformUsername: profile.username || profile.displayName || email,
+          accessToken: encryptedAccessToken,
+          refreshToken: encryptedRefreshToken,
+          tokenExpiresAt,
+          isConnected: true,
+          lastConnectedAt: new Date(),
+          connectionData: { email: profile.email },
+        });
+
+        await tx.insert(botConfigs).values({
+          userId: newUser.id,
+          intervalMode: "manual",
+          fixedIntervalMinutes: 30,
+          randomMinMinutes: 15,
+          randomMaxMinutes: 60,
+          aiModel: "gpt-5-mini",
+          aiPromptTemplate:
+            "Generate a fun, interesting, and engaging fact similar to a Snapple fact. Keep it under 200 characters.",
+          aiTemperature: 1,
+          enableChatTriggers: true,
+          chatKeywords: ["!snapple", "!fact"],
+          activePlatforms: [],
+          isActive: false,
+        });
+
+        await tx.insert(botInstances).values({
+          userId: newUser.id,
+          status: "stopped",
+        });
+
+        console.log(`[OAuth] Created new user ${newUser.id} with ${profile.platform} as primary platform`);
+        return newUser;
+      });
+    }
+
+    return user;
+  } catch (error) {
+    console.error(`[OAuth] Error in findOrCreateUserFromOAuth:`, error);
+    throw error;
   }
-
-  return user;
 }
 
 const TWITCH_CLIENT_ID = getEnv('TWITCH_CLIENT_ID');
@@ -132,8 +189,9 @@ if (TWITCH_CLIENT_ID && TWITCH_CLIENT_SECRET) {
       clientSecret: TWITCH_CLIENT_SECRET,
       callbackURL: TWITCH_CALLBACK_URL,
       scope: ['user:read:email'],
+      passReqToCallback: true,
     },
-    async (accessToken: string, refreshToken: string, profile: any, done: any) => {
+    async (req: any, accessToken: string, refreshToken: string, profile: any, done: any) => {
       try {
         // Fetch user profile from Twitch API
         const userResponse = await fetch('https://api.twitch.tv/helix/users', {
@@ -165,7 +223,8 @@ if (TWITCH_CLIENT_ID && TWITCH_CLIENT_SECRET) {
           expiresIn: 14400,
         };
 
-        const user = await findOrCreateUserFromOAuth(oauthProfile);
+        const existingUserId = req.user?.id;
+        const user = await findOrCreateUserFromOAuth(oauthProfile, existingUserId);
         return done(null, user);
       } catch (error) {
         console.error('[OAuth Twitch] Error:', error);
@@ -190,8 +249,9 @@ if (YOUTUBE_CLIENT_ID && YOUTUBE_CLIENT_SECRET) {
         'https://www.googleapis.com/auth/userinfo.email',
         'https://www.googleapis.com/auth/userinfo.profile',
       ],
+      passReqToCallback: true,
     },
-    async (accessToken: string, refreshToken: string, profile: any, done: any) => {
+    async (req: any, accessToken: string, refreshToken: string, profile: any, done: any) => {
       try {
         const email = profile.emails?.[0]?.value;
         
@@ -210,7 +270,8 @@ if (YOUTUBE_CLIENT_ID && YOUTUBE_CLIENT_SECRET) {
           expiresIn: 3600,
         };
 
-        const user = await findOrCreateUserFromOAuth(oauthProfile);
+        const existingUserId = req.user?.id;
+        const user = await findOrCreateUserFromOAuth(oauthProfile, existingUserId);
         return done(null, user);
       } catch (error) {
         console.error('[OAuth YouTube] Error:', error);
@@ -233,8 +294,9 @@ if (KICK_CLIENT_ID && KICK_CLIENT_SECRET) {
       clientSecret: KICK_CLIENT_SECRET,
       callbackURL: KICK_CALLBACK_URL,
       scope: ['user:read', 'chat:read', 'chat:send'],
+      passReqToCallback: true,
     },
-    async (accessToken: string, refreshToken: string, profile: any, done: any) => {
+    async (req: any, accessToken: string, refreshToken: string, profile: any, done: any) => {
       try {
         const userResponse = await fetch('https://kick.com/api/v2/user', {
           headers: {
@@ -261,7 +323,8 @@ if (KICK_CLIENT_ID && KICK_CLIENT_SECRET) {
           expiresIn: 3600,
         };
 
-        const user = await findOrCreateUserFromOAuth(oauthProfile);
+        const existingUserId = req.user?.id;
+        const user = await findOrCreateUserFromOAuth(oauthProfile, existingUserId);
         return done(null, user);
       } catch (error) {
         console.error('[OAuth Kick] Error:', error);

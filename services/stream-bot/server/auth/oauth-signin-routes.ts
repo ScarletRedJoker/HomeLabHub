@@ -20,8 +20,19 @@ router.get('/twitch/callback',
     failureMessage: true 
   }),
   (req, res) => {
-    console.log(`[OAuth Sign-in] Twitch authentication successful for user ${req.user?.id}`);
-    res.redirect('/?success=twitch_signin');
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        console.error('[OAuth Sign-in] No user ID found after Twitch authentication');
+        return res.redirect('/login?error=twitch_session_failed');
+      }
+      
+      console.log(`[OAuth Sign-in] Twitch authentication successful for user ${userId}`);
+      res.redirect('/?success=twitch_connected');
+    } catch (error) {
+      console.error('[OAuth Sign-in] Twitch callback error:', error);
+      res.redirect('/login?error=twitch_callback_error');
+    }
   }
 );
 
@@ -43,8 +54,19 @@ router.get('/youtube/callback',
     failureMessage: true
   }),
   (req, res) => {
-    console.log(`[OAuth Sign-in] YouTube authentication successful for user ${req.user?.id}`);
-    res.redirect('/?success=youtube_signin');
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        console.error('[OAuth Sign-in] No user ID found after YouTube authentication');
+        return res.redirect('/login?error=youtube_session_failed');
+      }
+      
+      console.log(`[OAuth Sign-in] YouTube authentication successful for user ${userId}`);
+      res.redirect('/?success=youtube_connected');
+    } catch (error) {
+      console.error('[OAuth Sign-in] YouTube callback error:', error);
+      res.redirect('/login?error=youtube_callback_error');
+    }
   }
 );
 
@@ -60,8 +82,19 @@ router.get('/kick/callback',
     failureMessage: true 
   }),
   (req, res) => {
-    console.log(`[OAuth Sign-in] Kick authentication successful for user ${req.user?.id}`);
-    res.redirect('/?success=kick_signin');
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        console.error('[OAuth Sign-in] No user ID found after Kick authentication');
+        return res.redirect('/login?error=kick_session_failed');
+      }
+      
+      console.log(`[OAuth Sign-in] Kick authentication successful for user ${userId}`);
+      res.redirect('/?success=kick_connected');
+    } catch (error) {
+      console.error('[OAuth Sign-in] Kick callback error:', error);
+      res.redirect('/login?error=kick_callback_error');
+    }
   }
 );
 
