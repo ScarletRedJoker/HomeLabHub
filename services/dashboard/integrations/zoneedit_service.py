@@ -27,6 +27,12 @@ class ZoneEditService:
         self.username = os.getenv('ZONEEDIT_USERNAME', '')
         self.password = os.getenv('ZONEEDIT_PASSWORD', '')
         self.api_token = os.getenv('ZONEEDIT_API_TOKEN', '')
+        self._enabled = bool(self.username and (self.password or self.api_token))
+        
+        if not self._enabled:
+            logger.warning("ZoneEdit service not configured - DNS automation disabled. Set ZONEEDIT_USERNAME and ZONEEDIT_PASSWORD or ZONEEDIT_API_TOKEN")
+        else:
+            logger.info("ZoneEdit service initialized successfully")
         
         self.api_base = "https://dynamic.zoneedit.com"
         
@@ -39,6 +45,11 @@ class ZoneEditService:
         self._public_ip_cache = None
         self._public_ip_cache_time = None
         self._public_ip_cache_duration = 300
+    
+    @property
+    def enabled(self) -> bool:
+        """Check if ZoneEdit service is available"""
+        return self._enabled
     
     def _rate_limit(self):
         """Enforce minimum time between requests"""
@@ -418,6 +429,13 @@ class ZoneEditService:
         Returns:
             Tuple of (success, record_dict)
         """
+        if not self._enabled:
+            return False, {
+                'error': 'ZoneEdit not configured',
+                'message': 'Please configure ZONEEDIT_USERNAME and ZONEEDIT_PASSWORD or ZONEEDIT_API_TOKEN',
+                'setup_url': 'https://www.zoneedit.com'
+            }
+        
         logger.info(f"Creating {record_type} record: {host}.{zone} -> {value}")
         
         if record_type not in ['A', 'AAAA', 'CNAME', 'TXT', 'MX']:

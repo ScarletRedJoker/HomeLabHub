@@ -74,6 +74,49 @@ docker-compose -f docker-compose.unified.yml ps
 
 ---
 
+## Deployment Workflow
+
+The `deploy.sh` script provides a comprehensive deployment workflow:
+
+### 1. Pre-Deployment
+- **Pre-flight checks**: Verifies Docker, Docker Compose, and .env file
+- **Automatic backup**: Creates timestamped backup of database and configs
+- **Code update**: Pulls latest code from git repository (if using update command)
+
+### 2. Deployment
+- **Container rebuild**: Rebuilds all containers with latest code
+- **Service restart**: Uses `docker-compose down` then `docker-compose up -d`
+- **Brief downtime**: Approximately 10-30 seconds while containers restart
+
+### 3. Post-Deployment
+- **Health checks**: Verifies all containers are running and healthy
+- **Database verification**: Checks Postgres connectivity
+- **Status report**: Shows status of all services
+
+### 4. Rollback (Manual)
+If health checks fail or issues are detected:
+```bash
+./deploy.sh stop
+./deploy.sh restore  # Restore from latest backup
+./deploy.sh start
+```
+
+**Note:** Rollback is currently manual, not automatic. The operator must identify issues and trigger rollback manually using the backup/restore commands.
+
+### Deployment Characteristics
+- **Downtime**: 10-30 seconds during container restart (not zero-downtime)
+- **Method**: Rolling restart (not blue-green deployment)
+- **Rollback**: Manual process via backup restore
+- **Health Checks**: Automatic after deployment
+- **Backups**: Automatic before each deployment
+
+### Future Enhancements
+- **Zero-downtime deployments**: Blue-green or canary deployment strategy
+- **Automatic rollback**: Health-check-triggered automatic rollback
+- **Progressive rollout**: Gradual deployment with traffic shifting
+
+---
+
 ## Configuration
 
 ### Environment Variables

@@ -22,9 +22,15 @@ class AIService:
             self.enabled = False
             logger.warning("AI Service not initialized - missing API credentials. Set AI_INTEGRATIONS_OPENAI_API_KEY and AI_INTEGRATIONS_OPENAI_BASE_URL environment variables.")
     
-    def analyze_logs(self, logs: str, context: str = "") -> str:
+    def analyze_logs(self, logs: str, context: str = ""):
+        """Analyze logs with AI - returns dict for consistent error handling"""
         if not self.enabled:
-            return "AI troubleshooting is not available. Please check API configuration."
+            return {
+                'success': False,
+                'error': 'AI service not configured',
+                'message': 'Please configure AI_INTEGRATIONS_OPENAI_API_KEY and AI_INTEGRATIONS_OPENAI_BASE_URL to use log analysis',
+                'setup_url': '/settings/integrations'
+            }
         
         try:
             prompt = f"""You are a DevOps troubleshooting assistant. Analyze the following logs and provide:
@@ -51,26 +57,55 @@ Provide a clear, actionable response."""
                 max_completion_tokens=2048
             )
             
-            return response.choices[0].message.content or "No response generated"
+            return {
+                'success': True,
+                'analysis': response.choices[0].message.content or "No response generated"
+            }
         except AuthenticationError as e:
             logger.error(f"OpenAI authentication error in analyze_logs: {e}")
-            return "Authentication failed. Your OpenAI API key may be invalid or expired."
+            return {
+                'success': False,
+                'error': 'Authentication failed',
+                'message': 'Your OpenAI API key may be invalid or expired'
+            }
         except RateLimitError as e:
             logger.error(f"OpenAI rate limit error in analyze_logs: {e}")
-            return "Rate limit exceeded. Please try again in a few moments."
+            return {
+                'success': False,
+                'error': 'Rate limit exceeded',
+                'message': 'Please try again in a few moments'
+            }
         except APIConnectionError as e:
             logger.error(f"OpenAI connection error in analyze_logs: {e}")
-            return "Cannot connect to OpenAI API. Please check your internet connection."
+            return {
+                'success': False,
+                'error': 'Connection failed',
+                'message': 'Cannot connect to OpenAI API. Please check your internet connection'
+            }
         except APIError as e:
             logger.error(f"OpenAI API error in analyze_logs: {e}")
-            return f"OpenAI API error: {str(e)}"
+            return {
+                'success': False,
+                'error': 'API error',
+                'message': str(e)
+            }
         except Exception as e:
             logger.error(f"Unexpected error analyzing logs: {e}", exc_info=True)
-            return f"Error analyzing logs: {str(e)}"
+            return {
+                'success': False,
+                'error': 'Unexpected error',
+                'message': str(e)
+            }
     
-    def get_troubleshooting_advice(self, issue_description: str, service_name: str = "") -> str:
+    def get_troubleshooting_advice(self, issue_description: str, service_name: str = ""):
+        """Get troubleshooting advice - returns dict for consistent error handling"""
         if not self.enabled:
-            return "AI troubleshooting is not available. Please check API configuration."
+            return {
+                'success': False,
+                'error': 'AI service not configured',
+                'message': 'Please configure AI_INTEGRATIONS_OPENAI_API_KEY and AI_INTEGRATIONS_OPENAI_BASE_URL to use troubleshooting',
+                'setup_url': '/settings/integrations'
+            }
         
         try:
             prompt = f"""A user is experiencing an issue with their homelab service.
@@ -90,22 +125,45 @@ Provide specific troubleshooting steps and potential solutions."""
                 max_completion_tokens=2048
             )
             
-            return response.choices[0].message.content or "No response generated"
+            return {
+                'success': True,
+                'advice': response.choices[0].message.content or "No response generated"
+            }
         except AuthenticationError as e:
             logger.error(f"OpenAI authentication error in get_troubleshooting_advice: {e}")
-            return "Authentication failed. Your OpenAI API key may be invalid or expired."
+            return {
+                'success': False,
+                'error': 'Authentication failed',
+                'message': 'Your OpenAI API key may be invalid or expired'
+            }
         except RateLimitError as e:
             logger.error(f"OpenAI rate limit error in get_troubleshooting_advice: {e}")
-            return "Rate limit exceeded. Please try again in a few moments."
+            return {
+                'success': False,
+                'error': 'Rate limit exceeded',
+                'message': 'Please try again in a few moments'
+            }
         except APIConnectionError as e:
             logger.error(f"OpenAI connection error in get_troubleshooting_advice: {e}")
-            return "Cannot connect to OpenAI API. Please check your internet connection."
+            return {
+                'success': False,
+                'error': 'Connection failed',
+                'message': 'Cannot connect to OpenAI API. Please check your internet connection'
+            }
         except APIError as e:
             logger.error(f"OpenAI API error in get_troubleshooting_advice: {e}")
-            return f"OpenAI API error: {str(e)}"
+            return {
+                'success': False,
+                'error': 'API error',
+                'message': str(e)
+            }
         except Exception as e:
             logger.error(f"Unexpected error getting troubleshooting advice: {e}", exc_info=True)
-            return f"Error: {str(e)}"
+            return {
+                'success': False,
+                'error': 'Unexpected error',
+                'message': str(e)
+            }
     
     def chat(self, message: str, conversation_history: List[Dict] = None) -> str:
         if not self.enabled:

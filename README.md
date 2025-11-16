@@ -5,20 +5,20 @@
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python)](services/dashboard)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?logo=typescript)](services/discord-bot)
 
-**Enterprise-grade homelab management platform with AI-powered autonomous operations**
+**Enterprise-grade homelab management platform with AI-powered intelligent operations**
 
-A comprehensive, investor-ready platform for managing containerized services across multiple domains with automatic SSL, intelligent monitoring, autonomous healing, and AI-driven operations. Built for production deployment on Ubuntu 25.10 homelab servers.
+A comprehensive, investor-ready platform for managing containerized services across multiple domains with automatic SSL, intelligent monitoring, automated health checks, and AI-driven decision support. Built for production deployment on Ubuntu 25.10 homelab servers.
 
 ---
 
 ## ✨ Key Features
 
 ### 🤖 **Jarvis AI Assistant**
-- **GPT-4 Powered**: Natural language control and autonomous decision-making
+- **GPT-4 Powered**: Natural language control and intelligent decision support
 - **Voice Commands**: Speech-to-text homelab control with audio responses
-- **Autonomous Healing**: Self-diagnosing and self-remediating infrastructure
-- **3-Tier Actions**: Diagnose → Remediate → Proactive maintenance
-- **Safe Execution**: Sandboxed command execution with automatic rollback
+- **Automated Health Monitoring**: Self-diagnosing with intelligent alerts and guided remediation
+- **3-Tier Actions**: Diagnose → Remediate (with approval) → Proactive maintenance
+- **Safe Execution**: Sandboxed command execution with approval workflow and rollback
 
 ### 🌐 **Domain & SSL Management**
 - **Zero-Touch Provisioning**: Fully automated domain setup from DNS to SSL
@@ -29,8 +29,8 @@ A comprehensive, investor-ready platform for managing containerized services acr
 
 ### 🐳 **Docker Orchestration**
 - **One-Click Deployment**: Deploy 8+ services with a single command
-- **Blue-Green Deployments**: Zero-downtime updates
-- **Health-Based Routing**: Automatic failover and recovery
+- **Rolling Deployments**: Minimal-downtime updates with health checks and rollback
+- **Health-Based Monitoring**: Automatic health checks and status reporting
 - **Resource Management**: CPU/memory limits and monitoring
 - **Comprehensive Logging**: Centralized logging with search and filtering
 

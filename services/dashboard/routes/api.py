@@ -554,9 +554,11 @@ def analyze_logs():
         if not ai_service.enabled:
             logger.warning("AI analyze-logs request rejected - OpenAI API not configured")
             return jsonify({
-                'success': False, 
-                'message': 'OpenAI API is not configured. Please set up your OpenAI API key in the integrations settings.',
-                'error_code': 'API_NOT_CONFIGURED'
+                'success': False,
+                'error': 'AI service not configured',
+                'message': 'Please configure AI_INTEGRATIONS_OPENAI_API_KEY and AI_INTEGRATIONS_OPENAI_BASE_URL to use log analysis',
+                'error_code': 'SERVICE_NOT_CONFIGURED',
+                'setup_url': '/settings/integrations'
             }), 503
         
         data = request.get_json()
@@ -579,9 +581,11 @@ def ai_chat():
         if not ai_service.enabled:
             logger.warning("AI chat request rejected - OpenAI API not configured")
             return jsonify({
-                'success': False, 
-                'message': 'OpenAI API is not configured. Please set up your OpenAI API key in the integrations settings.',
-                'error_code': 'API_NOT_CONFIGURED'
+                'success': False,
+                'error': 'AI service not configured',
+                'message': 'Please configure AI_INTEGRATIONS_OPENAI_API_KEY and AI_INTEGRATIONS_OPENAI_BASE_URL to use AI chat',
+                'error_code': 'SERVICE_NOT_CONFIGURED',
+                'setup_url': '/settings/integrations'
             }), 503
         
         data = request.get_json()
@@ -604,9 +608,11 @@ def troubleshoot():
         if not ai_service.enabled:
             logger.warning("AI troubleshoot request rejected - OpenAI API not configured")
             return jsonify({
-                'success': False, 
-                'message': 'OpenAI API is not configured. Please set up your OpenAI API key in the integrations settings.',
-                'error_code': 'API_NOT_CONFIGURED'
+                'success': False,
+                'error': 'AI service not configured',
+                'message': 'Please configure AI_INTEGRATIONS_OPENAI_API_KEY and AI_INTEGRATIONS_OPENAI_BASE_URL to use troubleshooting',
+                'error_code': 'SERVICE_NOT_CONFIGURED',
+                'setup_url': '/settings/integrations'
             }), 503
         
         data = request.get_json()
@@ -635,6 +641,70 @@ def ai_status():
         })
     except Exception as e:
         logger.error(f"Error checking AI status: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+def check_docker_available():
+    """Check if Docker is available"""
+    try:
+        import docker
+        client = docker.from_env()
+        client.ping()
+        return True
+    except:
+        return False
+
+def check_google_oauth_configured():
+    """Check if Google OAuth is configured"""
+    return bool(os.getenv('GOOGLE_CLIENT_ID') and os.getenv('GOOGLE_CLIENT_SECRET'))
+
+@api_bp.route('/features/status', methods=['GET'])
+@require_auth
+def features_status():
+    """Get status of all optional features"""
+    try:
+        # Import enhanced_domain_service if available
+        try:
+            from services.enhanced_domain_service import EnhancedDomainService
+            enhanced_domain_service = EnhancedDomainService()
+            domain_automation_enabled = enhanced_domain_service.enabled
+        except:
+            domain_automation_enabled = False
+        
+        return jsonify({
+            'success': True,
+            'features': {
+                'ai_assistant': {
+                    'enabled': ai_service.enabled,
+                    'name': 'AI Assistant',
+                    'description': 'GPT-powered chat and analysis',
+                    'required_vars': ['AI_INTEGRATIONS_OPENAI_API_KEY', 'AI_INTEGRATIONS_OPENAI_BASE_URL'],
+                    'setup_url': 'https://replit.com'
+                },
+                'domain_automation': {
+                    'enabled': domain_automation_enabled,
+                    'name': 'Domain Automation',
+                    'description': 'Automated DNS and SSL management',
+                    'required_vars': ['ZONEEDIT_USERNAME', 'ZONEEDIT_PASSWORD'],
+                    'setup_url': 'https://www.zoneedit.com'
+                },
+                'docker_management': {
+                    'enabled': check_docker_available(),
+                    'name': 'Docker Management',
+                    'description': 'Container orchestration',
+                    'required_vars': [],
+                    'setup_url': 'https://docs.docker.com/engine/install/'
+                },
+                'google_services': {
+                    'enabled': check_google_oauth_configured(),
+                    'name': 'Google Services',
+                    'description': 'Gmail, Calendar, Drive integration',
+                    'required_vars': ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'],
+                    'setup_url': 'https://console.cloud.google.com'
+                }
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error checking features status: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
 ALLOWED_COMMANDS = [

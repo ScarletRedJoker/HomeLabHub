@@ -37,6 +37,21 @@ class EnhancedDomainService:
         """Initialize domain service with integrations"""
         self.zoneedit = ZoneEditService()
         self.caddy = CaddyService()
+        self._enabled = self._check_configuration()
+    
+    def _check_configuration(self) -> bool:
+        """Check if domain automation is configured"""
+        if not self.zoneedit.enabled:
+            logger.info("Domain automation disabled - ZoneEdit not configured")
+            return False
+        
+        logger.info("Domain automation enabled")
+        return True
+    
+    @property
+    def enabled(self) -> bool:
+        """Check if domain automation is available"""
+        return self._enabled
     
     # ========================================================================
     # CRUD Operations

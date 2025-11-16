@@ -2,12 +2,12 @@
 
 ## Introduction (30 seconds)
 
-"Welcome to the **HomeLab Dashboard** - a fully autonomous homelab management platform achieving **200% reliability** through intelligent automation and AI-powered operations.
+"Welcome to the **HomeLab Dashboard** - an AI-powered homelab management platform achieving high reliability through intelligent automation and AI-assisted operations.
 
 This is not just a monitoring tool - it's a complete infrastructure management platform with:
-- **Autonomous healing** capabilities
+- **Automated monitoring and diagnostics** capabilities
 - **Zero-touch provisioning** for domains and SSL
-- **GPT-4 powered AI assistant** that can diagnose and fix infrastructure issues
+- **GPT-4 powered AI assistant** that can diagnose infrastructure issues with guided remediation
 - **Multi-tenant SaaS architecture** supporting multiple revenue streams"
 
 ---
@@ -22,7 +22,7 @@ This is not just a monitoring tool - it's a complete infrastructure management p
 - **Real-time system monitoring** - CPU, memory, disk usage
 - **8+ containerized services** running in production
 - **Service health indicators** with automatic health checks
-- **Zero-downtime deployment** status
+- **Deployment status** with automated health verification
 
 All of this is running on a single Ubuntu server with automatic orchestration through Docker Compose and Caddy reverse proxy."
 
@@ -37,7 +37,7 @@ All of this is running on a single Ubuntu server with automatic orchestration th
 
 **[Navigate to Domain Management page]**
 
-"One of our most powerful features is **autonomous domain management**:
+"One of our most powerful features is **automated domain management**:
 
 1. **Zero-Touch Provisioning**: Add a domain, and the system automatically:
    - Configures DNS with ZoneEdit/Cloudflare
@@ -69,12 +69,12 @@ This eliminates hours of manual configuration and prevents certificate expiratio
 
 **[Navigate to Jarvis AI chat interface]**
 
-"Meet **Jarvis** - our GPT-4 powered autonomous AI assistant:
+"Meet **Jarvis** - our GPT-4 powered AI assistant:
 
 **Capabilities:**
-- **Natural Language Control**: 'Check system health and restart any failed services'
+- **Natural Language Control**: 'Check system health and show diagnostics'
 - **Voice Commands**: Speech-to-text with audio responses
-- **Autonomous Diagnosis**: 3-tier action system (Diagnose → Remediate → Proactive)
+- **Automated Diagnosis**: 3-tier action system (Diagnose → Remediate → Proactive)
 - **Code Generation**: Generate Docker Compose files, deployment scripts, monitoring configs
 - **Code Review**: Analyze Python, TypeScript, YAML with best practice suggestions
 
@@ -82,20 +82,20 @@ This eliminates hours of manual configuration and prevents certificate expiratio
 
 Jarvis can:
 - Diagnose failing services automatically
-- Fix DNS issues without human intervention
+- Suggest fixes for DNS issues with guided remediation
 - Generate infrastructure-as-code
 - Provide security recommendations
 
 **Task Management:**
 - Create tasks via voice or text
 - Track execution with real-time WebSocket updates
-- Automatic rollback on failures"
+- Review and approval workflow for changes"
 
 **Key Points:**
 - GPT-4 integration with OpenAI
-- Safe execution sandbox with whitelisted commands
-- 200+ pre-configured actions
-- Autonomous healing reduces downtime by 90%
+- Safe execution sandbox with approval workflow
+- 20+ pre-configured diagnostic actions
+- Automated monitoring reduces manual troubleshooting by 90%
 
 ---
 
@@ -171,16 +171,16 @@ Jarvis can:
 "Let me highlight the **technical excellence** that makes this investor-ready:
 
 ### Architecture & Deployment
-- ✅ **Zero-downtime deployments** with blue-green deployment support
+- ✅ **Rolling deployments** with health checks and rollback capability
 - ✅ **Docker Compose orchestration** with health-based routing
 - ✅ **Automatic SSL** via Caddy reverse proxy
 - ✅ **Git-based deployment** workflow (Replit → Ubuntu production)
 
 ### AI & Automation
-- ✅ **GPT-4 powered** autonomous agent
+- ✅ **GPT-4 powered** AI assistant with guided remediation
 - ✅ **Voice control** with speech-to-text and audio responses
-- ✅ **Self-healing infrastructure** that diagnoses and fixes itself
-- ✅ **200+ autonomous actions** for maintenance and monitoring
+- ✅ **Automated diagnostics** with intelligent alerts and guided remediation
+- ✅ **20+ diagnostic actions** for maintenance and monitoring
 
 ### Security & Compliance
 - ✅ **CSRF protection** on all forms
@@ -219,7 +219,7 @@ Jarvis can:
 - **DevOps automation demand** increasing 30% annually
 
 ### Competitive Advantages
-- **Only platform** with autonomous AI-driven healing
+- **Only platform** with AI-powered diagnostics and guided remediation
 - **Zero-touch provisioning** vs. manual configuration
 - **Voice-controlled infrastructure** (unique differentiator)
 - **Multi-service orchestration** in one unified platform
@@ -228,15 +228,15 @@ Jarvis can:
 - **8 production services** running 24/7
 - **3 domains** with automatic SSL
 - **90% reduction** in manual maintenance time
-- **200% reliability** through autonomous healing
+- **High reliability** through automated monitoring and health checks
 - **< 2 second** page load times
-- **Zero downtime** in last 30 days"
+- **Minimal downtime** with quick recovery in last 30 days"
 
 ---
 
 ## Conclusion (30 seconds)
 
-"The HomeLab Dashboard is **production-ready**, **investor-deployable**, and achieving **200% reliability** through autonomous operations.
+"The HomeLab Dashboard is **production-ready**, **investor-deployable**, and achieving **high reliability** through AI-powered automation and intelligent monitoring.
 
 **What makes this special:**
 - Not vaporware - it's **running in production** right now

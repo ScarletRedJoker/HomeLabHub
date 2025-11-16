@@ -18,6 +18,29 @@
         </div>
     </div>
 
+    <!-- Domain Automation Setup Banner -->
+    {% if not domain_automation_enabled %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info alert-dismissible fade show" role="alert">
+                <h4 class="alert-heading"><i class="bi bi-info-circle-fill"></i> Domain Automation Not Configured</h4>
+                <p>Automated domain provisioning and DNS management requires ZoneEdit credentials.</p>
+                <p>You can still manually manage domains, but automatic DNS updates and SSL provisioning will be unavailable.</p>
+                <hr>
+                <p class="mb-0">
+                    <a href="https://www.zoneedit.com" target="_blank" class="btn btn-primary btn-sm">
+                        <i class="bi bi-link-45deg me-2"></i>Get ZoneEdit Account
+                    </a>
+                    <a href="https://docs.zoneedit.com" target="_blank" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-book me-2"></i>Documentation
+                    </a>
+                </p>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="stat-card glassmorphic-panel">

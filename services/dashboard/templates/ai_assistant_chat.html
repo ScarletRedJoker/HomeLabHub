@@ -79,6 +79,29 @@
         </div>
     </div>
 
+    <!-- AI Service Setup Banner -->
+    {% if not ai_enabled %}
+    <div class="alert alert-warning alert-dismissible fade show m-3" role="alert">
+        <h4 class="alert-heading"><i class="bi bi-exclamation-triangle-fill"></i> AI Features Not Configured</h4>
+        <p>The AI assistant requires API credentials to function. Please configure your API credentials to enable:</p>
+        <ul>
+            <li>AI-powered chat assistance</li>
+            <li>Automated log analysis</li>
+            <li>Intelligent troubleshooting</li>
+            <li>Code generation and review</li>
+        </ul>
+        <hr>
+        <p class="mb-0">
+            <a href="https://replit.com" target="_blank" class="btn btn-primary btn-sm">
+                <i class="bi bi-gear-fill me-2"></i>Setup Replit AI
+            </a>
+            <a href="https://docs.replit.com" target="_blank" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-book me-2"></i>Documentation
+            </a>
+        </p>
+    </div>
+    {% endif %}
+
     <!-- Chat Messages Area -->
     <div class="jarvis-messages" id="chatMessages">
         <!-- Messages will be dynamically added here -->

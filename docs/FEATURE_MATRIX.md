@@ -4,7 +4,7 @@
 
 ### Executive Summary
 
-The **HomeLab Dashboard** is the **only platform** combining autonomous AI-driven infrastructure management with zero-touch provisioning, voice control, and multi-tenant SaaS capabilities. While competitors focus on single aspects (monitoring, deployment, or management), we provide a **unified platform** that eliminates manual operations through intelligent automation.
+The **HomeLab Dashboard** is the **only platform** combining AI-powered infrastructure management with zero-touch provisioning, voice control, and multi-tenant SaaS capabilities. While competitors focus on single aspects (monitoring, deployment, or management), we provide a **unified platform** that reduces manual operations through intelligent automation and guided remediation.
 
 ---
 
@@ -29,10 +29,10 @@ The **HomeLab Dashboard** is the **only platform** combining autonomous AI-drive
 | **AI & Automation** | | | | | | |
 | AI-powered assistant | ✅ **GPT-4** | ❌ No | ❌ No | ❌ No | ❌ No | ❌ No |
 | Voice control | ✅ **Speech-to-text** | ❌ No | ❌ No | ❌ No | ❌ No | ❌ No |
-| Autonomous healing | ✅ **Self-diagnosing** | ❌ No | ⚠️ Limited | ❌ No | ❌ No | ❌ No |
+| Automated diagnostics | ✅ **AI-powered** | ❌ No | ⚠️ Limited | ❌ No | ❌ No | ❌ No |
 | Code generation | ✅ Docker/Scripts | ❌ No | ❌ No | ❌ No | ❌ No | ❌ No |
 | Code review | ✅ AI-powered | ❌ No | ❌ No | ❌ No | ❌ No | ❌ No |
-| Task automation | ✅ 200+ actions | ❌ No | ⚠️ Limited | ❌ No | ❌ No | ⚠️ Custom |
+| Task automation | ✅ 20+ actions | ❌ No | ⚠️ Limited | ❌ No | ❌ No | ⚠️ Custom |
 | | | | | | | |
 | **System Monitoring** | | | | | | |
 | Real-time metrics | ✅ CPU/Mem/Disk | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No | ⚠️ Manual |
@@ -49,10 +49,10 @@ The **HomeLab Dashboard** is the **only platform** combining autonomous AI-drive
 | | | | | | | |
 | **Deployment & DevOps** | | | | | | |
 | One-command deploy | ✅ `./deploy.sh` | ⚠️ GUI only | ⚠️ Complex | ⚠️ Manual | ❌ No | ⚠️ Custom |
-| Blue-green deployments | ✅ Zero-downtime | ❌ No | ✅ Yes | ❌ No | ❌ No | ⚠️ Custom |
+| Rolling deployments | ✅ Health checks | ⚠️ Basic | ✅ Yes | ❌ No | ❌ No | ⚠️ Custom |
 | Git-based workflow | ✅ Replit→Ubuntu | ❌ No | ⚠️ GitOps | ❌ No | ❌ No | ⚠️ Custom |
 | Auto-sync | ✅ 5-min interval | ❌ No | ⚠️ Manual | ❌ No | ❌ No | ⚠️ Cron |
-| Health-based routing | ✅ Caddy | ❌ No | ⚠️ Manual | ❌ No | ❌ No | ❌ No |
+| Health-based monitoring | ✅ Caddy + checks | ⚠️ Basic | ⚠️ Manual | ❌ No | ❌ No | ❌ No |
 | | | | | | | |
 | **Security** | | | | | | |
 | CSRF protection | ✅ All forms | ⚠️ Basic | ✅ Yes | ⚠️ Basic | ❌ No | ⚠️ Manual |
@@ -100,13 +100,13 @@ The **HomeLab Dashboard** is the **only platform** combining autonomous AI-drive
 
 ### What Makes HomeLab Dashboard Different?
 
-#### 1. **Autonomous AI Operations** (GPT-4 Powered)
-- **Voice-controlled infrastructure**: "Jarvis, check system health and restart failed services"
-- **Self-diagnosing**: Automatically detects and fixes common issues
+#### 1. **AI-Powered Operations** (GPT-4 Powered)
+- **Voice-controlled infrastructure**: "Jarvis, check system health and show diagnostics"
+- **Automated diagnostics**: Automatically detects common issues with guided remediation
 - **Code generation**: Generate Docker Compose files, deployment scripts, monitoring configs
-- **200+ autonomous actions**: From disk cleanup to SSL renewal
+- **20+ diagnostic and remediation actions**: From disk cleanup to SSL renewal
 
-**Competitor Comparison**: No competitor offers AI-driven autonomous operations. Rancher has basic automation, but nothing AI-powered.
+**Competitor Comparison**: No competitor offers AI-driven diagnostics and guided remediation. Rancher has basic automation, but nothing AI-powered.
 
 ---
 
@@ -159,8 +159,8 @@ The **HomeLab Dashboard** is the **only platform** combining autonomous AI-drive
 |-------------------|---------------------|--------------|------------|----------------|
 | **Individual Homelabbers** | ✅ Perfect fit | ✅ Good | ❌ Too complex | AI assistant, voice control, easier setup |
 | **Small Businesses** | ✅ Ideal | ⚠️ Limited | ⚠️ Overkill | SaaS revenue potential, managed service offering |
-| **DevOps Teams** | ✅ Excellent | ⚠️ Too basic | ✅ Good | Unified platform, better DX, autonomous operations |
-| **MSPs (Managed Service Providers)** | ✅ **Best** | ⚠️ Limited | ⚠️ Complex | Multi-tenant SaaS, white-label potential, automation |
+| **DevOps Teams** | ✅ Excellent | ⚠️ Too basic | ✅ Good | Unified platform, better DX, AI-powered automation |
+| **MSPs (Managed Service Providers)** | ✅ **Best** | ⚠️ Limited | ⚠️ Complex | Multi-tenant SaaS, white-label potential, intelligent automation |
 | **Enterprise** | ⚠️ Scaling needed | ❌ Too limited | ✅ Built for it | We have Kubernetes migration path planned |
 
 ---
@@ -174,7 +174,7 @@ The **HomeLab Dashboard** is the **only platform** combining autonomous AI-drive
 | **Reverse Proxy** | Caddy (automatic SSL) | Nginx (manual SSL) | 80% faster SSL setup |
 | **Database** | Unified PostgreSQL multi-DB | Separate DBs per service | Simpler management, easier backups |
 | **Task Queue** | Celery + Redis | Manual cron jobs | Async operations, retry logic, monitoring |
-| **AI Integration** | GPT-4 native | None | Autonomous operations unique to us |
+| **AI Integration** | GPT-4 native | None | AI-powered diagnostics unique to us |
 | **Deployment** | Git-based one-command | Manual Docker Compose | 90% faster deployments |
 | **Monitoring** | Built-in real-time | Separate Prometheus/Grafana | Integrated experience |
 
@@ -209,10 +209,10 @@ The **HomeLab Dashboard** is the **only platform** combining autonomous AI-drive
 
 **ROI Calculation:**
 - **Manual SSL setup**: 30 min × $50/hour = $25 saved per domain
-- **Autonomous healing**: 2 hours/month × $50/hour = $100/month saved
+- **AI-assisted diagnostics**: 1.5 hours/month × $50/hour = $75/month saved
 - **Faster deployments**: 10 min/deploy × 20 deploys/month = 3.3 hours × $50/hour = $165/month saved
 
-**Total Monthly Savings: ~$290-400** vs. competitors
+**Total Monthly Savings: ~$265-365** vs. competitors
 
 ---
 
@@ -266,7 +266,7 @@ The **HomeLab Dashboard** is the **only platform** combining autonomous AI-drive
 | **Threat** | **Mitigation Strategy** | **Timeline** |
 |-----------|----------------------|-------------|
 | Portainer adds AI | **First-mover advantage**, patent AI voice control | 6-12 months ahead |
-| Rancher simplifies | **Better UX**, voice interface, autonomous healing | Already simpler |
+| Rancher simplifies | **Better UX**, voice interface, AI-powered automation | Already simpler |
 | Cloud providers (AWS/GCP) | **Self-hosting focus**, privacy, cost savings angle | Different market |
 | Open-source forks | **MIT license**, community engagement, rapid innovation | Embrace open source |
 | Large enterprise acquisition | **Niche focus**, better for SMBs, community-driven | Build loyal community |
@@ -278,13 +278,13 @@ The **HomeLab Dashboard** is the **only platform** combining autonomous AI-drive
 The **HomeLab Dashboard** is not just another monitoring tool or container manager. It's a **unified, AI-powered platform** that:
 
 1. **Saves time**: 90% reduction in manual operations
-2. **Saves money**: ~$300/month vs. competitors
+2. **Saves money**: ~$265-365/month vs. competitors
 3. **Generates revenue**: Multi-tenant SaaS components
 4. **Scales**: From 1 server to enterprise deployments
-5. **Innovates**: AI voice control, autonomous healing, zero-touch provisioning
+5. **Innovates**: AI voice control, automated diagnostics, zero-touch provisioning
 
 **We are the only platform combining:**
-- ✅ Autonomous AI operations
+- ✅ AI-powered diagnostics and guided remediation
 - ✅ Zero-touch domain provisioning
 - ✅ Multi-tenant SaaS architecture
 - ✅ Voice-controlled infrastructure

@@ -1,14 +1,14 @@
 # Homelab Dashboard Project
 
 ## Overview
-This project delivers a comprehensive, production-ready web-based dashboard for managing Ubuntu homelab servers. Built as an **enterprise-grade platform**, it provides a unified, AI-powered interface that minimizes operational overhead, maximizes reliability, and enables fully autonomous operations. Key capabilities include:
+This project delivers a comprehensive, production-ready web-based dashboard for managing Ubuntu homelab servers. Built as an **enterprise-grade platform**, it provides a unified, AI-powered interface that minimizes operational overhead, maximizes reliability, and enables intelligent automated operations. Key capabilities include:
 
-- **Jarvis AI Agent**: GPT-4 powered autonomous agent with voice control, self-diagnosis, and self-healing
+- **Jarvis AI Agent**: GPT-4 powered AI assistant with voice control, automated diagnostics, and guided remediation
 - **Zero-Touch Domain Management**: Complete automation from DNS setup to SSL certificate provisioning
 - **Multi-Service Orchestration**: 8 production services across 3 domains with automatic SSL
-- **Autonomous Healing**: 3-tier action system (Diagnose → Remediate → Proactive) with 20+ autonomous actions
+- **Automated Health Monitoring**: 3-tier action system (Diagnose → Remediate with Approval → Proactive) with 20+ actions
 - **Enterprise Security**: Session auth, API keys, rate limiting, audit logging, secrets management
-- **Production Ready**: Blue-green deployments, health checks, automatic backups, comprehensive monitoring
+- **Production Ready**: Rolling deployments with health checks, automatic backups, comprehensive monitoring
 
 ### Recent Major Features (Q4 2024)
 
@@ -192,7 +192,7 @@ The Homelab Dashboard features a cosmic theme with deep space backgrounds, anima
 ### System Design Choices
 - **Database Architecture**: A single PostgreSQL container managing multiple service-specific databases with robust concurrency protection and constraints.
 - **Unified Deployment System**: Orchestrated by `docker-compose.unified.yml` and `homelab-manager.sh` for centralized operations. Caddy reverse proxy for automatic SSL. Automated Replit → Ubuntu sync every 5 minutes.
-- **Deployment Automation**: Blue-green deployments, pre-deployment validation, health-based deployment with auto-rollback, comprehensive backup/restore.
+- **Deployment Automation**: Rolling deployments with health checks, pre-deployment validation, backup/restore workflows, manual rollback capability.
 - **CI/CD Pipeline**: A 5-stage pipeline (Validate → Test → Build → Deploy → Verify) with multi-environment support and security scanning.
 - **Security**: Session-based auth + API key, secure file validation, antivirus scanning, rate limiting, audit logging, CSRF protection, Celery/Redis health monitoring with circuit breaker, command/path whitelisting, multi-tenant isolation, OAuth.
 - **Production Readiness**: Emphasizes comprehensive security, performance optimization (connection pooling, optimized Docker images, background jobs), robust error handling (Error Boundaries, retry logic, circuit breakers), high reliability (automatic token refresh, stream detection edge cases), extensive End-to-End and security testing, and centralized monitoring with structured JSON logging.
@@ -227,3 +227,60 @@ The Homelab Dashboard features a cosmic theme with deep space backgrounds, anima
 - PostgreSQL 16 Alpine
 - Docker & Docker Compose
 - Let's Encrypt
+
+## Production Readiness
+
+**Implemented Features:**
+- Automated backups (database + configs)
+- Health-based deployment with manual rollback capability
+- Comprehensive error handling and logging
+- Graceful degradation for optional services
+- Feature flags for API integrations
+
+**Deployment Process:**
+- Pre-flight checks (Docker, Docker Compose, environment)
+- Automated backup before deployment
+- Container rebuild with latest code
+- Health verification after deployment
+- Manual rollback capability via backup restore
+
+**Monitoring & Reliability:**
+- Container health checks (Postgres, Redis, Caddy, MinIO)
+- Service status monitoring
+- Real-time system metrics (CPU, memory, disk, network)
+- Alert system for domain SSL expiration
+- Automated log rotation and cleanup
+
+**Optional Features (Require Configuration):**
+- Jarvis AI Assistant (requires OPENAI_API_KEY)
+- Domain Automation (requires ZoneEdit credentials)
+- Google Services (requires OAuth setup)
+- Smart Home Integration (requires Home Assistant)
+- Stream Bot (requires platform OAuth)
+
+**Current Limitations:**
+- Docker management requires Docker daemon (not available in Replit)
+- Some features require external API keys or services
+- Deployments have brief downtime during container restart (~10-30 seconds)
+- Rollback is manual, not automatic (operator must trigger via ./deploy.sh restore)
+
+**Jarvis AI Capabilities (When Configured):**
+
+**Implemented:**
+- AI-powered chat assistance
+- Log analysis and troubleshooting
+- Code generation with review workflow
+- Task management system with approval workflow
+- Complexity analysis and intelligent delegation
+- Automated diagnostics (20+ diagnostic actions)
+
+**Requires Manual Approval:**
+- Code changes (review and approve required)
+- Destructive operations (approval workflow)
+- Domain provisioning (can be automated if configured)
+- Container restarts and service changes
+
+**Future Enhancements:**
+- Fully autonomous code deployment
+- Automatic remediation without approval for safe operations
+- Predictive maintenance and capacity planning

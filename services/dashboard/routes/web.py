@@ -16,6 +16,16 @@ logger = logging.getLogger(__name__)
 
 web_bp = Blueprint('web', __name__)
 
+# Import services for checking enabled status
+from services.ai_service import AIService
+try:
+    from services.enhanced_domain_service import EnhancedDomainService
+    enhanced_domain_service = EnhancedDomainService()
+except:
+    enhanced_domain_service = None
+    
+ai_service = AIService()
+
 @web_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -77,7 +87,8 @@ def ai_assistant():
 @web_bp.route('/aiassistant')
 @require_web_auth
 def ai_assistant_chat():
-    response = make_response(render_template('ai_assistant_chat.html'))
+    response = make_response(render_template('ai_assistant_chat.html', 
+                                            ai_enabled=ai_service.enabled))
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
@@ -148,7 +159,9 @@ def domains():
 @web_bp.route('/domain-management')
 @require_web_auth
 def domain_management():
-    response = make_response(render_template('domain_management.html'))
+    domain_automation_enabled = enhanced_domain_service.enabled if enhanced_domain_service else False
+    response = make_response(render_template('domain_management.html',
+                                            domain_automation_enabled=domain_automation_enabled))
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
