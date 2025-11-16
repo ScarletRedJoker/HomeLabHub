@@ -12,7 +12,7 @@ git pull origin main
 
 2. **Deploy Everything**
 ```bash
-./scripts/homelab-manager.sh
+./homelab-manager.sh
 # Select Option 1: Full Deploy
 ```
 
@@ -67,7 +67,7 @@ After deployment, verify these features work:
 ### Demo Mode (Default)
 ```bash
 export DEMO_MODE=true
-./scripts/homelab-manager.sh
+./homelab-manager.sh
 ```
 - Auto-login: evin/homelab
 - Mock data for all services
@@ -86,7 +86,7 @@ WEB_PASSWORD=your_secure_password
 
 Then deploy:
 ```bash
-./scripts/homelab-manager.sh
+./homelab-manager.sh
 # Select Option 1: Full Deploy
 ```
 
@@ -168,7 +168,7 @@ curl http://192.168.1.x:8123/api/  # Home Assistant
 # Manual sync
 cd /home/evin/contain/HomeLabHub
 git pull origin main
-./scripts/homelab-manager.sh
+./homelab-manager.sh
 ```
 
 ---
