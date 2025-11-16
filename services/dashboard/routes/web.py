@@ -167,6 +167,16 @@ def domain_management():
     response.headers['Expires'] = '0'
     return response
 
+@web_bp.route('/dns')
+@require_web_auth
+def dns_management():
+    """DNS management page"""
+    response = make_response(render_template('dns_management.html'))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
+
 @web_bp.route('/monitoring')
 @require_web_auth
 def monitoring():
