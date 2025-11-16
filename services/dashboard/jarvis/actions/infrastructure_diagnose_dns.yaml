@@ -1,0 +1,132 @@
+name: infrastructure_diagnose_dns
+tier: 1
+tier_name: DIAGNOSE
+risk_level: low
+category: infrastructure
+description: Monitor DNS health for all domains (rig-city.com, evindrake.net, scarletredjoker.com) and detect issues
+requires_approval: false
+auto_execute: true
+execution_interval_minutes: 10
+timeout_seconds: 60
+
+command: |
+  #!/bin/bash
+  # DNS Health Check for all homelab domains
+  
+  DOMAINS=("rig-city.com" "evindrake.net" "scarletredjoker.com")
+  SUBDOMAINS=("www" "bot" "stream" "host" "plex" "n8n" "vnc" "code" "home" "game")
+  EXPECTED_IP="74.76.32.151"
+  NAMESERVERS=("dns1.zoneedit.com" "dns2.zoneedit.com" "dns3.zoneedit.com")
+  
+  TOTAL_CHECKS=0
+  FAILED_CHECKS=0
+  ISSUES=()
+  
+  echo "=== DNS Health Check Report ==="
+  echo "Timestamp: $(date)"
+  echo ""
+  
+  # Check each domain's root and important subdomains
+  for domain in "${DOMAINS[@]}"; do
+    echo "Checking $domain..."
+    
+    # Check root domain
+    for ns in "${NAMESERVERS[@]}"; do
+      result=$(dig @$ns $domain A +short 2>/dev/null | head -1)
+      TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
+      
+      if [ "$result" != "$EXPECTED_IP" ]; then
+        FAILED_CHECKS=$((FAILED_CHECKS + 1))
+        ISSUES+=("FAILED: $domain @ $ns returned '$result' (expected $EXPECTED_IP)")
+        echo "  ✗ $ns: $domain -> $result (EXPECTED: $EXPECTED_IP)"
+      else
+        echo "  ✓ $ns: $domain -> $result"
+      fi
+    done
+    
+    # Check critical subdomains for this domain
+    if [ "$domain" = "rig-city.com" ]; then
+      check_subs=("www" "bot" "stream")
+    elif [ "$domain" = "evindrake.net" ]; then
+      check_subs=("www" "host" "plex" "n8n" "vnc" "code" "home" "game")
+    else
+      check_subs=("www")
+    fi
+    
+    for sub in "${check_subs[@]}"; do
+      result=$(dig @dns1.zoneedit.com $sub.$domain A +short 2>/dev/null | head -1)
+      TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
+      
+      if [ -z "$result" ] || [ "$result" != "$EXPECTED_IP" ]; then
+        FAILED_CHECKS=$((FAILED_CHECKS + 1))
+        ISSUES+=("FAILED: $sub.$domain returned '$result' (expected $EXPECTED_IP)")
+      fi
+    done
+  done
+  
+  # Check ddclient status
+  if systemctl is-active --quiet ddclient; then
+    echo ""
+    echo "ddclient Status: RUNNING"
+    
+    # Check for recent failures in ddclient logs
+    recent_failures=$(journalctl -u ddclient --since "10 minutes ago" 2>/dev/null | grep -c "FAILED" || echo "0")
+    if [ "$recent_failures" -gt 0 ]; then
+      FAILED_CHECKS=$((FAILED_CHECKS + 1))
+      ISSUES+=("ddclient has $recent_failures failures in last 10 minutes")
+      echo "  ✗ ddclient failures detected: $recent_failures"
+    else
+      echo "  ✓ ddclient operating normally"
+    fi
+  else
+    FAILED_CHECKS=$((FAILED_CHECKS + 1))
+    ISSUES+=("ddclient service is not running")
+    echo "ddclient Status: NOT RUNNING"
+  fi
+  
+  # Summary
+  echo ""
+  echo "=== Summary ==="
+  echo "Total checks: $TOTAL_CHECKS"
+  echo "Failed checks: $FAILED_CHECKS"
+  echo "Success rate: $(awk "BEGIN {printf \"%.1f\", (($TOTAL_CHECKS - $FAILED_CHECKS) / $TOTAL_CHECKS) * 100}")%"
+  
+  if [ "$FAILED_CHECKS" -gt 0 ]; then
+    echo ""
+    echo "=== Issues Detected ==="
+    printf '%s\n' "${ISSUES[@]}"
+    exit 1
+  else
+    echo "✓ All DNS checks passed"
+    exit 0
+  fi
+
+rollback_plan: null
+checkpoint_required: false
+
+safety_checks:
+  - type: read_only
+    description: Only performs DNS queries, no modifications
+  - type: no_modifications
+    description: Does not modify DNS records or configurations
+
+expected_outputs:
+  - type: dns_health_status
+    pattern: "All DNS checks passed|Issues Detected"
+
+alerting:
+  on_failure: true
+  metric_name: dns_health_failures
+  alert_message: "DNS health check detected issues - may require remediation"
+
+metadata:
+  tags:
+    - infrastructure
+    - dns
+    - diagnostics
+    - tier1
+    - zoneedit
+  author: jarvis
+  version: "1.0"
+  last_updated: "2025-11-16"
+  purpose: "Autonomous DNS monitoring to detect SSL certificate blockers and dynamic DNS failures"

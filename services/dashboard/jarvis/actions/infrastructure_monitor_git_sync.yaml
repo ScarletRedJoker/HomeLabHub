@@ -1,0 +1,148 @@
+name: infrastructure_monitor_git_sync
+tier: 1
+tier_name: DIAGNOSE
+risk_level: low
+category: infrastructure
+description: Monitor automatic git sync from Replit to Ubuntu homelab
+requires_approval: false
+auto_execute: true
+execution_interval_minutes: 10
+timeout_seconds: 45
+
+command: |
+  #!/bin/bash
+  # Git Sync Health Monitor
+  
+  echo "=== Git Sync Health Check ==="
+  echo "Timestamp: $(date)"
+  echo ""
+  
+  PROJECT_DIR="/home/evin/contain/HomeLabHub"
+  STATE_FILE="$PROJECT_DIR/var/state/.last_sync_commit"
+  LOG_FILE="$PROJECT_DIR/var/log/replit-sync.log"
+  
+  ISSUES=0
+  
+  # Check if systemd timer is active
+  if systemctl is-active --quiet replit-sync.timer; then
+    echo "✓ Auto-sync timer: ACTIVE"
+  else
+    echo "✗ Auto-sync timer: INACTIVE"
+    ISSUES=$((ISSUES + 1))
+  fi
+  
+  # Check last sync time
+  if [ -f "$STATE_FILE" ]; then
+    last_commit=$(cat "$STATE_FILE" 2>/dev/null)
+    echo "✓ Last sync commit: $last_commit"
+    
+    # Check how long ago last sync was
+    if [ -f "$LOG_FILE" ]; then
+      last_sync_time=$(stat -c %Y "$LOG_FILE" 2>/dev/null || echo "0")
+      current_time=$(date +%s)
+      minutes_ago=$(( (current_time - last_sync_time) / 60 ))
+      
+      echo "  Last sync: $minutes_ago minutes ago"
+      
+      if [ "$minutes_ago" -gt 15 ]; then
+        echo "  ⚠ WARNING: Sync overdue (expected every 5 min)"
+        ISSUES=$((ISSUES + 1))
+      fi
+    fi
+  else
+    echo "⚠ No sync state file found - may never have synced"
+    ISSUES=$((ISSUES + 1))
+  fi
+  
+  # Check recent sync logs for failures
+  if [ -f "$LOG_FILE" ]; then
+    recent_errors=$(tail -50 "$LOG_FILE" 2>/dev/null | grep -c "ERROR\|FAILED" || echo "0")
+    if [ "$recent_errors" -gt 0 ]; then
+      echo "✗ Recent sync errors: $recent_errors"
+      ISSUES=$((ISSUES + 1))
+      
+      # Show last error
+      last_error=$(tail -50 "$LOG_FILE" 2>/dev/null | grep "ERROR" | tail -1)
+      if [ -n "$last_error" ]; then
+        echo "  Last error: $last_error"
+      fi
+    else
+      echo "✓ No recent sync errors"
+    fi
+  fi
+  
+  # Check git status
+  cd "$PROJECT_DIR" || exit 1
+  
+  if git status >/dev/null 2>&1; then
+    echo "✓ Git repository: HEALTHY"
+    
+    # Check for local changes
+    if git diff --quiet && git diff --cached --quiet; then
+      echo "✓ Working directory: CLEAN"
+    else
+      echo "⚠ Working directory has uncommitted changes"
+      ISSUES=$((ISSUES + 1))
+    fi
+    
+    # Check branch
+    current_branch=$(git branch --show-current 2>/dev/null)
+    if [ "$current_branch" = "main" ]; then
+      echo "✓ Branch: main"
+    else
+      echo "⚠ Branch: $current_branch (expected main)"
+      ISSUES=$((ISSUES + 1))
+    fi
+    
+    # Check connection to remote
+    if timeout 10 git fetch --dry-run origin main >/dev/null 2>&1; then
+      echo "✓ Remote connection: OK"
+    else
+      echo "✗ Remote connection: FAILED"
+      ISSUES=$((ISSUES + 1))
+    fi
+  else
+    echo "✗ Git repository: CORRUPTED"
+    ISSUES=$((ISSUES + 1))
+  fi
+  
+  # Summary
+  echo ""
+  echo "=== Git Sync Summary ==="
+  if [ "$ISSUES" -eq 0 ]; then
+    echo "✓ Git sync system healthy"
+    exit 0
+  else
+    echo "✗ Found $ISSUES issue(s) with git sync system"
+    exit 1
+  fi
+
+rollback_plan: null
+checkpoint_required: false
+
+safety_checks:
+  - type: read_only
+    description: Only monitors git status, no modifications
+  - type: no_modifications
+    description: Does not modify git repository or sync settings
+
+expected_outputs:
+  - type: sync_health_status
+    pattern: "sync system healthy|issue.*with git sync"
+
+alerting:
+  on_failure: true
+  metric_name: git_sync_issues
+  alert_message: "Git sync system issues detected - automatic deployments may be affected"
+
+metadata:
+  tags:
+    - infrastructure
+    - git
+    - deployment
+    - diagnostics
+    - tier1
+  author: jarvis
+  version: "1.0"
+  last_updated: "2025-11-16"
+  purpose: "Ensure automatic Replit→Ubuntu sync works for investor demo"

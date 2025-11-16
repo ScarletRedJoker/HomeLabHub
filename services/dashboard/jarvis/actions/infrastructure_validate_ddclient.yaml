@@ -1,0 +1,138 @@
+name: infrastructure_validate_ddclient
+tier: 1
+tier_name: DIAGNOSE
+risk_level: low
+category: infrastructure
+description: Validate ddclient configuration for syntax errors and credential issues
+requires_approval: false
+auto_execute: true
+execution_interval_minutes: 30
+timeout_seconds: 30
+
+command: |
+  #!/bin/bash
+  # ddclient Configuration Validator
+  
+  echo "=== ddclient Configuration Validation ==="
+  echo "Timestamp: $(date)"
+  echo ""
+  
+  CONFIG_FILE="/etc/ddclient.conf"
+  ISSUES=0
+  
+  # Check if config file exists
+  if [ ! -f "$CONFIG_FILE" ]; then
+    echo "✗ Configuration file not found: $CONFIG_FILE"
+    exit 1
+  fi
+  
+  echo "✓ Configuration file exists: $CONFIG_FILE"
+  
+  # Check file permissions (should be 0600)
+  perms=$(stat -c '%a' "$CONFIG_FILE")
+  if [ "$perms" != "600" ]; then
+    echo "⚠ WARNING: Insecure permissions: $perms (should be 600)"
+    ISSUES=$((ISSUES + 1))
+  else
+    echo "✓ File permissions secure: $perms"
+  fi
+  
+  # Validate syntax (basic checks without exposing password)
+  if sudo grep -q "protocol=" "$CONFIG_FILE"; then
+    echo "✓ Protocol defined"
+  else
+    echo "✗ Missing protocol definition"
+    ISSUES=$((ISSUES + 1))
+  fi
+  
+  if sudo grep -q "login=" "$CONFIG_FILE"; then
+    echo "✓ Login defined"
+  else
+    echo "✗ Missing login definition"
+    ISSUES=$((ISSUES + 1))
+  fi
+  
+  if sudo grep -q "password=" "$CONFIG_FILE"; then
+    echo "✓ Password defined"
+  else
+    echo "✗ Missing password definition"
+    ISSUES=$((ISSUES + 1))
+  fi
+  
+  # Check for common misconfigurations
+  if sudo grep -q "password=''" "$CONFIG_FILE" || sudo grep -q 'password=""' "$CONFIG_FILE"; then
+    echo "✗ Empty password detected"
+    ISSUES=$((ISSUES + 1))
+  fi
+  
+  # Check recent ddclient logs for errors
+  echo ""
+  echo "Recent ddclient status:"
+  
+  if systemctl is-active --quiet ddclient; then
+    echo "  ✓ Service running"
+    
+    # Check for authentication failures
+    auth_fail=$(journalctl -u ddclient --since "1 hour ago" 2>/dev/null | grep -c "Failed Login\|708:" || echo "0")
+    if [ "$auth_fail" -gt 0 ]; then
+      echo "  ✗ Authentication failures: $auth_fail (check credentials)"
+      ISSUES=$((ISSUES + 1))
+    else
+      echo "  ✓ No authentication failures"
+    fi
+    
+    # Check for successful updates
+    success=$(journalctl -u ddclient --since "24 hours ago" 2>/dev/null | grep -c "SUCCESS" || echo "0")
+    if [ "$success" -gt 0 ]; then
+      echo "  ✓ Successful updates: $success in last 24h"
+    else
+      echo "  ⚠ No successful updates in last 24 hours"
+      ISSUES=$((ISSUES + 1))
+    fi
+  else
+    echo "  ✗ Service not running"
+    ISSUES=$((ISSUES + 1))
+  fi
+  
+  # Summary
+  echo ""
+  echo "=== Validation Summary ==="
+  if [ "$ISSUES" -eq 0 ]; then
+    echo "✓ ddclient configuration is valid"
+    exit 0
+  else
+    echo "✗ Found $ISSUES configuration issue(s)"
+    exit 1
+  fi
+
+rollback_plan: null
+checkpoint_required: false
+
+safety_checks:
+  - type: read_only
+    description: Only validates configuration, no modifications
+  - type: no_password_exposure
+    description: Does not expose passwords in output
+  - type: sudo_for_config_read
+    description: Uses sudo only to read protected config file
+
+expected_outputs:
+  - type: validation_status
+    pattern: "configuration is valid|configuration issue"
+
+alerting:
+  on_failure: true
+  metric_name: ddclient_config_issues
+  alert_message: "ddclient configuration issues detected"
+
+metadata:
+  tags:
+    - infrastructure
+    - dns
+    - ddclient
+    - validation
+    - tier1
+  author: jarvis
+  version: "1.0"
+  last_updated: "2025-11-16"
+  purpose: "Prevent DNS failures from configuration drift"

@@ -1,0 +1,118 @@
+name: infrastructure_diagnose_ssl
+tier: 1
+tier_name: DIAGNOSE
+risk_level: low
+category: infrastructure
+description: Monitor SSL certificate health for all HTTPS endpoints
+requires_approval: false
+auto_execute: true
+execution_interval_minutes: 15
+timeout_seconds: 90
+
+command: |
+  #!/bin/bash
+  # SSL Certificate Health Check
+  
+  DOMAINS=(
+    "host.evindrake.net"
+    "plex.evindrake.net"
+    "n8n.evindrake.net"
+    "code.evindrake.net"
+    "home.evindrake.net"
+    "game.evindrake.net"
+    "vnc.evindrake.net"
+    "rig-city.com"
+    "www.rig-city.com"
+    "bot.rig-city.com"
+    "stream.rig-city.com"
+    "scarletredjoker.com"
+    "www.scarletredjoker.com"
+  )
+  
+  echo "=== SSL Certificate Health Check ==="
+  echo "Timestamp: $(date)"
+  echo ""
+  
+  TOTAL_DOMAINS=0
+  FAILED_DOMAINS=0
+  ISSUES=()
+  
+  for domain in "${DOMAINS[@]}"; do
+    TOTAL_DOMAINS=$((TOTAL_DOMAINS + 1))
+    echo "Checking $domain..."
+    
+    # Test HTTPS connection
+    if timeout 10 curl -sI --fail "https://$domain" >/dev/null 2>&1; then
+      echo "  ✓ $domain: SSL certificate valid and accessible"
+    else
+      FAILED_DOMAINS=$((FAILED_DOMAINS + 1))
+      ISSUES+=("$domain: SSL certificate missing or invalid")
+      echo "  ✗ $domain: SSL certificate FAILED"
+      
+      # Check Caddy logs for specific errors
+      cert_error=$(docker logs caddy 2>&1 | grep "$domain" | grep -oE "no valid A records|dns|authorization failed" | head -1)
+      if [ -n "$cert_error" ]; then
+        ISSUES+=("  Cause: $cert_error")
+        echo "    Cause: $cert_error"
+      fi
+    fi
+  done
+  
+  # Check if Caddy is running
+  if ! docker ps | grep -q caddy; then
+    FAILED_DOMAINS=$((FAILED_DOMAINS + 1))
+    ISSUES+=("Caddy container is not running")
+    echo ""
+    echo "✗ Caddy Status: NOT RUNNING"
+  else
+    echo ""
+    echo "✓ Caddy Status: RUNNING"
+  fi
+  
+  # Summary
+  echo ""
+  echo "=== Summary ==="
+  echo "Total domains: $TOTAL_DOMAINS"
+  echo "Failed SSL: $FAILED_DOMAINS"
+  echo "Success rate: $(awk "BEGIN {printf \"%.1f\", (($TOTAL_DOMAINS - $FAILED_DOMAINS) / $TOTAL_DOMAINS) * 100}")%"
+  
+  if [ "$FAILED_DOMAINS" -gt 0 ]; then
+    echo ""
+    echo "=== SSL Issues Detected ==="
+    printf '%s\n' "${ISSUES[@]}"
+    exit 1
+  else
+    echo "✓ All SSL certificates valid"
+    exit 0
+  fi
+
+rollback_plan: null
+checkpoint_required: false
+
+safety_checks:
+  - type: read_only
+    description: Only checks SSL certificates, no modifications
+  - type: no_modifications
+    description: Does not modify certificates or configurations
+
+expected_outputs:
+  - type: ssl_health_status
+    pattern: "All SSL certificates valid|SSL Issues Detected"
+
+alerting:
+  on_failure: true
+  metric_name: ssl_health_failures
+  alert_message: "SSL certificate issues detected - may require remediation"
+
+metadata:
+  tags:
+    - infrastructure
+    - ssl
+    - certificates
+    - diagnostics
+    - tier1
+    - caddy
+  author: jarvis
+  version: "1.0"
+  last_updated: "2025-11-16"
+  purpose: "Autonomous SSL certificate monitoring for investor demo reliability"

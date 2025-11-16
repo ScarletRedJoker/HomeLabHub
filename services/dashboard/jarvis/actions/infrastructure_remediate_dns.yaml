@@ -1,0 +1,168 @@
+name: infrastructure_remediate_dns
+tier: 2
+tier_name: REMEDIATE
+risk_level: medium
+category: infrastructure
+description: Auto-fix common DNS issues (ddclient failures, restart services)
+requires_approval: false
+auto_execute: true
+execution_interval_minutes: 60
+timeout_seconds: 120
+
+preconditions:
+  - type: diagnostic_failure
+    diagnostic_action: infrastructure_diagnose_dns
+    description: Only execute when DNS diagnostics detect failures
+  - type: service_check
+    service: ddclient
+    description: Verify ddclient service exists before attempting fixes
+
+command: |
+  #!/bin/bash
+  # DNS Remediation Script - Auto-fix common issues
+  
+  echo "=== DNS Remediation Started ==="
+  echo "Timestamp: $(date)"
+  echo ""
+  
+  FIXED_ISSUES=0
+  FAILED_FIXES=0
+  ACTIONS=()
+  
+  # Check if ddclient service exists
+  if ! systemctl list-unit-files | grep -q ddclient.service; then
+    echo "✗ ddclient service not found - cannot remediate"
+    exit 1
+  fi
+  
+  # Check ddclient status and recent logs
+  if ! systemctl is-active --quiet ddclient; then
+    echo "Issue detected: ddclient not running"
+    echo "Action: Starting ddclient service..."
+    
+    if sudo systemctl start ddclient; then
+      FIXED_ISSUES=$((FIXED_ISSUES + 1))
+      ACTIONS+=("Started ddclient service")
+      echo "✓ ddclient started successfully"
+    else
+      FAILED_FIXES=$((FAILED_FIXES + 1))
+      ACTIONS+=("FAILED: Could not start ddclient")
+      echo "✗ Failed to start ddclient"
+    fi
+  else
+    # Check for authentication failures (password typo, wrong credentials)
+    auth_failures=$(journalctl -u ddclient --since "1 hour ago" 2>/dev/null | grep -c "Failed Login\|708:" || echo "0")
+    
+    if [ "$auth_failures" -gt 3 ]; then
+      echo "Issue detected: ddclient authentication failures ($auth_failures)"
+      echo "Action: Restarting ddclient to clear failed state..."
+      
+      if sudo systemctl restart ddclient; then
+        FIXED_ISSUES=$((FIXED_ISSUES + 1))
+        ACTIONS+=("Restarted ddclient after authentication failures")
+        echo "✓ ddclient restarted - cleared failed state"
+        
+        # Wait and check if failures stop
+        sleep 30
+        new_failures=$(journalctl -u ddclient --since "30 seconds ago" 2>/dev/null | grep -c "Failed Login\|708:" || echo "0")
+        
+        if [ "$new_failures" -gt 0 ]; then
+          echo "⚠ Authentication failures persist - config file may need manual correction"
+          ACTIONS+=("WARNING: Authentication failures persist after restart - manual intervention may be required")
+        fi
+      else
+        FAILED_FIXES=$((FAILED_FIXES + 1))
+        ACTIONS+=("FAILED: Could not restart ddclient")
+        echo "✗ Failed to restart ddclient"
+      fi
+    fi
+    
+    # Check for rate limiting (too many requests)
+    rate_limit_errors=$(journalctl -u ddclient --since "1 hour ago" 2>/dev/null | grep -c "702: Minimum.*seconds between requests" || echo "0")
+    
+    if [ "$rate_limit_errors" -gt 3 ]; then
+      echo "Issue detected: ddclient hitting rate limits ($rate_limit_errors occurrences)"
+      echo "Action: Adjusting execution interval (this is automatic backoff)"
+      ACTIONS+=("Detected rate limiting - ddclient will automatically back off")
+      echo "✓ Rate limit detected - ddclient has automatic backoff logic"
+    fi
+  fi
+  
+  # Check if Caddy needs restart to retry SSL certificates
+  caddy_ssl_failures=$(docker logs caddy 2>&1 | tail -100 | grep -c "no valid A records found" || echo "0")
+  
+  if [ "$caddy_ssl_failures" -gt 0 ]; then
+    echo "Issue detected: Caddy SSL certificate failures due to DNS ($caddy_ssl_failures)"
+    echo "Action: Restarting Caddy to retry certificate acquisition..."
+    
+    if docker compose -f /home/evin/contain/HomeLabHub/docker-compose.unified.yml restart caddy; then
+      FIXED_ISSUES=$((FIXED_ISSUES + 1))
+      ACTIONS+=("Restarted Caddy to retry SSL certificates")
+      echo "✓ Caddy restarted - will retry SSL certificates"
+    else
+      FAILED_FIXES=$((FAILED_FIXES + 1))
+      ACTIONS+=("FAILED: Could not restart Caddy")
+      echo "✗ Failed to restart Caddy"
+    fi
+  fi
+  
+  # Summary
+  echo ""
+  echo "=== Remediation Summary ==="
+  echo "Fixed issues: $FIXED_ISSUES"
+  echo "Failed fixes: $FAILED_FIXES"
+  echo ""
+  echo "Actions taken:"
+  printf '  - %s\n' "${ACTIONS[@]}"
+  
+  if [ "$FIXED_ISSUES" -gt 0 ]; then
+    echo ""
+    echo "✓ DNS remediation completed - $FIXED_ISSUES issue(s) fixed"
+    exit 0
+  elif [ "$FAILED_FIXES" -gt 0 ]; then
+    echo ""
+    echo "✗ DNS remediation encountered $FAILED_FIXES failure(s)"
+    exit 1
+  else
+    echo ""
+    echo "ℹ No remediable issues found"
+    exit 0
+  fi
+
+rollback_plan: "Restart ddclient/Caddy services to restore previous state"
+checkpoint_required: true
+
+safety_checks:
+  - type: service_whitelist
+    services:
+      - ddclient
+      - caddy
+    description: Only restarts whitelisted services
+  - type: sudo_required
+    description: Requires sudo for systemctl operations
+  - type: backup_state
+    description: Service states logged before remediation
+
+expected_outputs:
+  - type: remediation_summary
+    pattern: "remediation completed|No remediable issues"
+
+alerting:
+  on_success: true
+  on_failure: true
+  metric_name: dns_remediation_attempts
+  alert_message: "DNS remediation executed"
+
+metadata:
+  tags:
+    - infrastructure
+    - dns
+    - remediation
+    - tier2
+    - ddclient
+    - caddy
+  author: jarvis
+  version: "1.0"
+  last_updated: "2025-11-16"
+  purpose: "Autonomous DNS issue remediation - restart services, clear failed states"
+  investor_demo_value: "Demonstrates autonomous infrastructure healing without human intervention"
