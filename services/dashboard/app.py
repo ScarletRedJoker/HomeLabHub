@@ -7,7 +7,12 @@ import sys
 import os
 from datetime import timedelta
 import structlog
-from config import Config
+import warnings
+from cryptography.utils import CryptographyDeprecationWarning
+
+# Suppress cryptography deprecation warnings from paramiko
+warnings.filterwarnings('ignore', category=CryptographyDeprecationWarning)
+from config import Config  # type: ignore
 from routes.api import api_bp
 from routes.web import web_bp
 from routes.deployment_api import deployment_bp
@@ -212,7 +217,7 @@ try:
     redis_client = redis.from_url(Config.REDIS_URL)
     redis_client.ping()
     logger.info("✓ Redis connection successful")
-    redis_info = redis_client.info('server')
+    redis_info: dict = redis_client.info('server')  # type: ignore
     logger.info(f"  Redis version: {redis_info.get('redis_version', 'unknown')}")
     logger.info(f"  Redis URL: {Config.REDIS_URL}")
 except Exception as e:
@@ -227,6 +232,16 @@ activity_service.log_activity(
     'check-circle-fill',
     'success'
 )
+
+@app.route('/favicon.ico')
+def favicon():
+    """Serve favicon at root path to prevent 404 errors"""
+    from flask import send_from_directory
+    return send_from_directory(
+        os.path.join(app.root_path, 'static'),
+        'favicon.svg',
+        mimetype='image/svg+xml'
+    )
 
 @app.route('/health')
 def health():

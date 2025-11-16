@@ -1,12 +1,15 @@
 import os
 from openai import OpenAI, AuthenticationError, RateLimitError, APIError, APIConnectionError
-from typing import List, Dict
+from typing import List, Dict, Optional, Any
 import logging
 
 logger = logging.getLogger(__name__)
 
 class AIService:
     def __init__(self):
+        self.client: Optional[OpenAI] = None
+        self.enabled: bool = False
+        
         ai_api_key = os.environ.get('AI_INTEGRATIONS_OPENAI_API_KEY')
         ai_base_url = os.environ.get('AI_INTEGRATIONS_OPENAI_BASE_URL')
         
@@ -18,13 +21,11 @@ class AIService:
             self.enabled = True
             logger.info("AI Service initialized with Replit AI Integrations")
         else:
-            self.client = None
-            self.enabled = False
             logger.warning("AI Service not initialized - missing API credentials. Set AI_INTEGRATIONS_OPENAI_API_KEY and AI_INTEGRATIONS_OPENAI_BASE_URL environment variables.")
     
     def analyze_logs(self, logs: str, context: str = ""):
         """Analyze logs with AI - returns dict for consistent error handling"""
-        if not self.enabled:
+        if not self.enabled or self.client is None:
             return {
                 'success': False,
                 'error': 'AI service not configured',
@@ -99,7 +100,7 @@ Provide a clear, actionable response."""
     
     def get_troubleshooting_advice(self, issue_description: str, service_name: str = ""):
         """Get troubleshooting advice - returns dict for consistent error handling"""
-        if not self.enabled:
+        if not self.enabled or self.client is None:
             return {
                 'success': False,
                 'error': 'AI service not configured',
@@ -165,12 +166,12 @@ Provide specific troubleshooting steps and potential solutions."""
                 'message': str(e)
             }
     
-    def chat(self, message: str, conversation_history: List[Dict] = None) -> str:
-        if not self.enabled:
+    def chat(self, message: str, conversation_history: Optional[List[Dict[str, str]]] = None) -> str:
+        if not self.enabled or self.client is None:
             return "AI chat is not available. Please check API configuration."
         
         try:
-            messages = [
+            messages: List[Dict[str, str]] = [
                 {"role": "system", "content": """You are Jarvis, an AI-first homelab copilot assistant. You help with:
 - Docker container management and troubleshooting
 - Server health monitoring and diagnostics
@@ -190,7 +191,7 @@ Be concise, practical, and action-oriented. When diagnosing issues, suggest spec
             # do not change this unless explicitly requested by the user
             response = self.client.chat.completions.create(
                 model="gpt-5",
-                messages=messages,
+                messages=messages,  # type: ignore
                 max_completion_tokens=1024
             )
             
@@ -211,7 +212,7 @@ Be concise, practical, and action-oriented. When diagnosing issues, suggest spec
             logger.error(f"Unexpected error in AI chat: {e}", exc_info=True)
             return f"An unexpected error occurred: {str(e)}. Please try again."
     
-    def generate_code(self, prompt: str, files: List[str], context: Dict = None) -> Dict[str, any]:
+    def generate_code(self, prompt: str, files: List[str], context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Generate production-ready code using GPT-5/GPT-4
         
         Args:
@@ -222,7 +223,7 @@ Be concise, practical, and action-oriented. When diagnosing issues, suggest spec
         Returns:
             Dictionary with success status, generated code, and metadata
         """
-        if not self.enabled:
+        if not self.enabled or self.client is None:
             return {
                 'success': False,
                 'error': 'AI code generation is not available. Please check API configuration.'
@@ -301,19 +302,21 @@ Return the complete code for each file wrapped in ```python code blocks."""
                 max_completion_tokens=4000
             )
             
-            generated_code = response.choices[0].message.content
+            generated_code = response.choices[0].message.content or ""
             
             # Parse response to extract code for each file
             code_by_file = self._parse_generated_code(generated_code, files)
             
             logger.info(f"Successfully generated code for {len(code_by_file)} files")
             
+            tokens_used = response.usage.total_tokens if response.usage else 0
+            
             return {
                 'success': True,
                 'code': code_by_file,
                 'raw_response': generated_code,
                 'model': 'gpt-5',
-                'tokens_used': response.usage.total_tokens
+                'tokens_used': tokens_used
             }
         
         except AuthenticationError as e:

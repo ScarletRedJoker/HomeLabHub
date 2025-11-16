@@ -574,11 +574,13 @@ class EnhancedDomainService:
             # Update SSL tracking fields
             if result.get('ssl_valid') and result.get('ssl_expires'):
                 try:
-                    ssl_expires = datetime.fromisoformat(result['ssl_expires'].replace('Z', '+00:00'))
-                    domain_record.ssl_expiry_date = ssl_expires
-                    domain_record.ssl_days_remaining = result.get('ssl_days_remaining')
-                    domain_record.ssl_issuer = result.get('ssl_issuer', 'Unknown')
-                    domain_record.last_ssl_check = datetime.utcnow()
+                    ssl_expires_str = result.get('ssl_expires')
+                    if ssl_expires_str and isinstance(ssl_expires_str, str):
+                        ssl_expires = datetime.fromisoformat(ssl_expires_str.replace('Z', '+00:00'))
+                        domain_record.ssl_expiry_date = ssl_expires
+                        domain_record.ssl_days_remaining = result.get('ssl_days_remaining')
+                        domain_record.ssl_issuer = result.get('ssl_issuer', 'Unknown')
+                        domain_record.last_ssl_check = datetime.utcnow()
                 except Exception as e:
                     logger.warning(f"Failed to parse SSL expiry date: {e}")
             
