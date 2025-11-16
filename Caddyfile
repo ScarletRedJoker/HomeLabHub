@@ -75,6 +75,22 @@ host.evindrake.net {
     }
 }
 
+# Demo/Test Dashboard (Same as above but on test subdomain)
+test.evindrake.net {
+    reverse_proxy homelab-dashboard:5000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-Host {host}
+        
+        # CRITICAL: Disable all caching for dashboard routes
+        header_down Cache-Control "no-cache, no-store, must-revalidate, private"
+        header_down Pragma "no-cache"
+        header_down Expires "0"
+    }
+}
+
 # ============================================
 # VNC Remote Desktop
 # ============================================
