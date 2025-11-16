@@ -12,7 +12,9 @@ Simple one-command recovery script that fixes all production issues:
 - Syncs database user passwords
 - Flushes Redis cache (fixes CSRF errors)
 - Rebuilds broken containers (discord-bot, stream-bot)
-- Restarts services in proper dependency order
+- Starts all services (dashboards, bots, rig-city-site, powerdns, vnc)
+- Purges stale SSL certificates and forces Caddy renewal
+- Detects unhealthy containers
 - Shows status and test URLs
 
 **Run on Ubuntu:**
@@ -25,6 +27,7 @@ bash MASTER_FIX_ALL.sh
 1. Auto-sync bug fixed (deployment/sync-from-replit.sh now detects DOCKER_COMPOSE)
 2. Moonlight page readability improved (text contrast fixed)
 3. All old fix scripts removed - ONE simple solution
+4. Enhanced MASTER_FIX_ALL.sh to fix rig-city.com SSL errors and include all services
 
 ---
 

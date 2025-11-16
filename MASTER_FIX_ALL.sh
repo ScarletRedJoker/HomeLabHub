@@ -196,10 +196,18 @@ wait_for_healthy discord-bot 90 || echo -e "${YELLOW}⚠ Discord bot may need mo
 docker compose -f docker-compose.unified.yml up -d stream-bot
 wait_for_healthy stream-bot 90 || echo -e "${YELLOW}⚠ Stream bot may need more time${NC}"
 
-docker compose -f docker-compose.unified.yml up -d powerdns vnc-desktop
+docker compose -f docker-compose.unified.yml up -d powerdns vnc-desktop rig-city-site
 wait_for_healthy homelab-powerdns 60 || true
 wait_for_healthy vnc-desktop 60 || true
+wait_for_healthy rig-city-site 60 || true
 
+echo ""
+echo -e "${BLUE}Purging stale SSL certificates...${NC}"
+docker exec caddy rm -rf /data/caddy/certificates/acme-v02.api.letsencrypt.org-directory/www.rig-city.com 2>/dev/null || true
+docker exec caddy rm -rf /data/caddy/certificates/acme-v02.api.letsencrypt.org-directory/rig-city.com 2>/dev/null || true
+echo -e "${GREEN}✓ SSL cache cleared${NC}"
+
+echo "Restarting Caddy to renew certificates..."
 docker compose -f docker-compose.unified.yml restart caddy
 wait_for_healthy caddy 30 || true
 
@@ -207,8 +215,18 @@ echo ""
 echo -e "${GREEN}✓ All services started${NC}"
 echo ""
 
-echo -e "${BLUE}━━━ Step 5: Status Check ━━━${NC}"
+echo -e "${BLUE}━━━ Step 5: Health Check ━━━${NC}"
 echo ""
+
+echo "Checking for unhealthy containers..."
+UNHEALTHY=$(docker ps --filter "health=unhealthy" --format "{{.Names}}" 2>/dev/null)
+if [ -n "$UNHEALTHY" ]; then
+    echo -e "${YELLOW}⚠ Unhealthy containers found:${NC}"
+    echo "$UNHEALTHY"
+    echo ""
+fi
+
+echo "Container Status:"
 docker ps --format "table {{.Names}}\t{{.Status}}" | head -20
 
 echo ""
@@ -220,9 +238,13 @@ echo -e "${YELLOW}Test your sites:${NC}"
 echo "  • https://test.evindrake.net (demo/demo)"
 echo "  • https://host.evindrake.net (evin/homelab)"
 echo "  • https://game.evindrake.net"
+echo "  • https://rig-city.com (homepage)"
 echo "  • https://stream.rig-city.com"
 echo "  • https://bot.rig-city.com"
 echo ""
+echo -e "${BLUE}If SSL errors on rig-city.com, wait 1-2 min for cert renewal${NC}"
+echo ""
 echo -e "${BLUE}Check logs if needed:${NC}"
 echo "  docker compose -f docker-compose.unified.yml logs --tail 50 <service>"
+echo "  docker logs caddy --tail 50  # For SSL certificate issues"
 echo ""
