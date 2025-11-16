@@ -17,9 +17,9 @@ def require_auth(f):
     """Require authentication for setup endpoints"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Check for valid session (user logged in)
+        # Check for valid session (user logged in) - matches web.py login
         from flask import session
-        if not session.get('logged_in'):
+        if not session.get('authenticated'):
             return jsonify({
                 "success": False,
                 "message": "Authentication required. Please log in to the dashboard first."
