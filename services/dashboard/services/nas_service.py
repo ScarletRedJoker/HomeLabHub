@@ -655,23 +655,40 @@ class NASBackupService:
             Tuple of (success, message/backup_file_path)
         """
         try:
+            db_host = os.getenv('PGHOST', 'localhost')
+            db_port = os.getenv('PGPORT', '5432')
+            db_user = os.getenv('PGUSER', 'postgres')
+            db_password = os.getenv('PGPASSWORD')
+            
+            try:
+                subprocess.run(['pg_dump', '--version'], 
+                              capture_output=True, check=True, timeout=5)
+            except (FileNotFoundError, subprocess.SubprocessError):
+                return False, "pg_dump not found - install postgresql-client"
+            
             timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
             backup_file = f"{db_name}_{timestamp}.sql"
             backup_path = os.path.join(destination, backup_file)
             
             os.makedirs(destination, exist_ok=True)
             
-            pg_host = os.environ.get('POSTGRES_HOST', 'discord-bot-db')
-            pg_user = os.environ.get('POSTGRES_USER', 'postgres')
+            env = os.environ.copy()
+            if db_password:
+                env['PGPASSWORD'] = db_password
+            
+            cmd = [
+                'pg_dump',
+                '-h', db_host,
+                '-p', db_port,
+                '-U', db_user,
+                '-d', db_name,
+                '-f', backup_path,
+                '--no-password'
+            ]
             
             result = subprocess.run(
-                [
-                    'pg_dump',
-                    '-h', pg_host,
-                    '-U', pg_user,
-                    '-d', db_name,
-                    '-f', backup_path
-                ],
+                cmd,
+                env=env,
                 capture_output=True,
                 text=True,
                 timeout=300
@@ -684,15 +701,17 @@ class NASBackupService:
             else:
                 error_msg = result.stderr or result.stdout
                 logger.error(f"Database backup failed: {error_msg}")
-                return False, f"Backup failed: {error_msg}"
+                return False, f"pg_dump failed: {error_msg}"
         
+        except subprocess.TimeoutExpired:
+            return False, "Backup timed out after 5 minutes"
         except Exception as e:
             logger.error(f"Database backup error: {e}")
             return False, str(e)
     
     def backup_docker_volume(self, volume_name: str, destination: str) -> Tuple[bool, str]:
         """
-        Backup Docker volume to NAS
+        Backup Docker volume to NAS (gracefully degrades if Docker unavailable)
         
         Args:
             volume_name: Docker volume name
@@ -702,23 +721,37 @@ class NASBackupService:
             Tuple of (success, message/backup_file_path)
         """
         try:
+            try:
+                subprocess.run(['docker', '--version'], 
+                              capture_output=True, check=True, timeout=5)
+            except (FileNotFoundError, subprocess.SubprocessError):
+                return False, "Docker not available - volume backups require Docker runtime"
+            
+            try:
+                subprocess.run(['tar', '--version'], 
+                              capture_output=True, check=True, timeout=5)
+            except (FileNotFoundError, subprocess.SubprocessError):
+                return False, "tar not found - required for volume backups"
+            
             timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
             backup_file = f"{volume_name}_{timestamp}.tar.gz"
             backup_path = os.path.join(destination, backup_file)
             
             os.makedirs(destination, exist_ok=True)
             
+            cmd = [
+                'docker', 'run', '--rm',
+                '-v', f'{volume_name}:/volume',
+                '-v', f'{destination}:/backup',
+                'alpine',
+                'tar', 'czf', f'/backup/{backup_file}', '/volume'
+            ]
+            
             result = subprocess.run(
-                [
-                    'docker', 'run', '--rm',
-                    '-v', f'{volume_name}:/data',
-                    '-v', f'{destination}:/backup',
-                    'alpine',
-                    'tar', 'czf', f'/backup/{backup_file}', '-C', '/data', '.'
-                ],
+                cmd,
                 capture_output=True,
                 text=True,
-                timeout=600
+                timeout=300
             )
             
             if result.returncode == 0 and os.path.exists(backup_path):
@@ -728,10 +761,12 @@ class NASBackupService:
             else:
                 error_msg = result.stderr or result.stdout
                 logger.error(f"Volume backup failed: {error_msg}")
-                return False, f"Backup failed: {error_msg}"
+                return False, f"Volume backup failed: {error_msg}"
         
+        except subprocess.TimeoutExpired:
+            return False, "Backup timed out after 5 minutes"
         except Exception as e:
-            logger.error(f"Volume backup error: {e}")
+            logger.error(f"Docker volume backup error: {e}")
             return False, str(e)
     
     def restore_database(self, backup_file: str, db_name: str) -> Tuple[bool, str]:

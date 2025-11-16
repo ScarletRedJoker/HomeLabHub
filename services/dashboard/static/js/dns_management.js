@@ -108,11 +108,45 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('record-type').addEventListener('change', updateContentHelp);
     document.getElementById('record-dyndns').addEventListener('change', toggleDynDNSOptions);
 
+    checkDNSHealth();
     loadZones();
     loadDynDNSStatus();
 
     setInterval(loadDynDNSStatus, 30000);
 });
+
+async function checkDNSHealth() {
+    try {
+        const response = await fetch('/api/dns/health');
+        const result = await response.json();
+        
+        if (!result.enabled || !result.success) {
+            showConfigurationBanner(result.message || 'PowerDNS service unavailable');
+        }
+    } catch (error) {
+        console.error('DNS health check error:', error);
+        showConfigurationBanner('PowerDNS service unavailable - unable to connect');
+    }
+}
+
+function showConfigurationBanner(message) {
+    const existingBanner = document.querySelector('.dns-config-banner');
+    if (existingBanner) {
+        existingBanner.remove();
+    }
+    
+    const container = document.querySelector('.container');
+    if (container) {
+        const banner = document.createElement('div');
+        banner.className = 'alert alert-warning dns-config-banner';
+        banner.innerHTML = `
+            <h5 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> DNS Configuration Required</h5>
+            <p><strong>${message}</strong></p>
+            <p class="mb-0">To enable DNS management, configure PowerDNS and set the <code>PDNS_API_KEY</code> environment variable.</p>
+        `;
+        container.prepend(banner);
+    }
+}
 
 function isAuthError(response) {
     return response.redirected || response.url.includes('/login') || response.status === 401;

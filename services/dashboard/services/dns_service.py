@@ -19,15 +19,29 @@ class LocalDNSService:
     def __init__(self):
         self.api_url = os.getenv('POWERDNS_API_URL', 'http://powerdns:8081')
         self.api_key = os.getenv('PDNS_API_KEY')
-        self.server_id = 'localhost'  # PowerDNS default server ID
+        self.server_id = os.getenv('PDNS_SERVER_ID', 'localhost')
         self.base_url = f"{self.api_url}/api/v1/servers/{self.server_id}"
-        self.headers = {
-            'X-API-Key': self.api_key,
-            'Content-Type': 'application/json'
-        }
         
         if not self.api_key:
-            logger.warning("PDNS_API_KEY not set - PowerDNS API calls will fail")
+            logger.warning("PDNS_API_KEY not set - PowerDNS integration disabled")
+            self.enabled = False
+        else:
+            self.enabled = True
+        
+        self.headers = {
+            'X-API-Key': self.api_key or '',
+            'Content-Type': 'application/json'
+        }
+    
+    def _check_enabled(self) -> Tuple[bool, dict]:
+        """Check if PowerDNS is enabled before operations"""
+        if not self.enabled:
+            return False, {
+                'success': False,
+                'error': 'PowerDNS not configured',
+                'message': 'Set PDNS_API_KEY environment variable to enable DNS management'
+            }
+        return True, {}
     
     def _make_request(
         self, 
@@ -95,6 +109,10 @@ class LocalDNSService:
         Returns:
             Tuple of (success: bool, zones_list or error_message)
         """
+        enabled, error_response = self._check_enabled()
+        if not enabled:
+            return False, error_response
+        
         logger.info("Listing all DNS zones")
         return self._make_request('GET', '/zones')
     
@@ -110,6 +128,10 @@ class LocalDNSService:
         Returns:
             Tuple of (success: bool, zone_data or error_message)
         """
+        enabled, error_response = self._check_enabled()
+        if not enabled:
+            return False, error_response
+        
         # Ensure zone name ends with a dot
         if not name.endswith('.'):
             name = f"{name}."
@@ -133,6 +155,10 @@ class LocalDNSService:
         Returns:
             Tuple of (success: bool, zone_data or error_message)
         """
+        enabled, error_response = self._check_enabled()
+        if not enabled:
+            return False, error_response
+        
         if not zone_name.endswith('.'):
             zone_name = f"{zone_name}."
         
@@ -149,6 +175,10 @@ class LocalDNSService:
         Returns:
             Tuple of (success: bool, result or error_message)
         """
+        enabled, error_response = self._check_enabled()
+        if not enabled:
+            return False, error_response
+        
         if not zone_name.endswith('.'):
             zone_name = f"{zone_name}."
         
@@ -180,6 +210,10 @@ class LocalDNSService:
         Returns:
             Tuple of (success: bool, result or error_message)
         """
+        enabled, error_response = self._check_enabled()
+        if not enabled:
+            return False, error_response
+        
         if not zone.endswith('.'):
             zone = f"{zone}."
         if not name.endswith('.'):
@@ -247,6 +281,10 @@ class LocalDNSService:
         Returns:
             Tuple of (success: bool, result or error_message)
         """
+        enabled, error_response = self._check_enabled()
+        if not enabled:
+            return False, error_response
+        
         if not zone.endswith('.'):
             zone = f"{zone}."
         if not name.endswith('.'):
@@ -323,6 +361,10 @@ class LocalDNSService:
         Returns:
             Tuple of (success: bool, message)
         """
+        enabled, error_response = self._check_enabled()
+        if not enabled:
+            return False, error_response.get('message', 'PowerDNS not configured')
+        
         # Extract zone from FQDN (e.g., 'example.com' from 'nas.example.com')
         parts = fqdn.split('.')
         if len(parts) < 2:

@@ -495,20 +495,36 @@ def disable_dyndns(host_id):
 # ============================================
 
 @dns_bp.route('/health', methods=['GET'])
-@require_auth
 def dns_health():
-    """Check PowerDNS API health"""
+    """Check PowerDNS availability"""
     try:
-        dns_service = LocalDNSService()
-        health_status = dns_service.health_check()
+        service = LocalDNSService()
+        
+        if not service.enabled:
+            return jsonify({
+                'success': False,
+                'enabled': False,
+                'message': 'PowerDNS not configured. Set PDNS_API_KEY to enable.',
+                'configuration': {
+                    'api_url': service.api_url,
+                    'server_id': service.server_id,
+                    'api_key_set': bool(service.api_key)
+                }
+            }), 503
+        
+        success, result = service.list_zones()
         
         return jsonify({
-            'success': True,
-            'health': health_status
-        })
+            'success': success,
+            'enabled': True,
+            'message': 'PowerDNS available' if success else 'PowerDNS API error',
+            'details': result if success else {'error': result}
+        }), 200 if success else 503
+        
     except Exception as e:
         logger.error(f"Error checking DNS health: {e}")
         return jsonify({
             'success': False,
+            'enabled': False,
             'error': str(e)
         }), 500
