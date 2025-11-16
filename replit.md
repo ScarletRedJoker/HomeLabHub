@@ -1,47 +1,25 @@
 # Homelab Dashboard Project
 
 ## Overview
-This project delivers a comprehensive, production-ready web-based dashboard for managing Ubuntu homelab servers. Built as an **enterprise-grade platform**, it provides a unified, AI-powered interface that minimizes operational overhead, maximizes reliability, and enables intelligent automated operations. Key capabilities include:
+This project delivers a comprehensive, production-ready web-based dashboard for managing Ubuntu homelab servers. It functions as an enterprise-grade platform, providing a unified, AI-powered interface for minimizing operational overhead, maximizing reliability, and enabling intelligent automated operations. Key capabilities include:
 
-- **Jarvis AI Agent**: GPT-4 powered AI assistant with voice control, automated diagnostics, and guided remediation
-- **Zero-Touch Domain Management**: Complete automation from DNS setup to SSL certificate provisioning
-- **Multi-Service Orchestration**: 8 production services across 3 domains with automatic SSL
-- **Automated Health Monitoring**: 3-tier action system (Diagnose → Remediate with Approval → Proactive) with 20+ actions
-- **Enterprise Security**: Session auth, API keys, rate limiting, audit logging, secrets management
-- **Production Ready**: Rolling deployments with health checks, automatic backups, comprehensive monitoring
-
-### Recent Major Features (Q4 2024)
-
-✅ **Jarvis Task System** (November 2024)
-- Complete autonomous task execution framework
-- Database models: JarvisTask, JarvisAction, DomainTask
-- 20+ pre-built autonomous actions across 3 tiers
-- Approval workflow for destructive operations
-- Real-time task status tracking and history
-- Voice-controlled task execution
-
-✅ **Domain Management System** (November 2024)
-- End-to-end domain lifecycle automation
-- ZoneEdit DNS API integration with CRUD operations
-- Caddy configuration automation with safe rollback
-- SSL certificate monitoring and autonomous renewal
-- 8-step automated provisioning workflow
-- Import/Export functionality (JSON/CSV)
-- Real-time health monitoring with alerts
-
-✅ **Unified Deployment System** (November 2024)
-- Single master deployment script (`deploy.sh`)
-- Interactive homelab manager CLI
-- Automated backup/restore workflows
-- Health-based deployment with auto-rollback
-- Comprehensive logging and diagnostics
+- **Jarvis AI Agent**: GPT-4 powered AI assistant with voice control, automated diagnostics, and guided remediation.
+- **Zero-Touch Domain Management**: Complete automation from DNS setup to SSL certificate provisioning.
+- **Multi-Service Orchestration**: Manages 8 production services across 3 domains with automatic SSL.
+- **Automated Health Monitoring**: 3-tier action system (Diagnose → Remediate with Approval → Proactive) with 20+ actions.
+- **Enterprise Security**: Session authentication, API keys, rate limiting, audit logging, and secrets management.
+- **Production Ready**: Rolling deployments with health checks, automatic backups, and comprehensive monitoring.
+- **Jarvis Control Center**: Unified intelligence hub with real-time stats, quick actions, and an activity feed.
+- **Container Marketplace**: 20 curated apps with one-click deployment and auto-provisioning.
+- **Agent Collaboration Mesh**: Real-time agent-to-agent communication.
+- **Jarvis Voice Commands**: NLP-powered natural language control for DNS, NAS, and Marketplace.
 
 ## User Preferences
 - User: Evin
 - Ubuntu 25.10 desktop homelab with Twingate VPN and dynamic DNS (ZoneEdit)
 - Manages domains: rig-city.com, evindrake.net, scarletredjoker.com
 - All projects stored in: `/home/evin/contain/` (production) and Replit (development)
-- Development workflow: **Edit on Replit → Agent makes changes → Auto-sync to Ubuntu every 5 minutes**
+- Development workflow: Edit on Replit → Agent makes changes → Auto-sync to Ubuntu every 5 minutes
 - Services to manage:
   - Discord Ticket Bot (bot.rig-city.com)
   - Stream Bot / SnappleBotAI (stream.rig-city.com)
@@ -61,141 +39,48 @@ The Homelab Dashboard features a cosmic theme with deep space backgrounds, anima
 
 ### Technical Implementations
 
-**Homelab Dashboard**
-- **Stack**: Flask, Python 3.11, Bootstrap 5, Chart.js, SQLAlchemy, Alembic, Redis, Celery, MinIO
-- **Core Features**: 
-  - Docker container orchestration and management
-  - Real-time system monitoring (CPU, memory, disk, network)
-  - AI assistant (Jarvis, powered by GPT-4)
-  - Network analytics and visualization
-  - Domain health monitoring with alerts
-  - One-click database deployments
-  - Intelligent deployment analyzer
-  - Secure file upload with virus scanning
-  - Google Services integration (Calendar, Gmail, Drive)
-  - Home Assistant smart home integration
+**Homelab Dashboard Core**
+- **Stack**: Flask, Python 3.11, Bootstrap 5, Chart.js, SQLAlchemy, Alembic, Redis, Celery, MinIO.
+- **Core Features**: Docker orchestration, real-time system monitoring, AI assistant (Jarvis), network analytics, domain health monitoring, one-click database deployments, intelligent deployment analyzer, secure file upload, Google Services integration, Home Assistant integration.
 
-**Jarvis Autonomous Framework (2024 Implementation)**
-- **Architecture**:
-  - **Task System**: Complete CRUD API for autonomous tasks
-  - **Action Library**: 20+ pre-built YAML actions across 3 tiers
-  - **Safe Executor**: Sandboxed command execution with automatic rollback
-  - **Code Workspace**: AI code generation with diff preview and approval
-  - **Policy Engine**: Permission-based action execution
-  - **Observability**: Complete audit logging and real-time monitoring
+**Jarvis Autonomous Framework**
+- **Architecture**: Task System with CRUD API, Action Library (20+ pre-built YAML actions), Safe Executor with automatic rollback, AI Code Workspace with diff preview, Policy Engine for permissions, and comprehensive audit logging.
+- **Action Tiers**:
+    - **Tier 1 (DIAGNOSE)**: 8 diagnostic actions including DNS propagation, SSL validation, service health, Git sync status, deployment health, disk usage, log analysis, and endpoint verification.
+    - **Tier 2 (REMEDIATE)**: 7 autonomous healing actions including DNS record remediation, SSL renewal, ddclient fixes, service restart, Git sync recovery, configuration rollback, and database optimization.
+    - **Tier 3 (PROACTIVE)**: 5 maintenance tasks including temporary file cleanup, log rotation, Redis cache clearing, database vacuum/reindex, and system resource optimization.
 
-- **Tier 1 (DIAGNOSE)** - 8 Diagnostic Actions:
-  - DNS propagation verification
-  - SSL certificate validation
-  - Service health monitoring
-  - Git sync status verification
-  - Deployment health checks
-  - Disk usage analysis
-  - Log analysis and error detection
-  - Endpoint health verification
+**Container Marketplace ("Jarvis App Store")**
+- **Features**: Database models for ContainerTemplate and DeployedContainer, Marketplace Service for deployment and search, Smart Deployment Workflow (dependency check, auto-deploy, port conflict detection, compose generation, Caddy config, health check), REST API, App Store-style frontend, and a curated catalog of 20 production apps.
 
-- **Tier 2 (REMEDIATE)** - 7 Autonomous Healing Actions:
-  - DNS record remediation
-  - SSL certificate renewal
-  - ddclient configuration fixes
-  - Service restart and recovery
-  - Git sync recovery
-  - Configuration rollback
-  - Database optimization
+**Agent Collaboration System ("Multi-Agent Intelligence Mesh")**
+- **Features**: Database models for AgentMessage, WebSocket-enabled REST API for real-time messaging, a live feed frontend with avatars, and support for message types like task_delegation and status_update.
 
-- **Tier 3 (PROACTIVE)** - 5 Maintenance Tasks:
-  - Temporary file cleanup
-  - Old log rotation
-  - Redis cache clearing
-  - Database vacuum/reindex
-  - System resource optimization
+**Jarvis Voice Commands**
+- **Features**: NLP parsing for domain, IP, DNS, app names, and mount commands. AI service enhancements to handle DNS, NAS, and Marketplace commands with intelligent routing and graceful fallbacks.
 
-**Domain Management System (Complete Implementation)**
-- **Database Models**:
-  - `DomainRecord`: Primary domain configuration and status
-  - `DomainEvent`: Complete audit trail of all domain operations
-  - `DomainTask`: Async task tracking for background operations
-  
-- **REST API** (9 Production Endpoints):
-  - `GET /api/domains` - List all domains with health status
-  - `POST /api/domains` - Create new domain with validation
-  - `GET /api/domains/:id` - Get domain details
-  - `PATCH /api/domains/:id` - Update domain configuration
-  - `DELETE /api/domains/:id` - Remove domain
-  - `POST /api/domains/:id/provision` - Trigger auto-provisioning
-  - `GET /api/domains/:id/health` - Real-time health check
-  - `POST /api/domains/:id/renew-ssl` - Force SSL renewal
-  - `POST /api/domains/import` - Bulk import (JSON/CSV)
+**Jarvis Control Center**
+- **Features**: Hero Dashboard with real-time stats, Quick Actions Grid, Live Activity Feed, Featured Apps section, System Status indicators, and auto-refresh.
 
-- **Celery Workers** (Background Tasks):
-  - Domain health monitoring (every 5 minutes)
-  - SSL expiration monitoring (daily)
-  - DNS propagation verification
-  - Automated provisioning workflows
-  - Certificate renewal execution
-
-- **ZoneEdit DNS Integration**:
-  - Full CRUD operations via REST API
-  - Automatic public IP detection
-  - DNS propagation verification (multi-server check)
-  - TTL management
-  - Bulk record updates
-
-- **Caddy Configuration Automation**:
-  - Template-based config generation
-  - Safe injection with validation
-  - Automatic backup before changes
-  - Syntax validation (caddy validate)
-  - Zero-downtime reloads
-  - Automatic rollback on failure
-  - Smart block removal (preserves other configs)
-
-- **SSL Certificate Lifecycle**:
-  - Expiration monitoring (checks every 24h)
-  - Automatic renewal (30 days before expiry)
-  - Multi-step renewal workflow with validation
-  - HTTPS verification after renewal
-  - Alert system for failures
-  - Manual renewal API endpoint
-
-- **Autonomous Provisioning Workflow** (8 Steps):
-  1. Detect server public IP
-  2. Create DNS A record in ZoneEdit
-  3. Verify DNS propagation (multi-server)
-  4. Generate Caddy configuration block
-  5. Inject config with validation
-  6. Reload Caddy server
-  7. Wait for SSL certificate acquisition
-  8. Verify HTTPS accessibility
-
-- **Import/Export**:
-  - JSON export with full domain data
-  - CSV export for spreadsheet editing
-  - Bulk import with validation
-  - Conflict detection and resolution
+**Domain Management System**
+- **Features**: Database models for `DomainRecord`, `DomainEvent`, `DomainTask`. 9 production REST API endpoints for domain CRUD, provisioning, health checks, SSL renewal, and import/export. Celery workers for background tasks like health monitoring and SSL expiration. ZoneEdit DNS integration for full CRUD operations. Caddy configuration automation with safe injection, validation, and auto-rollback. Full SSL certificate lifecycle management. 8-step autonomous provisioning workflow.
 
 **Discord Ticket Bot**
-- **Stack**: TypeScript, React, Express, Discord.js, Drizzle ORM, PostgreSQL.
 - **Purpose**: Support ticket system and multi-platform streamer go-live notifications.
 
 **Stream Bot / SnappleBotAI**
-- **Stack**: TypeScript, React, Express, tmi.js, @retconned/kick-js, OpenAI GPT-5, Spotify Web API, Drizzle ORM, PostgreSQL.
 - **Purpose**: Multi-tenant SaaS for AI-powered stream bot management across Twitch, YouTube, and Kick.
 - **Key Features**: Custom commands, AI auto-moderation, giveaway system, stream statistics, mini-games, channel points, song requests, polls, alerts, AI chatbot personalities, advanced analytics.
 
-**Other Services**:
-- **Static Site**: Simple HTML/CSS/JS personal portfolio.
-- **n8n**: Workflow automation platform.
-- **Plex**: Media streaming server.
-- **VNC Desktop**: Custom Dockerized Ubuntu desktop environment.
+**Other Services**: Static Site, n8n (workflow automation), Plex (media streaming), VNC Desktop (Dockerized Ubuntu).
 
 ### System Design Choices
-- **Database Architecture**: A single PostgreSQL container managing multiple service-specific databases with robust concurrency protection and constraints.
-- **Unified Deployment System**: Orchestrated by `docker-compose.unified.yml` and `homelab-manager.sh` for centralized operations. Caddy reverse proxy for automatic SSL. Automated Replit → Ubuntu sync every 5 minutes.
-- **Deployment Automation**: Rolling deployments with health checks, pre-deployment validation, backup/restore workflows, manual rollback capability.
-- **CI/CD Pipeline**: A 5-stage pipeline (Validate → Test → Build → Deploy → Verify) with multi-environment support and security scanning.
-- **Security**: Session-based auth + API key, secure file validation, antivirus scanning, rate limiting, audit logging, CSRF protection, Celery/Redis health monitoring with circuit breaker, command/path whitelisting, multi-tenant isolation, OAuth.
-- **Production Readiness**: Emphasizes comprehensive security, performance optimization (connection pooling, optimized Docker images, background jobs), robust error handling (Error Boundaries, retry logic, circuit breakers), high reliability (automatic token refresh, stream detection edge cases), extensive End-to-End and security testing, and centralized monitoring with structured JSON logging.
+- **Database Architecture**: Single PostgreSQL container managing multiple service-specific databases.
+- **Unified Deployment System**: Orchestrated by `docker-compose.unified.yml` and `homelab-manager.sh` with Caddy for automatic SSL, and automated Replit → Ubuntu sync.
+- **Deployment Automation**: Rolling deployments with health checks, pre-deployment validation, backup/restore, and manual rollback.
+- **CI/CD Pipeline**: 5-stage pipeline (Validate → Test → Build → Deploy → Verify) with multi-environment support and security scanning.
+- **Security**: Session-based auth + API key, secure file validation, antivirus, rate limiting, audit logging, CSRF protection, Celery/Redis health monitoring with circuit breaker, command/path whitelisting, multi-tenant isolation, OAuth.
+- **Production Readiness**: Emphasizes comprehensive security, performance optimization, robust error handling, high reliability, extensive End-to-End and security testing, and centralized monitoring with structured JSON logging.
 
 ## External Dependencies
 
@@ -227,60 +112,3 @@ The Homelab Dashboard features a cosmic theme with deep space backgrounds, anima
 - PostgreSQL 16 Alpine
 - Docker & Docker Compose
 - Let's Encrypt
-
-## Production Readiness
-
-**Implemented Features:**
-- Automated backups (database + configs)
-- Health-based deployment with manual rollback capability
-- Comprehensive error handling and logging
-- Graceful degradation for optional services
-- Feature flags for API integrations
-
-**Deployment Process:**
-- Pre-flight checks (Docker, Docker Compose, environment)
-- Automated backup before deployment
-- Container rebuild with latest code
-- Health verification after deployment
-- Manual rollback capability via backup restore
-
-**Monitoring & Reliability:**
-- Container health checks (Postgres, Redis, Caddy, MinIO)
-- Service status monitoring
-- Real-time system metrics (CPU, memory, disk, network)
-- Alert system for domain SSL expiration
-- Automated log rotation and cleanup
-
-**Optional Features (Require Configuration):**
-- Jarvis AI Assistant (requires OPENAI_API_KEY)
-- Domain Automation (requires ZoneEdit credentials)
-- Google Services (requires OAuth setup)
-- Smart Home Integration (requires Home Assistant)
-- Stream Bot (requires platform OAuth)
-
-**Current Limitations:**
-- Docker management requires Docker daemon (not available in Replit)
-- Some features require external API keys or services
-- Deployments have brief downtime during container restart (~10-30 seconds)
-- Rollback is manual, not automatic (operator must trigger via ./deploy.sh restore)
-
-**Jarvis AI Capabilities (When Configured):**
-
-**Implemented:**
-- AI-powered chat assistance
-- Log analysis and troubleshooting
-- Code generation with review workflow
-- Task management system with approval workflow
-- Complexity analysis and intelligent delegation
-- Automated diagnostics (20+ diagnostic actions)
-
-**Requires Manual Approval:**
-- Code changes (review and approve required)
-- Destructive operations (approval workflow)
-- Domain provisioning (can be automated if configured)
-- Container restarts and service changes
-
-**Future Enhancements:**
-- Fully autonomous code deployment
-- Automatic remediation without approval for safe operations
-- Predictive maintenance and capacity planning
