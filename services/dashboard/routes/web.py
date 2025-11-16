@@ -26,6 +26,17 @@ except:
     
 ai_service = AIService()
 
+@web_bp.route('/debug-config')
+def debug_config():
+    """DEBUG ONLY - Remove in production"""
+    from flask import current_app
+    return jsonify({
+        'config_username': current_app.config.get('WEB_USERNAME'),
+        'config_password_set': bool(current_app.config.get('WEB_PASSWORD')),
+        'config_password_length': len(current_app.config.get('WEB_PASSWORD', '')),
+        'demo_mode': current_app.config.get('DEMO_MODE', False)
+    })
+
 @web_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -44,6 +55,8 @@ def login():
         
         # Debug logging (never log passwords!)
         logger.info(f"Login attempt - Username: {username}")
+        logger.info(f"DEBUG: username={repr(username)}, expected={repr(expected_username)}, match={username == expected_username}")
+        logger.info(f"DEBUG: password length={len(password) if password else 0}, expected length={len(expected_password) if expected_password else 0}, match={password == expected_password}")
         
         if username == expected_username and password == expected_password:
             session['authenticated'] = True

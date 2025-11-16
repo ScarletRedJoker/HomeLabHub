@@ -32,7 +32,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd services/dashboard && JARVIS_DATABASE_URL=\"${DATABASE_URL}\" python main.py"
+args = "set -a && source .env && set +a && cd services/dashboard && JARVIS_DATABASE_URL=\"${DATABASE_URL}\" python main.py"
 waitForPort = 5000
 
 [[workflows.workflow]]
@@ -54,10 +54,6 @@ externalPort = 3000
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 6379
-externalPort = 3003
 
 [[ports]]
 localPort = 24678
