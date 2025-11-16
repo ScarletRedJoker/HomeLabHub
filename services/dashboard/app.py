@@ -144,9 +144,11 @@ else:
         logger.error("=" * 60)
         sys.exit(1)
 
-# Store in environment for other modules to access
+# Store in environment and Flask config for other modules to access
 os.environ['WEB_USERNAME'] = WEB_USERNAME
 os.environ['WEB_PASSWORD'] = WEB_PASSWORD
+app.config['WEB_USERNAME'] = WEB_USERNAME
+app.config['WEB_PASSWORD'] = WEB_PASSWORD
 os.environ['DASHBOARD_API_KEY'] = DASHBOARD_API_KEY
 
 CORS(app, resources={r"/api/*": {

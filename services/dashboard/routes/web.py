@@ -32,13 +32,14 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         
-        # Get credentials from environment (NO DEFAULTS for security)
-        expected_username = os.environ.get('WEB_USERNAME')
-        expected_password = os.environ.get('WEB_PASSWORD')
+        # Get credentials from app config (supports DEMO_MODE)
+        from flask import current_app
+        expected_username = current_app.config.get('WEB_USERNAME')
+        expected_password = current_app.config.get('WEB_PASSWORD')
         
-        # Security: Require credentials to be set in environment
+        # Security: Require credentials to be set
         if not expected_username or not expected_password:
-            logger.error("SECURITY ERROR: WEB_USERNAME or WEB_PASSWORD not set in environment!")
+            logger.error("SECURITY ERROR: WEB_USERNAME or WEB_PASSWORD not configured!")
             return render_template('login.html', error='Server configuration error. Contact administrator.')
         
         # Debug logging (never log passwords!)
