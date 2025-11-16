@@ -12,12 +12,21 @@ logger = logging.getLogger(__name__)
 
 class DatabaseService:
     def __init__(self):
+        self._engine = None
+        self._session_factory = None
+        self._initialized = False
+        self._initialize()
+    
+    def _initialize(self):
+        """Initialize database connection from environment variables"""
+        # Always check for database URL (allow retries if it appears later)
         self.database_url = os.environ.get('JARVIS_DATABASE_URL')
         if not self.database_url:
-            logger.warning("JARVIS_DATABASE_URL not set. Database features will be unavailable.")
-            self._engine = None
-            self._session_factory = None
-            return
+            return False
+            
+        # Don't re-initialize if already successful
+        if self._initialized and self._engine is not None:
+            return True
             
         try:
             self._engine = create_engine(
@@ -28,14 +37,24 @@ class DatabaseService:
                 echo=False
             )
             self._session_factory = sessionmaker(bind=self._engine)
+            self._initialized = True
             logger.info("Database service initialized successfully")
+            return True
         except Exception as e:
             logger.error(f"Failed to initialize database service: {e}")
             self._engine = None
             self._session_factory = None
+            self._initialized = False
+            return False
+    
+    def ensure_initialized(self):
+        """Ensure database is initialized (retry if it wasn't available before)"""
+        return self._initialize()
     
     @property
     def is_available(self):
+        if not self._initialized:
+            self._initialize()
         return self._engine is not None
     
     def get_engine(self):
@@ -115,9 +134,16 @@ class DatabaseService:
                 logger.info("Checking current migration status...")
                 command.current(alembic_cfg)
             
+            # Reinitialize engine after migrations (Alembic may have disposed it)
+            self._initialized = False
+            if not self._initialize():
+                logger.error("Failed to reinitialize database after migrations")
+                return False
+            
             return True
         except Exception as e:
             logger.error(f"Migration error: {e}", exc_info=True)
+            self._initialized = False
             return False
     
     def create_all_tables(self):
