@@ -48,8 +48,9 @@ def check_environment_variable(var_name: str) -> Tuple[bool, str]:
 
 
 @setup_bp.route('/status', methods=['GET'])
+@require_auth
 def setup_status():
-    """Get overall setup status and readiness"""
+    """Get overall setup status and readiness - REQUIRES AUTHENTICATION"""
     
     status = {
         "ready": True,
