@@ -79,6 +79,7 @@ def get_messages():
 
 
 @agent_bp.route('/send', methods=['POST'])
+@require_auth
 def send_message():
     """
     Send message from one agent to another

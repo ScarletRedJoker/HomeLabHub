@@ -218,6 +218,36 @@ else:
 
 logger.info("=" * 60)
 
+# Auto-load marketplace catalog after migrations
+if db_service.is_available:
+    logger.info("=" * 60)
+    logger.info("Loading Marketplace Catalog")
+    logger.info("=" * 60)
+    
+    with app.app_context():
+        try:
+            from models.container_template import ContainerTemplate
+            from services.marketplace_service import marketplace_service
+            
+            # Only load if catalog is empty
+            session = get_session()
+            template_count = session.query(ContainerTemplate).count()
+            session.close()
+            
+            if template_count == 0:
+                logger.info("Marketplace catalog is empty, loading templates from catalog file...")
+                success, message = marketplace_service.load_catalog_templates()
+                if success:
+                    logger.info(f"✓ {message}")
+                else:
+                    logger.warning(f"⚠ Failed to load marketplace catalog: {message}")
+            else:
+                logger.info(f"✓ Marketplace catalog already loaded ({template_count} templates)")
+        except Exception as e:
+            logger.error(f"⚠ Error loading marketplace catalog: {e}")
+    
+    logger.info("=" * 60)
+
 # Test Redis connection
 logger.info("=" * 60)
 logger.info("Testing Redis Connection")

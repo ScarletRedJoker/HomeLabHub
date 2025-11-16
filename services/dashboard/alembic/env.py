@@ -23,9 +23,9 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 def get_url():
-    url = os.environ.get("JARVIS_DATABASE_URL")
+    url = os.environ.get("JARVIS_DATABASE_URL") or os.environ.get("DATABASE_URL")
     if not url:
-        raise RuntimeError("JARVIS_DATABASE_URL environment variable is not set")
+        raise RuntimeError("Neither JARVIS_DATABASE_URL nor DATABASE_URL environment variable is set")
     return url
 
 def run_migrations_offline() -> None:

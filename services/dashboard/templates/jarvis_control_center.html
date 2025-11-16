@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Jarvis Control Center - Intelligence Platform{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/control-center.css') }}">
+
+<div class="control-center-container">
+    <div class="hero-section">
+        <div class="hero-content">
+            <h1><i class="bi bi-cpu"></i> Jarvis Control Center</h1>
+            <p class="hero-subtitle">Multi-Billion Dollar Super Intelligence Platform</p>
+        </div>
+        <div class="hero-stats">
+            <div class="stat-card">
+                <span class="stat-value" id="marketplaceCount">20</span>
+                <span class="stat-label">Apps Available</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value" id="deployedCount">0</span>
+                <span class="stat-label">Apps Deployed</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value" id="agentMessages">0</span>
+                <span class="stat-label">Agent Messages</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="quick-actions">
+        <h2>Quick Actions</h2>
+        <div class="actions-grid">
+            <a href="/marketplace" class="action-card marketplace">
+                <i class="bi bi-grid-3x3-gap"></i>
+                <h3>App Marketplace</h3>
+                <p>Deploy apps with one click</p>
+            </a>
+            
+            <a href="/dns" class="action-card dns">
+                <i class="bi bi-hdd-network"></i>
+                <h3>DNS Management</h3>
+                <p>Local DNS with PowerDNS</p>
+            </a>
+            
+            <a href="/agent-ops" class="action-card agents">
+                <i class="bi bi-chat-dots"></i>
+                <h3>Agent Ops</h3>
+                <p>Multi-agent collaboration</p>
+            </a>
+            
+            <a href="/ai-assistant" class="action-card jarvis">
+                <i class="bi bi-mic"></i>
+                <h3>Voice Assistant</h3>
+                <p>Talk to Jarvis AI</p>
+            </a>
+            
+            <a href="/marketplace" class="action-card nas">
+                <i class="bi bi-hdd-stack"></i>
+                <h3>NAS Integration</h3>
+                <p>Network storage automation</p>
+            </a>
+            
+            <div class="action-card iot">
+                <i class="bi bi-diagram-3"></i>
+                <h3>IoT Fusion <span class="badge">Coming Soon</span></h3>
+                <p>MQTT & Home Assistant</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="activity-section">
+        <div class="section-header">
+            <h2>Live Agent Activity</h2>
+            <a href="/agent-ops" class="view-all">View All →</a>
+        </div>
+        <div class="activity-feed" id="activityFeed">
+            <p class="loading-message">Loading agent messages...</p>
+        </div>
+    </div>
+    
+    <div class="featured-section">
+        <div class="section-header">
+            <h2>Featured Apps</h2>
+            <a href="/marketplace" class="view-all">Browse All →</a>
+        </div>
+        <div class="featured-grid" id="featuredApps">
+            <p class="loading-message">Loading featured apps...</p>
+        </div>
+    </div>
+    
+    <div class="status-section">
+        <h2>System Status</h2>
+        <div class="status-grid">
+            <div class="status-item">
+                <span class="status-icon">
+                    <i class="bi bi-check-circle-fill text-success"></i>
+                </span>
+                <div class="status-info">
+                    <strong>Container Marketplace</strong>
+                    <span id="marketplaceStatus">20 templates ready</span>
+                </div>
+            </div>
+            
+            <div class="status-item" id="dnsStatus">
+                <span class="status-icon">
+                    <i class="bi bi-exclamation-circle-fill text-warning"></i>
+                </span>
+                <div class="status-info">
+                    <strong>Local DNS (PowerDNS)</strong>
+                    <span>Requires configuration</span>
+                </div>
+            </div>
+            
+            <div class="status-item">
+                <span class="status-icon">
+                    <i class="bi bi-check-circle-fill text-success"></i>
+                </span>
+                <div class="status-info">
+                    <strong>Agent Collaboration</strong>
+                    <span>Active and ready</span>
+                </div>
+            </div>
+            
+            <div class="status-item" id="voiceStatus">
+                <span class="status-icon">
+                    <i class="bi bi-exclamation-circle-fill text-warning"></i>
+                </span>
+                <div class="status-info">
+                    <strong>Voice Commands</strong>
+                    <span>Requires OpenAI API key</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/control-center.js') }}"></script>
+{% endblock %}
