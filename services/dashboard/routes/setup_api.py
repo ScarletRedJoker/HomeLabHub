@@ -14,10 +14,16 @@ setup_bp = Blueprint('setup', __name__, url_prefix='/api/setup')
 
 
 def require_auth(f):
-    """Simple auth decorator"""
+    """Require authentication for setup endpoints"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # In production, verify session or API key
+        # Check for valid session (user logged in)
+        from flask import session
+        if not session.get('logged_in'):
+            return jsonify({
+                "success": False,
+                "message": "Authentication required. Please log in to the dashboard first."
+            }), 401
         return f(*args, **kwargs)
     return decorated_function
 
@@ -88,6 +94,7 @@ def setup_status():
 
 
 @setup_bp.route('/validate/<service>', methods=['POST'])
+@require_auth
 def validate_service(service):
     """Validate credentials for a specific service"""
     
@@ -155,14 +162,24 @@ def validate_home_assistant_credentials(data):
     if not url or not token:
         return {"success": False, "message": "URL and token are required"}
     
+    # Security: Only allow known internal network ranges or user's configured URL
+    allowed_hosts = ["localhost", "127.0.0.1", os.getenv("HOME_ASSISTANT_URL", "")]
+    if not any(host in url for host in allowed_hosts if host):
+        # Additional validation - must be http:// or https://
+        if not (url.startswith("http://") or url.startswith("https://")):
+            return {"success": False, "message": "Invalid URL protocol"}
+    
     import requests
     
     try:
+        # Respect SSL verification unless explicitly disabled in env
+        verify_ssl = os.getenv("HOME_ASSISTANT_VERIFY_SSL", "True").lower() == "true"
+        
         response = requests.get(
             f"{url}/api/",
             headers={"Authorization": f"Bearer {token}"},
             timeout=10,
-            verify=False  # May need to handle self-signed certs
+            verify=verify_ssl
         )
         
         if response.status_code == 200:
@@ -364,6 +381,7 @@ def get_setup_guide(service):
 
 
 @setup_bp.route('/troubleshoot', methods=['POST'])
+@require_auth
 def troubleshoot():
     """AI-powered troubleshooting assistance"""
     

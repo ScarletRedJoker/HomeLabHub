@@ -289,10 +289,10 @@ setup_dashboard() {
     echo "Jarvis AI provides intelligent assistance and automation."
     echo ""
     
-    # Dashboard credentials
-    prompt DASHBOARD_USERNAME "Dashboard username" "admin"
-    prompt DASHBOARD_PASSWORD "Dashboard password" "homelab123" true
-    log_success "Dashboard login: $DASHBOARD_USERNAME / (password set)"
+    # Dashboard credentials (uses WEB_* for compatibility with Flask app)
+    prompt WEB_USERNAME "Dashboard username" "admin"
+    prompt WEB_PASSWORD "Dashboard password" "homelab123" true
+    log_success "Dashboard login: $WEB_USERNAME / (password set)"
     
     # API key for programmatic access
     DASHBOARD_API_KEY=$(generate_secret)
@@ -569,8 +569,8 @@ JARVIS_DATABASE_URL=postgresql://postgres:${JARVIS_DB_PASSWORD}@discord-bot-db:5
 # ═══════════════════════════════════════════════════════════════
 # DASHBOARD & JARVIS AI
 # ═══════════════════════════════════════════════════════════════
-DASHBOARD_USERNAME=${DASHBOARD_USERNAME:-admin}
-DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD:-homelab123}
+WEB_USERNAME=${WEB_USERNAME:-admin}
+WEB_PASSWORD=${WEB_PASSWORD:-homelab123}
 DASHBOARD_API_KEY=${DASHBOARD_API_KEY}
 DASHBOARD_SESSION_SECRET=${DASHBOARD_SESSION_SECRET}
 
@@ -675,7 +675,7 @@ show_summary() {
     
     echo ""
     echo "Dashboard Login:"
-    echo "  Username: $DASHBOARD_USERNAME"
+    echo "  Username: $WEB_USERNAME"
     echo "  Password: (set during setup)"
     echo ""
     

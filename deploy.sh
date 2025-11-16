@@ -346,18 +346,42 @@ cmd_backup() {
 cmd_health() {
     log_info "Running health checks..."
     
+    local health_failed=false
+    
     # Check if containers are running
     if ! docker-compose -f docker-compose.unified.yml ps | grep -q "Up"; then
         log_error "Some containers are not running"
-        return 1
+        health_failed=true
     fi
     
     # Check database connection
     if docker-compose -f docker-compose.unified.yml ps | grep -q discord-bot-db; then
         if ! docker-compose -f docker-compose.unified.yml exec -T discord-bot-db pg_isready -U postgres &>/dev/null; then
             log_error "Database is not ready"
-            return 1
+            health_failed=true
+        else
+            log_success "Database is healthy"
         fi
+    fi
+    
+    # Check dashboard HTTP endpoint
+    if curl -s -f http://localhost:5000/login >/dev/null 2>&1; then
+        log_success "Dashboard is responding (HTTP 200)"
+    else
+        log_warn "Dashboard is not responding on port 5000"
+        health_failed=true
+    fi
+    
+    # Check stream-bot HTTP endpoint (if configured)
+    if curl -s -f http://localhost:3000/health >/dev/null 2>&1; then
+        log_success "Stream Bot is responding (HTTP 200)"
+    elif docker-compose -f docker-compose.unified.yml ps | grep -q stream-bot; then
+        log_warn "Stream Bot container running but not responding on port 3000"
+    fi
+    
+    if [ "$health_failed" = true ]; then
+        log_error "Health check failed"
+        return 1
     fi
     
     log_success "All health checks passed"
