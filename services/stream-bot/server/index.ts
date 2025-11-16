@@ -9,6 +9,17 @@ import { serveStatic, log as httpLog } from "./http";
 import { pool } from "./db";
 import { getEnv } from "./env";
 import { logger, getHealthStatus } from "./health";
+import { logEnvironmentConfig, IS_REPLIT, ENV_CONFIG } from './config/env';
+
+// Log environment configuration at startup
+logEnvironmentConfig();
+
+// Add Redis warning if disabled
+if (!ENV_CONFIG.redisEnabled) {
+  logger.warn('⚠️  Redis disabled for Replit environment - using in-memory storage', { 
+    component: 'startup' 
+  });
+}
 
 // Replace http log with winston logger
 const log = (message: string) => logger.info(message, { component: 'http' });
@@ -20,7 +31,7 @@ const PgSession = connectPg(session);
 app.set('trust proxy', 1);
 
 // Get environment variables with STREAMBOT_ fallback
-const NODE_ENV = getEnv('NODE_ENV', 'development');
+const NODE_ENV = IS_REPLIT ? 'development' : getEnv('NODE_ENV', 'development');
 const SESSION_SECRET = getEnv('SESSION_SECRET');
 
 // CRITICAL: Set NODE_ENV so Express and dynamic imports use correct mode
@@ -47,6 +58,8 @@ const allowedOrigins = [
   'https://stream.rig-city.com',
   NODE_ENV === 'development' ? 'http://localhost:5173' : null,
   NODE_ENV === 'development' ? 'http://localhost:5000' : null,
+  IS_REPLIT ? `https://${process.env.REPLIT_DEV_DOMAIN}` : null,
+  IS_REPLIT ? `https://${process.env.REPLIT_DEV_DOMAIN}:3000` : null,
 ].filter(Boolean) as string[];
 
 app.use(cors({
@@ -168,13 +181,17 @@ app.use((req, res, next) => {
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(getEnv('PORT', '5000'), 10);
+  const port = ENV_CONFIG.port;
   server.listen({
     port,
     host: "0.0.0.0",
     reusePort: true,
   }, () => {
-    log(`serving on port ${port}`);
+    logger.info(`🚀 Stream Bot server running on port ${port}`, { 
+      component: 'http',
+      environment: ENV_CONFIG.environment,
+      demoMode: ENV_CONFIG.demoMode
+    });
   });
 
   // Graceful shutdown handlers

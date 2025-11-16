@@ -35,6 +35,7 @@ import { analyticsService } from "./analytics-service";
 import { tokenRefreshService } from "./token-refresh-service";
 import { quotaService } from "./quota-service";
 import { getHealthStatus } from "./health";
+import { IS_REPLIT, ENV_CONFIG } from './config/env';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/auth", oauthSignInRoutes);
@@ -226,6 +227,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         uptime: Math.floor(process.uptime()),
         timestamp: new Date().toISOString(),
         service: 'stream-bot',
+        environment: ENV_CONFIG.environment,
+        port: ENV_CONFIG.port,
+        demoMode: ENV_CONFIG.demoMode,
+        redisEnabled: ENV_CONFIG.redisEnabled,
         bot: {
           totalWorkers: managerStats.totalWorkers,
           activeWorkers: managerStats.activeWorkers,
