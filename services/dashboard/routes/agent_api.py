@@ -123,7 +123,7 @@ def send_message():
             message_type=data['message_type'],
             subject=data.get('subject'),
             content=data['content'],
-            metadata=data.get('metadata'),
+            message_metadata=data.get('metadata'),
             priority=data.get('priority', 'normal')
         )
         

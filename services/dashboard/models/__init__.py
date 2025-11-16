@@ -33,6 +33,7 @@ from .dyndns_host import DynDNSHost
 from .nas_models import NASDevice, NASMount, BackupJob
 from .container_template import ContainerTemplate
 from .deployed_container import DeployedContainer, ContainerStatus
+from .agent_message import AgentMessage
 
 __all__ = [
     'Base',
@@ -69,5 +70,6 @@ __all__ = [
     'BackupJob',
     'ContainerTemplate',
     'DeployedContainer',
-    'ContainerStatus'
+    'ContainerStatus',
+    'AgentMessage'
 ]

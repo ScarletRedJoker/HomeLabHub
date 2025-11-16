@@ -19,7 +19,7 @@ class AgentMessage(Base):
     message_type = Column(String(30), nullable=False)  # 'task_delegation', 'status_update', 'request', 'response', 'notification'
     subject = Column(String(200))
     content = Column(Text, nullable=False)
-    metadata = Column(JSON)  # Additional context like task_id, deployment_id, etc.
+    message_metadata = Column(JSON)  # Additional context like task_id, deployment_id, etc.
     status = Column(String(20), default='sent')  # 'sent', 'delivered', 'acknowledged', 'completed'
     priority = Column(String(20), default='normal')  # 'low', 'normal', 'high', 'urgent'
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -34,7 +34,7 @@ class AgentMessage(Base):
             'message_type': self.message_type,
             'subject': self.subject,
             'content': self.content,
-            'metadata': self.metadata,
+            'metadata': self.message_metadata,
             'status': self.status,
             'priority': self.priority,
             'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -50,7 +50,7 @@ class AgentMessage(Base):
             message_type='task_delegation',
             subject=f'Task Delegation: {task[:50]}',
             content=task,
-            metadata={
+            message_metadata={
                 'complexity': complexity,
                 **(metadata or {})
             },
@@ -66,7 +66,7 @@ class AgentMessage(Base):
             message_type='status_update',
             subject='Task Status Update',
             content=status,
-            metadata={'task_id': task_id} if task_id else None
+            message_metadata={'task_id': task_id} if task_id else None
         )
     
     @staticmethod
@@ -78,7 +78,7 @@ class AgentMessage(Base):
             message_type='response',
             subject='Response',
             content=response,
-            metadata={'original_message_id': original_message_id} if original_message_id else None
+            message_metadata={'original_message_id': original_message_id} if original_message_id else None
         )
     
     def __repr__(self):

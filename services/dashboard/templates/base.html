@@ -715,6 +715,28 @@
             </li>
         </ul>
         
+        <div class="category-header" data-category="intelligence">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <i class="bi bi-robot" style="color: #a78bfa;"></i>
+                <span style="color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;">Intelligence Platform</span>
+            </div>
+            <i class="bi bi-chevron-down"></i>
+        </div>
+        <ul class="category-content">
+            <li class="nav-item">
+                <a href="/marketplace" class="nav-link cosmic {% if request.path == '/marketplace' %}active{% endif %}">
+                    <i class="bi bi-grid-3x3-gap"></i>
+                    <span>App Marketplace</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/agent-ops" class="nav-link cosmic {% if request.path == '/agent-ops' %}active{% endif %}">
+                    <i class="bi bi-chat-dots"></i>
+                    <span>Agent Ops Feed</span>
+                </a>
+            </li>
+        </ul>
+        
         <div class="category-header" data-category="settings">
             <div style="display: flex; align-items: center; gap: 8px;">
                 <i class="bi bi-sliders" style="color: #f87171;"></i>

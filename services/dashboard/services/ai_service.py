@@ -3,6 +3,13 @@ from openai import OpenAI, AuthenticationError, RateLimitError, APIError, APICon
 from typing import List, Dict, Optional, Any
 import logging
 
+from utils.nlp_helpers import (
+    extract_domain, extract_ip_address, extract_ip_or_domain,
+    parse_dns_record, extract_app_name, extract_backup_type,
+    parse_mount_command, extract_network_range, generate_subdomain,
+    detect_command_intent
+)
+
 logger = logging.getLogger(__name__)
 
 class AIService:
@@ -22,6 +29,35 @@ class AIService:
             logger.info("AI Service initialized with Replit AI Integrations")
         else:
             logger.warning("AI Service not initialized - missing API credentials. Set AI_INTEGRATIONS_OPENAI_API_KEY and AI_INTEGRATIONS_OPENAI_BASE_URL environment variables.")
+        
+        # Initialize service dependencies (lazy import to avoid circular dependencies)
+        self._dns_service = None
+        self._nas_service = None
+        self._marketplace_service = None
+    
+    @property
+    def dns_service(self):
+        """Lazy load DNS service"""
+        if self._dns_service is None:
+            from services.dns_service import LocalDNSService
+            self._dns_service = LocalDNSService()
+        return self._dns_service
+    
+    @property
+    def nas_service(self):
+        """Lazy load NAS service"""
+        if self._nas_service is None:
+            from services.nas_service import NASDiscoveryService
+            self._nas_service = NASDiscoveryService()
+        return self._nas_service
+    
+    @property
+    def marketplace_service(self):
+        """Lazy load Marketplace service"""
+        if self._marketplace_service is None:
+            from services.marketplace_service import MarketplaceService
+            self._marketplace_service = MarketplaceService()
+        return self._marketplace_service
     
     def analyze_logs(self, logs: str, context: str = ""):
         """Analyze logs with AI - returns dict for consistent error handling"""
@@ -387,3 +423,407 @@ Return the complete code for each file wrapped in ```python code blocks."""
                     code_by_file[file_path] = response
         
         return code_by_file
+    
+    # ============================================
+    # Voice Command Handlers
+    # ============================================
+    
+    def handle_dns_commands(self, user_input: str) -> Dict[str, Any]:
+        """
+        Handle DNS-related voice commands
+        
+        Examples:
+            - "Jarvis, create DNS zone example.com"
+            - "Jarvis, add A record nas.example.com pointing to 192.168.1.100"
+            - "Jarvis, enable DynDNS for nas.example.com"
+            - "Jarvis, show my DNS zones"
+            - "Jarvis, delete DNS record nas.example.com"
+        
+        Args:
+            user_input: Natural language command
+            
+        Returns:
+            Response dictionary with success status and message
+        """
+        try:
+            user_input_lower = user_input.lower()
+            
+            # Create DNS zone
+            if "create zone" in user_input_lower or "add zone" in user_input_lower:
+                zone = extract_domain(user_input)
+                if not zone:
+                    return {
+                        'success': False,
+                        'response': "I couldn't find a valid domain name in your command. Please specify a domain like 'example.com'.",
+                        'type': 'error'
+                    }
+                
+                success, result = self.dns_service.create_zone(zone)
+                if success:
+                    return {
+                        'success': True,
+                        'response': f"✓ DNS zone '{zone}' created successfully!",
+                        'type': 'success',
+                        'data': result
+                    }
+                else:
+                    return {
+                        'success': False,
+                        'response': f"✗ Failed to create zone: {result}",
+                        'type': 'error'
+                    }
+            
+            # Add DNS record
+            elif "add record" in user_input_lower or "create record" in user_input_lower:
+                record_data = parse_dns_record(user_input)
+                
+                if not record_data.get('name') or not record_data.get('content'):
+                    return {
+                        'success': False,
+                        'response': "I couldn't parse the DNS record details. Please try: 'add A record name.example.com pointing to 192.168.1.1'",
+                        'type': 'error'
+                    }
+                
+                # Extract zone from FQDN
+                zone_parts = record_data['name'].split('.')
+                if len(zone_parts) >= 2:
+                    zone = '.'.join(zone_parts[-2:])
+                else:
+                    zone = record_data['name']
+                
+                success, result = self.dns_service.create_record(
+                    zone=zone,
+                    name=record_data['name'],
+                    rtype=record_data['type'],
+                    content=record_data['content'],
+                    ttl=record_data.get('ttl', 300)
+                )
+                
+                if success:
+                    return {
+                        'success': True,
+                        'response': f"✓ DNS record added: {record_data['name']} → {record_data['content']} ({record_data['type']})",
+                        'type': 'success',
+                        'data': result
+                    }
+                else:
+                    return {
+                        'success': False,
+                        'response': f"✗ Failed to add DNS record: {result}",
+                        'type': 'error'
+                    }
+            
+            # List DNS zones
+            elif "show zones" in user_input_lower or "list zones" in user_input_lower or "my zones" in user_input_lower:
+                success, result = self.dns_service.list_zones()
+                
+                if not success:
+                    return {
+                        'success': False,
+                        'response': f"✗ Failed to retrieve zones: {result}",
+                        'type': 'error'
+                    }
+                
+                if not result or len(result) == 0:
+                    return {
+                        'success': True,
+                        'response': "You don't have any DNS zones yet. Try: 'create DNS zone example.com'",
+                        'type': 'info'
+                    }
+                
+                zone_names = [z.get('name', z.get('id', 'Unknown')) for z in result]
+                return {
+                    'success': True,
+                    'response': f"Your DNS zones: {', '.join(zone_names)}",
+                    'type': 'success',
+                    'data': result
+                }
+            
+            # Delete DNS zone
+            elif "delete zone" in user_input_lower or "remove zone" in user_input_lower:
+                zone = extract_domain(user_input)
+                if not zone:
+                    return {
+                        'success': False,
+                        'response': "Please specify which zone to delete.",
+                        'type': 'error'
+                    }
+                
+                success, result = self.dns_service.delete_zone(zone)
+                if success:
+                    return {
+                        'success': True,
+                        'response': f"✓ DNS zone '{zone}' deleted successfully!",
+                        'type': 'success'
+                    }
+                else:
+                    return {
+                        'success': False,
+                        'response': f"✗ Failed to delete zone: {result}",
+                        'type': 'error'
+                    }
+            
+            else:
+                return {
+                    'success': False,
+                    'response': "I didn't understand that DNS command. Try: 'create zone example.com' or 'add A record nas.example.com pointing to 192.168.1.1'",
+                    'type': 'error'
+                }
+        
+        except Exception as e:
+            logger.error(f"Error handling DNS command: {e}", exc_info=True)
+            return {
+                'success': False,
+                'response': f"Error processing DNS command: {str(e)}",
+                'type': 'error'
+            }
+    
+    def handle_nas_commands(self, user_input: str) -> Dict[str, Any]:
+        """
+        Handle NAS-related voice commands
+        
+        Examples:
+            - "Jarvis, scan network for my NAS"
+            - "Jarvis, mount share from 192.168.1.100"
+            - "Jarvis, show my NAS devices"
+        
+        Args:
+            user_input: Natural language command
+            
+        Returns:
+            Response dictionary with success status and message
+        """
+        try:
+            user_input_lower = user_input.lower()
+            
+            # Scan for NAS devices
+            if "scan" in user_input_lower and "nas" in user_input_lower:
+                network_range = extract_network_range(user_input)
+                logger.info(f"Scanning network {network_range} for NAS devices")
+                
+                devices = self.nas_service.scan_network(network_range)
+                
+                if not devices or len(devices) == 0:
+                    return {
+                        'success': True,
+                        'response': f"No NAS devices found on network {network_range}. Make sure your NAS is powered on and connected.",
+                        'type': 'info'
+                    }
+                
+                device_list = []
+                for device in devices:
+                    device_type = device.get('device_type', 'Unknown')
+                    ip = device.get('ip_address', 'Unknown IP')
+                    device_list.append(f"{device_type.capitalize()} at {ip}")
+                
+                return {
+                    'success': True,
+                    'response': f"✓ Found {len(devices)} NAS device(s): {', '.join(device_list)}",
+                    'type': 'success',
+                    'data': devices
+                }
+            
+            # Mount NAS share
+            elif "mount" in user_input_lower:
+                mount_data = parse_mount_command(user_input)
+                
+                if not mount_data.get('ip_address'):
+                    return {
+                        'success': False,
+                        'response': "Please specify the NAS IP address. Try: 'mount share from 192.168.1.100'",
+                        'type': 'error'
+                    }
+                
+                return {
+                    'success': True,
+                    'response': f"✓ Mount command parsed: {mount_data.get('share_name', 'share')} from {mount_data['ip_address']}. NAS mount functionality coming soon!",
+                    'type': 'info',
+                    'data': mount_data
+                }
+            
+            # Show NAS devices
+            elif "show nas" in user_input_lower or "list nas" in user_input_lower:
+                return {
+                    'success': True,
+                    'response': "To scan for NAS devices, say: 'scan network for NAS'",
+                    'type': 'info'
+                }
+            
+            else:
+                return {
+                    'success': False,
+                    'response': "I didn't understand that NAS command. Try: 'scan network for NAS' or 'mount share from 192.168.1.100'",
+                    'type': 'error'
+                }
+        
+        except Exception as e:
+            logger.error(f"Error handling NAS command: {e}", exc_info=True)
+            return {
+                'success': False,
+                'response': f"Error processing NAS command: {str(e)}",
+                'type': 'error'
+            }
+    
+    def handle_marketplace_commands(self, user_input: str) -> Dict[str, Any]:
+        """
+        Handle marketplace app deployment commands
+        
+        Examples:
+            - "Jarvis, install Nextcloud"
+            - "Jarvis, deploy Jellyfin"
+            - "Jarvis, show available apps"
+            - "Jarvis, what apps are installed?"
+        
+        Args:
+            user_input: Natural language command
+            
+        Returns:
+            Response dictionary with success status and message
+        """
+        try:
+            user_input_lower = user_input.lower()
+            
+            # Install/deploy app
+            if "install" in user_input_lower or "deploy" in user_input_lower:
+                app_name = extract_app_name(user_input)
+                
+                if not app_name:
+                    return {
+                        'success': False,
+                        'response': "Which app would you like to install? Try: 'install Nextcloud' or 'show available apps'",
+                        'type': 'error'
+                    }
+                
+                # Search for template
+                templates = self.marketplace_service.search_templates(app_name)
+                
+                if not templates or len(templates) == 0:
+                    return {
+                        'success': False,
+                        'response': f"App '{app_name}' not found in marketplace. Try: 'show available apps'",
+                        'type': 'error'
+                    }
+                
+                template = templates[0]
+                subdomain = generate_subdomain(app_name)
+                
+                # Deploy the container
+                success, message = self.marketplace_service.deploy_container(
+                    template_id=template['id'],
+                    subdomain=subdomain,
+                    custom_config={}
+                )
+                
+                if success:
+                    return {
+                        'success': True,
+                        'response': f"✓ Deploying {template.get('display_name', app_name)}! Your app will be ready at https://{subdomain}.yourdomain.com in about 45 seconds.",
+                        'type': 'success',
+                        'data': {'app': app_name, 'subdomain': subdomain}
+                    }
+                else:
+                    return {
+                        'success': False,
+                        'response': f"✗ Failed to deploy {app_name}: {message}",
+                        'type': 'error'
+                    }
+            
+            # List available apps
+            elif "show apps" in user_input_lower or "list apps" in user_input_lower or "available apps" in user_input_lower:
+                templates = self.marketplace_service.get_featured_templates()
+                
+                if not templates or len(templates) == 0:
+                    return {
+                        'success': True,
+                        'response': "No apps available in the marketplace yet.",
+                        'type': 'info'
+                    }
+                
+                app_names = [t.get('display_name', t.get('name', 'Unknown')) for t in templates[:10]]
+                return {
+                    'success': True,
+                    'response': f"Available apps: {', '.join(app_names)}. Say 'install [app name]' to deploy one!",
+                    'type': 'success',
+                    'data': templates
+                }
+            
+            # List installed apps
+            elif "installed" in user_input_lower or "my apps" in user_input_lower or "what's running" in user_input_lower:
+                return {
+                    'success': True,
+                    'response': "Deployed apps feature coming soon! For now, check the Marketplace dashboard.",
+                    'type': 'info'
+                }
+            
+            else:
+                return {
+                    'success': False,
+                    'response': "I didn't understand that marketplace command. Try: 'install Nextcloud' or 'show available apps'",
+                    'type': 'error'
+                }
+        
+        except Exception as e:
+            logger.error(f"Error handling marketplace command: {e}", exc_info=True)
+            return {
+                'success': False,
+                'response': f"Error processing marketplace command: {str(e)}",
+                'type': 'error'
+            }
+    
+    async def process_chat(self, user_input: str, context: Optional[Dict] = None) -> Dict[str, Any]:
+        """
+        Main chat processing with intelligent command routing
+        
+        Routes voice commands to specialized handlers or falls back to AI chat
+        
+        Args:
+            user_input: User's natural language input
+            context: Optional conversation context
+            
+        Returns:
+            Response dictionary with success status and message
+        """
+        if not user_input or not isinstance(user_input, str):
+            return {
+                'success': False,
+                'response': "Please provide a valid command.",
+                'type': 'error'
+            }
+        
+        user_input_lower = user_input.lower()
+        
+        # Remove "Jarvis" prefix if present
+        user_input_clean = user_input_lower.replace('jarvis,', '').replace('jarvis', '').strip()
+        
+        # Detect command intent
+        intent = detect_command_intent(user_input_clean)
+        
+        logger.info(f"Processing chat with intent: {intent}")
+        
+        try:
+            # Route to specialized command handlers
+            if intent == 'dns':
+                return self.handle_dns_commands(user_input_clean)
+            
+            elif intent == 'nas':
+                return self.handle_nas_commands(user_input_clean)
+            
+            elif intent == 'marketplace':
+                return self.handle_marketplace_commands(user_input_clean)
+            
+            # Default: Use AI chat for general queries
+            else:
+                response = self.chat(user_input, context.get('history', []) if context else [])
+                return {
+                    'success': True,
+                    'response': response,
+                    'type': 'chat'
+                }
+        
+        except Exception as e:
+            logger.error(f"Error in process_chat: {e}", exc_info=True)
+            return {
+                'success': False,
+                'response': f"I encountered an error: {str(e)}",
+                'type': 'error'
+            }

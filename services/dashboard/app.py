@@ -33,6 +33,8 @@ from routes.jarvis_task_api import jarvis_task_bp
 from routes.setup_api import setup_bp
 from routes.dns_api import dns_bp
 from routes.nas_api import nas_bp
+from routes.marketplace_api import marketplace_bp
+from routes.agent_api import agent_bp
 from services.activity_service import activity_service
 from services.db_service import db_service
 from services.websocket_service import websocket_service
@@ -161,6 +163,8 @@ app.register_blueprint(jarvis_task_bp)
 app.register_blueprint(setup_bp)
 app.register_blueprint(dns_bp)
 app.register_blueprint(nas_bp)
+app.register_blueprint(marketplace_bp)
+app.register_blueprint(agent_bp)
 
 # Initialize WebSocket service
 websocket_service.init_app(app)

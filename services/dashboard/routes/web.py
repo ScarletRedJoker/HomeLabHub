@@ -104,6 +104,16 @@ def jarvis_ide():
     response.headers['Expires'] = '0'
     return response
 
+@web_bp.route('/agent-ops')
+@require_web_auth
+def agent_ops():
+    """Agent Operations Feed - Inter-agent communication dashboard"""
+    response = make_response(render_template('agent_ops.html'))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
+
 @web_bp.route('/file-manager')
 @require_web_auth
 def file_manager():
