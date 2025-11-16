@@ -33,7 +33,7 @@ import { AlertsService } from "./alerts-service";
 import { ChatbotService } from "./chatbot-service";
 import { analyticsService } from "./analytics-service";
 import { tokenRefreshService } from "./token-refresh-service";
-import { quotaService } from "./quota-service";
+// import { quotaService } from "./quota-service"; // DISABLED: Redis dependency
 import { getHealthStatus } from "./health";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -509,6 +509,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // QUOTA MANAGEMENT DISABLED - Redis dependency removed for deployment stability
+  // TODO: Re-enable when Redis is properly configured in production
+  /*
   // Quota Management - Admin endpoints for monitoring API quota usage
   app.get("/api/admin/quota/status", requireAuth, async (req, res) => {
     try {
@@ -587,6 +590,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to reset all quotas" });
     }
   });
+  */
 
   // Custom Commands
   app.get("/api/commands", requireAuth, async (req, res) => {
