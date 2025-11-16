@@ -13,7 +13,7 @@ celery_app = Celery(
     'jarvis_workflow_engine',
     broker=Config.CELERY_BROKER_URL,
     backend=Config.CELERY_RESULT_BACKEND,
-    include=['workers.workflow_worker', 'workers.analysis_worker', 'workers.google_tasks', 'workers.autonomous_worker']
+    include=['workers.workflow_worker', 'workers.analysis_worker', 'workers.google_tasks', 'workers.autonomous_worker', 'workers.dyndns_worker']
 )
 
 def save_job_history(task_id, task_name, status, **kwargs):
@@ -185,6 +185,8 @@ celery_app.conf.update(
         'autonomous.run_remediation': {'queue': 'autonomous'},
         'autonomous.run_proactive_maintenance': {'queue': 'autonomous'},
         'autonomous.execute_single_action': {'queue': 'autonomous'},
+        'update_dyndns_hosts': {'queue': 'dns'},
+        'check_dyndns_health': {'queue': 'dns'},
     },
     task_default_queue='default',
     task_default_exchange='tasks',
@@ -204,6 +206,16 @@ celery_app.conf.update(
             'task': 'autonomous.run_proactive_maintenance',
             'schedule': 86400.0,
             'options': {'queue': 'autonomous'}
+        },
+        'update-dyndns-hosts': {
+            'task': 'update_dyndns_hosts',
+            'schedule': 300.0,
+            'options': {'queue': 'dns'}
+        },
+        'check-dyndns-health': {
+            'task': 'check_dyndns_health',
+            'schedule': 600.0,
+            'options': {'queue': 'dns'}
         },
     },
 )

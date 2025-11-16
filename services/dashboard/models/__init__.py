@@ -29,6 +29,7 @@ from .jarvis_action import JarvisAction, ActionStatus, ActionType
 from .celery_job_history import CeleryJobHistory, JobStatus
 from .user_preferences import UserPreferences
 from .jarvis_task import JarvisTask
+from .dyndns_host import DynDNSHost
 
 __all__ = [
     'Base',
@@ -58,5 +59,6 @@ __all__ = [
     'CeleryJobHistory',
     'JobStatus',
     'UserPreferences',
-    'JarvisTask'
+    'JarvisTask',
+    'DynDNSHost'
 ]
