@@ -28,6 +28,7 @@ bash MASTER_FIX_ALL.sh
 2. Moonlight page readability improved (text contrast fixed)
 3. All old fix scripts removed - ONE simple solution
 4. Enhanced MASTER_FIX_ALL.sh to fix rig-city.com SSL errors and include all services
+5. Added missing packages: winston (discord-bot), lodash (stream-bot)
 
 ---
 
