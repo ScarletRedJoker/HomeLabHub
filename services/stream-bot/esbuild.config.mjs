@@ -15,10 +15,6 @@ await build({
   external: [
     // Node.js built-ins
     'node:*',
-    // Production dependencies (must be in node_modules at runtime)
-    'winston',
-    'ioredis',
-    'lodash',
     // Optional native bindings (don't exist in production)
     'bufferutil',
     'utf-8-validate',
