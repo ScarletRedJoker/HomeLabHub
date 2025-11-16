@@ -159,6 +159,16 @@ else
     echo "$NEW_COMMIT" > "$LAST_SYNC_FILE"
 fi
 
+# ===== DETECT DOCKER COMPOSE COMMAND =====
+
+if docker compose version &> /dev/null; then
+    DOCKER_COMPOSE="docker compose"
+elif command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE="docker-compose"
+else
+    abort "docker-compose or 'docker compose' not found"
+fi
+
 # ===== DETERMINE CHANGED SERVICES =====
 
 CHANGED_FILES=$(git diff --name-only "$PREV_COMMIT" HEAD)
