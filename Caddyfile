@@ -58,7 +58,7 @@ n8n.evindrake.net {
 }
 
 # ============================================
-# Homelab Dashboard (Main Control Panel)
+# Homelab Dashboard - PRODUCTION (Private)
 # ============================================
 host.evindrake.net {
     reverse_proxy homelab-dashboard:5000 {
@@ -75,9 +75,11 @@ host.evindrake.net {
     }
 }
 
-# Demo/Test Dashboard (Same as above but on test subdomain)
+# ============================================
+# Demo Dashboard - PUBLIC (Investor/Demo Site)
+# ============================================
 test.evindrake.net {
-    reverse_proxy homelab-dashboard:5000 {
+    reverse_proxy homelab-dashboard-demo:5000 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}

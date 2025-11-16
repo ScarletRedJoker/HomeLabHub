@@ -171,6 +171,49 @@ services:
       start_period: 60s
 
   # ============================================
+  # Demo Dashboard (Public Investor Site)
+  # ============================================
+  homelab-dashboard-demo:
+    build:
+      context: ./services/dashboard
+      dockerfile: Dockerfile
+    container_name: homelab-dashboard-demo
+    restart: unless-stopped
+    depends_on:
+      discord-bot-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - homelab
+    volumes:
+      # READ-ONLY Docker socket for demo (can't actually deploy)
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./services/dashboard/logs:/app/logs-demo
+    environment:
+      # CRITICAL: Demo mode enabled
+      - DEMO_MODE=true
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+      # Separate demo database schema
+      - JARVIS_DATABASE_URL=postgresql://jarvis:${JARVIS_DB_PASSWORD}@discord-bot-db:5432/homelab_jarvis_demo
+      - REDIS_URL=redis://redis:6379/1
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-admin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minio_admin_password}
+      # Public demo credentials
+      - WEB_USERNAME=demo
+      - WEB_PASSWORD=demo
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import requests; r = requests.get(\"http://localhost:5000/health\", timeout=5); exit(0 if r.status_code == 200 else 1)'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ============================================
   # Celery Worker - Background Task Processing
   # ============================================
   homelab-celery-worker:
