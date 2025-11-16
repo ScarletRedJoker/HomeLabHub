@@ -16,6 +16,13 @@ preconditions:
   - type: service_check
     service: ddclient
     description: Verify ddclient service exists before attempting fixes
+  - type: rate_limit
+    max_attempts_per_hour: 3
+    description: Prevent remediation loops - max 3 attempts per hour
+  - type: circuit_breaker
+    failure_threshold: 3
+    reset_timeout_minutes: 60
+    description: Stop after 3 consecutive failures, reset after 1 hour
 
 command: |
   #!/bin/bash
@@ -38,6 +45,16 @@ command: |
   # Check ddclient status and recent logs
   if ! systemctl is-active --quiet ddclient; then
     echo "Issue detected: ddclient not running"
+    
+    # Check if already restarted recently (prevent loops)
+    recent_restarts=$(journalctl -u ddclient --since "1 hour ago" 2>/dev/null | grep -c "Started\|Stopped" || echo "0")
+    if [ "$recent_restarts" -gt 3 ]; then
+      echo "✗ ddclient restarted too many times recently ($recent_restarts) - skipping to prevent loop"
+      FAILED_FIXES=$((FAILED_FIXES + 1))
+      ACTIONS+=("SKIPPED: Too many recent restarts detected - manual intervention needed")
+      exit 1
+    fi
+    
     echo "Action: Starting ddclient service..."
     
     if sudo systemctl start ddclient; then
@@ -55,7 +72,17 @@ command: |
     
     if [ "$auth_failures" -gt 3 ]; then
       echo "Issue detected: ddclient authentication failures ($auth_failures)"
-      echo "Action: Restarting ddclient to clear failed state..."
+      
+      # Check if already restarted recently (prevent loops)
+      recent_restarts=$(journalctl -u ddclient --since "1 hour ago" 2>/dev/null | grep -c "Restarted\|Started" || echo "0")
+      if [ "$recent_restarts" -gt 2 ]; then
+        echo "✗ ddclient restarted too many times recently ($recent_restarts) - likely config issue"
+        FAILED_FIXES=$((FAILED_FIXES + 1))
+        ACTIONS+=("SKIPPED: Too many recent restarts - config file needs manual correction")
+        exit 1
+      fi
+      
+      echo "Action: Restarting ddclient to clear failed state (attempt $recent_restarts/2)..."
       
       if sudo systemctl restart ddclient; then
         FIXED_ISSUES=$((FIXED_ISSUES + 1))

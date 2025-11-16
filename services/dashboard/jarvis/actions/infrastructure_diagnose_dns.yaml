@@ -15,7 +15,16 @@ command: |
   
   DOMAINS=("rig-city.com" "evindrake.net" "scarletredjoker.com")
   SUBDOMAINS=("www" "bot" "stream" "host" "plex" "n8n" "vnc" "code" "home" "game")
-  EXPECTED_IP="74.76.32.151"
+  
+  # Get current public IP dynamically instead of hard-coding
+  EXPECTED_IP=$(curl -s -m 5 ifconfig.me || curl -s -m 5 icanhazip.com || echo "")
+  
+  if [ -z "$EXPECTED_IP" ]; then
+    echo "✗ Could not determine public IP"
+    exit 1
+  fi
+  
+  echo "Public IP: $EXPECTED_IP"
   NAMESERVERS=("dns1.zoneedit.com" "dns2.zoneedit.com" "dns3.zoneedit.com")
   
   TOTAL_CHECKS=0
