@@ -140,8 +140,30 @@ async function userHasServerAccess(user: any, serverId: string): Promise<boolean
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   
-  // Create WebSocket server with a specific path to avoid conflict with Vite's HMR
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  // Create WebSocket server with error handling
+  let wss: WebSocketServer;
+  try {
+    wss = new WebSocketServer({ 
+      server: httpServer, 
+      path: '/ws',
+      noServer: false
+    });
+    console.log('✅ WebSocket server created successfully on path /ws');
+  } catch (error) {
+    console.error('❌ WebSocket server creation failed:', error);
+    // Create a dummy wss to prevent crashes
+    wss = new WebSocketServer({ noServer: true });
+  }
+  
+  // Add error handler for WebSocket server
+  wss.on('error', (error: any) => {
+    if (error.code === 'EADDRINUSE') {
+      console.error('WebSocket server error: Port is already in use');
+      console.warn('⚠️  WebSocket features may not work properly');
+    } else {
+      console.error('WebSocket server error:', error);
+    }
+  });
   
   // Handle WebSocket connections with proper authentication
   wss.on('connection', (ws: WebSocket) => {
