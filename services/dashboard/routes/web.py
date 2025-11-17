@@ -29,6 +29,11 @@ ai_service = AIService()
 @web_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
+        # Debug: Log request details
+        logger.info(f"Login POST received - Content-Type: {request.content_type}")
+        logger.info(f"Form keys: {list(request.form.keys())}")
+        logger.info(f"Has form data: {len(request.form) > 0}")
+        
         username = request.form.get('username')
         password = request.form.get('password')
         
@@ -43,6 +48,9 @@ def login():
         
         # Debug logging (never log passwords!)
         logger.info(f"Login attempt - Username: {username}")
+        logger.info(f"Expected username: {expected_username}")
+        logger.info(f"Password provided: {password is not None and len(password) > 0}")
+        logger.info(f"Expected password length: {len(expected_password) if expected_password else 0}")
         
         if username == expected_username and password == expected_password:
             session['authenticated'] = True
@@ -51,6 +59,10 @@ def login():
             return redirect(url_for('web.index'))
         else:
             logger.warning("Login failed - invalid credentials")
+            if username != expected_username:
+                logger.warning(f"Username mismatch: got '{username}' expected '{expected_username}'")
+            if password != expected_password:
+                logger.warning(f"Password mismatch: got length {len(password) if password else 0}, expected length {len(expected_password)}")
             return render_template('login.html', error='Invalid username or password')
     
     return render_template('login.html')
