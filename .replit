@@ -32,7 +32,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd services/dashboard && JARVIS_DATABASE_URL=\"${DATABASE_URL}\" python main.py"
+args = "cd services/dashboard && ZONEEDIT_USERNAME=\"scarletredjoker\" JARVIS_DATABASE_URL=\"${DATABASE_URL}\" python main.py"
 waitForPort = 5000
 
 [[workflows.workflow]]
@@ -64,10 +64,6 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 6379
-externalPort = 4200
-
-[[ports]]
 localPort = 24678
 externalPort = 3001
 
@@ -82,6 +78,10 @@ externalPort = 3002
 [[ports]]
 localPort = 39745
 externalPort = 5000
+
+[[ports]]
+localPort = 41601
+externalPort = 8008
 
 [[ports]]
 localPort = 41755
