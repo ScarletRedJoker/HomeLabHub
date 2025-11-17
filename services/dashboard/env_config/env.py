@@ -69,10 +69,14 @@ class EnvironmentConfig:
     @classmethod
     def summary(cls):
         """Print configuration summary"""
+        db_display = cls.DATABASE_URL or '[Not Configured]'
+        if cls.DATABASE_URL and '@' in cls.DATABASE_URL:
+            db_display = cls.DATABASE_URL.split('@')[-1]
+        
         return {
             'environment': cls.ENVIRONMENT,
             'demo_mode': cls.DEMO_MODE,
-            'database': cls.DATABASE_URL.split('@')[-1] if '@' in cls.DATABASE_URL else cls.DATABASE_URL,
+            'database': db_display,
             'redis_enabled': cls.REDIS_ENABLED,
             'celery_enabled': cls.CELERY_ENABLED,
             'docker_enabled': cls.DOCKER_ENABLED,
