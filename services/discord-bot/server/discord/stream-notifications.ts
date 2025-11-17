@@ -571,7 +571,7 @@ export async function handlePresenceUpdate(
         state.verifiedLive = !!enrichedData;
         
         // Fetch member
-        const member = await retryWithBackoff(
+        const member = await retryWithBackoff<GuildMember>(
           () => newPresence.guild.members.fetch(userId),
           `Fetch member ${userId}`
         );

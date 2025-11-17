@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { dbStorage as storage } from "./database-storage";
+import { db } from "./db";
 import WebSocket, { WebSocketServer } from "ws";
 import { z } from "zod";
 import multer from "multer";
