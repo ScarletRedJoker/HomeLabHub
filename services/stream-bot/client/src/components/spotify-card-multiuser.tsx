@@ -60,12 +60,11 @@ export function SpotifyCardMultiUser() {
   // Generate overlay token mutation
   const generateToken = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest<OverlayTokenResponse>('/api/overlay/generate-token', {
-        method: 'POST',
-        body: JSON.stringify({ platform: 'spotify', expiresIn: 86400 * 7 }), // 7 days
-        headers: { 'Content-Type': 'application/json' },
+      const res = await apiRequest('POST', '/api/overlay/generate-token', {
+        platform: 'spotify',
+        expiresIn: 86400 * 7, // 7 days
       });
-      return res;
+      return await res.json() as OverlayTokenResponse;
     },
     onSuccess: (data) => {
       setOverlayUrl(`${window.location.origin}${data.overlayUrl}`);
@@ -86,7 +85,7 @@ export function SpotifyCardMultiUser() {
   // Disconnect mutation
   const disconnect = useMutation({
     mutationFn: async () => {
-      await apiRequest('/auth/spotify/disconnect', { method: 'DELETE' });
+      await apiRequest('DELETE', '/auth/spotify/disconnect');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/platforms"] });

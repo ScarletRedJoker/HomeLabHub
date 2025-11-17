@@ -67,22 +67,23 @@ export default function Chatbot() {
   const [testResponse, setTestResponse] = useState("");
   const [testUsername, setTestUsername] = useState("TestUser");
 
-  const { data: settings, isLoading: isLoadingSettings } = useQuery({
+  const { data: settings, isLoading: isLoadingSettings } = useQuery<ChatbotSettingsValues>({
     queryKey: ["/api/chatbot/settings"],
   });
 
-  const { data: presets, isLoading: isLoadingPresets } = useQuery({
+  const { data: presets, isLoading: isLoadingPresets } = useQuery<any[]>({
     queryKey: ["/api/chatbot/personalities/presets"],
   });
 
-  const { data: customPersonalities, isLoading: isLoadingCustom } = useQuery({
+  const { data: customPersonalities, isLoading: isLoadingCustom } = useQuery<any[]>({
     queryKey: ["/api/chatbot/personalities"],
   });
 
-  const { data: contextHistory, refetch: refetchContext } = useQuery({
+  const { data: contextHistory, refetch: refetchContext } = useQuery<any[]>({
     queryKey: ["/api/chatbot/context"],
     queryFn: async () => {
-      return await apiRequest("GET", "/api/chatbot/context?limit=10");
+      const res = await apiRequest("GET", "/api/chatbot/context?limit=10");
+      return await res.json();
     },
   });
 
@@ -185,9 +186,10 @@ export default function Chatbot() {
 
   const testChatbotMutation = useMutation({
     mutationFn: async (data: { message: string; username: string }) => {
-      return await apiRequest("POST", "/api/chatbot/respond", data);
+      const res = await apiRequest("POST", "/api/chatbot/respond", data);
+      return await res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       setTestResponse(data.response);
       refetchContext();
     },

@@ -201,11 +201,7 @@ export default function Currency() {
 
   const updateSettingsMutation = useMutation({
     mutationFn: async (data: CurrencySettingsFormValues) => {
-      return await apiRequest("/api/currency/settings", {
-        method: "PATCH",
-        body: JSON.stringify(data),
-        headers: { "Content-Type": "application/json" },
-      });
+      return await apiRequest("PATCH", "/api/currency/settings", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/currency/settings"] });
@@ -225,11 +221,7 @@ export default function Currency() {
 
   const createRewardMutation = useMutation({
     mutationFn: async (data: RewardFormValues) => {
-      return await apiRequest("/api/rewards", {
-        method: "POST",
-        body: JSON.stringify(data),
-        headers: { "Content-Type": "application/json" },
-      });
+      return await apiRequest("POST", "/api/rewards", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/rewards"] });
@@ -251,11 +243,7 @@ export default function Currency() {
 
   const updateRewardMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: RewardFormValues }) => {
-      return await apiRequest(`/api/rewards/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(data),
-        headers: { "Content-Type": "application/json" },
-      });
+      return await apiRequest("PATCH", `/api/rewards/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/rewards"] });
@@ -277,9 +265,7 @@ export default function Currency() {
 
   const deleteRewardMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest(`/api/rewards/${id}`, {
-        method: "DELETE",
-      });
+      return await apiRequest("DELETE", `/api/rewards/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/rewards"] });
