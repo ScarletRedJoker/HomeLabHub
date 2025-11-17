@@ -35,6 +35,7 @@ import session from 'express-session';
 import passport from 'passport';
 import { Strategy as DiscordStrategy } from 'passport-discord';
 import MemoryStore from 'memorystore';
+import crypto from 'crypto';
 import { IStorage } from './storage';
 import { getBotGuilds } from './discord/bot';
 
@@ -528,7 +529,6 @@ export function setupAuth(app: Express, storage: IStorage): void {
        * - 32 bytes = 256 bits of entropy (highly secure)
        * - URL-safe base64 encoding
        */
-      const crypto = require('crypto');
       const state = crypto.randomBytes(32).toString('base64url');
       
       /**

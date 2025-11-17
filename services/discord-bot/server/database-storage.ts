@@ -73,6 +73,7 @@ import {
 import { IStorage } from "./storage";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
+import type { PgTransaction } from "drizzle-orm/pg-core";
 
 export class DatabaseStorage implements IStorage {
   // User operations
@@ -122,7 +123,7 @@ export class DatabaseStorage implements IStorage {
     discordId: string,
     createData: InsertDiscordUser
   ): Promise<{ user: DiscordUser; created: boolean }> {
-    return await db.transaction(async (tx) => {
+    return await db.transaction(async (tx: PgTransaction<any, any, any>) => {
       const [existingUser] = await tx
         .select()
         .from(discordUsers)
