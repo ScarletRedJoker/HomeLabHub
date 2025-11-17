@@ -17,18 +17,34 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Create enums for Google integration
+    # Create enums for Google integration (idempotent)
     op.execute("""
-        CREATE TYPE serviceconnectionstatus AS ENUM ('connected', 'disconnected', 'error', 'pending')
+        DO $$ BEGIN
+            CREATE TYPE serviceconnectionstatus AS ENUM ('connected', 'disconnected', 'error', 'pending');
+        EXCEPTION
+            WHEN duplicate_object THEN null;
+        END $$;
     """)
     op.execute("""
-        CREATE TYPE automationstatus AS ENUM ('active', 'inactive', 'error')
+        DO $$ BEGIN
+            CREATE TYPE automationstatus AS ENUM ('active', 'inactive', 'error');
+        EXCEPTION
+            WHEN duplicate_object THEN null;
+        END $$;
     """)
     op.execute("""
-        CREATE TYPE emailnotificationstatus AS ENUM ('pending', 'sent', 'failed')
+        DO $$ BEGIN
+            CREATE TYPE emailnotificationstatus AS ENUM ('pending', 'sent', 'failed');
+        EXCEPTION
+            WHEN duplicate_object THEN null;
+        END $$;
     """)
     op.execute("""
-        CREATE TYPE backupstatus AS ENUM ('pending', 'uploading', 'completed', 'failed')
+        DO $$ BEGIN
+            CREATE TYPE backupstatus AS ENUM ('pending', 'uploading', 'completed', 'failed');
+        EXCEPTION
+            WHEN duplicate_object THEN null;
+        END $$;
     """)
     
     # Create google_service_status table
