@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}DNS Management - Homelab Dashboard{% endblock %}
+{% block title %}DNS Records Management - Homelab Dashboard{% endblock %}
 
 {% block content %}
 <div class="container-fluid dns-management-page">
@@ -8,118 +8,63 @@
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <h2><i class="bi bi-diagram-3"></i> DNS Management</h2>
-                    <p class="text-muted mb-0">Manage PowerDNS zones, records, and Dynamic DNS automation</p>
+                    <h2><i class="bi bi-hdd-network"></i> DNS Records Management</h2>
+                    <p class="text-muted mb-0">Manage DNS records across your domains via ZoneEdit</p>
                 </div>
-                <button class="btn btn-primary btn-lg" onclick="showCreateZoneModal()" aria-label="Create new DNS zone">
-                    <i class="bi bi-plus-circle" aria-hidden="true"></i> Create Zone
-                </button>
+                <div class="d-flex gap-2">
+                    <select class="form-select zone-selector" id="zone-selector" aria-label="Select domain zone">
+                        <option value="">Select Domain...</option>
+                    </select>
+                    <button class="btn btn-primary btn-lg" onclick="showAddRecordModal()" aria-label="Add new DNS record" id="add-record-btn" disabled>
+                        <i class="bi bi-plus-circle" aria-hidden="true"></i> Add Record
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
     <div class="row mb-4">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="stat-card glassmorphic-panel">
                 <div class="stat-icon bg-primary">
-                    <i class="bi bi-globe"></i>
-                </div>
-                <div class="stat-content">
-                    <h3 id="total-zones">0</h3>
-                    <p>Total Zones</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="stat-card glassmorphic-panel">
-                <div class="stat-icon bg-success">
-                    <i class="bi bi-check-circle"></i>
+                    <i class="bi bi-list-ul"></i>
                 </div>
                 <div class="stat-content">
                     <h3 id="total-records">0</h3>
-                    <p>DNS Records</p>
+                    <p>Total Records</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
+            <div class="stat-card glassmorphic-panel">
+                <div class="stat-icon bg-success">
+                    <i class="bi bi-link-45deg"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 id="a-records">0</h3>
+                    <p>A Records</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
             <div class="stat-card glassmorphic-panel">
                 <div class="stat-icon bg-info">
                     <i class="bi bi-arrow-repeat"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 id="dyndns-hosts">0</h3>
-                    <p>DynDNS Hosts</p>
+                    <h3 id="cname-records">0</h3>
+                    <p>CNAME Records</p>
                 </div>
             </div>
         </div>
-    </div>
-
-    <div class="row mb-4">
-        <div class="col-lg-6">
-            <div class="glassmorphic-panel zones-panel">
-                <div class="panel-header">
-                    <h5><i class="bi bi-server"></i> DNS Zones</h5>
-                    <div class="panel-actions">
-                        <button class="btn btn-sm btn-outline-primary" onclick="refreshZones()" aria-label="Refresh zones list">
-                            <i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Refresh
-                        </button>
-                    </div>
+        <div class="col-md-3">
+            <div class="stat-card glassmorphic-panel">
+                <div class="stat-icon bg-warning">
+                    <i class="bi bi-three-dots"></i>
                 </div>
-                <div class="table-responsive">
-                    <table class="table dns-table">
-                        <thead>
-                            <tr>
-                                <th scope="col">Zone Name</th>
-                                <th scope="col">Type</th>
-                                <th scope="col">Records</th>
-                                <th scope="col">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="zones-list">
-                            <tr>
-                                <td colspan="4" class="text-center py-5">
-                                    <div class="spinner-border text-primary" role="status">
-                                        <span class="visually-hidden">Loading...</span>
-                                    </div>
-                                    <p class="mt-2 text-muted">Loading DNS zones...</p>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-6">
-            <div class="glassmorphic-panel records-panel">
-                <div class="panel-header">
-                    <h5><i class="bi bi-file-earmark-text"></i> DNS Records</h5>
-                    <div class="panel-actions">
-                        <span class="text-muted me-2" id="current-zone-display">Select a zone to view records</span>
-                        <button class="btn btn-sm btn-primary" onclick="showCreateRecordModal()" id="add-record-btn" disabled aria-label="Add new DNS record">
-                            <i class="bi bi-plus" aria-hidden="true"></i> Add Record
-                        </button>
-                    </div>
-                </div>
-                <div class="table-responsive">
-                    <table class="table dns-table">
-                        <thead>
-                            <tr>
-                                <th scope="col">Name</th>
-                                <th scope="col">Type</th>
-                                <th scope="col">Content</th>
-                                <th scope="col">TTL</th>
-                                <th scope="col">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="records-list">
-                            <tr>
-                                <td colspan="5" class="text-center py-5 text-muted">
-                                    <i class="bi bi-info-circle"></i> Select a zone from the left to view records
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="stat-content">
+                    <h3 id="other-records">0</h3>
+                    <p>Other Records</p>
                 </div>
             </div>
         </div>
@@ -127,165 +72,153 @@
 
     <div class="row">
         <div class="col-12">
-            <div class="glassmorphic-panel dyndns-panel">
+            <div class="glassmorphic-panel records-panel">
                 <div class="panel-header">
-                    <h5><i class="bi bi-arrow-repeat"></i> Dynamic DNS Status</h5>
+                    <h5><i class="bi bi-table"></i> DNS Records</h5>
                     <div class="panel-actions">
-                        <button class="btn btn-sm btn-outline-success" onclick="refreshDynDNS()" aria-label="Refresh DynDNS status">
-                            <i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Refresh Status
+                        <select class="form-select filter-select" id="type-filter" aria-label="Filter by record type">
+                            <option value="">All Types</option>
+                            <option value="A">A</option>
+                            <option value="AAAA">AAAA</option>
+                            <option value="CNAME">CNAME</option>
+                            <option value="MX">MX</option>
+                            <option value="TXT">TXT</option>
+                            <option value="NS">NS</option>
+                            <option value="DYN">DYN</option>
+                        </select>
+                        <button class="btn btn-sm btn-outline-primary" onclick="refreshRecords()" aria-label="Refresh DNS records" id="refresh-btn" disabled>
+                            <i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Refresh
                         </button>
                     </div>
                 </div>
-                <div class="dyndns-hosts" id="dyndns-hosts-container">
-                    <div class="text-center py-5 text-muted">
-                        <div class="spinner-border text-primary mb-3" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                        <p>Loading Dynamic DNS hosts...</p>
-                    </div>
+                <div class="table-responsive">
+                    <table class="table records-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Type</th>
+                                <th scope="col">Host</th>
+                                <th scope="col">Content</th>
+                                <th scope="col">TTL</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="records-tbody">
+                            <tr>
+                                <td colspan="5" class="text-center py-5 text-muted">
+                                    <i class="bi bi-inbox fs-1"></i><br>
+                                    Select a domain to view DNS records
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="createZoneModal" tabindex="-1">
+<div class="modal fade" id="addRecordModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content glassmorphic-panel">
             <div class="modal-header">
                 <h5 class="modal-title">
-                    <i class="bi bi-plus-circle"></i> Create DNS Zone
+                    <i class="bi bi-plus-circle"></i> <span id="modal-title-text">Add DNS Record</span>
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form id="createZoneForm">
+                <form id="recordForm">
+                    <input type="hidden" id="record-id">
+                    
                     <div class="mb-3">
-                        <label for="zone-name" class="form-label">Zone Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="zone-name" placeholder="example.com" required>
-                        <div class="form-text">Enter the domain name (e.g., example.com)</div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="zone-kind" class="form-label">Zone Type</label>
-                        <select class="form-select" id="zone-kind">
-                            <option value="Native" selected>Native</option>
-                            <option value="Master">Master</option>
-                            <option value="Slave">Slave</option>
+                        <label for="record-type" class="form-label">Record Type <span class="text-danger">*</span></label>
+                        <select class="form-select" id="record-type" required>
+                            <option value="">Select Type...</option>
+                            <option value="A">A - IPv4 Address</option>
+                            <option value="AAAA">AAAA - IPv6 Address</option>
+                            <option value="CNAME">CNAME - Canonical Name</option>
+                            <option value="MX">MX - Mail Exchange</option>
+                            <option value="TXT">TXT - Text Record</option>
+                            <option value="NS">NS - Name Server</option>
+                            <option value="DYN">DYN - Dynamic DNS</option>
                         </select>
-                        <div class="form-text">Native is recommended for most use cases</div>
+                        <div class="form-text">Select the DNS record type</div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="zone-nameservers" class="form-label">Name Servers (optional)</label>
-                        <textarea class="form-control" id="zone-nameservers" rows="3" placeholder="ns1.example.com&#10;ns2.example.com"></textarea>
-                        <div class="form-text">One nameserver per line</div>
+                        <label for="record-host" class="form-label">Host <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="record-host" placeholder="@ or subdomain" required>
+                        <div class="form-text">Use "@" for root domain, or enter subdomain (e.g., "www", "mail")</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="record-value" class="form-label">Content/Value <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="record-value" placeholder="e.g., 74.76.32.151" required>
+                        <div class="form-text" id="value-help-text">Enter the target value for this record</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="record-ttl" class="form-label">TTL (Time to Live)</label>
+                        <select class="form-select" id="record-ttl">
+                            <option value="60">1 minute</option>
+                            <option value="300" selected>5 minutes</option>
+                            <option value="600">10 minutes</option>
+                            <option value="1800">30 minutes</option>
+                            <option value="3600">1 hour</option>
+                            <option value="7200">2 hours</option>
+                            <option value="14400">4 hours</option>
+                            <option value="86400">24 hours</option>
+                        </select>
+                        <div class="form-text">How long DNS servers should cache this record</div>
+                    </div>
+
+                    <div class="alert alert-info" id="record-type-hint" style="display: none;">
+                        <small id="hint-text"></small>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="createZone()" id="createZoneBtn">
-                    <span class="btn-text">Create Zone</span>
-                    <span class="spinner-border spinner-border-sm d-none" role="status"></span>
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="createRecordModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content glassmorphic-panel">
-            <div class="modal-header">
-                <h5 class="modal-title" id="recordModalTitle">
-                    <i class="bi bi-plus-circle"></i> Add DNS Record
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="createRecordForm">
-                    <input type="hidden" id="record-zone" value="">
-                    <input type="hidden" id="record-id" value="">
-
-                    <div class="row mb-3">
-                        <div class="col-md-8">
-                            <label for="record-name" class="form-label">Record Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="record-name" placeholder="www or @ for root" required>
-                            <div class="form-text">Use @ for root domain, or subdomain name</div>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="record-type" class="form-label">Type <span class="text-danger">*</span></label>
-                            <select class="form-select" id="record-type" required>
-                                <option value="A" selected>A (IPv4)</option>
-                                <option value="AAAA">AAAA (IPv6)</option>
-                                <option value="CNAME">CNAME</option>
-                                <option value="MX">MX</option>
-                                <option value="TXT">TXT</option>
-                                <option value="NS">NS</option>
-                                <option value="SRV">SRV</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="record-content" class="form-label">Content <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="record-content" placeholder="192.168.1.1 or example.com" required>
-                        <div class="form-text" id="content-help">IP address for A records, domain for CNAME, etc.</div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="record-ttl" class="form-label">TTL (seconds)</label>
-                            <input type="number" class="form-control" id="record-ttl" value="300" min="60" max="86400">
-                            <div class="form-text">Time to live (60-86400 seconds)</div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label d-block">Dynamic DNS</label>
-                            <div class="form-check form-switch mt-2">
-                                <input class="form-check-input" type="checkbox" id="record-dyndns">
-                                <label class="form-check-label" for="record-dyndns">Enable DynDNS for this record</label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="dyndns-options" class="mb-3 d-none">
-                        <label for="dyndns-interval" class="form-label">Check Interval (seconds)</label>
-                        <input type="number" class="form-control" id="dyndns-interval" value="300" min="60" max="3600">
-                        <div class="form-text">How often to check for IP changes (60-3600 seconds)</div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="createRecord()" id="createRecordBtn">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" aria-label="Cancel">Cancel</button>
+                <button type="button" class="btn btn-primary" id="submitRecordBtn" onclick="submitRecord()" aria-label="Submit DNS record">
                     <span class="btn-text">Add Record</span>
-                    <span class="spinner-border spinner-border-sm d-none" role="status"></span>
+                    <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                 </button>
             </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+<div class="modal fade" id="deleteRecordModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content glassmorphic-panel">
             <div class="modal-header bg-danger text-white">
                 <h5 class="modal-title">
-                    <i class="bi bi-exclamation-triangle"></i> Confirm Deletion
+                    <i class="bi bi-exclamation-triangle"></i> Delete DNS Record
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p id="delete-message">Are you sure you want to delete this item?</p>
-                <div class="alert alert-warning mb-0">
-                    <strong>Warning:</strong> This action cannot be undone!
+                <div class="alert alert-warning">
+                    <strong>Warning:</strong> This will immediately delete the DNS record from ZoneEdit!
                 </div>
+                <p>You are about to delete:</p>
+                <div class="record-delete-preview glassmorphic-panel p-3 mb-3">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-3">Type:</dt>
+                        <dd class="col-sm-9" id="delete-record-type"></dd>
+                        <dt class="col-sm-3">Host:</dt>
+                        <dd class="col-sm-9" id="delete-record-host"></dd>
+                        <dt class="col-sm-3">Value:</dt>
+                        <dd class="col-sm-9" id="delete-record-value"></dd>
+                    </dl>
+                </div>
+                <p class="mt-3">Type <strong>DELETE</strong> to confirm:</p>
+                <input type="text" class="form-control" id="delete-confirmation" placeholder="DELETE">
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger" onclick="confirmDelete()" id="confirmDeleteBtn">
-                    Delete
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" aria-label="Cancel deletion">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn" onclick="deleteRecord()" disabled aria-label="Confirm deletion">
+                    Delete Record
                 </button>
             </div>
         </div>
@@ -299,7 +232,7 @@
             <strong class="me-auto" id="toast-title">Notification</strong>
             <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
         </div>
-        <div class="toast-body" id="toast-body">Message</div>
+        <div class="toast-body" id="toast-body"></div>
     </div>
 </div>
 
@@ -308,11 +241,20 @@
     padding: 20px;
 }
 
+.glassmorphic-panel {
+    background: linear-gradient(145deg, rgba(26, 35, 50, 0.9), rgba(17, 24, 39, 0.9));
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(96, 165, 250, 0.2);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
 .stat-card {
     display: flex;
     align-items: center;
-    padding: 20px;
-    height: 100%;
+    gap: 15px;
+    padding: 15px !important;
 }
 
 .stat-icon {
@@ -324,31 +266,31 @@
     justify-content: center;
     font-size: 1.8rem;
     color: white;
-    margin-right: 16px;
 }
 
 .stat-content h3 {
+    margin: 0;
     font-size: 2rem;
     font-weight: 700;
-    margin: 0 0 4px 0;
-    background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 50%, #3B82F6 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
 }
 
 .stat-content p {
     margin: 0;
-    color: #9CA3AF;
+    color: var(--text-secondary);
     font-size: 0.9rem;
 }
 
-.glassmorphic-panel {
-    background: linear-gradient(135deg, rgba(31, 41, 55, 0.8) 0%, rgba(17, 24, 39, 0.9) 100%);
-    border: 1px solid rgba(139, 92, 246, 0.3);
-    border-radius: 12px;
-    padding: 20px;
-    backdrop-filter: blur(10px);
-    margin-bottom: 20px;
+.zone-selector {
+    min-width: 250px;
+    max-width: 350px;
+    background: rgba(26, 35, 50, 0.8);
+    border: 1px solid rgba(96, 165, 250, 0.3);
+    color: var(--text-primary);
+}
+
+.zone-selector:focus {
+    border-color: rgba(96, 165, 250, 0.6);
+    box-shadow: 0 0 0 0.25rem rgba(96, 165, 250, 0.15);
 }
 
 .panel-header {
@@ -356,186 +298,120 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid rgba(139, 92, 246, 0.2);
-}
-
-.panel-header h5 {
-    margin: 0;
-    font-weight: 600;
-    color: #F9FAFB;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
 .panel-actions {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     align-items: center;
 }
 
-.dns-table {
-    margin: 0;
+.filter-select {
+    max-width: 200px;
+    background: rgba(26, 35, 50, 0.8);
+    border: 1px solid rgba(96, 165, 250, 0.3);
+    color: var(--text-primary);
 }
 
-.dns-table thead th {
-    background: rgba(139, 92, 246, 0.1);
-    color: #E5E7EB;
-    font-weight: 600;
-    border-bottom: 2px solid rgba(139, 92, 246, 0.3);
+.filter-select:focus {
+    border-color: rgba(96, 165, 250, 0.6);
+    box-shadow: 0 0 0 0.25rem rgba(96, 165, 250, 0.15);
+}
+
+.records-table {
+    color: var(--text-primary);
+}
+
+.records-table thead th {
+    background: rgba(96, 165, 250, 0.1);
+    border-bottom: 2px solid rgba(96, 165, 250, 0.3);
     padding: 12px;
 }
 
-.dns-table tbody tr {
-    border-bottom: 1px solid rgba(139, 92, 246, 0.1);
-    transition: background-color 0.2s;
+.records-table tbody tr {
+    border-bottom: 1px solid rgba(96, 165, 250, 0.1);
+    transition: background 0.2s;
 }
 
-.dns-table tbody tr:hover {
-    background: rgba(139, 92, 246, 0.05);
+.records-table tbody tr:hover {
+    background: rgba(96, 165, 250, 0.05);
 }
 
-.dns-table tbody td {
+.records-table tbody td {
     padding: 12px;
-    color: #E5E7EB;
     vertical-align: middle;
 }
 
-.record-type {
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 0.85rem;
+.record-type-badge {
     display: inline-block;
-}
-
-.record-type.A {
-    background: rgba(139, 92, 246, 0.2);
-    color: #C4B5FD;
-}
-
-.record-type.AAAA {
-    background: rgba(59, 130, 246, 0.2);
-    color: #93C5FD;
-}
-
-.record-type.CNAME {
-    background: rgba(236, 72, 153, 0.2);
-    color: #F9A8D4;
-}
-
-.record-type.MX {
-    background: rgba(16, 185, 129, 0.2);
-    color: #6EE7B7;
-}
-
-.record-type.TXT {
-    background: rgba(245, 158, 11, 0.2);
-    color: #FCD34D;
-}
-
-.record-type.NS {
-    background: rgba(99, 102, 241, 0.2);
-    color: #A5B4FC;
-}
-
-.record-type.SRV {
-    background: rgba(168, 85, 247, 0.2);
-    color: #D8B4FE;
-}
-
-.dyndns-hosts {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 16px;
-}
-
-.dyndns-host-card {
-    background: linear-gradient(135deg, rgba(31, 41, 55, 0.6) 0%, rgba(17, 24, 39, 0.8) 100%);
-    border: 1px solid rgba(139, 92, 246, 0.3);
-    border-radius: 12px;
-    padding: 16px;
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.dyndns-host-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(139, 92, 246, 0.2);
-}
-
-.host-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-}
-
-.host-info h4 {
-    margin: 0;
-    font-size: 1.1rem;
-    color: #F9FAFB;
-    font-weight: 600;
-}
-
-.status-badge {
     padding: 4px 12px;
-    border-radius: 16px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.status-badge.healthy {
-    background: rgba(16, 185, 129, 0.2);
-    color: #6EE7B7;
-}
-
-.status-badge.disabled {
-    background: rgba(107, 114, 128, 0.2);
-    color: #9CA3AF;
-}
-
-.status-badge.error {
-    background: rgba(239, 68, 68, 0.2);
-    color: #FCA5A5;
-}
-
-.host-details {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-bottom: 12px;
-    padding: 12px;
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 8px;
-}
-
-.host-details span {
+    border-radius: 20px;
     font-size: 0.85rem;
-    color: #D1D5DB;
+    font-weight: 600;
+    min-width: 60px;
+    text-align: center;
 }
 
-.host-actions {
-    display: flex;
-    gap: 8px;
+.type-a { background: rgba(52, 211, 153, 0.2); color: #34d399; }
+.type-aaaa { background: rgba(52, 211, 153, 0.2); color: #34d399; }
+.type-cname { background: rgba(96, 165, 250, 0.2); color: #60a5fa; }
+.type-mx { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+.type-txt { background: rgba(168, 139, 250, 0.2); color: #a78bfa; }
+.type-ns { background: rgba(244, 114, 182, 0.2); color: #f472b6; }
+.type-dyn { background: rgba(248, 113, 113, 0.2); color: #f87171; }
+
+.ttl-badge {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
 }
 
-.host-actions button {
-    flex: 1;
+.modal-content.glassmorphic-panel {
+    border: 1px solid rgba(96, 165, 250, 0.3);
+}
+
+.modal-content .form-control,
+.modal-content .form-select {
+    background: rgba(26, 35, 50, 0.8);
+    border: 1px solid rgba(96, 165, 250, 0.3);
+    color: var(--text-primary);
+}
+
+.modal-content .form-control:focus,
+.modal-content .form-select:focus {
+    background: rgba(26, 35, 50, 0.9);
+    border-color: rgba(96, 165, 250, 0.6);
+    box-shadow: 0 0 0 0.25rem rgba(96, 165, 250, 0.15);
+    color: var(--text-primary);
+}
+
+.record-delete-preview {
+    background: rgba(248, 113, 113, 0.1);
+    border: 1px solid rgba(248, 113, 113, 0.3);
+}
+
+.btn-action {
+    padding: 4px 8px;
+    font-size: 0.9rem;
+    border-radius: 6px;
+    transition: all 0.2s;
 }
 
 @media (max-width: 768px) {
-    .dyndns-hosts {
-        grid-template-columns: 1fr;
-    }
-    
-    .panel-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
+    .zone-selector {
+        min-width: 100%;
+        max-width: 100%;
     }
     
     .panel-actions {
+        flex-wrap: wrap;
         width: 100%;
-        flex-direction: column;
+    }
+    
+    .filter-select {
+        max-width: none;
+        flex: 1;
     }
 }
 </style>

@@ -34,7 +34,7 @@ class ZoneEditService:
         else:
             logger.info("ZoneEdit service initialized successfully")
         
-        self.api_base = "https://dynamic.zoneedit.com"
+        self.api_base = "https://api.zoneedit.com/v2"
         
         self.max_retries = 3
         self.initial_backoff = 1
@@ -278,7 +278,7 @@ class ZoneEditService:
         }
     
     def authenticate(self) -> Tuple[bool, Dict]:
-        """Authenticate with ZoneEdit API
+        """Authenticate with ZoneEdit API by testing list_zones endpoint
         
         Returns:
             Tuple of (success, auth_info)
@@ -296,7 +296,7 @@ class ZoneEditService:
             auth = (self.username, self.password)
             
             response = requests.get(
-                f"{self.api_base}/auth/verify",
+                f"{self.api_base}/zones",
                 auth=auth,
                 timeout=10
             )
@@ -378,7 +378,7 @@ class ZoneEditService:
             auth = (self.username, self.password)
             
             response = requests.get(
-                f"{self.api_base}/zones/{zone}/records",
+                f"{self.api_base}/zones/{zone}/rrset",
                 auth=auth,
                 params={'type': record_type} if record_type else {},
                 timeout=15
@@ -455,7 +455,7 @@ class ZoneEditService:
             }
             
             response = requests.post(
-                f"{self.api_base}/zones/{zone}/records",
+                f"{self.api_base}/zones/{zone}/rrset",
                 auth=auth,
                 json=data,
                 timeout=15
@@ -520,7 +520,7 @@ class ZoneEditService:
                 data['ttl'] = ttl
             
             response = requests.put(
-                f"{self.api_base}/zones/{zone}/records/{record_id}",
+                f"{self.api_base}/zones/{zone}/rrset/{record_id}",
                 auth=auth,
                 json=data,
                 timeout=15
@@ -569,7 +569,7 @@ class ZoneEditService:
             auth = (self.username, self.password)
             
             response = requests.delete(
-                f"{self.api_base}/zones/{zone}/records/{record_id}",
+                f"{self.api_base}/zones/{zone}/rrset/{record_id}",
                 auth=auth,
                 timeout=15
             )
