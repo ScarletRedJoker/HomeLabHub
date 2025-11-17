@@ -5,7 +5,6 @@ import logging
 from logging.handlers import RotatingFileHandler
 import sys
 import os
-import secrets
 from datetime import timedelta
 import structlog
 import warnings
@@ -25,8 +24,6 @@ from routes.artifact_routes import artifact_bp
 from routes.jarvis_voice_api import jarvis_voice_bp
 from routes.smart_home_api import smart_home_bp, limiter
 from routes.google_services_api import google_services_bp
-from routes.homeassistant_api import ha_bp
-from routes.ai_foundry_api import ai_foundry_bp
 from routes.jarvis_approval_api import jarvis_approval_bp
 from routes.logs_api import logs_api_bp
 from routes.celery_analytics_api import celery_analytics_bp
@@ -74,21 +71,6 @@ logging.basicConfig(
 logger = structlog.get_logger('dashboard')
 logger = logger.bind(service='dashboard')
 
-# Import environment detection config
-try:
-    from env_config.env import EnvironmentConfig, IS_REPLIT, IS_UBUNTU
-    logger.info("=" * 60)
-    logger.info(f"🌍 Environment Detected: {EnvironmentConfig.ENVIRONMENT}")
-    logger.info(f"📊 Configuration Summary:")
-    for key, value in EnvironmentConfig.summary().items():
-        logger.info(f"  {key}: {value}")
-    logger.info("=" * 60)
-except ImportError:
-    # Fallback if env.py doesn't exist yet
-    logger.warning("⚠️  Environment config not found, using defaults")
-    IS_REPLIT = os.path.exists('/home/runner')
-    IS_UBUNTU = not IS_REPLIT
-
 app = Flask(__name__, 
             template_folder='templates',
             static_folder='static')
@@ -124,49 +106,32 @@ if not app.debug and os.environ.get('FLASK_ENV') == 'production':
     
     logger.info("Production logging enabled - logs saved to logs/app.log")
 
-# Demo Mode Configuration
-DEMO_MODE = os.getenv('DEMO_MODE', 'true').lower() == 'true'
+# CRITICAL: Validate required environment variables
+missing_vars = []
+if not os.environ.get('WEB_USERNAME'):
+    missing_vars.append('WEB_USERNAME')
+if not os.environ.get('WEB_PASSWORD'):
+    missing_vars.append('WEB_PASSWORD')
 
-# Authentication - Demo Mode Fallback
-if DEMO_MODE:
-    WEB_USERNAME = os.getenv('WEB_USERNAME', 'evin')
-    WEB_PASSWORD = os.getenv('WEB_PASSWORD', 'homelab')
-    DASHBOARD_API_KEY = os.getenv('DASHBOARD_API_KEY', 'demo-api-key-' + secrets.token_urlsafe(16))
+if missing_vars:
+    logger.error("=" * 60)
+    logger.error("CRITICAL: Missing required environment variables!")
+    logger.error(f"Missing: {', '.join(missing_vars)}")
+    logger.error("Set these in your .env file before starting the dashboard.")
+    logger.error("Example:")
+    logger.error("  WEB_USERNAME=your_username")
+    logger.error("  WEB_PASSWORD=your_secure_password")
+    logger.error("=" * 60)
+    sys.exit(1)
+
+# Only show API key warning in development, not in production
+# (Production deployment via deploy.sh automatically generates the key)
+if not os.environ.get('DASHBOARD_API_KEY') and os.environ.get('FLASK_ENV') != 'production':
     logger.warning("=" * 60)
-    logger.warning("⚠️  DEMO MODE ENABLED - Using fallback credentials (evin/homelab)")
-    logger.warning("⚠️  This is for investor demos only - DO NOT use in production!")
+    logger.warning("DEVELOPMENT: DASHBOARD_API_KEY not set")
+    logger.warning("For production deployment, use: ./deploy.sh")
+    logger.warning("For manual setup, generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))'")
     logger.warning("=" * 60)
-else:
-    WEB_USERNAME = os.getenv('WEB_USERNAME')
-    WEB_PASSWORD = os.getenv('WEB_PASSWORD')
-    DASHBOARD_API_KEY = os.getenv('DASHBOARD_API_KEY')
-    
-    missing_vars = []
-    if not WEB_USERNAME:
-        missing_vars.append('WEB_USERNAME')
-    if not WEB_PASSWORD:
-        missing_vars.append('WEB_PASSWORD')
-    
-    if missing_vars:
-        logger.error("=" * 60)
-        logger.error("CRITICAL: Missing required environment variables!")
-        logger.error(f"Missing: {', '.join(missing_vars)}")
-        logger.error("Set these in your .env file before starting the dashboard.")
-        logger.error("Example:")
-        logger.error("  WEB_USERNAME=your_username")
-        logger.error("  WEB_PASSWORD=your_secure_password")
-        logger.error("Or set DEMO_MODE=true for demo/testing")
-        logger.error("=" * 60)
-        sys.exit(1)
-
-# Store in environment for other modules to access
-os.environ['WEB_USERNAME'] = WEB_USERNAME if WEB_USERNAME else ''
-os.environ['WEB_PASSWORD'] = WEB_PASSWORD if WEB_PASSWORD else ''
-os.environ['DASHBOARD_API_KEY'] = DASHBOARD_API_KEY if DASHBOARD_API_KEY else ''
-
-# Set secret key with proper type handling
-SECRET_KEY = DASHBOARD_API_KEY if DASHBOARD_API_KEY else secrets.token_urlsafe(32)
-app.config['SECRET_KEY'] = SECRET_KEY
 
 CORS(app, resources={r"/api/*": {
     "origins": [
@@ -200,8 +165,6 @@ app.register_blueprint(dns_bp)
 app.register_blueprint(nas_bp)
 app.register_blueprint(marketplace_bp)
 app.register_blueprint(agent_bp)
-app.register_blueprint(ha_bp)
-app.register_blueprint(ai_foundry_bp)
 
 # Initialize WebSocket service
 websocket_service.init_app(app)
@@ -267,8 +230,9 @@ if db_service.is_available:
             from services.marketplace_service import marketplace_service
             
             # Only load if catalog is empty
-            with db_service.get_session() as session:
-                template_count = session.query(ContainerTemplate).count()
+            session = get_session()
+            template_count = session.query(ContainerTemplate).count()
+            session.close()
             
             if template_count == 0:
                 logger.info("Marketplace catalog is empty, loading templates from catalog file...")

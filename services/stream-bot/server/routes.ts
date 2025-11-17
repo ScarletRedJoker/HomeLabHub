@@ -35,7 +35,6 @@ import { analyticsService } from "./analytics-service";
 import { tokenRefreshService } from "./token-refresh-service";
 import { quotaService } from "./quota-service";
 import { getHealthStatus } from "./health";
-import { IS_REPLIT, ENV_CONFIG } from './config/env';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/auth", oauthSignInRoutes);
@@ -54,27 +53,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   tokenRefreshService.start();
 
   // Initialize WebSocket server on /ws path (Reference: javascript_websocket blueprint)
-  // Create WebSocket server with comprehensive error handling
-  let wss: WebSocketServer;
-  try {
-    wss = new WebSocketServer({ noServer: true });
-    console.log('✅ Stream Bot WebSocket server created successfully on path /ws');
-  } catch (error: any) {
-    console.error('❌ Stream Bot WebSocket creation failed:', error.message);
-    // Create dummy WebSocket to prevent crashes
-    wss = new WebSocketServer({ noServer: true });
-    console.warn('⚠️  Running with limited WebSocket functionality');
-  }
-  
-  // Add comprehensive error handler for WebSocket
-  wss.on('error', (error: any) => {
-    if (error.code === 'EADDRINUSE') {
-      console.error('WebSocket port conflict - another service may be using WebSocket');
-      console.warn('⚠️  WebSocket features may not work properly');
-    } else {
-      console.error('WebSocket error:', error.message);
-    }
-  });
+  const wss = new WebSocketServer({ noServer: true });
 
   // Authenticate WebSocket upgrades using session middleware
   httpServer.on("upgrade", (request: any, socket, head) => {
@@ -247,10 +226,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         uptime: Math.floor(process.uptime()),
         timestamp: new Date().toISOString(),
         service: 'stream-bot',
-        environment: ENV_CONFIG.environment,
-        port: ENV_CONFIG.port,
-        demoMode: ENV_CONFIG.demoMode,
-        redisEnabled: ENV_CONFIG.redisEnabled,
         bot: {
           totalWorkers: managerStats.totalWorkers,
           activeWorkers: managerStats.activeWorkers,

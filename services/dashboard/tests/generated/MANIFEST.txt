@@ -1,2 +1,0 @@
-dashboard: 2 routes generated
-dashboard: 2 routes generated

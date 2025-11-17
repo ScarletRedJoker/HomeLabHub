@@ -39,23 +39,6 @@ class MarketplaceService:
         alphabet = string.ascii_letters + string.digits
         return ''.join(secrets.choice(alphabet) for _ in range(length))
     
-    def _load_templates_from_json(self) -> List[dict]:
-        """Load templates from JSON file as fallback when database is unavailable"""
-        try:
-            if not self.catalog_path.exists():
-                logger.warning(f"Catalog file not found: {self.catalog_path}")
-                return []
-            
-            with open(self.catalog_path, 'r') as f:
-                catalog = json.load(f)
-            
-            templates = catalog.get('templates', [])
-            logger.info(f"Loaded {len(templates)} templates from JSON file (fallback mode)")
-            return templates
-        except Exception as e:
-            logger.error(f"Error loading templates from JSON: {e}")
-            return []
-    
     def load_catalog_templates(self) -> Tuple[bool, str]:
         """Load templates from marketplace catalog into database"""
         session = get_session()
@@ -118,24 +101,20 @@ class MarketplaceService:
     
     def get_featured_templates(self) -> List[dict]:
         """Get featured marketplace apps"""
+        session = get_session()
         try:
-            session = get_session()
             templates = session.query(ContainerTemplate).filter_by(
                 featured=True
             ).order_by(ContainerTemplate.rating.desc()).all()
             
-            result = [template.to_dict() for template in templates]
+            return [template.to_dict() for template in templates]
+        finally:
             session.close()
-            return result
-        except Exception as e:
-            logger.warning(f"Database unavailable, falling back to JSON: {e}")
-            templates = self._load_templates_from_json()
-            return [t for t in templates if t.get('featured', False)]
     
     def get_templates_by_category(self, category: str) -> List[dict]:
         """Get apps by category"""
+        session = get_session()
         try:
-            session = get_session()
             if category.lower() == 'all':
                 templates = session.query(ContainerTemplate).order_by(
                     ContainerTemplate.rating.desc()
@@ -145,20 +124,14 @@ class MarketplaceService:
                     category=category
                 ).order_by(ContainerTemplate.rating.desc()).all()
             
-            result = [template.to_dict() for template in templates]
+            return [template.to_dict() for template in templates]
+        finally:
             session.close()
-            return result
-        except Exception as e:
-            logger.warning(f"Database unavailable, falling back to JSON: {e}")
-            templates = self._load_templates_from_json()
-            if category.lower() == 'all':
-                return templates
-            return [t for t in templates if t.get('category') == category]
     
     def search_templates(self, query: str) -> List[dict]:
         """Search marketplace templates"""
+        session = get_session()
         try:
-            session = get_session()
             query_lower = query.lower()
             templates = session.query(ContainerTemplate).filter(
                 (ContainerTemplate.name.ilike(f'%{query_lower}%')) |
@@ -166,19 +139,9 @@ class MarketplaceService:
                 (ContainerTemplate.description.ilike(f'%{query_lower}%'))
             ).order_by(ContainerTemplate.rating.desc()).all()
             
-            result = [template.to_dict() for template in templates]
+            return [template.to_dict() for template in templates]
+        finally:
             session.close()
-            return result
-        except Exception as e:
-            logger.warning(f"Database unavailable, falling back to JSON: {e}")
-            templates = self._load_templates_from_json()
-            query_lower = query.lower()
-            return [
-                t for t in templates 
-                if query_lower in t.get('name', '').lower() 
-                or query_lower in t.get('display_name', '').lower()
-                or query_lower in t.get('description', '').lower()
-            ]
     
     def get_template_details(self, template_id: str) -> Optional[dict]:
         """Get full template info with dependencies"""

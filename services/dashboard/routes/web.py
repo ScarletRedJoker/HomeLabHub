@@ -236,26 +236,6 @@ def jarvis_demo():
     response.headers['Expires'] = '0'
     return response
 
-@web_bp.route('/smart-home')
-@require_web_auth
-def smart_home_new():
-    """Smart Home Control - Home Assistant Integration"""
-    response = make_response(render_template('smart_home.html'))
-    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '0'
-    return response
-
-@web_bp.route('/ai-foundry')
-@require_web_auth
-def ai_foundry():
-    """Local AI Foundry - Ollama Model Management"""
-    response = make_response(render_template('ai_foundry.html'))
-    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '0'
-    return response
-
 @web_bp.route('/api/preferences', methods=['GET'])
 @require_web_auth
 def get_preferences():

@@ -44,60 +44,24 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd services/stream-bot && APP_URL=\"https://${REPLIT_DEV_DOMAIN}\" TWITCH_SIGNIN_CALLBACK_URL=\"https://${REPLIT_DEV_DOMAIN}:3003/api/auth/twitch/callback\" YOUTUBE_SIGNIN_CALLBACK_URL=\"https://${REPLIT_DEV_DOMAIN}:3003/api/auth/youtube/callback\" KICK_SIGNIN_CALLBACK_URL=\"https://${REPLIT_DEV_DOMAIN}:3003/api/auth/kick/callback\" PORT=3003 npm run dev"
-waitForPort = 3003
+args = "cd services/stream-bot && APP_URL=\"https://${REPLIT_DEV_DOMAIN}\" TWITCH_SIGNIN_CALLBACK_URL=\"https://${REPLIT_DEV_DOMAIN}/api/auth/twitch/callback\" YOUTUBE_SIGNIN_CALLBACK_URL=\"https://${REPLIT_DEV_DOMAIN}/api/auth/youtube/callback\" KICK_SIGNIN_CALLBACK_URL=\"https://${REPLIT_DEV_DOMAIN}/api/auth/kick/callback\" PORT=3000 npm run dev"
+waitForPort = 3000
 
 [[ports]]
 localPort = 3000
 externalPort = 3000
 
 [[ports]]
-localPort = 3001
-externalPort = 3001
-
-[[ports]]
-localPort = 3002
-externalPort = 3002
-
-[[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 6379
-externalPort = 4200
 
 [[ports]]
 localPort = 24678
 externalPort = 3001
 
 [[ports]]
-localPort = 36925
-externalPort = 3003
-
-[[ports]]
-localPort = 37239
+localPort = 34397
 externalPort = 3002
-
-[[ports]]
-localPort = 39745
-externalPort = 5000
-
-[[ports]]
-localPort = 41755
-externalPort = 6800
-
-[[ports]]
-localPort = 42183
-externalPort = 6000
-
-[[ports]]
-localPort = 42311
-externalPort = 5173
-
-[[ports]]
-localPort = 43223
-externalPort = 8000
 
 [[ports]]
 localPort = 46877
