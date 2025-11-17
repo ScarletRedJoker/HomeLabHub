@@ -198,24 +198,31 @@ logger.info("=" * 60)
 logger.info("Initializing Jarvis Platform Database")
 logger.info("=" * 60)
 
+# DISABLED: Auto-migration disabled to prevent concurrent worker conflicts
+# Migrations must be run manually once: docker exec homelab-dashboard alembic upgrade head
+# if db_service.is_available:
+#     logger.info("Database service is available, running migrations...")
+#     if db_service.run_migrations():
+#         logger.info("✓ Database migrations completed successfully")
+#         db_status = db_service.health_check()
+#         if db_status['healthy']:
+#             logger.info("✓ Database health check passed")
+#             migration_status = db_service.get_migration_status()
+#             if migration_status.get('available'):
+#                 logger.info(f"✓ Current migration: {migration_status.get('current_revision', 'None')}")
+#                 logger.info(f"✓ Latest migration: {migration_status.get('head_revision', 'None')}")
+#         else:
+#             logger.warning(f"⚠ Database health check failed: {db_status.get('error')}")
+#     else:
+#         logger.warning("⚠ Database migrations failed or skipped")
+# else:
+#     logger.warning("⚠ Database service not available (JARVIS_DATABASE_URL not set)")
+#     logger.warning("  The dashboard will run without database-backed features")
+
 if db_service.is_available:
-    logger.info("Database service is available, running migrations...")
-    if db_service.run_migrations():
-        logger.info("✓ Database migrations completed successfully")
-        db_status = db_service.health_check()
-        if db_status['healthy']:
-            logger.info("✓ Database health check passed")
-            migration_status = db_service.get_migration_status()
-            if migration_status.get('available'):
-                logger.info(f"✓ Current migration: {migration_status.get('current_revision', 'None')}")
-                logger.info(f"✓ Latest migration: {migration_status.get('head_revision', 'None')}")
-        else:
-            logger.warning(f"⚠ Database health check failed: {db_status.get('error')}")
-    else:
-        logger.warning("⚠ Database migrations failed or skipped")
+    logger.info("✓ Database service connected")
 else:
-    logger.warning("⚠ Database service not available (JARVIS_DATABASE_URL not set)")
-    logger.warning("  The dashboard will run without database-backed features")
+    logger.warning("⚠ Database service not available")
 
 logger.info("=" * 60)
 
