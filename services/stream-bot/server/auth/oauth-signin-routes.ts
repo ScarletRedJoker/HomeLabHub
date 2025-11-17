@@ -63,7 +63,7 @@ router.get('/youtube',
     ],
     accessType: 'offline',
     prompt: 'consent',
-  })
+  } as any)
 );
 
 router.get('/youtube/callback',

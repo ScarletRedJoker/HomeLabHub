@@ -8,7 +8,7 @@ import sys
 import yaml
 import re
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set, Tuple, Union
 
 # Add parent to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -46,8 +46,8 @@ class NetworkValidator:
         with open(self.compose_file) as f:
             compose = yaml.safe_load(f)
         
-        # Extract port mappings
-        port_mappings: Dict[int, List[str]] = {}
+        # Extract port mappings (using sets to avoid duplicates)
+        port_mappings: Dict[int, Set[str]] = {}
         services = compose.get('services', {})
         
         for service_name, service_config in services.items():
@@ -61,8 +61,8 @@ class NetworkValidator:
                     try:
                         host_port_num = int(host_port)
                         if host_port_num not in port_mappings:
-                            port_mappings[host_port_num] = []
-                        port_mappings[host_port_num].append(service_name)
+                            port_mappings[host_port_num] = set()
+                        port_mappings[host_port_num].add(service_name)
                     except ValueError:
                         continue
         

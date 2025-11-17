@@ -29,7 +29,7 @@ class ModerationService {
 
   private cleanCache(): void {
     const now = Date.now();
-    for (const [key, cache] of this.messageCache.entries()) {
+    for (const [key, cache] of Array.from(this.messageCache.entries())) {
       if (now - cache.timestamp > this.CACHE_TTL) {
         this.messageCache.delete(key);
       }
@@ -153,7 +153,7 @@ class ModerationService {
       severity = "medium";
     }
 
-    const shouldTrigger = this.checkSeverityThreshold(severity, rule.severity);
+    const shouldTrigger = this.checkSeverityThreshold(severity, rule.severity as "low" | "medium" | "high");
     
     if (!shouldTrigger) {
       return { allow: true, action: "allow" };
@@ -161,7 +161,7 @@ class ModerationService {
 
     return {
       allow: false,
-      action: rule.action,
+      action: rule.action as "warn" | "timeout" | "ban" | "allow",
       ruleTriggered: "toxic",
       severity,
       reason: `Toxic content detected: ${triggeredCategories.join(", ")}`,
@@ -195,25 +195,26 @@ class ModerationService {
       if (uniqueMessages.size <= 2) {
         return {
           allow: false,
-          action: rule.action,
+          action: rule.action as "warn" | "timeout" | "ban" | "allow",
           ruleTriggered: "spam",
-          severity: rule.severity,
+          severity: rule.severity as "low" | "medium" | "high" | undefined,
           reason: "Repetitive messages detected",
           timeoutDuration: rule.timeoutDuration || 60
         };
       }
     }
     
-    const emojiRegex = /[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu;
+    // Count emojis using character ranges that work without ES6 unicode flag
+    const emojiRegex = /[\uD800-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF]/g;
     const emojis = message.match(emojiRegex);
     const emojiCount = emojis ? emojis.length : 0;
     
     if (emojiCount > 10) {
       return {
         allow: false,
-        action: rule.action,
+        action: rule.action as "warn" | "timeout" | "ban" | "allow",
         ruleTriggered: "spam",
-        severity: rule.severity,
+        severity: rule.severity as "low" | "medium" | "high" | undefined,
         reason: "Excessive emojis detected",
         timeoutDuration: rule.timeoutDuration || 60
       };
@@ -260,9 +261,9 @@ class ModerationService {
       if (!isWhitelisted) {
         return {
           allow: false,
-          action: rule.action,
+          action: rule.action as "warn" | "timeout" | "ban" | "allow",
           ruleTriggered: "links",
-          severity: rule.severity,
+          severity: rule.severity as "low" | "medium" | "high" | undefined,
           reason: `Unauthorized link detected: ${domain}`,
           timeoutDuration: rule.timeoutDuration || 60
         };
@@ -317,9 +318,9 @@ class ModerationService {
     if (capsPercentage > 50) {
       return {
         allow: false,
-        action: rule.action,
+        action: rule.action as "warn" | "timeout" | "ban" | "allow",
         ruleTriggered: "caps",
-        severity: rule.severity,
+        severity: rule.severity as "low" | "medium" | "high" | undefined,
         reason: `Excessive caps detected (${Math.round(capsPercentage)}%)`,
         timeoutDuration: rule.timeoutDuration || 60
       };
@@ -338,15 +339,16 @@ class ModerationService {
     if (matches && matches.length > 0) {
       return {
         allow: false,
-        action: rule.action,
+        action: rule.action as "warn" | "timeout" | "ban" | "allow",
         ruleTriggered: "symbols",
-        severity: rule.severity,
+        severity: rule.severity as "low" | "medium" | "high" | undefined,
         reason: "Repeated characters/symbol spam detected",
         timeoutDuration: rule.timeoutDuration || 60
       };
     }
 
-    const symbolRegex = /[^\w\s\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu;
+    // Count symbols excluding word characters, whitespace, and common emojis
+    const symbolRegex = /[^\w\s\uD800-\uDBFF\uDC00-\uDFFF\u2600-\u27BF]/g;
     const symbols = message.match(symbolRegex);
     const symbolCount = symbols ? symbols.length : 0;
     const totalChars = message.length;
@@ -354,9 +356,9 @@ class ModerationService {
     if (totalChars > 0 && (symbolCount / totalChars) > 0.3) {
       return {
         allow: false,
-        action: rule.action,
+        action: rule.action as "warn" | "timeout" | "ban" | "allow",
         ruleTriggered: "symbols",
-        severity: rule.severity,
+        severity: rule.severity as "low" | "medium" | "high" | undefined,
         reason: "Excessive symbols detected",
         timeoutDuration: rule.timeoutDuration || 60
       };

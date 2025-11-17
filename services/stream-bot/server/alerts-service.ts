@@ -25,7 +25,7 @@ export class AlertsService {
 
   async triggerFollowerAlert(
     username: string,
-    platform: string
+    platform: "twitch" | "youtube" | "kick"
   ): Promise<{ success: boolean; message: string | null; shouldPost: boolean }> {
     return this.triggerAlert(this.storage['userId'], "follower", platform, { username });
   }
@@ -33,7 +33,7 @@ export class AlertsService {
   async triggerSubAlert(
     username: string,
     tier: string,
-    platform: string,
+    platform: "twitch" | "youtube" | "kick",
     months?: number
   ): Promise<{ success: boolean; message: string | null; shouldPost: boolean }> {
     return this.triggerAlert(this.storage['userId'], "subscriber", platform, { username, tier, months });
@@ -42,7 +42,7 @@ export class AlertsService {
   async triggerRaidAlert(
     raiderName: string,
     viewerCount: number,
-    platform: string
+    platform: "twitch" | "youtube" | "kick"
   ): Promise<{ success: boolean; message: string | null; shouldPost: boolean }> {
     return this.triggerAlert(this.storage['userId'], "raid", platform, { raider: raiderName, viewers: viewerCount });
   }
@@ -50,7 +50,7 @@ export class AlertsService {
   async checkMilestone(
     milestoneType: "followers" | "subscribers",
     currentCount: number,
-    platform: string
+    platform: "twitch" | "youtube" | "kick"
   ): Promise<{ milestone: number; message: string } | null> {
     return this.trackMilestone(this.storage['userId'], milestoneType, currentCount, platform);
   }
@@ -58,7 +58,7 @@ export class AlertsService {
   async triggerAlert(
     userId: string,
     alertType: "follower" | "subscriber" | "raid" | "milestone",
-    platform: string,
+    platform: "twitch" | "youtube" | "kick",
     data: AlertTriggerData
   ): Promise<{ success: boolean; message: string | null; shouldPost: boolean }> {
     try {
@@ -132,7 +132,7 @@ export class AlertsService {
     userId: string,
     milestoneType: "followers" | "subscribers",
     currentCount: number,
-    platform: string
+    platform: "twitch" | "youtube" | "kick"
   ): Promise<{ milestone: number; message: string } | null> {
     try {
       const settings = await this.storage.getAlertSettings();
@@ -153,14 +153,14 @@ export class AlertsService {
       }
 
       // Check if this milestone was already achieved
-      const existing = await this.storage.getMilestone(userId, milestoneType, achievedMilestone);
+      const existing = await this.storage.getMilestone(milestoneType, achievedMilestone);
       if (existing?.achieved) {
         return null;
       }
 
       // Mark milestone as achieved
       if (existing) {
-        await this.storage.updateMilestone(userId, existing.id, {
+        await this.storage.updateMilestone(existing.id, {
           achieved: true,
           achievedAt: new Date(),
         });
@@ -204,7 +204,7 @@ export class AlertsService {
     limit: number = 50
   ) {
     try {
-      return await this.storage.getAlertHistory(userId, alertType, limit);
+      return await this.storage.getAlertHistory(alertType, limit);
     } catch (error) {
       console.error(`[AlertsService] Error getting alert history:`, error);
       return [];
@@ -223,7 +223,7 @@ export class AlertsService {
       }
 
       const thresholds = settings.milestoneThresholds || [];
-      const achieved = await this.storage.getMilestones(userId, milestoneType);
+      const achieved = await this.storage.getMilestones(milestoneType);
 
       // For demo purposes, we'll use achieved milestones count as current count
       // In production, this would come from the actual platform API
@@ -269,7 +269,7 @@ export class AlertsService {
   async testAlert(
     userId: string,
     alertType: "follower" | "subscriber" | "raid" | "milestone",
-    platform: string = "twitch"
+    platform: "twitch" | "youtube" | "kick" = "twitch"
   ): Promise<{ success: boolean; message: string | null }> {
     try {
       const testData: AlertTriggerData = {};

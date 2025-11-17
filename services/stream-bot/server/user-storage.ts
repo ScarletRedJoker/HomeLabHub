@@ -65,6 +65,10 @@ import type {
 export class UserStorage {
   constructor(private userId: string) {}
 
+  getUserId(): string {
+    return this.userId;
+  }
+
   // Platform Connections
   async getPlatformConnections(): Promise<PlatformConnection[]> {
     return storage.getPlatformConnections(this.userId);

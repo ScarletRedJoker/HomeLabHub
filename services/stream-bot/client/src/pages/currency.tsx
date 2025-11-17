@@ -285,9 +285,8 @@ export default function Currency() {
 
   const fulfillRedemptionMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest(`/api/currency/redemptions/${id}/fulfill`, {
-        method: "POST",
-      });
+      const res = await apiRequest("POST", `/api/currency/redemptions/${id}/fulfill`);
+      return await res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/currency/redemptions"] });

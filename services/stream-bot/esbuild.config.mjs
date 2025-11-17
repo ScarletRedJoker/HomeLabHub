@@ -24,9 +24,6 @@ await build({
     './vite.dev',
     './vite.ts',
     './vite',
-    // Runtime-only dependencies (not needed in build)
-    'winston',
-    'ioredis',
   ],
   plugins: [
     {

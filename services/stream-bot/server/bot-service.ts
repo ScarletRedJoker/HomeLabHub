@@ -1,18 +1,23 @@
 import tmi from "tmi.js";
-import cron from "node-cron";
+import * as cron from "node-cron";
 import { storage } from "./storage";
 import { generateSnappleFact } from "./openai";
 import { WebSocket } from "ws";
 
 export class BotService {
   private twitchClient: tmi.Client | null = null;
-  private cronJob: cron.ScheduledTask | null = null;
+  private cronJob: ReturnType<typeof cron.schedule> | null = null;
   private randomTimeout: NodeJS.Timeout | null = null;
   private wsClients: Set<WebSocket> = new Set();
   private isRunning = false;
+  private userId: string | null = null;
 
   constructor() {
     this.initialize();
+  }
+  
+  setUserId(userId: string) {
+    this.userId = userId;
   }
 
   // WebSocket management for real-time updates
@@ -38,22 +43,23 @@ export class BotService {
   }
 
   private async initialize() {
-    const settings = await storage.getBotSettings();
+    if (!this.userId) return;
+    const settings = await storage.getBotSettings(this.userId);
     if (settings?.isActive) {
       await this.start();
     }
   }
 
   async start() {
-    if (this.isRunning) return;
+    if (this.isRunning || !this.userId) return;
     
     this.isRunning = true;
-    const settings = await storage.getBotSettings();
+    const settings = await storage.getBotSettings(this.userId);
     
     if (!settings) return;
 
     // Start Twitch client if connected
-    const twitchConnection = await storage.getPlatformConnectionByPlatform("twitch");
+    const twitchConnection = await storage.getPlatformConnectionByPlatform(this.userId, "twitch");
     if (twitchConnection?.isConnected && settings.enableChatTriggers) {
       await this.startTwitchClient(twitchConnection, settings.chatKeywords || []);
     }
@@ -170,7 +176,8 @@ export class BotService {
   }
 
   private async postScheduledFact() {
-    const settings = await storage.getBotSettings();
+    if (!this.userId) return;
+    const settings = await storage.getBotSettings(this.userId);
     if (!settings?.isActive || !settings.activePlatforms || settings.activePlatforms.length === 0) {
       return;
     }
@@ -183,7 +190,8 @@ export class BotService {
   }
 
   async generateFact(): Promise<string> {
-    const settings = await storage.getBotSettings();
+    if (!this.userId) throw new Error("BotService not initialized with userId");
+    const settings = await storage.getBotSettings(this.userId);
     const model = settings?.aiModel || "gpt-5-mini";
     const customPrompt = settings?.aiPromptTemplate || undefined;
 
@@ -195,6 +203,8 @@ export class BotService {
     triggerType: string,
     triggerUser?: string
   ): Promise<string | null> {
+    if (!this.userId) return null;
+    
     try {
       const fact = await this.generateFact();
 
@@ -203,7 +213,8 @@ export class BotService {
         await this.postToPlatform(platform, fact);
 
         // Log message
-        await storage.createMessage({
+        await storage.createMessage(this.userId, {
+          userId: this.userId,
           platform,
           triggerType,
           triggerUser,
@@ -221,7 +232,7 @@ export class BotService {
       });
 
       // Update last posted time
-      await storage.updateBotSettings({
+      await storage.updateBotSettings(this.userId, {
         lastFactPostedAt: new Date(),
       });
 
@@ -231,7 +242,8 @@ export class BotService {
       
       // Log failed attempts
       for (const platform of platforms) {
-        await storage.createMessage({
+        await storage.createMessage(this.userId, {
+          userId: this.userId,
           platform,
           triggerType,
           triggerUser,
@@ -246,7 +258,8 @@ export class BotService {
   }
 
   private async postToPlatform(platform: string, message: string) {
-    const connection = await storage.getPlatformConnectionByPlatform(platform);
+    if (!this.userId) throw new Error("BotService not initialized with userId");
+    const connection = await storage.getPlatformConnectionByPlatform(this.userId, platform);
     
     if (!connection?.isConnected) {
       throw new Error(`Platform ${platform} is not connected`);
