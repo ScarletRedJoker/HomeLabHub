@@ -15,7 +15,7 @@ from urllib.parse import urlparse
 class DomainService:
     """Service for monitoring domain health and SSL certificates."""
     
-    # Configured domains from your homelab
+    # All 13 configured domains from homelab
     DOMAINS = [
         {
             'name': 'Homelab Dashboard',
@@ -39,6 +39,20 @@ class DomainService:
             'container': 'stream-bot'
         },
         {
+            'name': 'Rig City Website',
+            'url': 'https://rig-city.com',
+            'subdomain': 'rig-city.com',
+            'type': 'static',
+            'container': 'rig-city-site'
+        },
+        {
+            'name': 'Rig City WWW',
+            'url': 'https://www.rig-city.com',
+            'subdomain': 'www.rig-city.com',
+            'type': 'redirect',
+            'container': 'rig-city-site'
+        },
+        {
             'name': 'Plex Media Server',
             'url': 'https://plex.evindrake.net',
             'subdomain': 'plex.evindrake.net',
@@ -53,18 +67,46 @@ class DomainService:
             'container': 'n8n'
         },
         {
+            'name': 'VNC Desktop',
+            'url': 'https://vnc.evindrake.net',
+            'subdomain': 'vnc.evindrake.net',
+            'type': 'remote',
+            'container': 'vnc-desktop'
+        },
+        {
+            'name': 'Code Server',
+            'url': 'https://code.evindrake.net',
+            'subdomain': 'code.evindrake.net',
+            'type': 'development',
+            'container': 'code-server'
+        },
+        {
+            'name': 'Game Streaming',
+            'url': 'https://game.evindrake.net',
+            'subdomain': 'game.evindrake.net',
+            'type': 'gaming',
+            'container': 'homelab-dashboard'
+        },
+        {
+            'name': 'Home Assistant',
+            'url': 'https://home.evindrake.net',
+            'subdomain': 'home.evindrake.net',
+            'type': 'automation',
+            'container': 'homeassistant'
+        },
+        {
             'name': 'Scarlet Red Joker',
             'url': 'https://scarletredjoker.com',
             'subdomain': 'scarletredjoker.com',
             'type': 'static',
-            'container': 'scarletredjoker'
+            'container': 'scarletredjoker-web'
         },
         {
-            'name': 'Traefik Dashboard',
-            'url': 'https://traefik.evindrake.net',
-            'subdomain': 'traefik.evindrake.net',
-            'type': 'proxy',
-            'container': 'traefik'
+            'name': 'Scarlet Red Joker WWW',
+            'url': 'https://www.scarletredjoker.com',
+            'subdomain': 'www.scarletredjoker.com',
+            'type': 'redirect',
+            'container': 'scarletredjoker-web'
         }
     ]
     
@@ -150,6 +192,10 @@ class DomainService:
             with socket.create_connection((hostname, port), timeout=5) as sock:
                 with context.wrap_socket(sock, server_hostname=hostname) as ssock:
                     cert = ssock.getpeercert()
+                    
+                    # Check if certificate was retrieved
+                    if cert is None:
+                        return {'valid': False, 'error': 'No certificate found'}
                     
                     # Parse expiration date
                     expires_str = cert.get('notAfter', '')
@@ -253,3 +299,38 @@ class DomainService:
                 certificates.append(cert_info)
         
         return certificates
+    
+    @staticmethod
+    def get_domains_expiring_soon(days_threshold: int = 30) -> List[Dict[str, Any]]:
+        """
+        Get domains with SSL certificates expiring soon.
+        
+        Args:
+            days_threshold: Number of days to check (default: 30)
+            
+        Returns:
+            List of domains with certificates expiring within the threshold
+        """
+        expiring_domains = []
+        
+        for domain in DomainService.DOMAINS:
+            if domain['url'].startswith('https://'):
+                ssl_info = DomainService._check_ssl(domain['subdomain'])
+                
+                if ssl_info['valid']:
+                    days_remaining = ssl_info.get('days_remaining', 999)
+                    
+                    if days_remaining < days_threshold:
+                        expiring_domains.append({
+                            'name': domain['name'],
+                            'subdomain': domain['subdomain'],
+                            'url': domain['url'],
+                            'days_remaining': days_remaining,
+                            'expires': ssl_info.get('expires'),
+                            'severity': 'critical' if days_remaining < 7 else 'warning'
+                        })
+        
+        # Sort by days remaining (most urgent first)
+        expiring_domains.sort(key=lambda x: x['days_remaining'])
+        
+        return expiring_domains

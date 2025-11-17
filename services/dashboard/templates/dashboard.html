@@ -695,6 +695,114 @@
     </div>
 </div>
 
+<!-- Security Monitoring Grid -->
+<div class="dashboard-grid">
+    <!-- SSL Certificate Monitoring -->
+    <div class="widget">
+        <div class="widget-header">
+            <span class="status-led" id="ssl-status-led"></span>
+            <div class="widget-icon" style="background: linear-gradient(135deg, rgba(96, 165, 250, 0.2), rgba(59, 130, 246, 0.2));">
+                <i class="bi bi-shield-lock" style="color: var(--accent-blue);"></i>
+            </div>
+            <div class="widget-title">SSL Certificates</div>
+        </div>
+        <div id="ssl-monitoring" style="font-size: 0.875rem;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 16px; padding: 12px; background: rgba(31, 41, 55, 0.5); border-radius: 8px;">
+                <div style="text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-green);" id="ssl-healthy-count">-</div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase;">Valid</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-yellow);" id="ssl-warning-count">-</div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase;">Expiring Soon</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-red);" id="ssl-critical-count">-</div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase;">Critical</div>
+                </div>
+            </div>
+            <div id="ssl-expiring-list">
+                <div class="activity-item">
+                    <div class="activity-icon"><i class="bi bi-hourglass-split"></i></div>
+                    <div>
+                        <div style="font-weight: 500;">Checking SSL certificates...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Failed Login Monitoring -->
+    <div class="widget">
+        <div class="widget-header">
+            <span class="status-led" id="security-status-led"></span>
+            <div class="widget-icon" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.2));">
+                <i class="bi bi-shield-exclamation" style="color: var(--accent-red);"></i>
+            </div>
+            <div class="widget-title">Security Alerts</div>
+        </div>
+        <div id="security-monitoring" style="font-size: 0.875rem;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 16px; padding: 12px; background: rgba(31, 41, 55, 0.5); border-radius: 8px;">
+                <div style="text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-red);" id="failed-login-count">-</div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase;">Failed Logins</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-yellow);" id="unique-ips-count">-</div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase;">Unique IPs</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-purple);" id="service-failures-count">-</div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase;">Service Failures</div>
+                </div>
+            </div>
+            <div id="security-alerts-list">
+                <div class="activity-item">
+                    <div class="activity-icon"><i class="bi bi-hourglass-split"></i></div>
+                    <div>
+                        <div style="font-weight: 500;">Checking security status...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Domain Health Overview -->
+    <div class="widget">
+        <div class="widget-header">
+            <span class="status-led" id="domain-status-led"></span>
+            <div class="widget-icon" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(124, 58, 237, 0.2));">
+                <i class="bi bi-globe" style="color: var(--accent-purple);"></i>
+            </div>
+            <div class="widget-title">Domain Health (13 Domains)</div>
+        </div>
+        <div id="domain-health" style="font-size: 0.875rem;">
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
+                <div style="text-align: center; padding: 12px; background: rgba(31, 41, 55, 0.5); border-radius: 8px;">
+                    <div style="font-size: 1.25rem; font-weight: 700; color: var(--accent-green);" id="domains-online">-</div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase;">Online</div>
+                </div>
+                <div style="text-align: center; padding: 12px; background: rgba(31, 41, 55, 0.5); border-radius: 8px;">
+                    <div style="font-size: 1.25rem; font-weight: 700; color: var(--accent-red);" id="domains-offline">-</div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase;">Offline</div>
+                </div>
+                <div style="text-align: center; padding: 12px; background: rgba(31, 41, 55, 0.5); border-radius: 8px;">
+                    <div style="font-size: 1.25rem; font-weight: 700; color: var(--accent-blue);" id="avg-response-time">-</div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase;">Avg Response</div>
+                </div>
+            </div>
+            <div id="domain-issues-list" style="max-height: 200px; overflow-y: auto;">
+                <div class="activity-item">
+                    <div class="activity-icon"><i class="bi bi-hourglass-split"></i></div>
+                    <div>
+                        <div style="font-weight: 500;">Checking domain health...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Favicon Management Modal -->
 <div class="favicon-modal-overlay" id="faviconModalOverlay">
     <div class="favicon-modal">
@@ -1051,14 +1159,189 @@ async function updateCeleryHealth() {
     }
 }
 
+async function updateSecurityMonitoring() {
+    try {
+        const response = await fetch('/api/security/summary');
+        const result = await response.json();
+        
+        if (!result.success) return;
+        
+        const data = result.data;
+        
+        // SSL Certificate Monitoring
+        const sslExpiring = data.ssl_expiration.domains || [];
+        document.getElementById('ssl-healthy-count').textContent = (13 - sslExpiring.length);
+        document.getElementById('ssl-warning-count').textContent = sslExpiring.filter(d => d.severity === 'warning').length;
+        document.getElementById('ssl-critical-count').textContent = sslExpiring.filter(d => d.severity === 'critical').length;
+        
+        const sslLed = document.getElementById('ssl-status-led');
+        if (sslExpiring.length === 0) {
+            sslLed.className = 'status-led online';
+        } else if (sslExpiring.some(d => d.severity === 'critical')) {
+            sslLed.className = 'status-led offline';
+        } else {
+            sslLed.className = 'status-led warning';
+        }
+        
+        const sslList = document.getElementById('ssl-expiring-list');
+        if (sslExpiring.length === 0) {
+            sslList.innerHTML = `
+                <div class="activity-item">
+                    <div class="activity-icon" style="color: var(--accent-green);"><i class="bi bi-shield-check"></i></div>
+                    <div>
+                        <div style="font-weight: 500; color: var(--accent-green);">All certificates valid</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">No SSL certificates expiring soon</div>
+                    </div>
+                </div>
+            `;
+        } else {
+            let html = '';
+            sslExpiring.slice(0, 5).forEach(domain => {
+                const color = domain.severity === 'critical' ? 'var(--accent-red)' : 'var(--accent-yellow)';
+                html += `
+                    <div class="activity-item">
+                        <div class="activity-icon" style="color: ${color};"><i class="bi bi-shield-exclamation"></i></div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 500; color: ${color};">${domain.name}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">${domain.days_remaining} days remaining</div>
+                        </div>
+                    </div>
+                `;
+            });
+            sslList.innerHTML = html;
+        }
+        
+        // Security Alerts
+        const failedLogins = data.failed_logins;
+        document.getElementById('failed-login-count').textContent = failedLogins.total_alerts || 0;
+        document.getElementById('unique-ips-count').textContent = failedLogins.unique_ips || 0;
+        document.getElementById('service-failures-count').textContent = data.service_failures.total_failures || 0;
+        
+        const securityLed = document.getElementById('security-status-led');
+        if (failedLogins.total_alerts === 0 && data.service_failures.total_failures === 0) {
+            securityLed.className = 'status-led online';
+        } else if (failedLogins.high_severity_count > 0 || data.service_failures.total_failures > 10) {
+            securityLed.className = 'status-led offline';
+        } else {
+            securityLed.className = 'status-led warning';
+        }
+        
+        const alertsList = document.getElementById('security-alerts-list');
+        const recentAlerts = failedLogins.recent_alerts || [];
+        if (recentAlerts.length === 0 && data.service_failures.total_failures === 0) {
+            alertsList.innerHTML = `
+                <div class="activity-item">
+                    <div class="activity-icon" style="color: var(--accent-green);"><i class="bi bi-shield-check"></i></div>
+                    <div>
+                        <div style="font-weight: 500; color: var(--accent-green);">No security alerts</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">System security looks good</div>
+                    </div>
+                </div>
+            `;
+        } else {
+            let html = '';
+            recentAlerts.slice(0, 3).forEach(alert => {
+                const color = alert.severity === 'high' ? 'var(--accent-red)' : 'var(--accent-yellow)';
+                html += `
+                    <div class="activity-item">
+                        <div class="activity-icon" style="color: ${color};"><i class="bi bi-shield-exclamation"></i></div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 500; color: ${color};">${alert.count} failed logins</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">From ${alert.ip}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            if (data.service_failures.total_failures > 0) {
+                html += `
+                    <div class="activity-item">
+                        <div class="activity-icon" style="color: var(--accent-purple);"><i class="bi bi-exclamation-triangle"></i></div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 500;">${data.service_failures.total_failures} service failures</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">In the last 24 hours</div>
+                        </div>
+                    </div>
+                `;
+            }
+            alertsList.innerHTML = html;
+        }
+        
+    } catch (error) {
+        console.error('Failed to update security monitoring:', error);
+    }
+}
+
+async function updateDomainHealth() {
+    try {
+        const response = await fetch('/api/domains/summary');
+        const result = await response.json();
+        
+        if (!result.success) return;
+        
+        const data = result.data;
+        
+        document.getElementById('domains-online').textContent = data.online || 0;
+        document.getElementById('domains-offline').textContent = data.offline || 0;
+        document.getElementById('avg-response-time').textContent = data.avg_response_time ? `${data.avg_response_time}ms` : '-';
+        
+        const domainLed = document.getElementById('domain-status-led');
+        if (data.offline === 0 && data.errors === 0) {
+            domainLed.className = 'status-led online';
+        } else if (data.offline > 2 || data.errors > 2) {
+            domainLed.className = 'status-led offline';
+        } else {
+            domainLed.className = 'status-led warning';
+        }
+        
+        const issuesList = document.getElementById('domain-issues-list');
+        const domains = data.domains || [];
+        const issues = domains.filter(d => d.status !== 'online');
+        
+        if (issues.length === 0) {
+            issuesList.innerHTML = `
+                <div class="activity-item">
+                    <div class="activity-icon" style="color: var(--accent-green);"><i class="bi bi-check-circle"></i></div>
+                    <div>
+                        <div style="font-weight: 500; color: var(--accent-green);">All domains healthy</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">13 domains online</div>
+                    </div>
+                </div>
+            `;
+        } else {
+            let html = '';
+            issues.forEach(domain => {
+                const color = domain.status === 'offline' ? 'var(--accent-red)' : 'var(--accent-yellow)';
+                const icon = domain.status === 'offline' ? 'x-circle' : 'exclamation-triangle';
+                html += `
+                    <div class="activity-item">
+                        <div class="activity-icon" style="color: ${color};"><i class="bi bi-${icon}"></i></div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 500; color: ${color};">${domain.name}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">${domain.error || domain.status}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            issuesList.innerHTML = html;
+        }
+        
+    } catch (error) {
+        console.error('Failed to update domain health:', error);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     initCharts();
     updateDashboard();
     updateActivityFeed();
     updateCeleryHealth();
+    updateSecurityMonitoring();
+    updateDomainHealth();
     setInterval(updateDashboard, 3000);
     setInterval(updateActivityFeed, 10000);
     setInterval(updateCeleryHealth, 5000);
+    setInterval(updateSecurityMonitoring, 30000);
+    setInterval(updateDomainHealth, 60000);
 });
 </script>
 {% endblock %}

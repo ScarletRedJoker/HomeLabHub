@@ -33,6 +33,30 @@ def login():
             return redirect(url_for('web.index'))
         else:
             logger.warning("Login failed - invalid credentials")
+            
+            # Log failed login attempt for security monitoring
+            try:
+                from services.security_monitor import security_monitor
+                from services.activity_service import activity_service
+                
+                ip_address = request.remote_addr or 'unknown'
+                result = security_monitor.log_failed_login(
+                    ip_address=ip_address,
+                    username=username or 'unknown',
+                    service='dashboard'
+                )
+                
+                # Log activity if alert triggered
+                if result.get('alert_triggered'):
+                    activity_service.log_activity(
+                        'security',
+                        f"Security alert: {result.get('count')} failed login attempts from {ip_address}",
+                        'shield-exclamation',
+                        'danger'
+                    )
+            except Exception as e:
+                logger.error(f"Error logging failed login attempt: {e}")
+            
             return render_template('login.html', error='Invalid username or password')
     
     return render_template('login.html')

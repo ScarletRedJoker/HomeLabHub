@@ -51,16 +51,57 @@ plex.evindrake.net {
 }
 
 # ============================================
-# n8n Automation Platform
+# n8n Automation Platform - ADMIN SERVICE
 # ============================================
 n8n.evindrake.net {
+    # NOTE: Rate limiting requires Caddy plugin (github.com/mholt/caddy-ratelimit)
+    # To enable, rebuild Caddy with: xcaddy build --with github.com/mholt/caddy-ratelimit
+    # Then uncomment the following:
+    # rate_limit {
+    #     zone n8n {
+    #         key {remote_host}
+    #         events 30
+    #         window 1m
+    #     }
+    # }
+    
     reverse_proxy n8n:5678
+    
+    # Security headers
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    }
 }
 
 # ============================================
-# Homelab Dashboard (Main Control Panel)
+# Homelab Dashboard (Main Control Panel) - ADMIN SERVICE
 # ============================================
 host.evindrake.net {
+    # NOTE: Rate limiting requires Caddy plugin (github.com/mholt/caddy-ratelimit)
+    # To enable, rebuild Caddy with: xcaddy build --with github.com/mholt/caddy-ratelimit
+    # Then uncomment the following:
+    # @login {
+    #     path /login /api/auth/*
+    # }
+    # rate_limit @login {
+    #     zone dashboard_auth {
+    #         key {remote_host}
+    #         events 10
+    #         window 5m
+    #     }
+    # }
+    # rate_limit {
+    #     zone dashboard {
+    #         key {remote_host}
+    #         events 100
+    #         window 1m
+    #     }
+    # }
+    
     reverse_proxy homelab-dashboard:5000 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
@@ -73,19 +114,80 @@ host.evindrake.net {
         header_down Pragma "no-cache"
         header_down Expires "0"
     }
+    
+    # Enhanced security headers
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    }
 }
 
 # ============================================
-# VNC Remote Desktop
+# VNC Remote Desktop - VPN ONLY ACCESS
 # ============================================
 vnc.evindrake.net {
+    # SECURITY: This service should ONLY be accessible via Twingate VPN
+    # To enable IP whitelist, uncomment and add your VPN IP range:
+    # @vpn_only {
+    #     remote_ip 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
+    # }
+    # handle @vpn_only {
+    #     reverse_proxy vnc-desktop:80
+    # }
+    # handle {
+    #     respond "VPN Access Required" 403
+    # }
+    
+    # Basic Auth for additional security layer
+    # Generate password hash: caddy hash-password --plaintext <your-password>
+    basicauth {
+        # Replace with your hashed password
+        admin $2a$14$... # CHANGE THIS
+    }
+    
     reverse_proxy vnc-desktop:80
+    
+    # Security headers
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "no-referrer"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    }
 }
 
 # ============================================
-# Code Server (VS Code in Browser)
+# Code Server (VS Code in Browser) - VPN ONLY ACCESS
 # ============================================
 code.evindrake.net {
+    # SECURITY: This service should ONLY be accessible via Twingate VPN
+    # To enable IP whitelist, uncomment and add your VPN IP range:
+    # @vpn_only {
+    #     remote_ip 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
+    # }
+    # handle @vpn_only {
+    #     reverse_proxy code-server:8080 {
+    #         header_up Host {host}
+    #         header_up X-Real-IP {remote_host}
+    #         header_up X-Forwarded-For {remote_host}
+    #         header_up X-Forwarded-Proto {scheme}
+    #         header_up X-Forwarded-Host {host}
+    #         
+    #         # WebSocket support for VS Code
+    #         header_up Upgrade {>Upgrade}
+    #         header_up Connection {>Connection}
+    #     }
+    # }
+    # handle {
+    #     respond "VPN Access Required" 403
+    # }
+    
+    # Code Server already has built-in password authentication
+    # No additional basic auth needed
+    
     reverse_proxy code-server:8080 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
@@ -98,12 +200,12 @@ code.evindrake.net {
         header_up Connection {>Connection}
     }
     
-    # Security headers
+    # Enhanced security headers
     header {
         X-Content-Type-Options "nosniff"
-        X-Frame-Options "SAMEORIGIN"
+        X-Frame-Options "DENY"
         X-XSS-Protection "1; mode=block"
-        Referrer-Policy "strict-origin-when-cross-origin"
+        Referrer-Policy "no-referrer"
         Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
         
         # Disable caching for dynamic content

@@ -6,6 +6,7 @@ from services.ssh_service import SSHService
 from services.database_service import DatabaseService
 from services.network_service import NetworkService
 from services.domain_service import DomainService
+from services.security_monitor import security_monitor
 from services.activity_service import activity_service
 from utils.auth import require_auth
 from utils.favicon_manager import get_favicon_manager
@@ -978,4 +979,124 @@ def delete_service_favicon(service_id):
     
     except Exception as e:
         logger.error(f"Error deleting favicon for {service_id}: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@api_bp.route('/security/ssl-expiration', methods=['GET'])
+@require_auth
+def get_ssl_expiration_alerts():
+    """
+    Get domains with SSL certificates expiring soon
+    
+    Query params:
+        days: Number of days threshold (default: 30)
+    
+    Returns:
+        JSON with list of domains expiring soon
+    """
+    try:
+        days_threshold = int(request.args.get('days', 30))
+        expiring_domains = domain_service.get_domains_expiring_soon(days_threshold)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'threshold_days': days_threshold,
+                'count': len(expiring_domains),
+                'domains': expiring_domains
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error getting SSL expiration alerts: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@api_bp.route('/security/failed-logins', methods=['GET'])
+@require_auth
+def get_failed_logins():
+    """
+    Get failed login attempts and alerts
+    
+    Query params:
+        hours: Number of hours to look back (default: 24)
+    
+    Returns:
+        JSON with failed login alerts and summary
+    """
+    try:
+        hours = int(request.args.get('hours', 24))
+        
+        alerts = security_monitor.get_failed_login_alerts(hours)
+        summary = security_monitor.get_failed_login_summary()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'hours': hours,
+                'alerts': alerts,
+                'summary': summary
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error getting failed login alerts: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@api_bp.route('/security/health-failures', methods=['GET'])
+@require_auth
+def get_health_failures():
+    """
+    Get service health check failures
+    
+    Query params:
+        hours: Number of hours to look back (default: 24)
+    
+    Returns:
+        JSON with service health failures
+    """
+    try:
+        hours = int(request.args.get('hours', 24))
+        
+        failures = security_monitor.get_service_failures(hours)
+        summary = security_monitor.get_service_failure_summary()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'hours': hours,
+                'failures': failures,
+                'summary': summary
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error getting service health failures: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@api_bp.route('/security/summary', methods=['GET'])
+@require_auth
+def get_security_summary():
+    """
+    Get comprehensive security monitoring summary
+    
+    Returns:
+        JSON with SSL expiration alerts, failed logins, and service failures
+    """
+    try:
+        ssl_expiring = domain_service.get_domains_expiring_soon(30)
+        failed_login_summary = security_monitor.get_failed_login_summary()
+        service_failure_summary = security_monitor.get_service_failure_summary()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'ssl_expiration': {
+                    'count': len(ssl_expiring),
+                    'domains': ssl_expiring[:5]  # Top 5 most urgent
+                },
+                'failed_logins': failed_login_summary,
+                'service_failures': service_failure_summary,
+                'overall_status': 'warning' if (len(ssl_expiring) > 0 or 
+                                                 failed_login_summary['total_alerts'] > 0 or 
+                                                 service_failure_summary['total_failures'] > 5) else 'healthy'
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error getting security summary: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
