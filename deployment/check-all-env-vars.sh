@@ -42,7 +42,7 @@ check_required() {
     if [ -z "${!var_name}" ]; then
         MISSING+=("${RED}✗${NC} $service: $var_name")
     else
-        ((OK_COUNT++))
+        OK_COUNT=$((OK_COUNT + 1))
     fi
 }
 
@@ -54,7 +54,7 @@ check_optional() {
     if [ -z "${!var_name}" ]; then
         WARNINGS+=("${YELLOW}⚠${NC} $service: $var_name (optional)")
     else
-        ((OK_COUNT++))
+        OK_COUNT=$((OK_COUNT + 1))
     fi
 }
 
