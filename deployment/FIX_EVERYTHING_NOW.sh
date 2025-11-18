@@ -20,7 +20,7 @@ echo ""
 cd /home/evin/contain/HomeLabHub
 
 # Step 1: Fix code-server permissions
-echo -e "${YELLOW}[1/4] Fixing code-server permissions...${NC}"
+echo -e "${YELLOW}[1/5] Fixing code-server permissions...${NC}"
 VOLUME_PATH=$(docker volume inspect code_server_data --format '{{ .Mountpoint }}' 2>/dev/null || echo "")
 if [ -n "$VOLUME_PATH" ]; then
     sudo chown -R 1000:1000 "$VOLUME_PATH"
@@ -29,26 +29,42 @@ else
     echo -e "${YELLOW}⚠ Code-server volume not found, skipping${NC}"
 fi
 
-# Step 2: Rebuild stream-bot with new password
+# Step 2: Fix database users (streambot, jarvis)
 echo ""
-echo -e "${YELLOW}[2/4] Rebuilding stream-bot with fresh database password...${NC}"
+echo -e "${YELLOW}[2/5] Creating database users (streambot, jarvis)...${NC}"
+chmod +x deployment/FIX_DATABASE_USERS.sh
+if ./deployment/FIX_DATABASE_USERS.sh; then
+    echo -e "${GREEN}✓ Database users created${NC}"
+else
+    echo -e "${RED}✗ Database user creation failed! Cannot continue.${NC}"
+    echo -e "${YELLOW}Check that:${NC}"
+    echo -e "  1. PostgreSQL container is running: docker ps | grep discord-bot-db"
+    echo -e "  2. .env file has STREAMBOT_DB_PASSWORD and JARVIS_DB_PASSWORD set"
+    echo -e "  3. Passwords are not empty"
+    exit 1
+fi
+
+# Step 3: Rebuild stream-bot with new password
+echo ""
+echo -e "${YELLOW}[3/5] Rebuilding stream-bot with fresh database password...${NC}"
 docker-compose -f docker-compose.unified.yml stop stream-bot
 docker-compose -f docker-compose.unified.yml build --no-cache stream-bot
 docker-compose -f docker-compose.unified.yml up -d stream-bot
 echo -e "${GREEN}✓ Stream-bot rebuilt${NC}"
 
-# Step 3: Rebuild dashboard with new password
+# Step 4: Rebuild dashboard with new password
 echo ""
-echo -e "${YELLOW}[3/4] Rebuilding dashboard with fresh database password...${NC}"
+echo -e "${YELLOW}[4/5] Rebuilding dashboard with fresh database password...${NC}"
 docker-compose -f docker-compose.unified.yml stop homelab-dashboard homelab-celery-worker
 docker-compose -f docker-compose.unified.yml build --no-cache homelab-dashboard homelab-celery-worker
 docker-compose -f docker-compose.unified.yml up -d homelab-dashboard homelab-celery-worker
 echo -e "${GREEN}✓ Dashboard rebuilt${NC}"
 
-# Step 4: Restart code-server & Caddy
+# Step 5: Restart code-server, VNC & Caddy
 echo ""
-echo -e "${YELLOW}[4/4] Restarting code-server and Caddy...${NC}"
+echo -e "${YELLOW}[5/5] Restarting code-server, VNC, and Caddy...${NC}"
 docker-compose -f docker-compose.unified.yml restart code-server
+docker-compose -f docker-compose.unified.yml restart vnc-desktop
 docker-compose -f docker-compose.unified.yml restart caddy
 echo -e "${GREEN}✓ Services restarted${NC}"
 

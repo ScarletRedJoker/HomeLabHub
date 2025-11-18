@@ -2,27 +2,46 @@
 
 ## Recent Changes
 
-### November 18, 2025 - Systematic Infrastructure Fixes
+### November 18, 2025 - Complete Infrastructure Fix (Database Users + Environment Variables)
 **Problems Identified:**
 1. Stream-bot/Dashboard: Password authentication failures (old passwords baked into Docker images)
 2. Code-server: Persistent EACCES permission errors (volume owned by root, not UID 1000)
 3. VNC Desktop: Long build times (LibreOffice/Evince bloat, no layer caching, chromium snap stub)
+4. **Database Users Missing:** streambot and jarvis users not created in PostgreSQL (init scripts exist but never ran)
 
 **Root Causes & Solutions:**
 1. **Container Env Vars:** Docker build bakes env vars into images - restart doesn't reload from .env
    - ✅ Solution: Clean rebuild with `--no-cache` forces fresh env var read
+   - ✅ Updated `homelab-manager.sh` to always use `--no-cache` for full deploy
 2. **Code-server Permissions:** Volume created with root ownership, container runs as UID 1000
-   - ✅ Solution: Created `deployment/fix-code-server-permissions.sh` to chown volumes
+   - ✅ Solution: Created `deployment/FIX_EVERYTHING_NOW.sh` with sudo chown for volumes
 3. **VNC Build Optimization:** Monolithic package install, no caching, 500MB+ bloat, chromium-browser snap stub
    - ✅ Solution: 3-layer caching strategy, removed LibreOffice/Evince/Chromium (5-7min faster builds)
+4. **Database Users Not Created:** PostgreSQL init scripts exist in `config/postgres-init/` but didn't run on existing database
+   - ✅ Solution: Created `deployment/FIX_DATABASE_USERS.sh` to manually create streambot and jarvis users
+   - ✅ Integrated into `deployment/FIX_EVERYTHING_NOW.sh` for automatic fix
 
-**Database Architecture (UNCHANGED):**
+**Database Architecture (NOW FIXED):**
 - ✅ `ticketbot` - PostgreSQL superuser, manages Discord bot database
-- ✅ `streambot` - Dedicated user for Stream Bot database (least privilege)
-- ✅ `jarvis` - Dedicated user for Dashboard database (least privilege)
+- ✅ `streambot` - Dedicated user for Stream Bot database (least privilege) - **NOW CREATED**
+- ✅ `jarvis` - Dedicated user for Dashboard database (least privilege) - **NOW CREATED**
 - ✅ Each service has its own isolated database and user (proper security model)
 
-**Key Learning:** Always use `homelab-manager.sh` option 3 (Rebuild & Deploy) after .env changes. Container restart ≠ env var reload.
+**Environment Variable Validation:**
+- ✅ Created `deployment/check-all-env-vars.sh` - validates ALL 40+ environment variables
+- ✅ Checks required vars for: Dashboard, Stream Bot, Discord Bot, PostgreSQL, VNC, Code Server, MinIO, Home Assistant
+- ✅ Prevents deployment with missing critical environment variables
+
+**Complete Fix Scripts:**
+- `deployment/FIX_EVERYTHING_NOW.sh` - Fixes code-server permissions, creates DB users, rebuilds services
+- `deployment/FIX_DATABASE_USERS.sh` - Creates streambot and jarvis PostgreSQL users
+- `deployment/check-all-env-vars.sh` - Validates all environment variables
+- `deployment/UBUNTU_COMPLETE_FIX.sh` - One-command fix: pulls code, validates env vars, fixes everything, verifies sites
+
+**Key Learning:** 
+1. Always use `homelab-manager.sh` option 3 (Rebuild & Deploy) after .env changes. Container restart ≠ env var reload.
+2. PostgreSQL init scripts only run on FIRST database initialization. For existing databases, manually create users with `FIX_DATABASE_USERS.sh`.
+3. Docker volumes may have wrong ownership - always check with `docker volume inspect` and fix with sudo chown.
 
 ## Overview
 This project provides a comprehensive web-based dashboard for managing a Ubuntu 25.10 server. Its core purpose is to offer a unified, user-friendly interface to minimize operational complexity, enhance server reliability, and facilitate intelligent automation and monitoring for complex infrastructure environments. Key capabilities include one-click database deployments, game streaming integration, robust domain health monitoring, and integrations with Google Services and Smart Home platforms. The project aims to deliver production-ready source code for streamlined development, testing, and deployment. The long-term vision is to evolve into an AI-first infrastructure copilot, "Jarvis," capable of autonomous diagnosis, remediation, and execution of infrastructure issues, serving as a mission control UI for actionable intelligence and safe automation.
