@@ -99,18 +99,28 @@ When the container starts for the first time:
 ### Web Browser (noVNC)
 - **URL**: https://vnc.evindrake.net
 - **Port**: 6080 (proxied via Caddy)
-- **Security**: VNC password required + HTTPS
+- **Authentication**: Enter VNC password when prompted (from `VNC_PASSWORD` in .env file)
+- **Security**: HTTPS with automatic SSL via Caddy
 
 ### Native VNC Client (Optional)
 Not exposed externally for security. Use noVNC web interface.
 
+## Authentication
+
+**Simple Single-Password Login:**
+- When you visit https://vnc.evindrake.net, you'll see a VNC password prompt
+- Enter the password from your `.env` file: `VNC_PASSWORD=your_password_here`
+- That's it! No username required, just the VNC password.
+
+**Note**: Previous versions had a two-layer authentication (HTTP auth + VNC password). This has been simplified to only require the VNC password.
+
 ## Security
 
-- **VNC Password**: Set via `VNC_PASSWORD` environment variable
-- **User Password**: Set via `VNC_USER_PASSWORD` environment variable
+- **VNC Password**: Set via `VNC_PASSWORD` environment variable in `.env` file
 - **Network**: Internal Docker network only
-- **Reverse Proxy**: Caddy handles HTTPS and SSL termination
+- **Reverse Proxy**: Caddy handles HTTPS and SSL termination  
 - **No Direct Exposure**: VNC ports not exposed to internet
+- **Recommendation**: Use a strong VNC password and ensure Twingate VPN is active for additional security
 
 ## Installing Additional Apps
 
