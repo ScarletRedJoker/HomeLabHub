@@ -279,6 +279,7 @@ services:
       - ./services/plex/config:/config
       - ./services/plex/transcode:/transcode
       - ./services/plex/media:/media
+      - /mnt/nas:/nas:ro  # NAS mount (read-only for safety)
     devices:
       - /dev/dri:/dev/dri
 
