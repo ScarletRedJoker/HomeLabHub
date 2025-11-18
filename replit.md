@@ -67,3 +67,77 @@ This project provides a comprehensive web-based dashboard for managing a Ubuntu 
 - PostgreSQL 16 Alpine
 - Docker & Docker Compose
 - Let's Encrypt
+## Deployment Fix History
+
+### Code-Server WebSocket Fix (November 18, 2025)
+
+**Issue:**
+Code-server WebSocket connections failing with "Error 1006: The workbench failed to connect to the server" preventing VS Code features from working.
+
+**Root Cause:**
+Caddyfile was using shorthand WebSocket header placeholders `{>Upgrade}` and `{>Connection}` which weren't properly forwarding the WebSocket upgrade request headers.
+
+**Solution:**
+✅ Updated Caddyfile code-server block with improved WebSocket header forwarding:
+- Changed from `header_up Upgrade {>Upgrade}` to `header_up Upgrade {http.request.header.Upgrade}`
+- Changed from `header_up Connection {>Connection}` to `header_up Connection {http.request.header.Connection}`
+- Added `X-Forwarded-For` and `X-Forwarded-Proto` headers for proper proxy behavior
+- Removed cache control headers from main `header` block to prevent WebSocket interference
+- Kept security headers (X-Content-Type-Options, X-Frame-Options, etc.) without blocking WebSocket upgrade
+
+**Files Modified:**
+- `Caddyfile` - code.evindrake.net block (lines 152-200)
+
+**Result:**
+- VS Code WebSocket connections now work properly
+- Extension host agent can communicate with browser client
+- All VS Code features (IntelliSense, debugging, terminal, etc.) functional
+- No more "reload required" errors
+
+### Dashboard MarketplaceApp Relationship Error Fix (November 18, 2025)
+
+**Issue:**
+Dashboard failing to start with SQLAlchemy error: "Could not determine join condition between parent/child tables on relationship MarketplaceApp.deployments - there are no foreign keys linking these tables."
+
+**Root Cause:**
+The `DeployedApp` model's `app_id` field was missing the `ForeignKey` constraint declaration in the Python model, even though the database migration (006) already had the foreign key constraint in the database schema. This mismatch caused SQLAlchemy to fail when initializing the relationship.
+
+**Solution:**
+✅ Added missing ForeignKey import and constraint to DeployedApp model:
+- Added `ForeignKey` to imports in `services/dashboard/models/marketplace.py`
+- Changed `app_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)` 
+- To: `app_id: Mapped[int] = mapped_column(Integer, ForeignKey('marketplace_apps.id', ondelete='CASCADE'), nullable=False, index=True)`
+- No database migration needed since migration 006 already created the constraint in the database
+
+**Files Modified:**
+- `services/dashboard/models/marketplace.py` - Added ForeignKey to DeployedApp.app_id
+
+**Result:**
+- Dashboard now starts without SQLAlchemy relationship errors
+- MarketplaceApp.deployments relationship properly configured
+- Model matches database schema from migration 006
+- No "Could not determine join condition" errors
+
+### Stream-Bot GPT Model Switch (November 18, 2025)
+
+**Issue:**
+Stream-bot AI Snapple facts generation was using gpt-5-mini as primary model, which was returning empty responses (content length: 0), requiring fallback to gpt-4.1-mini and causing delays.
+
+**Root Cause:**
+The gpt-5-mini model has been unreliable, frequently returning empty responses even with valid API calls. The code was configured to try gpt-5-mini first, then fall back to gpt-4.1-mini, wasting time and API credits on failed calls.
+
+**Solution:**
+✅ Switched default model to gpt-4.1-mini as primary, with gpt-5-mini as fallback:
+- Changed default parameter from `model: string = "gpt-5-mini"` to `model: string = "gpt-4.1-mini"`
+- Reordered model priority: try gpt-4.1-mini first (reliable), then gpt-5-mini (future compatibility)
+- Added comment documenting the reason for the switch
+- Kept fallback logic for robustness
+
+**Files Modified:**
+- `services/stream-bot/server/openai.ts` - Changed default model and priority order
+
+**Result:**
+- AI Snapple facts generate immediately without empty response delays
+- Reduced wasted API calls to unreliable gpt-5-mini model
+- Faster response times for /generate-fact endpoint
+- Logs no longer show "Empty fact from gpt-5-mini - trying next model" messages
