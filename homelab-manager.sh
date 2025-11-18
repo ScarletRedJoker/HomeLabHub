@@ -384,18 +384,40 @@ view_logs() {
     echo "  4) caddy"
     echo "  5) discord-bot-db"
     echo "  6) All services"
+    echo "  7) Save stream-bot logs to file"
+    echo "  8) Save all logs to file"
     echo ""
     read -p "Enter service number: " log_choice
     
     case $log_choice in
-        1) docker logs -f homelab-dashboard ;;
-        2) docker logs -f discord-bot ;;
-        3) docker logs -f stream-bot ;;
-        4) docker logs -f caddy ;;
-        5) docker logs -f discord-bot-db ;;
-        6) docker-compose -f docker-compose.unified.yml logs -f ;;
-        *) echo "Invalid choice" ; pause ;;
+        1) docker logs -f homelab-dashboard || true ;;
+        2) docker logs -f discord-bot || true ;;
+        3) docker logs -f stream-bot || true ;;
+        4) docker logs -f caddy || true ;;
+        5) docker logs -f discord-bot-db || true ;;
+        6) docker-compose -f docker-compose.unified.yml logs -f || true ;;
+        7) 
+            echo "Saving stream-bot logs to stream-bot-logs.txt..."
+            if docker logs stream-bot > stream-bot-logs.txt 2>&1; then
+                echo -e "${GREEN}✓ Logs saved to stream-bot-logs.txt${NC}"
+            else
+                echo -e "${RED}✗ Failed to save logs (container may not be running)${NC}"
+            fi
+            ;;
+        8)
+            echo "Saving all logs to homelab-logs.txt..."
+            if docker-compose -f docker-compose.unified.yml logs > homelab-logs.txt 2>&1; then
+                echo -e "${GREEN}✓ Logs saved to homelab-logs.txt${NC}"
+            else
+                echo -e "${RED}✗ Failed to save logs${NC}"
+            fi
+            ;;
+        *) echo "Invalid choice" ;;
     esac
+    
+    echo ""
+    echo -e "${YELLOW}(Press any key to return to menu)${NC}"
+    pause
 }
 
 # Health Check
