@@ -89,7 +89,6 @@ Format your response as JSON:
         model: "gpt-5-mini",
         messages: [{ role: "user", content: prompt }],
         max_completion_tokens: 300,
-        temperature: 0.3,
       });
 
       const content = response.choices[0]?.message?.content?.trim() || '{}';

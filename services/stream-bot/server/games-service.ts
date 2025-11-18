@@ -46,7 +46,6 @@ Generate a unique Magic 8-Ball response to this question.`
           }
         ],
         max_completion_tokens: 100,
-        temperature: 1.2,
       });
 
       const response = completion.choices[0]?.message?.content?.trim() || "The Magic 8-Ball is cloudy... try again later";
@@ -106,7 +105,6 @@ Keep questions clear and answers concise (1-3 words). Make it fun and engaging!`
           }
         ],
         max_completion_tokens: 150,
-        temperature: 0.9,
       });
 
       const response = completion.choices[0]?.message?.content?.trim() || "";

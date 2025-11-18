@@ -50,7 +50,6 @@ export async function generateSnappleFact(customPrompt?: string, model: string =
         model: currentModel,
         messages: [{ role: "user", content: prompt }],
         max_completion_tokens: 200, // Newer models require max_completion_tokens instead of max_tokens
-        temperature: 0.9,
       });
       
       console.log("[OpenAI] Response received, choices:", response.choices?.length || 0);

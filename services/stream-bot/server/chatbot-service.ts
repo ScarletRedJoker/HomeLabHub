@@ -123,7 +123,6 @@ export class ChatbotService {
         model: "gpt-5",
         messages,
         max_completion_tokens: 150,
-        temperature: settings.temperature / 10, // Convert from 0-20 integer to 0.0-2.0 float
       });
 
       const aiResponse = response.choices[0]?.message?.content?.trim() || "";
