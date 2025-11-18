@@ -2,6 +2,48 @@
 
 ## Recent Changes
 
+### November 18, 2025 - Modular Database Provisioning System
+**BREAKING CHANGE: Automatic database setup - manual scripts removed**
+
+**New Architecture:**
+- ✅ **Automatic Database Provisioning** - PostgreSQL init scripts create ALL databases on first startup
+- ✅ **Zero Manual Steps** - No more fix scripts, everything is plug-and-play
+- ✅ **Linear Deployment** - Single command (`./deployment/linear-deploy.sh`) validates, provisions, deploys, and verifies
+- ✅ **Modular Services** - Each service has dedicated database and user with proper isolation
+- ✅ **Health Checks** - Docker Compose uses service_healthy conditions for proper startup ordering
+
+**Database Architecture (AUTOMATIC CREATION):**
+- `ticketbot` - PostgreSQL superuser, manages Discord bot database
+- `streambot` - Stream Bot database user (auto-created on first startup)
+- `jarvis` - Dashboard database user (auto-created on first startup)
+- All databases created automatically by `config/postgres-init/00-init-all-databases.sh`
+
+**Security Improvements:**
+- SQL injection prevention with psql variable binding (`:'pwd'`)
+- Shell expansion prevention with password sanitization
+- Command injection prevention with proper quoting
+- Triple-tested security (SQL injection, shell expansion, command substitution)
+
+**Deployment Scripts:**
+- `deployment/linear-deploy.sh` - NEW: One-command deployment (validate → provision → launch → verify)
+- `deployment/FIX_EVERYTHING_NOW.sh` - UPDATED: Simplified to 3 steps (removed manual DB creation)
+- `deployment/FIX_DATABASE_USERS.sh` - REMOVED: Obsolete (functionality in init scripts)
+- `homelab-manager.sh` - UPDATED: Removed subscription code, option 1 uses linear deployment
+
+**User Experience:**
+```bash
+# Old Way (Manual):
+1. Run env validation
+2. Run database fix script
+3. Rebuild services
+4. Restart services  
+5. Check logs for errors
+6. Repeat if failed
+
+# New Way (Automatic):
+./deployment/linear-deploy.sh  # One command, everything works!
+```
+
 ### November 18, 2025 - Complete Infrastructure Fix (Database Users + Environment Variables)
 **Problems Identified:**
 1. Stream-bot/Dashboard: Password authentication failures (old passwords baked into Docker images)

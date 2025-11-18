@@ -20,7 +20,7 @@ echo ""
 cd /home/evin/contain/HomeLabHub
 
 # Step 1: Fix code-server permissions
-echo -e "${YELLOW}[1/5] Fixing code-server permissions...${NC}"
+echo -e "${YELLOW}[1/3] Fixing code-server permissions...${NC}"
 VOLUME_PATH=$(docker volume inspect code_server_data --format '{{ .Mountpoint }}' 2>/dev/null || echo "")
 if [ -n "$VOLUME_PATH" ]; then
     sudo chown -R 1000:1000 "$VOLUME_PATH"
@@ -29,43 +29,21 @@ else
     echo -e "${YELLOW}⚠ Code-server volume not found, skipping${NC}"
 fi
 
-# Step 2: Fix database users (streambot, jarvis)
+# Step 2: Rebuild all services (databases auto-provision on startup via init scripts)
 echo ""
-echo -e "${YELLOW}[2/5] Creating database users (streambot, jarvis)...${NC}"
-chmod +x deployment/FIX_DATABASE_USERS.sh
-if ./deployment/FIX_DATABASE_USERS.sh; then
-    echo -e "${GREEN}✓ Database users created${NC}"
-else
-    echo -e "${RED}✗ Database user creation failed! Cannot continue.${NC}"
-    echo -e "${YELLOW}Check that:${NC}"
-    echo -e "  1. PostgreSQL container is running: docker ps | grep discord-bot-db"
-    echo -e "  2. .env file has STREAMBOT_DB_PASSWORD and JARVIS_DB_PASSWORD set"
-    echo -e "  3. Passwords are not empty"
-    exit 1
-fi
+echo -e "${YELLOW}[2/3] Rebuilding all services...${NC}"
+echo -e "${BLUE}ℹ Database users and databases are automatically created by PostgreSQL init scripts${NC}"
+echo -e "${BLUE}  (see config/postgres-init/00-init-all-databases.sh)${NC}"
+echo ""
+docker-compose -f docker-compose.unified.yml down
+docker-compose -f docker-compose.unified.yml build --no-cache
+docker-compose -f docker-compose.unified.yml up -d
+echo -e "${GREEN}✓ All services rebuilt with automatic database provisioning${NC}"
 
-# Step 3: Rebuild stream-bot with new password
+# Step 3: Restart code-server, VNC & Caddy
 echo ""
-echo -e "${YELLOW}[3/5] Rebuilding stream-bot with fresh database password...${NC}"
-docker-compose -f docker-compose.unified.yml stop stream-bot
-docker-compose -f docker-compose.unified.yml build --no-cache stream-bot
-docker-compose -f docker-compose.unified.yml up -d stream-bot
-echo -e "${GREEN}✓ Stream-bot rebuilt${NC}"
-
-# Step 4: Rebuild dashboard with new password
-echo ""
-echo -e "${YELLOW}[4/5] Rebuilding dashboard with fresh database password...${NC}"
-docker-compose -f docker-compose.unified.yml stop homelab-dashboard homelab-celery-worker
-docker-compose -f docker-compose.unified.yml build --no-cache homelab-dashboard homelab-celery-worker
-docker-compose -f docker-compose.unified.yml up -d homelab-dashboard homelab-celery-worker
-echo -e "${GREEN}✓ Dashboard rebuilt${NC}"
-
-# Step 5: Restart code-server, VNC & Caddy
-echo ""
-echo -e "${YELLOW}[5/5] Restarting code-server, VNC, and Caddy...${NC}"
-docker-compose -f docker-compose.unified.yml restart code-server
-docker-compose -f docker-compose.unified.yml restart vnc-desktop
-docker-compose -f docker-compose.unified.yml restart caddy
+echo -e "${YELLOW}[3/3] Ensuring code-server, VNC, and Caddy are running...${NC}"
+docker-compose -f docker-compose.unified.yml restart code-server vnc-desktop caddy
 echo -e "${GREEN}✓ Services restarted${NC}"
 
 # Wait for services to start

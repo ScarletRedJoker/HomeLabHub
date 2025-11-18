@@ -47,34 +47,33 @@ show_menu() {
     echo -e "    ${GREEN}6)${NC} 🔄 Restart Specific Service"
     echo ""
     echo -e "  ${BOLD}Database:${NC}"
-    echo -e "    ${GREEN}7)${NC} 🗄️  Ensure Databases Exist (fix DB issues)"
-    echo -e "    ${GREEN}8)${NC} 📊 Check Database Status"
+    echo -e "    ${GREEN}7)${NC} 📊 Check Database Status"
     echo ""
     echo -e "  ${BOLD}Smart Home:${NC}"
-    echo -e "    ${GREEN}9)${NC} 🏠 Setup Home Assistant Integration"
+    echo -e "    ${GREEN}8)${NC} 🏠 Setup Home Assistant Integration"
     echo ""
     echo -e "  ${BOLD}Configuration:${NC}"
-    echo -e "    ${GREEN}10)${NC} ⚙️  Generate/Edit .env File"
-    echo -e "    ${GREEN}11)${NC} 📋 View Current Configuration"
+    echo -e "    ${GREEN}9)${NC} ⚙️  Generate/Edit .env File"
+    echo -e "    ${GREEN}10)${NC} 📋 View Current Configuration"
     echo ""
     echo -e "  ${BOLD}Troubleshooting:${NC}"
-    echo -e "    ${GREEN}12)${NC} 🔍 View Service Logs"
-    echo -e "    ${GREEN}13)${NC} 🏥 Health Check (all services)"
-    echo -e "    ${GREEN}13a)${NC} 🌐 Check Docker Network Status"
-    echo -e "    ${GREEN}14)${NC} 🔧 Full Troubleshoot Mode"
-    echo -e "    ${GREEN}14a)${NC} 📝 Format Caddyfile (fix formatting warnings)"
-    echo ""
-    echo -e "  ${BOLD}Code Sync (Replit → Ubuntu):${NC}"
-    echo -e "    ${GREEN}18)${NC} 🔄 Sync from Replit (pull latest code & auto-deploy)"
-    echo -e "    ${GREEN}19)${NC} ⚡ Install Auto-Sync (every 5 minutes)"
-    echo -e "    ${GREEN}20)${NC} 🔍 Check Auto-Sync Status"
+    echo -e "    ${GREEN}11)${NC} 🔍 View Service Logs"
+    echo -e "    ${GREEN}12)${NC} 🏥 Health Check (all services)"
+    echo -e "    ${GREEN}12a)${NC} 🌐 Check Docker Network Status"
+    echo -e "    ${GREEN}13)${NC} 🔧 Full Troubleshoot Mode"
+    echo -e "    ${GREEN}13a)${NC} 📝 Format Caddyfile (fix formatting warnings)"
     echo ""
     echo -e "  ${BOLD}Updates:${NC}"
-    echo -e "    ${GREEN}17)${NC} 📦 Update Service (pull latest image)"
+    echo -e "    ${GREEN}14)${NC} 📦 Update Service (pull latest image)"
     echo ""
     echo -e "  ${BOLD}Information:${NC}"
     echo -e "    ${GREEN}15)${NC} 📊 Show Container Details"
     echo -e "    ${GREEN}16)${NC} 🌐 Show Service URLs"
+    echo ""
+    echo -e "  ${BOLD}Code Sync (Replit → Ubuntu):${NC}"
+    echo -e "    ${GREEN}17)${NC} 🔄 Sync from Replit (pull latest code & auto-deploy)"
+    echo -e "    ${GREEN}18)${NC} ⚡ Install Auto-Sync (every 5 minutes)"
+    echo -e "    ${GREEN}19)${NC} 🔍 Check Auto-Sync Status"
     echo ""
     echo -e "    ${RED}0)${NC} 🚪 Exit"
     echo ""
@@ -103,7 +102,12 @@ full_deploy() {
     echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     
-    if [ -f "./deployment/deploy-unified.sh" ]; then
+    # Use new linear deployment script with automatic database provisioning
+    if [ -f "./deployment/linear-deploy.sh" ]; then
+        chmod +x ./deployment/linear-deploy.sh
+        ./deployment/linear-deploy.sh
+    elif [ -f "./deployment/deploy-unified.sh" ]; then
+        # Fallback to old script if linear-deploy doesn't exist
         ./deployment/deploy-unified.sh
     else
         echo -e "${YELLOW}Running manual deployment...${NC}"
@@ -1373,22 +1377,21 @@ main() {
             4) start_services ;;
             5) stop_services ;;
             6) restart_service ;;
-            7) ensure_databases ;;
-            8) check_database_status ;;
-            9) setup_home_assistant ;;
-            10) generate_env ;;
-            11) view_config ;;
-            12) view_logs ;;
-            13) health_check ;;
-            13a) check_docker_network ;;
-            14) troubleshoot ;;
-            14a) format_caddy ;;
+            7) check_database_status ;;
+            8) setup_home_assistant ;;
+            9) generate_env ;;
+            10) view_config ;;
+            11) view_logs ;;
+            12) health_check ;;
+            12a) check_docker_network ;;
+            13) troubleshoot ;;
+            13a) format_caddy ;;
+            14) update_service ;;
             15) show_details ;;
             16) show_urls ;;
-            17) update_service ;;
-            18) sync_from_replit ;;
-            19) install_auto_sync ;;
-            20) check_sync_status ;;
+            17) sync_from_replit ;;
+            18) install_auto_sync ;;
+            19) check_sync_status ;;
             0) 
                 echo ""
                 echo -e "${GREEN}Goodbye! 👋${NC}"
