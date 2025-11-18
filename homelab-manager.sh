@@ -39,6 +39,7 @@ show_menu() {
     echo -e "    ${GREEN}1)${NC} 🚀 Full Deploy (build and start all services)"
     echo -e "    ${GREEN}2)${NC} 🔄 Quick Restart (restart without rebuilding)"
     echo -e "    ${GREEN}3)${NC} ⚡ Rebuild & Deploy (force rebuild + restart)"
+    echo -e "    ${GREEN}3a)${NC} 🛑 Graceful Shutdown & Cleanup"
     echo ""
     echo -e "  ${BOLD}Service Control:${NC}"
     echo -e "    ${GREEN}4)${NC} ▶️  Start All Services"
@@ -108,7 +109,11 @@ full_deploy() {
         ./deployment/deploy-unified.sh
     else
         echo -e "${YELLOW}Running manual deployment...${NC}"
-        docker-compose -f docker-compose.unified.yml up -d --build
+        echo "Fixing code-server permissions..."
+        mkdir -p ./config/code-server
+        sudo chown -R 1000:1000 ./config/code-server 2>/dev/null || true
+        echo ""
+        docker-compose -f docker-compose.unified.yml up -d --build --remove-orphans
     fi
     
     pause
@@ -121,7 +126,7 @@ quick_restart() {
     echo -e "${BOLD}${BLUE}  🔄 QUICK RESTART${NC}"
     echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-    docker-compose -f docker-compose.unified.yml restart
+    docker-compose -f docker-compose.unified.yml restart 2>/dev/null || true
     echo ""
     echo -e "${GREEN}✓ All services restarted${NC}"
     pause
@@ -134,14 +139,22 @@ rebuild_deploy() {
     echo -e "${BOLD}${BLUE}  ⚡ REBUILD & DEPLOY${NC}"
     echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-    echo "Stopping services..."
-    docker-compose -f docker-compose.unified.yml down
+    
+    echo "Step 1: Stopping services..."
+    docker-compose -f docker-compose.unified.yml down --remove-orphans --timeout 30
+    
     echo ""
-    echo "Building containers (no cache)..."
+    echo "Step 2: Cleaning up networks..."
+    docker network prune -f
+    
+    echo ""
+    echo "Step 3: Building containers (no cache)..."
     docker-compose -f docker-compose.unified.yml build --no-cache
+    
     echo ""
-    echo "Starting services..."
-    docker-compose -f docker-compose.unified.yml up -d
+    echo "Step 4: Starting services..."
+    docker-compose -f docker-compose.unified.yml up -d --remove-orphans
+    
     echo ""
     echo -e "${GREEN}✓ Rebuild complete${NC}"
     pause
@@ -154,7 +167,7 @@ start_services() {
     echo -e "${BOLD}${BLUE}  ▶️  STARTING ALL SERVICES${NC}"
     echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-    docker-compose -f docker-compose.unified.yml up -d
+    docker-compose -f docker-compose.unified.yml up -d --remove-orphans
     echo ""
     echo -e "${GREEN}✓ All services started${NC}"
     pause
@@ -167,9 +180,37 @@ stop_services() {
     echo -e "${BOLD}${BLUE}  ⏸️  STOPPING ALL SERVICES${NC}"
     echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-    docker-compose -f docker-compose.unified.yml stop
+    docker-compose -f docker-compose.unified.yml down --remove-orphans
     echo ""
     echo -e "${GREEN}✓ All services stopped${NC}"
+    pause
+}
+
+# Graceful Shutdown with Cleanup
+graceful_shutdown() {
+    echo ""
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}${BLUE}  🛑 GRACEFUL SHUTDOWN & CLEANUP${NC}"
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    
+    echo "Step 1: Stopping all services..."
+    docker-compose -f docker-compose.unified.yml down --remove-orphans --timeout 30
+    
+    echo ""
+    echo "Step 2: Removing orphaned containers..."
+    docker container prune -f
+    
+    echo ""
+    echo "Step 3: Cleaning up unused networks..."
+    docker network prune -f
+    
+    echo ""
+    echo "Step 4: Removing dangling volumes (if any)..."
+    docker volume prune -f --filter "label!=keep"
+    
+    echo ""
+    echo -e "${GREEN}✓ Graceful shutdown complete${NC}"
     pause
 }
 
@@ -1108,21 +1149,21 @@ check_sync_status() {
     echo ""
     
     # Check if systemd timer exists
-    if systemctl list-unit-files | grep -q "homelab-sync.timer"; then
+    if systemctl list-unit-files | grep -q "replit-sync.timer"; then
         echo -e "${GREEN}✓ Auto-sync is installed${NC}"
         echo ""
         echo "Timer Status:"
-        systemctl status homelab-sync.timer --no-pager | head -10
+        systemctl status replit-sync.timer --no-pager | head -10
         echo ""
         echo "Service Status:"
-        systemctl status homelab-sync.service --no-pager | head -10
+        systemctl status replit-sync.service --no-pager | head -10
         echo ""
         echo "Recent Sync Logs:"
-        journalctl -u homelab-sync.service -n 20 --no-pager
+        journalctl -u replit-sync.service -n 20 --no-pager
     else
         echo -e "${YELLOW}⚠ Auto-sync is NOT installed${NC}"
         echo ""
-        echo "To install auto-sync, choose option 18 from the main menu."
+        echo "To install auto-sync, choose option 19 from the main menu."
     fi
     
     pause
@@ -1281,6 +1322,7 @@ main() {
             1) full_deploy ;;
             2) quick_restart ;;
             3) rebuild_deploy ;;
+            3a) graceful_shutdown ;;
             4) start_services ;;
             5) stop_services ;;
             6) restart_service ;;
