@@ -87,6 +87,10 @@ services:
       SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}
       SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:-}
 
+      # Discord Server Invite Link (for users to join your Discord server)
+      # Example: https://discord.gg/abc123
+      DISCORD_SERVER_INVITE_URL: ${DISCORD_SERVER_INVITE_URL:-}
+
       # Application Settings
       NODE_ENV: production
       PORT: 5000

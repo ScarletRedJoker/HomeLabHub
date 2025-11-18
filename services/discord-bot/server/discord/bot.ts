@@ -2012,6 +2012,68 @@ export async function startBot(storage: IStorage, broadcast: (data: any) => void
     });
 
     // Setup error handlers
+    // Handle guild member add (new members joining)
+    client.on(Events.GuildMemberAdd, async (member) => {
+      console.log(`[Discord] Member joined: ${member.user.tag} in guild ${member.guild.name}`);
+      
+      // Broadcast member add event for real-time updates
+      broadcast({
+        type: 'GUILD_MEMBER_ADD',
+        serverId: member.guild.id,
+        data: {
+          userId: member.user.id,
+          username: member.user.tag,
+          guildId: member.guild.id,
+          memberCount: member.guild.memberCount,
+          timestamp: new Date().toISOString()
+        }
+      });
+    });
+
+    // Handle guild member remove (members leaving/being kicked)
+    client.on(Events.GuildMemberRemove, async (member) => {
+      console.log(`[Discord] Member left: ${member.user.tag} from guild ${member.guild.name}`);
+      
+      // Broadcast member remove event for real-time updates
+      broadcast({
+        type: 'GUILD_MEMBER_REMOVE',
+        serverId: member.guild.id,
+        data: {
+          userId: member.user.id,
+          username: member.user.tag,
+          guildId: member.guild.id,
+          memberCount: member.guild.memberCount,
+          timestamp: new Date().toISOString()
+        }
+      });
+    });
+
+    // Handle voice state updates (users joining/leaving voice channels)
+    client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
+      // Only broadcast if user joined or left a voice channel (not just mute/deafen changes)
+      if (oldState.channelId !== newState.channelId) {
+        const action = newState.channelId ? 'joined' : 'left';
+        const channelName = newState.channel?.name || oldState.channel?.name || 'Unknown';
+        
+        console.log(`[Discord] Voice state update: ${newState.member?.user.tag} ${action} voice channel ${channelName}`);
+        
+        // Broadcast voice state update for real-time channel occupancy updates
+        broadcast({
+          type: 'VOICE_STATE_UPDATE',
+          serverId: newState.guild.id,
+          data: {
+            userId: newState.member?.user.id,
+            username: newState.member?.user.tag,
+            guildId: newState.guild.id,
+            channelId: newState.channelId,
+            oldChannelId: oldState.channelId,
+            action: action,
+            timestamp: new Date().toISOString()
+          }
+        });
+      }
+    });
+
     client.on('error', (error) => {
       console.error('Discord client error:', error);
     });

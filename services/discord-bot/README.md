@@ -81,6 +81,7 @@ DISCORD_CLIENT_SECRET=your_client_secret
 DISCORD_BOT_TOKEN=your_bot_token
 DISCORD_APP_ID=your_application_id
 SESSION_SECRET=generate_with_openssl_rand_base64_32
+DISCORD_SERVER_INVITE_URL=https://discord.gg/your_invite_code
 ```
 
 **Spotify Integration (Optional)**:
