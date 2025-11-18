@@ -109,13 +109,33 @@ else
 fi
 
 echo ""
-echo -e "${BLUE}Verifying databases...${NC}"
-if docker exec discord-bot-db psql -U ticketbot -d ticketbot -c "\l" | grep -E "streambot|homelab_jarvis|ticketbot"; then
-    echo -e "${GREEN}✓ All databases verified${NC}"
-else
-    echo -e "${RED}✗ Database verification failed${NC}"
+echo -e "${BLUE}Verifying databases and users...${NC}"
+
+# Check streambot database exists
+if ! docker exec discord-bot-db psql -U ticketbot -d ticketbot -c "\l" | grep -q "^\s*streambot\s"; then
+    echo -e "${RED}✗ Database 'streambot' not found!${NC}"
     exit 1
 fi
+
+# Check homelab_jarvis database exists
+if ! docker exec discord-bot-db psql -U ticketbot -d ticketbot -c "\l" | grep -q "^\s*homelab_jarvis\s"; then
+    echo -e "${RED}✗ Database 'homelab_jarvis' not found!${NC}"
+    exit 1
+fi
+
+# Check streambot user exists
+if ! docker exec discord-bot-db psql -U ticketbot -d ticketbot -c "\du" | grep -q "^\s*streambot\s"; then
+    echo -e "${RED}✗ User 'streambot' not found!${NC}"
+    exit 1
+fi
+
+# Check jarvis user exists
+if ! docker exec discord-bot-db psql -U ticketbot -d ticketbot -c "\du" | grep -q "^\s*jarvis\s"; then
+    echo -e "${RED}✗ User 'jarvis' not found!${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✓ All databases and users verified${NC}"
 
 echo ""
 echo -e "${GREEN}✅ Database users fixed securely!${NC}"
