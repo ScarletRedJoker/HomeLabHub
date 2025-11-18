@@ -40,13 +40,13 @@ class HomeAssistantService:
         Initialize Home Assistant service
         
         Args:
-            base_url: Home Assistant URL (e.g., https://home.evindrake.net)
+            base_url: Home Assistant URL (e.g., http://homeassistant:8123)
             access_token: Long-lived access token for Home Assistant
         """
-        self.base_url = base_url or os.environ.get('HOME_ASSISTANT_URL', 'https://home.evindrake.net')
+        self.base_url = base_url or os.environ.get('HOME_ASSISTANT_URL', 'http://homeassistant:8123')
         self.access_token = access_token or os.environ.get('HOME_ASSISTANT_TOKEN')
         
-        self.verify_ssl = os.environ.get('HOME_ASSISTANT_VERIFY_SSL', 'True').lower() == 'true'
+        self.verify_ssl = os.environ.get('HOME_ASSISTANT_VERIFY_SSL', 'False').lower() == 'true'
         self.timeout_connect = int(os.environ.get('HOME_ASSISTANT_TIMEOUT_CONNECT', '10'))
         self.timeout_read = int(os.environ.get('HOME_ASSISTANT_TIMEOUT_READ', '30'))
         self.health_check_interval = int(os.environ.get('HOME_ASSISTANT_HEALTH_CHECK_INTERVAL', '300'))
@@ -76,7 +76,7 @@ class HomeAssistantService:
             logger.warning("║   2. Set HOME_ASSISTANT_TOKEN (long-lived access token)      ║")
             logger.warning("║                                                              ║")
             logger.warning("║ Optional settings:                                           ║")
-            logger.warning("║   - HOME_ASSISTANT_VERIFY_SSL=True (default)                 ║")
+            logger.warning("║   - HOME_ASSISTANT_VERIFY_SSL=False (default for internal)   ║")
             logger.warning("║   - HOME_ASSISTANT_TIMEOUT_CONNECT=10 (seconds)              ║")
             logger.warning("║   - HOME_ASSISTANT_TIMEOUT_READ=30 (seconds)                 ║")
             logger.warning("║   - HOME_ASSISTANT_HEALTH_CHECK_INTERVAL=300 (5 minutes)     ║")
