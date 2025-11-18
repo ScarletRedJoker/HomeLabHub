@@ -179,10 +179,7 @@ code.evindrake.net {
     # Code Server already has built-in password authentication
     # No additional basic auth needed
     
-    reverse_proxy https://code-server:8443 {
-        transport http {
-            tls_insecure_skip_verify
-        }
+    reverse_proxy http://code-server:8443 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         
