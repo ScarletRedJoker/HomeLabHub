@@ -1,60 +1,138 @@
 {% extends "base.html" %}
 
-{% block title %}AI Assistant - Nebula Command{% endblock %}
+{% block title %}Jarvis AI Assistant - Nebula Command{% endblock %}
+
+{% block extra_head %}
+<!-- Markdown rendering -->
+<script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
+
+<!-- Syntax highlighting -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/yaml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/docker.min.js"></script>
+{% endblock %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col-12">
-        <h2><i class="bi bi-robot"></i> AI Troubleshooting Assistant</h2>
-        <p class="text-muted">Get intelligent help with your infrastructure issues</p>
+<div class="chat-container-wrapper">
+    <!-- Header with Model Selector -->
+    <div class="chat-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="mb-0"><i class="bi bi-robot"></i> Jarvis AI Assistant</h2>
+                <p class="text-muted mb-0 small">DevOps Expert | Docker & Infrastructure Specialist</p>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+                <select id="modelSelector" class="form-select form-select-sm" style="width: auto;">
+                    <option value="gpt-5" selected>GPT-5 (Latest)</option>
+                    <option value="gpt-4">GPT-4 (Fast)</option>
+                </select>
+                <button class="btn btn-sm btn-outline-light" onclick="showChatMenu()" title="Options">
+                    <i class="bi bi-three-dots-vertical"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Messages Area -->
+    <div id="chatMessages" class="chat-messages">
+        <!-- Welcome message will be added by JavaScript -->
+    </div>
+
+    <!-- Typing Indicator (hidden by default) -->
+    <div id="typingIndicator" class="message-wrapper ai-message-wrapper" style="display: none;">
+        <div class="message-bubble ai-bubble typing-bubble">
+            <div class="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="chat-input-area">
+        <!-- Stop Generation Button (hidden by default) -->
+        <div id="stopGenerationContainer" style="display: none; margin-bottom: 8px;">
+            <button class="btn btn-sm btn-danger w-100" onclick="stopGeneration()">
+                <i class="bi bi-stop-circle"></i> Stop Generating
+            </button>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions mb-2">
+            <button class="btn btn-sm btn-outline-primary" onclick="quickPrompt('How do I check Docker container health?')">
+                <i class="bi bi-heart-pulse"></i> Container Health
+            </button>
+            <button class="btn btn-sm btn-outline-primary" onclick="quickPrompt('My container keeps restarting. What should I check?')">
+                <i class="bi bi-arrow-repeat"></i> Restart Issues
+            </button>
+            <button class="btn btn-sm btn-outline-primary" onclick="quickPrompt('How can I free up disk space?')">
+                <i class="bi bi-hdd"></i> Disk Space
+            </button>
+            <button class="btn btn-sm btn-outline-primary" onclick="quickPrompt('Explain Docker networking best practices')">
+                <i class="bi bi-diagram-3"></i> Networking
+            </button>
+        </div>
+
+        <!-- Message Input -->
+        <div class="input-group">
+            <textarea 
+                id="chatInput" 
+                class="form-control chat-textarea" 
+                placeholder="Ask Jarvis anything about Docker, servers, networking..."
+                rows="1"></textarea>
+            <button class="btn btn-primary" id="sendButton" onclick="sendMessage()">
+                <i class="bi bi-send-fill"></i>
+            </button>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="chat-actions mt-2">
+            <button class="btn btn-sm btn-outline-secondary" onclick="startNewChat()" title="Start New Chat">
+                <i class="bi bi-plus-circle"></i> New Chat
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="exportChat()" title="Export Chat">
+                <i class="bi bi-download"></i> Export
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="clearHistory()" title="Clear History">
+                <i class="bi bi-trash"></i> Clear
+            </button>
+            <span class="small text-muted ms-auto" id="messageCount">0 messages</span>
+        </div>
     </div>
 </div>
 
-<div class="row">
-    <div class="col-md-8 offset-md-2">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h5>Chat with AI Assistant</h5>
+<!-- Chat Options Menu Modal -->
+<div class="modal fade" id="chatMenuModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Chat Options</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="card-body">
-                <div id="chatMessages" class="chat-container mb-3"></div>
-                <div class="input-group">
-                    <input type="text" class="form-control" id="chatInput" 
-                           placeholder="Ask a question about your infrastructure...">
-                    <button class="btn btn-primary" onclick="sendMessage()">
-                        <i class="bi bi-send"></i> Send
-                    </button>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Custom System Prompt (Advanced)</label>
+                    <textarea id="customSystemPrompt" class="form-control" rows="4" placeholder="Customize Jarvis personality..."></textarea>
+                    <small class="text-muted">Leave empty to use default DevOps expert personality</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-check-label d-flex align-items-center">
+                        <input type="checkbox" id="useStreamingToggle" class="form-check-input me-2" checked>
+                        <span>Enable Streaming Responses</span>
+                    </label>
+                    <small class="text-muted d-block mt-1">Real-time word-by-word responses (like ChatGPT)</small>
                 </div>
             </div>
-        </div>
-
-        <div class="card mt-4">
-            <div class="card-header">
-                <h5>Quick Actions</h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6 mb-2">
-                        <button class="btn btn-outline-primary w-100" onclick="quickQuestion('How do I check if my Docker containers are healthy?')">
-                            Check Container Health
-                        </button>
-                    </div>
-                    <div class="col-md-6 mb-2">
-                        <button class="btn btn-outline-primary w-100" onclick="quickQuestion('My container keeps restarting. What should I check?')">
-                            Container Restart Issues
-                        </button>
-                    </div>
-                    <div class="col-md-6 mb-2">
-                        <button class="btn btn-outline-primary w-100" onclick="quickQuestion('How can I free up disk space on my server?')">
-                            Disk Space Management
-                        </button>
-                    </div>
-                    <div class="col-md-6 mb-2">
-                        <button class="btn btn-outline-primary w-100" onclick="quickQuestion('What are the best practices for Docker networking?')">
-                            Docker Networking
-                        </button>
-                    </div>
-                </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="saveSettings()" data-bs-dismiss="modal">Save Settings</button>
             </div>
         </div>
     </div>

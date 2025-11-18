@@ -18,6 +18,7 @@ from routes.artifact_routes import artifact_bp
 from routes.jarvis_voice_api import jarvis_voice_bp
 from routes.smart_home_api import smart_home_bp, limiter
 from routes.google_services_api import google_services_bp
+from routes.marketplace_api import marketplace_bp
 from services.activity_service import activity_service
 from services.db_service import db_service
 from services.websocket_service import websocket_service
@@ -117,6 +118,7 @@ app.register_blueprint(artifact_bp)
 app.register_blueprint(jarvis_voice_bp)
 app.register_blueprint(smart_home_bp)
 app.register_blueprint(google_services_bp)
+app.register_blueprint(marketplace_bp)
 
 # Initialize WebSocket service
 websocket_service.init_app(app)
@@ -180,6 +182,62 @@ try:
 except Exception as e:
     logger.warning(f"⚠ Redis connection failed: {e}")
     logger.warning("  Workflow engine features will be unavailable")
+
+logger.info("=" * 60)
+
+# Initialize marketplace catalog
+logger.info("=" * 60)
+logger.info("Initializing Marketplace Catalog")
+logger.info("=" * 60)
+
+if db_service.is_available:
+    try:
+        import json
+        from models.marketplace import MarketplaceApp
+        from sqlalchemy import select
+        
+        with db_service.get_session() as session:
+            # Check if catalog is already loaded
+            existing_apps = session.execute(select(MarketplaceApp)).scalars().all()
+            
+            if len(existing_apps) == 0:
+                logger.info("Loading marketplace catalog from data/marketplace_apps.json...")
+                catalog_path = os.path.join(os.path.dirname(__file__), 'data', 'marketplace_apps.json')
+                
+                if os.path.exists(catalog_path):
+                    with open(catalog_path, 'r') as f:
+                        apps_data = json.load(f)
+                    
+                    for app_data in apps_data:
+                        app = MarketplaceApp(
+                            slug=app_data['slug'],
+                            name=app_data['name'],
+                            category=app_data['category'],
+                            description=app_data['description'],
+                            long_description=app_data.get('long_description'),
+                            icon_url=app_data.get('icon_url'),
+                            screenshot_url=app_data.get('screenshot_url'),
+                            docker_image=app_data['docker_image'],
+                            default_port=app_data['default_port'],
+                            requires_database=app_data.get('requires_database', False),
+                            db_type=app_data.get('db_type'),
+                            config_template=app_data['config_template'],
+                            env_template=app_data['env_template'],
+                            popularity=app_data.get('popularity', 0)
+                        )
+                        session.add(app)
+                    
+                    session.commit()
+                    logger.info(f"✓ Loaded {len(apps_data)} apps into marketplace catalog")
+                else:
+                    logger.warning(f"⚠ Catalog file not found: {catalog_path}")
+            else:
+                logger.info(f"✓ Marketplace catalog already initialized with {len(existing_apps)} apps")
+                
+    except Exception as e:
+        logger.error(f"⚠ Failed to initialize marketplace catalog: {e}")
+else:
+    logger.warning("⚠ Skipping marketplace catalog initialization (database not available)")
 
 logger.info("=" * 60)
 

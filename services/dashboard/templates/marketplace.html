@@ -1,0 +1,376 @@
+{% extends "base.html" %}
+
+{% block title %}Docker Store - Nebula Command{% endblock %}
+
+{% block head %}
+<style>
+    .marketplace-container {
+        padding: 2rem;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .marketplace-header {
+        margin-bottom: 2rem;
+    }
+
+    .marketplace-title {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .category-filters {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+    }
+
+    .category-btn {
+        padding: 0.5rem 1.5rem;
+        border: 2px solid var(--accent-purple);
+        background: transparent;
+        color: var(--text-primary);
+        border-radius: 25px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .category-btn:hover, .category-btn.active {
+        background: var(--accent-purple);
+        color: white;
+    }
+
+    .apps-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 3rem;
+    }
+
+    .app-card {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .app-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        border-color: var(--accent-purple);
+    }
+
+    .app-icon {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 1rem;
+        border-radius: 12px;
+    }
+
+    .app-name {
+        font-size: 1.25rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+
+    .app-description {
+        color: var(--text-secondary);
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+        line-height: 1.4;
+    }
+
+    .app-category {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        background: rgba(102, 126, 234, 0.2);
+        border-radius: 15px;
+        font-size: 0.8rem;
+        margin-bottom: 1rem;
+        text-transform: capitalize;
+    }
+
+    .deploy-btn {
+        width: 100%;
+        padding: 0.75rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+
+    .deploy-btn:hover {
+        transform: scale(1.02);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .deployed-apps-section {
+        margin-top: 3rem;
+    }
+
+    .deployed-app {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .deployed-app-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .deployed-app-name {
+        font-size: 1.25rem;
+        font-weight: bold;
+    }
+
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: bold;
+    }
+
+    .status-running {
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+    }
+
+    .status-stopped {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+    }
+
+    .status-deploying {
+        background: rgba(251, 191, 36, 0.2);
+        color: #fbbf24;
+    }
+
+    .app-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .action-btn {
+        padding: 0.5rem 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-primary);
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .action-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: var(--accent-purple);
+    }
+
+    .action-btn.danger {
+        border-color: rgba(239, 68, 68, 0.5);
+        color: #ef4444;
+    }
+
+    .action-btn.danger:hover {
+        background: rgba(239, 68, 68, 0.1);
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: var(--bg-secondary);
+        border-radius: 16px;
+        padding: 2rem;
+        max-width: 600px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .modal-header {
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: var(--text-secondary);
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 0.75rem;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        color: var(--text-primary);
+    }
+
+    .form-group input:focus {
+        outline: none;
+        border-color: var(--accent-purple);
+    }
+
+    .generate-btn {
+        padding: 0.5rem 1rem;
+        background: rgba(102, 126, 234, 0.2);
+        border: 1px solid var(--accent-purple);
+        color: var(--text-primary);
+        border-radius: 6px;
+        cursor: pointer;
+        margin-left: 0.5rem;
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+
+    .modal-actions button {
+        flex: 1;
+        padding: 0.75rem;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+    .btn-cancel {
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text-primary);
+    }
+
+    .btn-submit {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: var(--text-secondary);
+    }
+
+    .tabs {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .tab {
+        padding: 1rem 2rem;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.3s ease;
+    }
+
+    .tab:hover, .tab.active {
+        color: var(--accent-purple);
+        border-bottom-color: var(--accent-purple);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="marketplace-container">
+    <div class="marketplace-header">
+        <h1 class="marketplace-title">🛍️ Docker Store</h1>
+        <p style="color: var(--text-secondary);">Deploy popular self-hosted applications with one click</p>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" data-tab="browse">Browse Apps</div>
+        <div class="tab" data-tab="deployed">Deployed Apps</div>
+    </div>
+
+    <div id="browse-section">
+        <div class="category-filters">
+            <button class="category-btn active" data-category="all">All Apps</button>
+            <button class="category-btn" data-category="storage">Storage</button>
+            <button class="category-btn" data-category="media">Media</button>
+            <button class="category-btn" data-category="security">Security</button>
+            <button class="category-btn" data-category="cms">CMS</button>
+            <button class="category-btn" data-category="development">Development</button>
+            <button class="category-btn" data-category="monitoring">Monitoring</button>
+        </div>
+
+        <div class="apps-grid" id="apps-grid">
+            <!-- Apps will be loaded dynamically -->
+        </div>
+    </div>
+
+    <div id="deployed-section" style="display: none;">
+        <div id="deployed-apps-list">
+            <!-- Deployed apps will be loaded dynamically -->
+        </div>
+    </div>
+</div>
+
+<!-- Deploy Modal -->
+<div id="deploy-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header" id="deploy-modal-title">Deploy App</div>
+        <form id="deploy-form">
+            <div id="deploy-form-fields">
+                <!-- Form fields will be generated dynamically -->
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" onclick="closeDeployModal()">Cancel</button>
+                <button type="submit" class="btn-submit">Deploy 🚀</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Logs Modal -->
+<div id="logs-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">Container Logs</div>
+        <pre id="logs-content" style="background: rgba(0,0,0,0.5); padding: 1rem; border-radius: 8px; overflow-x: auto; max-height: 400px; font-family: monospace; font-size: 0.85rem;"></pre>
+        <div class="modal-actions">
+            <button type="button" class="btn-cancel" onclick="closeLogsModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/marketplace.js') }}"></script>
+{% endblock %}

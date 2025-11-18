@@ -1,7 +1,8 @@
 import os
 from openai import OpenAI
-from typing import List, Dict
+from typing import List, Dict, Generator
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +84,7 @@ Provide specific troubleshooting steps and potential solutions."""
             logger.error(f"Error getting troubleshooting advice: {e}")
             return f"Error: {str(e)}"
     
-    def chat(self, message: str, conversation_history: List[Dict] = None) -> str:
+    def chat(self, message: str, conversation_history: List[Dict] = None, model: str = "gpt-5") -> str:
         if not self.enabled:
             return "AI chat is not available. Please check API configuration."
         
@@ -96,7 +97,14 @@ Provide specific troubleshooting steps and potential solutions."""
 - Log analysis and error resolution
 - Service deployment and orchestration
 
-Be concise, practical, and action-oriented. When diagnosing issues, suggest specific commands or checks the user can perform. Focus on real solutions, not just general advice."""}
+Be concise, practical, and action-oriented. When diagnosing issues, suggest specific commands or checks the user can perform. Focus on real solutions, not just general advice.
+
+Format your responses using Markdown for better readability:
+- Use **bold** for important terms
+- Use `code` for commands, file paths, and configuration values
+- Use code blocks with language tags for multi-line code (```bash, ```python, etc.)
+- Use lists for step-by-step instructions
+- Use headers (##, ###) for organizing longer responses"""}
             ]
             
             if conversation_history:
@@ -107,12 +115,87 @@ Be concise, practical, and action-oriented. When diagnosing issues, suggest spec
             # the newest OpenAI model is "gpt-5" which was released August 7, 2025.
             # do not change this unless explicitly requested by the user
             response = self.client.chat.completions.create(
-                model="gpt-5",
+                model=model,
                 messages=messages,
-                max_completion_tokens=1024
+                max_completion_tokens=2048
             )
             
             return response.choices[0].message.content or "No response generated"
         except Exception as e:
             logger.error(f"Error in AI chat: {e}")
             return f"Error: {str(e)}"
+    
+    def chat_stream(self, message: str, conversation_history: List[Dict] = None, model: str = "gpt-5") -> Generator[str, None, None]:
+        """
+        Stream chat responses using Server-Sent Events (SSE)
+        
+        Yields SSE-formatted messages with JSON data
+        """
+        if not self.enabled:
+            yield f"data: {json.dumps({'error': 'AI chat is not available. Please check API configuration.'})}\n\n"
+            yield "data: [DONE]\n\n"
+            return
+        
+        try:
+            messages = [
+                {"role": "system", "content": """You are Jarvis, an AI-first homelab copilot assistant. You help with:
+- Docker container management and troubleshooting
+- Server health monitoring and diagnostics
+- Network configuration and debugging
+- Log analysis and error resolution
+- Service deployment and orchestration
+
+Be concise, practical, and action-oriented. When diagnosing issues, suggest specific commands or checks the user can perform. Focus on real solutions, not just general advice.
+
+Format your responses using Markdown for better readability:
+- Use **bold** for important terms
+- Use `code` for commands, file paths, and configuration values
+- Use code blocks with language tags for multi-line code (```bash, ```python, etc.)
+- Use lists for step-by-step instructions
+- Use headers (##, ###) for organizing longer responses"""}
+            ]
+            
+            if conversation_history:
+                messages.extend(conversation_history)
+            
+            messages.append({"role": "user", "content": message})
+            
+            # the newest OpenAI model is "gpt-5" which was released August 7, 2025.
+            # do not change this unless explicitly requested by the user
+            stream = self.client.chat.completions.create(
+                model=model,
+                messages=messages,
+                max_completion_tokens=2048,
+                stream=True
+            )
+            
+            for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    content = chunk.choices[0].delta.content
+                    yield f"data: {json.dumps({'content': content})}\n\n"
+            
+            yield "data: [DONE]\n\n"
+            
+        except Exception as e:
+            logger.error(f"Error in AI chat stream: {e}")
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            yield "data: [DONE]\n\n"
+    
+    def get_available_models(self) -> List[Dict[str, str]]:
+        """
+        Get list of available AI models
+        
+        Returns list of models with id, name, and description
+        """
+        return [
+            {
+                "id": "gpt-5",
+                "name": "GPT-5",
+                "description": "Latest OpenAI model (August 2025) - Best for complex reasoning"
+            },
+            {
+                "id": "gpt-4",
+                "name": "GPT-4",
+                "description": "Previous generation - Fast and reliable"
+            }
+        ]

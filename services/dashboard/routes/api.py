@@ -433,23 +433,6 @@ def analyze_logs():
         logger.error(f"Error analyzing logs: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@api_bp.route('/ai/chat', methods=['POST'])
-@require_auth
-def ai_chat():
-    try:
-        data = request.get_json()
-        message = data.get('message', '')
-        history = data.get('history', [])
-        
-        if not message:
-            return jsonify({'success': False, 'message': 'No message provided'}), 400
-        
-        response = ai_service.chat(message, history)
-        return jsonify({'success': True, 'data': response})
-    except Exception as e:
-        logger.error(f"Error in AI chat: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
 @api_bp.route('/ai/troubleshoot', methods=['POST'])
 @require_auth
 def troubleshoot():
@@ -1099,4 +1082,132 @@ def get_security_summary():
         })
     except Exception as e:
         logger.error(f"Error getting security summary: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ==================== AI CHAT ENDPOINTS ====================
+
+@api_bp.route('/ai/chat', methods=['POST'])
+@require_auth
+def ai_chat():
+    """
+    Non-streaming AI chat endpoint
+    
+    Request body:
+        {
+            "message": str,
+            "history": List[Dict] (optional),
+            "model": str (optional, defaults to "gpt-5")
+        }
+    
+    Returns:
+        JSON with success status and AI response
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'No JSON data provided'}), 400
+        
+        message = data.get('message', '').strip()
+        history = data.get('history', [])
+        model = data.get('model', 'gpt-5')
+        
+        if not message:
+            return jsonify({'success': False, 'message': 'Message is required'}), 400
+        
+        if not ai_service.enabled:
+            return jsonify({
+                'success': False,
+                'message': 'AI service is not available. Please check OpenAI API configuration.'
+            }), 503
+        
+        response = ai_service.chat(message, history, model)
+        
+        return jsonify({
+            'success': True,
+            'data': response,
+            'model': model
+        })
+    
+    except Exception as e:
+        logger.error(f"Error in AI chat endpoint: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@api_bp.route('/ai/chat/stream', methods=['POST'])
+@require_auth
+def ai_chat_stream():
+    """
+    Streaming AI chat endpoint using Server-Sent Events (SSE)
+    
+    Request body:
+        {
+            "message": str,
+            "history": List[Dict] (optional),
+            "model": str (optional, defaults to "gpt-5")
+        }
+    
+    Returns:
+        Server-Sent Events stream with AI response chunks
+    """
+    from flask import Response
+    
+    try:
+        data = request.get_json()
+        if not data:
+            def error_stream():
+                yield f"data: {{'error': 'No JSON data provided'}}\n\n"
+                yield "data: [DONE]\n\n"
+            return Response(error_stream(), mimetype='text/event-stream')
+        
+        message = data.get('message', '').strip()
+        history = data.get('history', [])
+        model = data.get('model', 'gpt-5')
+        
+        if not message:
+            def error_stream():
+                yield f"data: {{'error': 'Message is required'}}\n\n"
+                yield "data: [DONE]\n\n"
+            return Response(error_stream(), mimetype='text/event-stream')
+        
+        if not ai_service.enabled:
+            def error_stream():
+                yield f"data: {{'error': 'AI service is not available'}}\n\n"
+                yield "data: [DONE]\n\n"
+            return Response(error_stream(), mimetype='text/event-stream')
+        
+        return Response(
+            ai_service.chat_stream(message, history, model),
+            mimetype='text/event-stream',
+            headers={
+                'Cache-Control': 'no-cache',
+                'X-Accel-Buffering': 'no'
+            }
+        )
+    
+    except Exception as e:
+        logger.error(f"Error in AI chat stream endpoint: {e}")
+        def error_stream():
+            yield f"data: {{'error': '{str(e)}'}}\n\n"
+            yield "data: [DONE]\n\n"
+        return Response(error_stream(), mimetype='text/event-stream')
+
+
+@api_bp.route('/ai/models', methods=['GET'])
+@require_auth
+def get_ai_models():
+    """
+    Get list of available AI models
+    
+    Returns:
+        JSON with list of models (id, name, description)
+    """
+    try:
+        models = ai_service.get_available_models()
+        return jsonify({
+            'success': True,
+            'data': models
+        })
+    except Exception as e:
+        logger.error(f"Error getting AI models: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500

@@ -1,6 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify, send_from_directory, redirect, url_for, session, make_response
 from utils.auth import require_web_auth
-from config import Config
 import os
 import logging
 
@@ -151,3 +150,8 @@ def game_connect():
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
     return response
+
+@web_bp.route('/marketplace')
+@require_web_auth
+def marketplace():
+    return render_template('marketplace.html')
