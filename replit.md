@@ -2,6 +2,80 @@
 
 ## Recent Changes
 
+### November 18, 2025 - Systematic Fix of All Service Issues (PM Session)
+**Comprehensive review and fix of all service errors identified in production logs**
+
+**Issues Identified from Logs:**
+1. **Stream-Bot:** Drizzle-kit migration failures (`error: unknown command 'push'`)
+2. **Code-Server:** Permission denied errors (`EACCES: permission denied, mkdir '/home/coder/.config/code-server'`)
+3. **Caddy:** Caddyfile formatting warning (line 4)
+4. **Home Assistant:** Reverse proxy configuration errors
+5. **PostgreSQL:** Missing `bot_instances` table (related to stream-bot migrations)
+
+**Root Causes Identified:**
+1. **Stream-Bot Migration Failure:** Using drizzle-kit v0.18.1 with modern command syntax (`push`) instead of legacy syntax (`push:pg`)
+2. **Code-Server Permissions:** Conflicting `user: "1000:1000"` directive preventing PUID/PGID environment variables from working
+3. **Caddyfile Formatting:** Inconsistent indentation (spaces vs tabs)
+4. **Home Assistant Config:** Configuration file exists in `config/homeassistant/` but not mounted (using named volume instead)
+5. **bot_instances Table:** Table defined in stream-bot schema but not created due to migration failures
+
+**Solutions Implemented:**
+1. ✅ **Stream-Bot:** Upgraded drizzle-kit from v0.18.1 to v0.31.0 in package.json + ran npm install
+2. ✅ **Stream-Bot:** Added fallback command in docker-entrypoint.sh (`push:pg || push`) for version compatibility
+3. ✅ **Code-Server:** Switched to linuxserver/code-server image (proper PUID/PGID support) and updated volume paths
+4. ✅ **Caddyfile:** Fixed indentation to use tabs consistently
+5. ✅ **Home Assistant:** Kept named volume for safety, added template mount at `/config-templates` for migration reference
+6. ✅ **bot_instances Table:** Will be created automatically once stream-bot migrations run successfully
+
+**Technical Details:**
+
+**Stream-Bot Fix:**
+```typescript
+// package.json: drizzle-kit version update
+"drizzle-kit": "^0.31.0"  // Was: "^0.18.1"
+
+// docker-entrypoint.sh: Backward-compatible migration command
+npx drizzle-kit push:pg --config=drizzle.config.ts || npx drizzle-kit push --config=drizzle.config.ts
+```
+
+**Docker Compose Changes:**
+```yaml
+# Code-Server: Switched to LinuxServer image (proper PUID/PGID support)
+code-server:
+  image: lscr.io/linuxserver/code-server:latest  # Was: codercom/code-server:latest
+  volumes:
+    - code_server_data:/config  # Updated volume path for LinuxServer image
+    - /home/${SERVICE_USER:-evin}/contain:/home/coder/projects
+    - ./config/code-server:/config/.local/share/code-server
+
+# Home Assistant: Added template mount for safe config migration
+homeassistant:
+  volumes:
+    - homeassistant_config:/config  # Kept named volume (no data loss)
+    - ./config/homeassistant:/config-templates:ro  # Templates for migration
+    - /run/dbus:/run/dbus:ro
+```
+
+**Files Modified:**
+- `services/stream-bot/package.json` - Updated drizzle-kit version
+- `services/stream-bot/docker-entrypoint.sh` - Added fallback migration command
+- `docker-compose.unified.yml` - Fixed code-server and homeassistant configuration
+- `Caddyfile` - Fixed indentation formatting
+
+**Deployment Instructions:**
+```bash
+# Rebuild affected services with new configurations
+docker-compose -f docker-compose.unified.yml build --no-cache stream-bot homeassistant
+docker-compose -f docker-compose.unified.yml up -d stream-bot code-server homeassistant caddy
+```
+
+**Verification Steps:**
+1. Stream-bot migrations should run successfully and create bot_instances table
+2. Code-server should start without permission errors
+3. Caddy should load Caddyfile without formatting warnings
+4. Home Assistant should accept reverse proxy requests from Caddy
+5. No more "relation bot_instances does not exist" errors in PostgreSQL logs
+
 ### November 18, 2025 - Critical Service Fixes (VNC, Code-Server, Stream-Bot)
 **Fixed three critical issues preventing services from running**
 

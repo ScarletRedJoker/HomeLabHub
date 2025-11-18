@@ -3,7 +3,7 @@
 # Last Updated: 2025-11-15
 
 {
-    email evin@evindrake.net
+        email evin@evindrake.net
 }
 
 # ============================================
@@ -160,7 +160,10 @@ code.evindrake.net {
     #     remote_ip 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
     # }
     # handle @vpn_only {
-    #     reverse_proxy code-server:8080 {
+    #     reverse_proxy https://code-server:8443 {
+    #         transport http {
+    #             tls_insecure_skip_verify
+    #         }
     #         header_up Host {host}
     #         header_up X-Real-IP {remote_host}
     #         
@@ -176,7 +179,10 @@ code.evindrake.net {
     # Code Server already has built-in password authentication
     # No additional basic auth needed
     
-    reverse_proxy code-server:8080 {
+    reverse_proxy https://code-server:8443 {
+        transport http {
+            tls_insecure_skip_verify
+        }
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         

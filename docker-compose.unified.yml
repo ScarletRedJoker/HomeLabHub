@@ -366,23 +366,22 @@ services:
   # Code-Server (VS Code in Browser)
   # ============================================
   code-server:
-    image: codercom/code-server:latest
+    image: lscr.io/linuxserver/code-server:latest
     container_name: code-server
     restart: unless-stopped
     networks:
       - homelab
-    user: "1000:1000"
     environment:
       - PASSWORD=${CODE_SERVER_PASSWORD}
       - PUID=1000
       - PGID=1000
       - TZ=America/New_York
     volumes:
-      - code_server_data:/home/coder/.config
+      - code_server_data:/config
       - /home/${SERVICE_USER:-evin}/contain:/home/coder/projects
-      - ./config/code-server:/home/coder/.local/share/code-server
+      - ./config/code-server:/config/.local/share/code-server
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      test: ["CMD", "curl", "-f", "-k", "https://localhost:8443/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -402,6 +401,7 @@ services:
       - TZ=America/New_York
     volumes:
       - homeassistant_config:/config
+      - ./config/homeassistant:/config-templates:ro
       - /run/dbus:/run/dbus:ro
     ports:
       - "8123:8123"
