@@ -479,33 +479,17 @@ ensure_databases() {
         return 1
     fi
     
-    # Create ticketbot database and user
+    # Note: ticketbot user is the PostgreSQL superuser (set via POSTGRES_USER in docker-compose)
     echo "1️⃣  Discord Bot (ticketbot)..."
-    if docker exec discord-bot-db psql -U postgres -d postgres <<-EOSQL
-        DO \$\$
-        BEGIN
-            IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'ticketbot') THEN
-                CREATE ROLE ticketbot WITH LOGIN PASSWORD '${DISCORD_DB_PASSWORD}';
-            ELSE
-                ALTER ROLE ticketbot WITH PASSWORD '${DISCORD_DB_PASSWORD}';
-            END IF;
-        END
-        \$\$;
-        
-        SELECT 'CREATE DATABASE ticketbot OWNER ticketbot'
-        WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'ticketbot')\gexec
-        
-        GRANT ALL PRIVILEGES ON DATABASE ticketbot TO ticketbot;
-EOSQL
-    then
-        echo -e "${GREEN}   ✓ ticketbot database ready${NC}"
+    if docker exec discord-bot-db psql -U ticketbot -d ticketbot -c "SELECT 1;" &>/dev/null; then
+        echo -e "${GREEN}   ✓ ticketbot database ready (already exists)${NC}"
     else
-        echo -e "${RED}   ✗ Failed to create ticketbot database (see errors above)${NC}"
+        echo -e "${RED}   ✗ ticketbot database connection failed${NC}"
     fi
     
-    # Create streambot database and user
+    # Create streambot database and user (using ticketbot as superuser)
     echo "2️⃣  Stream Bot (streambot)..."
-    if docker exec discord-bot-db psql -U postgres -d postgres <<-EOSQL
+    if PGPASSWORD="${DISCORD_DB_PASSWORD}" docker exec -e PGPASSWORD discord-bot-db psql -U ticketbot -d ticketbot <<-EOSQL
         DO \$\$
         BEGIN
             IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'streambot') THEN
@@ -527,9 +511,9 @@ EOSQL
         echo -e "${RED}   ✗ Failed to create streambot database (see errors above)${NC}"
     fi
     
-    # Create jarvis database and user
+    # Create jarvis database and user (using ticketbot as superuser)
     echo "3️⃣  Dashboard/Jarvis (homelab_jarvis)..."
-    if docker exec discord-bot-db psql -U postgres -d postgres <<-EOSQL
+    if PGPASSWORD="${DISCORD_DB_PASSWORD}" docker exec -e PGPASSWORD discord-bot-db psql -U ticketbot -d ticketbot <<-EOSQL
         DO \$\$
         BEGIN
             IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'jarvis') THEN
@@ -603,13 +587,13 @@ check_database_status() {
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo -e "${BOLD}Database Roles (Users):${NC}"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    docker exec discord-bot-db psql -U postgres -d postgres -c "\du" 2>/dev/null || echo -e "${RED}Failed to query roles${NC}"
+    PGPASSWORD="$DISCORD_DB_PASSWORD" docker exec -e PGPASSWORD discord-bot-db psql -U ticketbot -d ticketbot -c "\du" 2>/dev/null || echo -e "${RED}Failed to query roles${NC}"
     
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo -e "${BOLD}Databases:${NC}"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    docker exec discord-bot-db psql -U postgres -d postgres -c "\l" 2>/dev/null || echo -e "${RED}Failed to list databases${NC}"
+    PGPASSWORD="$DISCORD_DB_PASSWORD" docker exec -e PGPASSWORD discord-bot-db psql -U ticketbot -d ticketbot -c "\l" 2>/dev/null || echo -e "${RED}Failed to list databases${NC}"
     
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
