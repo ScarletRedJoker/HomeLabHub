@@ -66,6 +66,7 @@ show_menu() {
     echo -e "    ${GREEN}13)${NC} 🏥 Health Check (all services)"
     echo -e "    ${GREEN}13a)${NC} 🌐 Check Docker Network Status"
     echo -e "    ${GREEN}14)${NC} 🔧 Full Troubleshoot Mode"
+    echo -e "    ${GREEN}14a)${NC} 📝 Format Caddyfile (fix formatting warnings)"
     echo ""
     echo -e "  ${BOLD}Code Sync (Replit → Ubuntu):${NC}"
     echo -e "    ${GREEN}18)${NC} 🔄 Sync from Replit (pull latest code & auto-deploy)"
@@ -1128,6 +1129,45 @@ troubleshoot() {
     pause
 }
 
+# Format Caddy Configuration
+format_caddy() {
+    echo ""
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}${BLUE}  📝 FORMAT CADDYFILE${NC}"
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    
+    # Check if Caddy container is running
+    if ! docker ps --format '{{.Names}}' | grep -q '^caddy$'; then
+        echo -e "${RED}✗ Caddy container is not running${NC}"
+        echo "Start Caddy first with option 4 (Start All Services)"
+        pause
+        return
+    fi
+    
+    echo "Formatting Caddyfile to fix inconsistencies..."
+    echo ""
+    
+    # Format the Caddyfile
+    if docker exec caddy caddy fmt --overwrite /etc/caddy/Caddyfile 2>&1; then
+        echo ""
+        echo -e "${GREEN}✓ Caddyfile formatted successfully${NC}"
+        echo ""
+        echo "Reloading Caddy to apply changes..."
+        if docker exec caddy caddy reload --config /etc/caddy/Caddyfile 2>&1; then
+            echo -e "${GREEN}✓ Caddy reloaded successfully${NC}"
+        else
+            echo -e "${YELLOW}⚠ Caddy reload failed - you may need to restart the container${NC}"
+        fi
+    else
+        echo ""
+        echo -e "${RED}✗ Failed to format Caddyfile${NC}"
+        echo "Check for syntax errors in your Caddyfile"
+    fi
+    
+    pause
+}
+
 # Show Container Details
 show_details() {
     echo ""
@@ -1389,6 +1429,7 @@ main() {
             13) health_check ;;
             13a) check_docker_network ;;
             14) troubleshoot ;;
+            14a) format_caddy ;;
             15) show_details ;;
             16) show_urls ;;
             17) update_service ;;

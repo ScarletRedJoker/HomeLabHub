@@ -13,9 +13,6 @@ bot.rig-city.com {
     reverse_proxy discord-bot:5000 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
-        header_up X-Forwarded-Host {host}
     }
 }
 
@@ -26,9 +23,6 @@ stream.rig-city.com {
     reverse_proxy stream-bot:5000 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
-        header_up X-Forwarded-Host {host}
     }
 }
 
@@ -105,9 +99,6 @@ host.evindrake.net {
     reverse_proxy homelab-dashboard:5000 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
-        header_up X-Forwarded-Host {host}
         
         # CRITICAL: Disable all caching for dashboard routes
         header_down Cache-Control "no-cache, no-store, must-revalidate, private"
@@ -143,7 +134,7 @@ vnc.evindrake.net {
     
     # Basic Auth for additional security layer
     # Generate password hash: caddy hash-password --plaintext <your-password>
-    basicauth {
+    basic_auth {
         # Replace with your hashed password
         admin $2a$14$... # CHANGE THIS
     }
@@ -172,9 +163,6 @@ code.evindrake.net {
     #     reverse_proxy code-server:8080 {
     #         header_up Host {host}
     #         header_up X-Real-IP {remote_host}
-    #         header_up X-Forwarded-For {remote_host}
-    #         header_up X-Forwarded-Proto {scheme}
-    #         header_up X-Forwarded-Host {host}
     #         
     #         # WebSocket support for VS Code
     #         header_up Upgrade {>Upgrade}
@@ -191,9 +179,6 @@ code.evindrake.net {
     reverse_proxy code-server:8080 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
-        header_up X-Forwarded-Host {host}
         
         # WebSocket support for VS Code
         header_up Upgrade {>Upgrade}
@@ -225,9 +210,6 @@ game.evindrake.net {
     reverse_proxy homelab-dashboard:5000 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
-        header_up X-Forwarded-Host {host}
         
         # Disable caching for game connection page
         header_down Cache-Control "no-cache, no-store, must-revalidate"
@@ -254,9 +236,6 @@ home.evindrake.net {
     reverse_proxy homeassistant:8123 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
-        header_up X-Forwarded-Host {host}
         
         # WebSocket support for Home Assistant
         header_up Upgrade {>Upgrade}

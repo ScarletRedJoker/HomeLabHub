@@ -81,6 +81,62 @@ if ! docker ps &> /dev/null; then
 fi
 print_success "Docker daemon is running"
 
+print_header "Checking System Configuration for Redis"
+
+# Check and configure Redis memory overcommit
+CURRENT_OVERCOMMIT=$(sysctl -n vm.overcommit_memory 2>/dev/null || echo "0")
+if [[ "$CURRENT_OVERCOMMIT" != "1" ]]; then
+    print_warning "Redis requires vm.overcommit_memory=1 (currently: $CURRENT_OVERCOMMIT)"
+    echo ""
+    echo "This setting allows Redis to allocate memory efficiently."
+    echo "You can enable it temporarily (until reboot) or permanently."
+    echo ""
+    echo "Options:"
+    echo "  1) Enable temporarily (until next reboot)"
+    echo "  2) Enable permanently (modify /etc/sysctl.conf)"
+    echo "  3) Skip (Redis will show warnings)"
+    echo ""
+    read -p "Your choice [1/2/3]: " -n 1 -r
+    echo ""
+    
+    case $REPLY in
+        1)
+            print_warning "Enabling memory overcommit temporarily (requires sudo)"
+            if sudo sysctl -w vm.overcommit_memory=1 &> /dev/null; then
+                print_success "Memory overcommit enabled temporarily"
+            else
+                print_error "Failed to enable memory overcommit"
+                print_warning "Redis will run but may show warnings"
+            fi
+            ;;
+        2)
+            print_warning "Enabling memory overcommit permanently (requires sudo)"
+            if ! grep -q "^vm.overcommit_memory" /etc/sysctl.conf 2>/dev/null; then
+                if echo "vm.overcommit_memory = 1" | sudo tee -a /etc/sysctl.conf > /dev/null && sudo sysctl -p > /dev/null; then
+                    print_success "Memory overcommit enabled permanently"
+                else
+                    print_error "Failed to enable memory overcommit"
+                    print_warning "Redis will run but may show warnings"
+                fi
+            else
+                print_warning "Memory overcommit already configured in /etc/sysctl.conf"
+                if sudo sysctl -w vm.overcommit_memory=1 &> /dev/null; then
+                    print_success "Memory overcommit enabled"
+                fi
+            fi
+            ;;
+        3)
+            print_warning "Skipping memory overcommit configuration"
+            print_warning "Redis will show: 'Memory overcommit must be enabled!'"
+            ;;
+        *)
+            print_warning "Invalid choice, skipping"
+            ;;
+    esac
+else
+    print_success "Redis memory overcommit already enabled (vm.overcommit_memory=$CURRENT_OVERCOMMIT)"
+fi
+
 print_header "Checking Container Directories"
 
 # Check HomeLabHub workspace exists
