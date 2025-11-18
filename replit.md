@@ -2,42 +2,56 @@
 
 ## Recent Changes
 
-### November 18, 2025 - VNC Desktop & Code-Server Fixes
-**Fixed critical issues preventing VNC login and code-server access**
+### November 18, 2025 - Critical Service Fixes (VNC, Code-Server, Stream-Bot)
+**Fixed three critical issues preventing services from running**
 
 **Problems Identified:**
-1. **Code-Server Down:** Permission errors (EACCES) - volume owned by root, code-server runs as UID 1000
-2. **VNC Login Failing:** x11vnc crash on startup - password file stored in wrong location (`/.password2` vs user home)
+1. **Stream-Bot Crashing:** Database tables missing - migrations not running on container startup
+2. **Code-Server Down:** Permission errors (EACCES) - volume owned by root, code-server runs as UID 1000
+3. **VNC Login Failing:** x11vnc crash on startup - password file stored in wrong location (`/.password2` vs user home)
 
 **Root Causes:**
-- Code-server volume `code_server_data` created with root ownership, incompatible with container user (1000:1000)
-- VNC base image (`dorowu/ubuntu-desktop-lxde-vnc`) stores password in root directory instead of `/home/evin/.vnc/passwd`
+- Stream-bot: Drizzle migrations exist but never run on container startup - `bot_instances` and other tables don't exist
+- Code-server: Volume `code_server_data` created with root ownership, incompatible with container user (1000:1000)
+- VNC: Base image (`dorowu/ubuntu-desktop-lxde-vnc`) stores password in root directory instead of `/home/evin/.vnc/passwd`
 
 **Solutions Implemented:**
-1. ✅ Created `deployment/fix-vnc-and-code-server.sh` - One-command fix for both issues
-2. ✅ Created `services/vnc-desktop/fix-vnc-password.sh` - Startup script that properly sets VNC password location
-3. ✅ Updated VNC Dockerfile to run password fix before container startup
-4. ✅ Created comprehensive troubleshooting guide (`TROUBLESHOOTING_VNC_CODE_SERVER.md`)
+1. ✅ Created `deployment/fix-streambot-database.sh` - Rebuilds stream-bot with migration support
+2. ✅ Created `services/stream-bot/docker-entrypoint.sh` - Runs Drizzle migrations before app starts
+3. ✅ Updated stream-bot Dockerfile to include drizzle-kit and run migrations on startup
+4. ✅ Created `deployment/fix-vnc-and-code-server.sh` - One-command fix for VNC/code-server
+5. ✅ Created `services/vnc-desktop/fix-vnc-password.sh` - Startup script that properly sets VNC password location
+6. ✅ Updated VNC Dockerfile to run password fix before container startup
+7. ✅ Created comprehensive troubleshooting guides
 
-**Fix Script Features:**
+**Fix Scripts:**
 ```bash
+# Fix all services
 ./deployment/fix-vnc-and-code-server.sh
+./deployment/fix-streambot-database.sh
 ```
-- Fixes code-server volume ownership (1000:1000)
-- Rebuilds VNC Desktop with password fix
-- Restarts services and verifies health
-- Provides troubleshooting output
 
-**Technical Details:**
-- Code-server fix: `sudo chown -R 1000:1000 /var/lib/docker/volumes/code_server_data/_data`
-- VNC fix: Added `x11vnc -storepasswd` to create password file at `/home/evin/.vnc/passwd`
+**Stream-Bot Fix:**
+- Updated Dockerfile to copy migrations directory and shared schema
+- Added docker-entrypoint.sh that runs `drizzle-kit push` before starting app
+- Changed from production-only dependencies to include drizzle-kit
+- Migrations create all 40+ tables: bot_instances, users, custom_commands, giveaways, etc.
+
+**VNC/Code-Server Fix:**
+- Code-server: `sudo chown -R 1000:1000 /var/lib/docker/volumes/code_server_data/_data`
+- VNC: Added `x11vnc -storepasswd` to create password file at `/home/evin/.vnc/passwd`
 - VNC Dockerfile ENTRYPOINT: `fix-vnc-password.sh → bootstrap.sh → startup.sh`
 
 **User Action Required (on Ubuntu):**
 ```bash
 cd /home/evin/contain/HomeLabHub
 ./deployment/fix-vnc-and-code-server.sh
+./deployment/fix-streambot-database.sh
 ```
+
+**Documentation:**
+- `deployment/RUN_THIS_ON_UBUNTU.md` - Quick fix guide for all services
+- `deployment/TROUBLESHOOTING_VNC_CODE_SERVER.md` - Detailed VNC/code-server troubleshooting
 
 ## Recent Changes
 

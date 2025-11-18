@@ -1,14 +1,36 @@
 # 🚀 Quick Fix Instructions for Ubuntu Server
 
-## VNC Desktop Login Failing & Code-Server Down
+## Issues Fixed
 
-Hi! I've identified and fixed the issues. Here's what to do on your Ubuntu server:
+1. **VNC Desktop Login Failing** ✅
+2. **Code-Server Down** ✅  
+3. **Stream-Bot Crashing** ✅ (NEW)
+
+Hi! I've identified and fixed all the issues. Here's what to do on your Ubuntu server:
 
 ---
 
-## Option 1: Quick Fix (Recommended) ⚡
+## Fix All Services (Recommended) ⚡
 
-Run this single command to fix everything:
+Run these commands to fix all three services:
+
+```bash
+# Fix VNC Desktop and Code-Server
+cd /home/evin/contain/HomeLabHub && ./deployment/fix-vnc-and-code-server.sh
+
+# Fix Stream-Bot database
+cd /home/evin/contain/HomeLabHub && ./deployment/fix-streambot-database.sh
+```
+
+**Time:** ~5-7 minutes total
+
+---
+
+## Individual Fixes
+
+### Option 1: Fix VNC & Code-Server Only
+
+Run this single command:
 
 ```bash
 cd /home/evin/contain/HomeLabHub && ./deployment/fix-vnc-and-code-server.sh
@@ -22,9 +44,26 @@ cd /home/evin/contain/HomeLabHub && ./deployment/fix-vnc-and-code-server.sh
 
 **Time:** ~2-3 minutes
 
+### Option 2: Fix Stream-Bot Only
+
+If only stream-bot is having issues:
+
+```bash
+cd /home/evin/contain/HomeLabHub
+./deployment/fix-streambot-database.sh
+```
+
+**What it does:**
+1. ✅ Stops stream-bot
+2. ✅ Rebuilds with database migration support
+3. ✅ Runs Drizzle migrations to create tables
+4. ✅ Verifies the fix worked
+
+**Time:** ~3-4 minutes
+
 ---
 
-## Option 2: Manual Step-by-Step
+## Manual Step-by-Step (Advanced)
 
 If you prefer to see each step:
 
@@ -63,7 +102,32 @@ docker logs vnc-desktop --tail 20 | grep x11vnc
 
 ---
 
+### Step 4: Fix Stream-Bot Database
+```bash
+# Stop stream-bot
+docker-compose -f docker-compose.unified.yml stop stream-bot
+
+# Rebuild with migrations
+docker-compose -f docker-compose.unified.yml build --no-cache stream-bot
+
+# Start stream-bot
+docker-compose -f docker-compose.unified.yml up -d stream-bot
+
+# Wait 20 seconds for migrations
+sleep 20
+
+# Check logs (should NOT see "relation does not exist")
+docker logs stream-bot --tail 30
+```
+
+---
+
 ## What Was Wrong?
+
+### Stream-Bot Issue:
+- **Problem:** Database tables don't exist (migrations never ran)
+- **Error:** `error: relation "bot_instances" does not exist`
+- **Fix:** Updated Dockerfile to run Drizzle migrations on startup
 
 ### Code-Server Issue:
 - **Problem:** Docker volume owned by root, but code-server runs as UID 1000
