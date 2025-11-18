@@ -1,4 +1,4 @@
-from sqlalchemy import String, DateTime, Text, Integer, Boolean, JSON
+from sqlalchemy import String, DateTime, Text, Integer, Boolean, JSON, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import Optional
@@ -61,7 +61,7 @@ class DeployedApp(Base):
     __tablename__ = 'deployed_apps'
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    app_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    app_id: Mapped[int] = mapped_column(Integer, ForeignKey('marketplace_apps.id', ondelete='CASCADE'), nullable=False, index=True)
     container_name: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
     domain: Mapped[Optional[str]] = mapped_column(String(200))
     port: Mapped[int] = mapped_column(Integer)
