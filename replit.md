@@ -2,25 +2,17 @@
 
 ## Recent Changes
 
-### November 18, 2025 - Simplified & Secure Database Architecture
-**Problem Solved:** Complex multi-user database setup causing password sync issues and authentication failures  
-**Root Cause:** Managing 3 separate database users (`ticketbot`, `streambot`, `jarvis`) with different passwords created complexity and sync issues between `.env` file and running containers.
+### November 18, 2025 - Database Password Sync Fix
+**Problem:** Running containers using cached old passwords, causing authentication failures after database repair  
+**Root Cause:** Container restart doesn't reload `.env` file - requires stop/start to pick up new environment variables
 
-**Simple & Secure Solution Implemented:**
-- ✅ **Single Least-Privilege User:** All services use `homelab_app` user (non-superuser)
-- ✅ **Separate Databases:** Maintain isolation with 3 databases: `ticketbot`, `streambot`, `homelab_jarvis`
-- ✅ **One Password:** Only `DISCORD_DB_PASSWORD` needed for all application connections
-- ✅ **Security:** Superuser (`ticketbot`) credentials remain private to database container
-- ✅ **Automatic Setup:** Init script creates databases and user automatically on first run
-- ✅ **No Manual Repair:** Eliminates need for complex database repair scripts
+**Solution:** Services just need a proper stop/start cycle instead of restart to reload passwords from `.env`
 
-**Security Benefits:**
-- Services have database access without superuser privileges
-- Compromised service cannot affect other databases
-- Follows principle of least privilege
-- Superuser password never exposed to application containers
-
-**Impact:** Database setup is now drastically simpler AND more secure. One app user, one password, three databases, proper privilege separation. No password sync issues, no complex repair workflows. Services restart cleanly without authentication failures.
+**Database Architecture (UNCHANGED):**
+- ✅ `ticketbot` - PostgreSQL superuser, manages Discord bot database
+- ✅ `streambot` - Dedicated user for Stream Bot database (least privilege)
+- ✅ `jarvis` - Dedicated user for Dashboard database (least privilege)
+- ✅ Each service has its own isolated database and user (proper security model)
 
 ## Overview
 This project provides a comprehensive web-based dashboard for managing a Ubuntu 25.10 server. Its core purpose is to offer a unified, user-friendly interface to minimize operational complexity, enhance server reliability, and facilitate intelligent automation and monitoring for complex infrastructure environments. Key capabilities include one-click database deployments, game streaming integration, robust domain health monitoring, and integrations with Google Services and Smart Home platforms. The project aims to deliver production-ready source code for streamlined development, testing, and deployment. The long-term vision is to evolve into an AI-first infrastructure copilot, "Jarvis," capable of autonomous diagnosis, remediation, and execution of infrastructure issues, serving as a mission control UI for actionable intelligence and safe automation.
