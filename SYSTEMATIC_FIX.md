@@ -73,36 +73,61 @@ docker logs stream-bot --tail 50 | grep -i openai
 
 ### Step 4: Audit Stream-Bot Environment Variables
 
-Check if Twitch/YouTube credentials are configured:
+Check if Twitch/YouTube/Spotify credentials are configured:
 
 ```bash
 # Check environment variables
-docker exec stream-bot env | grep -E "TWITCH|YOUTUBE|KICK"
+docker exec stream-bot env | grep -E "TWITCH|YOUTUBE|SPOTIFY|KICK"
 ```
 
 **What to check:**
-- `TWITCH_CLIENT_ID` - Should be set
-- `TWITCH_CLIENT_SECRET` - Should be set  
-- `YOUTUBE_CLIENT_ID` - Optional (can be empty)
-- `YOUTUBE_CLIENT_SECRET` - Optional (can be empty)
-- `KICK_CLIENT_ID` - Optional (can be empty)
-- `KICK_CLIENT_SECRET` - Optional (can be empty)
 
-**If Twitch credentials are missing:**
+**Required (Twitch):**
+- `TWITCH_CLIENT_ID` - **Must be set**
+- `TWITCH_CLIENT_SECRET` - **Must be set**
+
+**Optional Integrations:**
+- `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, `YOUTUBE_REFRESH_TOKEN` - For YouTube streaming
+- `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REFRESH_TOKEN` - For Spotify integration
+- `KICK_CLIENT_ID`, `KICK_CLIENT_SECRET` - For Kick streaming
+
+**If Twitch credentials are missing or invalid:**
 
 1. Go to https://dev.twitch.tv/console/apps
-2. Get your Client ID and Client Secret
-3. Update `.env` file:
+2. Click on your app (or create a new one)
+3. Under "OAuth Redirect URLs", make sure you have:
+   ```
+   https://stream.rig-city.com/api/auth/twitch/callback
+   ```
+4. Get your Client ID and generate a new Client Secret
+5. Update `.env` file:
    ```bash
    nano .env
    # Add/update these lines:
    TWITCH_CLIENT_ID=your_client_id_here
    TWITCH_CLIENT_SECRET=your_client_secret_here
    ```
-4. Restart stream-bot:
+6. Restart stream-bot:
    ```bash
    docker-compose -f docker-compose.unified.yml restart stream-bot
    ```
+
+**To enable YouTube/Spotify (optional):**
+
+These integrations are now **optional**. If not configured, the features will be gracefully disabled.
+
+Leave empty in `.env` to disable:
+```bash
+# YouTube (optional - leave empty to disable)
+YOUTUBE_CLIENT_ID=
+YOUTUBE_CLIENT_SECRET=
+YOUTUBE_REFRESH_TOKEN=
+
+# Spotify (optional - leave empty to disable)
+SPOTIFY_CLIENT_ID=
+SPOTIFY_CLIENT_SECRET=
+SPOTIFY_REFRESH_TOKEN=
+```
 
 ---
 

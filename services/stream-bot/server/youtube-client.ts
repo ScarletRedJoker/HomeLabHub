@@ -2,67 +2,41 @@ import { google } from 'googleapis';
 import type { youtube_v3 } from 'googleapis';
 
 async function getYouTubeAuth() {
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-    : null;
+  const clientId = process.env.YOUTUBE_CLIENT_ID;
+  const clientSecret = process.env.YOUTUBE_CLIENT_SECRET;
+  const refreshToken = process.env.YOUTUBE_REFRESH_TOKEN;
 
-  if (!xReplitToken) {
-    throw new Error('YouTube connector: X_REPLIT_TOKEN not found');
-  }
-
-  if (!hostname) {
-    throw new Error('YouTube connector: REPLIT_CONNECTORS_HOSTNAME not found');
+  if (!clientId || !clientSecret || !refreshToken) {
+    return null;
   }
 
   try {
-    const response = await fetch(
-      `https://${hostname}/api/v2/connection?include_secrets=true&connector_names=youtube`,
-      {
-        headers: {
-          'Accept': 'application/json',
-          'X_REPLIT_TOKEN': xReplitToken
-        }
-      }
+    const oauth2Client = new google.auth.OAuth2(
+      clientId,
+      clientSecret,
+      'https://stream.rig-city.com/api/auth/youtube/callback'
     );
 
-    if (!response.ok) {
-      throw new Error(`YouTube connector API returned ${response.status}`);
-    }
-
-    const data = await response.json();
-    const connectionSettings = data.items?.[0];
-
-    if (!connectionSettings) {
-      throw new Error('YouTube connector not configured. Please set up the YouTube integration.');
-    }
-
-    const accessToken = connectionSettings?.settings?.access_token || 
-                       connectionSettings?.settings?.oauth?.credentials?.access_token;
-
-    if (!accessToken) {
-      throw new Error('YouTube connector: No access token found. Please reconnect your YouTube account.');
-    }
-
-    // Create OAuth2 client with the access token
-    // Replit connector handles token refresh automatically
-    const oauth2Client = new google.auth.OAuth2();
-    oauth2Client.setCredentials({ access_token: accessToken });
+    oauth2Client.setCredentials({
+      refresh_token: refreshToken,
+    });
 
     return oauth2Client;
   } catch (error) {
     console.error('[YouTube] Failed to get auth:', error);
-    throw new Error(`YouTube authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    return null;
   }
 }
 
 // WARNING: Never cache this client.
 // Access tokens expire, so a new client must be created each time.
 // Always call this function again to get a fresh client.
-export async function getUncachableYouTubeClient(): Promise<youtube_v3.Youtube> {
+// Returns null if YouTube is not configured.
+export async function getUncachableYouTubeClient(): Promise<youtube_v3.Youtube | null> {
   const auth = await getYouTubeAuth();
+  if (!auth) {
+    return null;
+  }
   return google.youtube({ version: 'v3', auth });
 }
 
@@ -70,6 +44,10 @@ export async function getUncachableYouTubeClient(): Promise<youtube_v3.Youtube> 
 export async function getLiveChatId(videoId: string): Promise<string | null> {
   try {
     const youtube = await getUncachableYouTubeClient();
+    if (!youtube) {
+      return null;
+    }
+    
     const response = await youtube.videos.list({
       part: ['liveStreamingDetails'],
       id: [videoId],
@@ -85,9 +63,13 @@ export async function getLiveChatId(videoId: string): Promise<string | null> {
 
 // Send a message to YouTube Live Chat
 export async function sendYouTubeChatMessage(liveChatId: string, message: string): Promise<void> {
+  const youtube = await getUncachableYouTubeClient();
+  if (!youtube) {
+    console.log('[YouTube] YouTube not configured - cannot send message');
+    return;
+  }
+  
   try {
-    const youtube = await getUncachableYouTubeClient();
-    
     await youtube.liveChatMessages.insert({
       part: ['snippet'],
       requestBody: {
@@ -112,6 +94,10 @@ export async function sendYouTubeChatMessage(liveChatId: string, message: string
 export async function getActiveYouTubeLivestream(): Promise<{ videoId?: string; liveChatId: string | null; title?: string } | null> {
   try {
     const youtube = await getUncachableYouTubeClient();
+    if (!youtube) {
+      return null;
+    }
+    
     const response = await youtube.liveBroadcasts.list({
       part: ['snippet', 'contentDetails', 'status'],
       broadcastStatus: 'active',
@@ -134,11 +120,9 @@ export async function getActiveYouTubeLivestream(): Promise<{ videoId?: string; 
       };
     }
     
-    console.log('[YouTube] No active livestream found');
     return null;
   } catch (error) {
     console.error('[YouTube] Error getting active livestream:', error);
-    // Return null instead of throwing to allow graceful degradation
     return null;
   }
 }

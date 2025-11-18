@@ -1,53 +1,56 @@
 import { SpotifyApi } from "@spotify/web-api-ts-sdk";
 
-let connectionSettings: any;
-
 async function getAccessToken() {
-  // Check if we need to refresh the connection settings
-  const needsRefresh = !connectionSettings || 
-    !connectionSettings.settings?.expires_at || 
-    new Date(connectionSettings.settings.expires_at).getTime() <= Date.now();
+  const clientId = process.env.SPOTIFY_CLIENT_ID;
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+  const refreshToken = process.env.SPOTIFY_REFRESH_TOKEN;
   
-  if (needsRefresh) {
-    const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-    const xReplitToken = process.env.REPL_IDENTITY 
-      ? 'repl ' + process.env.REPL_IDENTITY 
-      : process.env.WEB_REPL_RENEWAL 
-      ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-      : null;
+  if (!clientId || !clientSecret || !refreshToken) {
+    return null;
+  }
+  
+  try {
+    const tokenResponse = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': 'Basic ' + Buffer.from(clientId + ':' + clientSecret).toString('base64')
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken
+      })
+    });
 
-    if (!xReplitToken) {
-      throw new Error('X_REPLIT_TOKEN not found for repl/depl');
+    if (!tokenResponse.ok) {
+      console.error('[Spotify] Token refresh failed:', tokenResponse.status);
+      return null;
     }
 
-    connectionSettings = await fetch(
-      'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=spotify',
-      {
-        headers: {
-          'Accept': 'application/json',
-          'X_REPLIT_TOKEN': xReplitToken
-        }
-      }
-    ).then(res => res.json()).then(data => data.items?.[0]);
+    const data = await tokenResponse.json();
+    return { 
+      accessToken: data.access_token, 
+      clientId, 
+      refreshToken: data.refresh_token || refreshToken,
+      expiresIn: data.expires_in 
+    };
+  } catch (error) {
+    console.error('[Spotify] Token refresh failed:', error);
+    return null;
   }
-  
-  const refreshToken = connectionSettings?.settings?.oauth?.credentials?.refresh_token;
-  const accessToken = connectionSettings?.settings?.access_token || connectionSettings.settings?.oauth?.credentials?.access_token;
-  const clientId = connectionSettings?.settings?.oauth?.credentials?.client_id;
-  const expiresIn = connectionSettings.settings?.oauth?.credentials?.expires_in;
-  
-  if (!connectionSettings || (!accessToken || !clientId || !refreshToken)) {
-    throw new Error('Spotify not connected');
-  }
-  
-  return { accessToken, clientId, refreshToken, expiresIn };
 }
 
 // WARNING: Never cache this client.
 // Access tokens expire, so a new client must be created each time.
 // Always call this function again to get a fresh client.
+// Returns null if Spotify is not configured.
 async function getUncachableSpotifyClient() {
-  const { accessToken, clientId, refreshToken, expiresIn } = await getAccessToken();
+  const tokenData = await getAccessToken();
+  if (!tokenData) {
+    return null;
+  }
+
+  const { accessToken, clientId, refreshToken, expiresIn } = tokenData;
 
   const spotify = SpotifyApi.withAccessToken(clientId, {
     access_token: accessToken,
@@ -78,6 +81,12 @@ export class SpotifyService {
   async getNowPlaying(): Promise<NowPlayingData> {
     try {
       const spotify = await getUncachableSpotifyClient();
+      
+      // If Spotify is not configured, return not playing
+      if (!spotify) {
+        return { isPlaying: false };
+      }
+      
       const currentlyPlaying = await spotify.player.getCurrentlyPlayingTrack();
       
       // No content (204) means nothing is playing
@@ -108,13 +117,7 @@ export class SpotifyService {
       };
     } catch (error: any) {
       console.error('[Spotify] Error fetching now playing:', error.message);
-      
-      // If Spotify is not connected, return not playing
-      if (error.message?.includes('not connected')) {
-        return { isPlaying: false };
-      }
-      
-      throw error;
+      return { isPlaying: false };
     }
   }
 
@@ -122,12 +125,8 @@ export class SpotifyService {
    * Check if Spotify is connected and working
    */
   async isConnected(): Promise<boolean> {
-    try {
-      await getUncachableSpotifyClient();
-      return true;
-    } catch (error) {
-      return false;
-    }
+    const spotify = await getUncachableSpotifyClient();
+    return spotify !== null;
   }
 
   /**
@@ -136,6 +135,11 @@ export class SpotifyService {
   async getUserProfile() {
     try {
       const spotify = await getUncachableSpotifyClient();
+      
+      if (!spotify) {
+        return null;
+      }
+      
       const profile = await spotify.currentUser.profile();
       return {
         displayName: profile.display_name,
@@ -145,7 +149,7 @@ export class SpotifyService {
       };
     } catch (error: any) {
       console.error('[Spotify] Error fetching user profile:', error.message);
-      throw error;
+      return null;
     }
   }
 }

@@ -236,7 +236,11 @@ services:
       TWITCH_SIGNIN_CALLBACK_URL: https://stream.rig-city.com/api/auth/twitch/callback
       YOUTUBE_CLIENT_ID: ${YOUTUBE_CLIENT_ID:-}
       YOUTUBE_CLIENT_SECRET: ${YOUTUBE_CLIENT_SECRET:-}
+      YOUTUBE_REFRESH_TOKEN: ${YOUTUBE_REFRESH_TOKEN:-}
       YOUTUBE_SIGNIN_CALLBACK_URL: https://stream.rig-city.com/api/auth/youtube/callback
+      SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}
+      SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:-}
+      SPOTIFY_REFRESH_TOKEN: ${SPOTIFY_REFRESH_TOKEN:-}
       KICK_CLIENT_ID: ${KICK_CLIENT_ID:-}
       KICK_CLIENT_SECRET: ${KICK_CLIENT_SECRET:-}
       KICK_SIGNIN_CALLBACK_URL: https://stream.rig-city.com/api/auth/kick/callback
