@@ -9,7 +9,18 @@ The Home Assistant service uses a Docker named volume `homeassistant_config` for
 
 ## To Use Custom Configuration
 
-### Option 1: Copy Templates into Running Container
+### Option 1: Quick Copy Script (Recommended)
+```bash
+# Run the automated copy script
+./config/homeassistant/copy-config.sh
+```
+
+This script will:
+- Backup your existing configuration.yaml (if it exists)
+- Copy all template files into the running container
+- Automatically restart Home Assistant
+
+### Option 2: Manual Copy
 ```bash
 # Access the running container
 docker exec -it homeassistant bash

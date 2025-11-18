@@ -71,19 +71,22 @@ HomeLabHub/
 5. **Missing bot_instances Table:** Table defined but not created due to migration failures
 
 **Solutions Implemented:**
-1. ✅ **Stream-Bot:** Upgraded drizzle-kit from v0.18.1 to v0.31.0 in package.json
-2. ✅ **Stream-Bot:** Added fallback command in docker-entrypoint.sh (`push:pg || push`) for backward compatibility
+1. ✅ **Stream-Bot:** Upgraded drizzle-kit from v0.18.1 to v0.31.0 and **moved to production dependencies**
+2. ✅ **Stream-Bot:** Updated migration command to `push` (correct syntax for drizzle-kit v0.31.0)
 3. ✅ **Code-Server:** Switched to linuxserver/code-server image for proper PUID/PGID support
 4. ✅ **Code-Server:** Updated health check and Caddy reverse proxy to use HTTPS port 8443
-5. ✅ **Caddyfile:** Fixed indentation to use tabs consistently
-6. ✅ **Home Assistant:** Kept named volume for data safety, added template mount for migration
-7. ✅ **bot_instances Table:** Will be created automatically once stream-bot migrations run successfully
+5. ✅ **Code-Server:** Fixed volume mount path from `/home/coder/projects` to `/config/workspace`
+6. ✅ **Caddyfile:** Fixed indentation to use tabs consistently
+7. ✅ **Home Assistant:** Kept named volume for data safety, added template mount for migration
+8. ✅ **Home Assistant:** Added Docker subnet (172.18.0.0/16) to trusted_proxies configuration
+9. ✅ **bot_instances Table:** Will be created automatically once stream-bot migrations run successfully
 
 **Technical Details:**
 
 ```bash
 # Stream-Bot Migration Command (docker-entrypoint.sh)
-npx drizzle-kit push:pg --config=drizzle.config.ts || npx drizzle-kit push --config=drizzle.config.ts
+# drizzle-kit v0.31.0 moved to production dependencies
+npx drizzle-kit push --config=drizzle.config.ts
 ```
 
 ```yaml

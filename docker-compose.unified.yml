@@ -378,8 +378,7 @@ services:
       - TZ=America/New_York
     volumes:
       - code_server_data:/config
-      - /home/${SERVICE_USER:-evin}/contain:/home/coder/projects
-      - ./config/code-server:/config/.local/share/code-server
+      - /home/${SERVICE_USER:-evin}/contain:/config/workspace
     healthcheck:
       test: ["CMD", "curl", "-f", "-k", "https://localhost:8443/healthz"]
       interval: 30s
