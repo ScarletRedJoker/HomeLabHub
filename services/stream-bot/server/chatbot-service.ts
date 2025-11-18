@@ -122,7 +122,7 @@ export class ChatbotService {
       const response = await openai.chat.completions.create({
         model: "gpt-5",
         messages,
-        max_tokens: 150,
+        max_completion_tokens: 150,
         temperature: settings.temperature / 10, // Convert from 0-20 integer to 0.0-2.0 float
       });
 

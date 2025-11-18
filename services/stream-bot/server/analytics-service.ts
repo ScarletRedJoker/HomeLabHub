@@ -88,7 +88,7 @@ Format your response as JSON:
       const response = await openai.chat.completions.create({
         model: "gpt-5-mini",
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 300,
+        max_completion_tokens: 300,
         temperature: 0.3,
       });
 

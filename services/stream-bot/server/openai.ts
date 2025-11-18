@@ -49,7 +49,7 @@ export async function generateSnappleFact(customPrompt?: string, model: string =
       const response = await openai.chat.completions.create({
         model: currentModel,
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 200, // Use max_tokens instead of max_completion_tokens for compatibility
+        max_completion_tokens: 200, // Newer models require max_completion_tokens instead of max_tokens
         temperature: 0.9,
       });
       

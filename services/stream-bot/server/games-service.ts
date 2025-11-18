@@ -45,7 +45,7 @@ Generate a unique Magic 8-Ball response to this question.`
             content: question
           }
         ],
-        max_tokens: 100,
+        max_completion_tokens: 100,
         temperature: 1.2,
       });
 
@@ -105,7 +105,7 @@ Keep questions clear and answers concise (1-3 words). Make it fun and engaging!`
             content: "Generate a trivia question"
           }
         ],
-        max_tokens: 150,
+        max_completion_tokens: 150,
         temperature: 0.9,
       });
 
