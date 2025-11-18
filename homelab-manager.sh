@@ -57,10 +57,6 @@ show_menu() {
     echo -e "    ${GREEN}10)${NC} ⚙️  Generate/Edit .env File"
     echo -e "    ${GREEN}11)${NC} 📋 View Current Configuration"
     echo ""
-    echo -e "  ${BOLD}Licensing & Subscription:${NC}"
-    echo -e "    ${GREEN}21)${NC} 🔑 Activate License Key"
-    echo -e "    ${GREEN}22)${NC} 📊 View Subscription Status"
-    echo ""
     echo -e "  ${BOLD}Troubleshooting:${NC}"
     echo -e "    ${GREEN}12)${NC} 🔍 View Service Logs"
     echo -e "    ${GREEN}13)${NC} 🏥 Health Check (all services)"
@@ -1357,143 +1353,6 @@ check_sync_status() {
     pause
 }
 
-# Activate License
-activate_license() {
-    echo ""
-    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${BOLD}${BLUE}  🔑 NEBULA COMMAND LICENSE ACTIVATION${NC}"
-    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo ""
-    
-    echo "This will activate your Nebula Command license on this server."
-    echo ""
-    echo "Don't have a license key? Visit:"
-    echo "  → https://host.evindrake.net/pricing"
-    echo ""
-    
-    # Get license key
-    read -p "Enter your license key: " LICENSE_KEY
-    
-    if [ -z "$LICENSE_KEY" ]; then
-        echo -e "${RED}✗ No license key provided${NC}"
-        pause
-        return
-    fi
-    
-    # Generate server ID from machine ID
-    if [ -f "/etc/machine-id" ]; then
-        SERVER_ID=$(cat /etc/machine-id)
-    else
-        SERVER_ID=$(hostname | md5sum | cut -d' ' -f1)
-    fi
-    
-    HOSTNAME=$(hostname)
-    IP=$(hostname -I | awk '{print $1}')
-    
-    echo ""
-    echo "Server Information:"
-    echo "  Hostname: $HOSTNAME"
-    echo "  IP: $IP"
-    echo "  Server ID: $SERVER_ID"
-    echo ""
-    echo "Activating license..."
-    
-    # Activate via API
-    RESPONSE=$(curl -s -X POST "https://host.evindrake.net/api/subscription/activate" \
-        -H "Content-Type: application/json" \
-        -d "{\"license_key\": \"$LICENSE_KEY\", \"server_id\": \"$SERVER_ID\", \"hostname\": \"$HOSTNAME\", \"ip\": \"$IP\"}")
-    
-    # Check response
-    SUCCESS=$(echo "$RESPONSE" | grep -o '"success"[[:space:]]*:[[:space:]]*true')
-    
-    if [ ! -z "$SUCCESS" ]; then
-        echo -e "${GREEN}✓ License activated successfully!${NC}"
-        echo ""
-        
-        # Extract tier information
-        TIER=$(echo "$RESPONSE" | grep -o '"tier"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4)
-        STATUS=$(echo "$RESPONSE" | grep -o '"status"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4)
-        
-        if [ ! -z "$TIER" ]; then
-            echo "Subscription Tier: ${BOLD}$TIER${NC}"
-            echo "Status: $STATUS"
-        fi
-        
-        # Save license key to local config
-        echo "$LICENSE_KEY" > .nebula_license
-        chmod 600 .nebula_license
-        
-        echo ""
-        echo -e "${GREEN}License key saved locally${NC}"
-    else
-        echo -e "${RED}✗ License activation failed${NC}"
-        echo ""
-        MESSAGE=$(echo "$RESPONSE" | grep -o '"message"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4)
-        if [ ! -z "$MESSAGE" ]; then
-            echo "Error: $MESSAGE"
-        else
-            echo "Full response:"
-            echo "$RESPONSE"
-        fi
-    fi
-    
-    pause
-}
-
-# View Subscription Status
-view_subscription_status() {
-    echo ""
-    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${BOLD}${BLUE}  📊 SUBSCRIPTION STATUS${NC}"
-    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo ""
-    
-    # Check if license key exists
-    if [ ! -f ".nebula_license" ]; then
-        echo -e "${YELLOW}No license key found on this server${NC}"
-        echo ""
-        echo "To activate a license, choose option 21 from the main menu."
-        pause
-        return
-    fi
-    
-    LICENSE_KEY=$(cat .nebula_license)
-    
-    # Generate server ID
-    if [ -f "/etc/machine-id" ]; then
-        SERVER_ID=$(cat /etc/machine-id)
-    else
-        SERVER_ID=$(hostname | md5sum | cut -d' ' -f1)
-    fi
-    
-    echo "Checking subscription status..."
-    echo ""
-    
-    # Verify license via API
-    RESPONSE=$(curl -s -X POST "https://host.evindrake.net/api/subscription/verify" \
-        -H "Content-Type: application/json" \
-        -d "{\"license_key\": \"$LICENSE_KEY\", \"server_id\": \"$SERVER_ID\"}")
-    
-    VALID=$(echo "$RESPONSE" | grep -o '"valid"[[:space:]]*:[[:space:]]*true')
-    
-    if [ ! -z "$VALID" ]; then
-        echo -e "${GREEN}✓ License is active and valid${NC}"
-        echo ""
-        echo "License Key: ${LICENSE_KEY:0:16}..."
-        echo "Server ID: $SERVER_ID"
-        echo ""
-        echo "For detailed subscription information, visit:"
-        echo "  → https://host.evindrake.net/pricing"
-    else
-        echo -e "${RED}✗ License is not valid${NC}"
-        echo ""
-        echo "Please activate or renew your license."
-        echo "Visit: https://host.evindrake.net/pricing"
-    fi
-    
-    pause
-}
-
 # Pause helper
 pause() {
     echo ""
@@ -1530,8 +1389,6 @@ main() {
             18) sync_from_replit ;;
             19) install_auto_sync ;;
             20) check_sync_status ;;
-            21) activate_license ;;
-            22) view_subscription_status ;;
             0) 
                 echo ""
                 echo -e "${GREEN}Goodbye! 👋${NC}"
