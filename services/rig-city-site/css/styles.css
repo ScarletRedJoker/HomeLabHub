@@ -520,6 +520,7 @@ body {
 
 .discord-widget {
     text-align: center;
+    min-width: 500px;
 }
 
 .widget-title {
@@ -754,9 +755,13 @@ body {
         grid-template-columns: 1fr;
     }
     
+    .discord-widget {
+        min-width: auto;
+    }
+    
     .discord-widget iframe {
         width: 100%;
-        height: 400px;
+        height: 500px;
     }
     
     .footer-content {
