@@ -37,7 +37,6 @@ import { sendTicketNotificationToAdminChannel } from "./discord/commands";
 import devRoutes from "./routes/dev-routes";
 import homelabhubRoutes from "./routes/homelabhub-routes";
 import streamNotificationsRoutes from "./routes/stream-notifications";
-import { registerServerStatusRoutes } from "./routes/server-status";
 import { isDeveloperMiddleware } from "./middleware/developerAuth";
 
 // Configure multer for embed image uploads
@@ -3069,9 +3068,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount stream notifications routes
   app.use('/api/stream-notifications', streamNotificationsRoutes);
-
-  // Register server status routes
-  registerServerStatusRoutes(app);
 
   // Start the Discord bot
   try {

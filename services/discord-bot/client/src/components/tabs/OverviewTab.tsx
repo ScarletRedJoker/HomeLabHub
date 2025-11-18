@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import TicketCard from "@/components/TicketCard";
 import NewTicketModal from "@/components/NewTicketModal";
 import TicketDetailView from "@/components/TicketDetailView";
-import LiveServerStatus from "@/components/LiveServerStatus";
 import { Plus, MessageSquare, Clock, CheckCircle, Search, Users, AlertCircle } from "lucide-react";
 
 /**
@@ -159,14 +158,6 @@ export default function OverviewTab() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Live Server Status Widget - Prominently displayed at top */}
-      {selectedServerId && (
-        <LiveServerStatus 
-          serverId={selectedServerId}
-          className="mb-6"
-        />
-      )}
-
       {/* Server Context Indicator */}
       {selectedServerId && (
         <div className="bg-discord-sidebar border border-discord-dark rounded-lg px-3 sm:px-4 py-3 sm:py-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
