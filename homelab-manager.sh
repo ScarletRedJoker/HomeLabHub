@@ -64,6 +64,7 @@ show_menu() {
     echo -e "  ${BOLD}Troubleshooting:${NC}"
     echo -e "    ${GREEN}12)${NC} 🔍 View Service Logs"
     echo -e "    ${GREEN}13)${NC} 🏥 Health Check (all services)"
+    echo -e "    ${GREEN}13a)${NC} 🌐 Check Docker Network Status"
     echo -e "    ${GREEN}14)${NC} 🔧 Full Troubleshoot Mode"
     echo ""
     echo -e "  ${BOLD}Code Sync (Replit → Ubuntu):${NC}"
@@ -140,19 +141,36 @@ rebuild_deploy() {
     echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     
-    echo "Step 1: Stopping services..."
-    docker-compose -f docker-compose.unified.yml down --remove-orphans --timeout 30
+    echo "Step 1: Stopping all services gracefully..."
+    docker-compose -f docker-compose.unified.yml down --remove-orphans --timeout 60
     
     echo ""
-    echo "Step 2: Cleaning up networks..."
-    docker network prune -f
+    echo "Step 2: Waiting for network cleanup..."
+    sleep 3  # Give Docker time to detach containers
     
     echo ""
-    echo "Step 3: Building containers (no cache)..."
+    echo "Step 3: Removing homelab network (if exists and unused)..."
+    # Check if network exists and has no attached containers
+    if docker network inspect homelabhub_homelab >/dev/null 2>&1; then
+        ATTACHED_CONTAINERS=$(docker network inspect homelabhub_homelab --format='{{range .Containers}}{{.Name}} {{end}}' 2>/dev/null | wc -w)
+        
+        if [ "$ATTACHED_CONTAINERS" -eq 0 ]; then
+            echo "  → Network is clear, removing..."
+            docker network rm homelabhub_homelab 2>/dev/null || echo "  → Network already removed or in use (will be recreated)"
+        else
+            echo "  → Warning: $ATTACHED_CONTAINERS containers still attached, skipping network removal"
+            echo "  → Docker will handle network on next deployment"
+        fi
+    else
+        echo "  → Network doesn't exist (will be created on deployment)"
+    fi
+    
+    echo ""
+    echo "Step 4: Building containers (no cache)..."
     docker-compose -f docker-compose.unified.yml build --no-cache
     
     echo ""
-    echo "Step 4: Starting services..."
+    echo "Step 5: Starting services..."
     docker-compose -f docker-compose.unified.yml up -d --remove-orphans
     
     echo ""
@@ -194,23 +212,59 @@ graceful_shutdown() {
     echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     
-    echo "Step 1: Stopping all services..."
-    docker-compose -f docker-compose.unified.yml down --remove-orphans --timeout 30
+    echo "Step 1: Stopping all services gracefully..."
+    docker-compose -f docker-compose.unified.yml down --remove-orphans --timeout 60
     
     echo ""
-    echo "Step 2: Removing orphaned containers..."
+    echo "Step 2: Waiting for cleanup..."
+    sleep 3
+    
+    echo ""
+    echo "Step 3: Removing orphaned containers..."
     docker container prune -f
     
     echo ""
-    echo "Step 3: Cleaning up unused networks..."
-    docker network prune -f
+    echo "Step 4: Cleaning up unused networks (safe)..."
+    # Only prune networks that have no containers attached
+    docker network prune -f --filter "until=1h"  # Only remove old networks
     
     echo ""
-    echo "Step 4: Removing dangling volumes (if any)..."
+    echo "Step 5: Removing dangling volumes..."
     docker volume prune -f --filter "label!=keep"
     
     echo ""
     echo -e "${GREEN}✓ Graceful shutdown complete${NC}"
+    echo ""
+    echo "Safe to rebuild or redeploy now."
+    pause
+}
+
+# Check Docker Network Status
+check_docker_network() {
+    echo ""
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}${BLUE}  🔍 DOCKER NETWORK STATUS${NC}"
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    
+    if docker network inspect homelabhub_homelab >/dev/null 2>&1; then
+        echo -e "${GREEN}✓ Network 'homelabhub_homelab' exists${NC}"
+        echo ""
+        echo "Network Details:"
+        docker network inspect homelabhub_homelab --format='Driver: {{.Driver}}'
+        docker network inspect homelabhub_homelab --format='Scope: {{.Scope}}'
+        echo ""
+        echo "Attached Containers:"
+        docker network inspect homelabhub_homelab --format='{{range .Containers}}  - {{.Name}} ({{.IPv4Address}}){{"\n"}}{{end}}' | grep -v '^$' || echo "  (none)"
+    else
+        echo -e "${YELLOW}⚠ Network 'homelabhub_homelab' does not exist${NC}"
+        echo "  This is normal if services haven't been started yet."
+    fi
+    
+    echo ""
+    echo "All Docker Networks:"
+    docker network ls
+    
     pause
 }
 
@@ -1333,6 +1387,7 @@ main() {
             11) view_config ;;
             12) view_logs ;;
             13) health_check ;;
+            13a) check_docker_network ;;
             14) troubleshoot ;;
             15) show_details ;;
             16) show_urls ;;
