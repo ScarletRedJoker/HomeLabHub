@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}AI Assistant - Homelab{% endblock %}
+{% block title %}AI Assistant - Nebula Command{% endblock %}
 
 {% block content %}
 <div class="row mb-4">
     <div class="col-12">
         <h2><i class="bi bi-robot"></i> AI Troubleshooting Assistant</h2>
-        <p class="text-muted">Get intelligent help with your homelab issues</p>
+        <p class="text-muted">Get intelligent help with your infrastructure issues</p>
     </div>
 </div>
 
@@ -20,7 +20,7 @@
                 <div id="chatMessages" class="chat-container mb-3"></div>
                 <div class="input-group">
                     <input type="text" class="form-control" id="chatInput" 
-                           placeholder="Ask a question about your homelab...">
+                           placeholder="Ask a question about your infrastructure...">
                     <button class="btn btn-primary" onclick="sendMessage()">
                         <i class="bi bi-send"></i> Send
                     </button>

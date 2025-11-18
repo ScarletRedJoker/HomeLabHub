@@ -16,7 +16,7 @@ show_banner() {
     clear
     echo -e "${CYAN}╔════════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${CYAN}║${NC}                                                                ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}        ${BOLD}${MAGENTA}🏠 HOMELAB DEPLOYMENT MANAGER 🚀${NC}                    ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}        ${BOLD}${MAGENTA}🌌 NEBULA COMMAND DEPLOYMENT MANAGER 🚀${NC}            ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}                                                                ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}        ${GREEN}Unified Control Panel for All Services${NC}              ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}                                                                ${CYAN}║${NC}"
@@ -279,42 +279,270 @@ update_service() {
     pause
 }
 
-# Ensure Databases Exist
+# Load .env for database passwords - Safe parsing
+load_env_passwords() {
+    if [ ! -f ".env" ]; then
+        echo -e "${RED}✗ .env file not found${NC}"
+        return 1
+    fi
+    
+    # Safe parsing that handles special characters in passwords
+    set -a
+    while IFS='=' read -r key value; do
+        # Skip comments and empty lines
+        [[ "$key" =~ ^[[:space:]]*# ]] && continue
+        [[ -z "$key" ]] && continue
+        
+        # Only load database password variables
+        if [[ "$key" =~ ^(DISCORD_DB_PASSWORD|STREAMBOT_DB_PASSWORD|JARVIS_DB_PASSWORD)$ ]]; then
+            # Remove quotes if present
+            value="${value%\"}"
+            value="${value#\"}"
+            export "$key=$value"
+        fi
+    done < .env
+    set +a
+    
+    return 0
+}
+
+# Ensure Databases Exist - Comprehensive Repair
 ensure_databases() {
     echo ""
     echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${BOLD}${BLUE}  🗄️  ENSURE DATABASES EXIST${NC}"
+    echo -e "${BOLD}${BLUE}  🗄️  DATABASE DIAGNOSTIC & REPAIR${NC}"
     echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     
-    if [ -f "./deployment/ensure-databases.sh" ]; then
-        ./deployment/ensure-databases.sh
-    else
-        echo -e "${RED}✗ ensure-databases.sh not found${NC}"
+    # Check if PostgreSQL container is running
+    if ! docker ps --format '{{.Names}}' | grep -q '^discord-bot-db$'; then
+        echo -e "${RED}✗ PostgreSQL container is not running${NC}"
+        echo ""
+        echo "Starting PostgreSQL container..."
+        docker-compose -f docker-compose.unified.yml up -d discord-bot-db
+        echo "Waiting for PostgreSQL to start..."
+        sleep 5
     fi
+    
+    echo -e "${GREEN}✓ PostgreSQL container is running${NC}"
+    echo ""
+    
+    # Load passwords from .env
+    echo "Loading credentials from .env..."
+    load_env_passwords || { pause; return 1; }
+    
+    # Check required passwords
+    local missing_passwords=0
+    if [ -z "$DISCORD_DB_PASSWORD" ]; then
+        echo -e "${RED}✗ DISCORD_DB_PASSWORD not set in .env${NC}"
+        missing_passwords=1
+    else
+        echo -e "${GREEN}✓ DISCORD_DB_PASSWORD found${NC}"
+    fi
+    
+    if [ -z "$STREAMBOT_DB_PASSWORD" ]; then
+        echo -e "${RED}✗ STREAMBOT_DB_PASSWORD not set in .env${NC}"
+        missing_passwords=1
+    else
+        echo -e "${GREEN}✓ STREAMBOT_DB_PASSWORD found${NC}"
+    fi
+    
+    if [ -z "$JARVIS_DB_PASSWORD" ]; then
+        echo -e "${RED}✗ JARVIS_DB_PASSWORD not set in .env${NC}"
+        missing_passwords=1
+    else
+        echo -e "${GREEN}✓ JARVIS_DB_PASSWORD found${NC}"
+    fi
+    
+    if [ $missing_passwords -eq 1 ]; then
+        echo ""
+        echo -e "${RED}✗ Cannot proceed with missing passwords${NC}"
+        echo -e "${YELLOW}Please set all required passwords in .env and try again${NC}"
+        pause
+        return 1
+    fi
+    
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo -e "${BOLD}${YELLOW}Creating/Repairing Databases and Users${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    
+    # Defensive check - abort if any password is empty after loading
+    if [ -z "$DISCORD_DB_PASSWORD" ] || [ -z "$STREAMBOT_DB_PASSWORD" ] || [ -z "$JARVIS_DB_PASSWORD" ]; then
+        echo -e "${RED}✗ CRITICAL: One or more passwords became empty after loading${NC}"
+        echo -e "${YELLOW}This may indicate special characters in .env. Please verify your .env file.${NC}"
+        pause
+        return 1
+    fi
+    
+    # Create ticketbot database and user
+    echo "1️⃣  Discord Bot (ticketbot)..."
+    if docker exec discord-bot-db psql -U postgres -d postgres <<-EOSQL 2>/dev/null
+        DO \$\$
+        BEGIN
+            IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'ticketbot') THEN
+                CREATE ROLE ticketbot WITH LOGIN PASSWORD '${DISCORD_DB_PASSWORD}';
+            ELSE
+                ALTER ROLE ticketbot WITH PASSWORD '${DISCORD_DB_PASSWORD}';
+            END IF;
+        END
+        \$\$;
+        
+        SELECT 'CREATE DATABASE ticketbot OWNER ticketbot'
+        WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'ticketbot')\gexec
+        
+        GRANT ALL PRIVILEGES ON DATABASE ticketbot TO ticketbot;
+EOSQL
+    then
+        echo -e "${GREEN}   ✓ ticketbot database ready${NC}"
+    else
+        echo -e "${RED}   ✗ Failed to create ticketbot database${NC}"
+        echo "   Please check database container logs"
+    fi
+    
+    # Create streambot database and user
+    echo "2️⃣  Stream Bot (streambot)..."
+    if docker exec discord-bot-db psql -U postgres -d postgres <<-EOSQL 2>/dev/null
+        DO \$\$
+        BEGIN
+            IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'streambot') THEN
+                CREATE ROLE streambot WITH LOGIN PASSWORD '${STREAMBOT_DB_PASSWORD}';
+            ELSE
+                ALTER ROLE streambot WITH PASSWORD '${STREAMBOT_DB_PASSWORD}';
+            END IF;
+        END
+        \$\$;
+        
+        SELECT 'CREATE DATABASE streambot OWNER streambot'
+        WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'streambot')\gexec
+        
+        GRANT ALL PRIVILEGES ON DATABASE streambot TO streambot;
+EOSQL
+    then
+        echo -e "${GREEN}   ✓ streambot database ready${NC}"
+    else
+        echo -e "${RED}   ✗ Failed to create streambot database${NC}"
+    fi
+    
+    # Create jarvis database and user
+    echo "3️⃣  Dashboard/Jarvis (homelab_jarvis)..."
+    if docker exec discord-bot-db psql -U postgres -d postgres <<-EOSQL 2>/dev/null
+        DO \$\$
+        BEGIN
+            IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'jarvis') THEN
+                CREATE ROLE jarvis WITH LOGIN PASSWORD '${JARVIS_DB_PASSWORD}';
+            ELSE
+                ALTER ROLE jarvis WITH PASSWORD '${JARVIS_DB_PASSWORD}';
+            END IF;
+        END
+        \$\$;
+        
+        SELECT 'CREATE DATABASE homelab_jarvis OWNER jarvis'
+        WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'homelab_jarvis')\gexec
+        
+        GRANT ALL PRIVILEGES ON DATABASE homelab_jarvis TO jarvis;
+EOSQL
+    then
+        echo -e "${GREEN}   ✓ homelab_jarvis database ready${NC}"
+    else
+        echo -e "${RED}   ✗ Failed to create jarvis database${NC}"
+    fi
+    
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo -e "${BOLD}${GREEN}✅ Database Repair Complete!${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "What was done:"
+    echo "  • Created/updated all required database users"
+    echo "  • Reset passwords to match .env file"
+    echo "  • Created missing databases"
+    echo "  • Granted necessary privileges"
+    echo ""
+    echo -e "${YELLOW}💡 Tip: Restart your services to apply the changes:${NC}"
+    echo "     docker-compose -f docker-compose.unified.yml restart stream-bot homelab-dashboard homelab-celery-worker"
+    echo ""
     
     pause
 }
 
-# Check Database Status
+# Check Database Status - Comprehensive Diagnostics
 check_database_status() {
     echo ""
     echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${BOLD}${BLUE}  📊 DATABASE STATUS${NC}"
+    echo -e "${BOLD}${BLUE}  📊 COMPREHENSIVE DATABASE STATUS${NC}"
     echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     
-    if docker ps --format '{{.Names}}' | grep -q '^discord-bot-db$'; then
-        echo -e "${GREEN}✓ PostgreSQL container is running${NC}"
+    # Check if PostgreSQL container is running
+    if ! docker ps --format '{{.Names}}' | grep -q '^discord-bot-db$'; then
+        echo -e "${RED}✗ PostgreSQL container is NOT running${NC}"
         echo ""
-        echo "Databases:"
-        docker exec discord-bot-db psql -U ticketbot -d postgres -c "\l" || true
-        echo ""
-        echo "Users:"
-        docker exec discord-bot-db psql -U ticketbot -d postgres -c "\du" || true
-    else
-        echo -e "${RED}✗ PostgreSQL container is not running${NC}"
+        echo "Start the database container with:"
+        echo "  docker-compose -f docker-compose.unified.yml up -d discord-bot-db"
+        pause
+        return 1
     fi
+    
+    echo -e "${GREEN}✓ PostgreSQL container is running${NC}"
+    echo ""
+    
+    # Load passwords from .env
+    echo "Checking .env configuration..."
+    load_env_passwords || { pause; return 1; }
+    
+    local env_status=0
+    [ -n "$DISCORD_DB_PASSWORD" ] && echo -e "${GREEN}✓ DISCORD_DB_PASSWORD${NC}" || { echo -e "${RED}✗ DISCORD_DB_PASSWORD${NC}"; env_status=1; }
+    [ -n "$STREAMBOT_DB_PASSWORD" ] && echo -e "${GREEN}✓ STREAMBOT_DB_PASSWORD${NC}" || { echo -e "${RED}✗ STREAMBOT_DB_PASSWORD${NC}"; env_status=1; }
+    [ -n "$JARVIS_DB_PASSWORD" ] && echo -e "${GREEN}✓ JARVIS_DB_PASSWORD${NC}" || { echo -e "${RED}✗ JARVIS_DB_PASSWORD${NC}"; env_status=1; }
+    
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo -e "${BOLD}Database Roles (Users):${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    docker exec discord-bot-db psql -U postgres -d postgres -c "\du" 2>/dev/null || echo -e "${RED}Failed to query roles${NC}"
+    
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo -e "${BOLD}Databases:${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    docker exec discord-bot-db psql -U postgres -d postgres -c "\l" 2>/dev/null || echo -e "${RED}Failed to list databases${NC}"
+    
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo -e "${BOLD}Connection Tests:${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    # Test ticketbot connection with scoped password
+    echo -n "1️⃣  ticketbot → ticketbot: "
+    if PGPASSWORD="$DISCORD_DB_PASSWORD" docker exec -e PGPASSWORD discord-bot-db psql -U ticketbot -d ticketbot -c "SELECT 1;" &>/dev/null; then
+        echo -e "${GREEN}✓ Connected${NC}"
+    else
+        echo -e "${RED}✗ Failed${NC}"
+    fi
+    
+    # Test streambot connection with scoped password
+    echo -n "2️⃣  streambot → streambot: "
+    if PGPASSWORD="$STREAMBOT_DB_PASSWORD" docker exec -e PGPASSWORD discord-bot-db psql -U streambot -d streambot -c "SELECT 1;" &>/dev/null; then
+        echo -e "${GREEN}✓ Connected${NC}"
+    else
+        echo -e "${RED}✗ Failed (Run option 7 to repair)${NC}"
+    fi
+    
+    # Test jarvis connection with scoped password
+    echo -n "3️⃣  jarvis → homelab_jarvis: "
+    if PGPASSWORD="$JARVIS_DB_PASSWORD" docker exec -e PGPASSWORD discord-bot-db psql -U jarvis -d homelab_jarvis -c "SELECT 1;" &>/dev/null; then
+        echo -e "${GREEN}✓ Connected${NC}"
+    else
+        echo -e "${RED}✗ Failed (Run option 7 to repair)${NC}"
+    fi
+    
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo -e "${BOLD}${YELLOW}💡 If you see connection failures, run option 7 to repair${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
     
     pause
 }

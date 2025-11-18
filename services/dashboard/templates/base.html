@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Homelab Dashboard{% endblock %}</title>
+    <title>{% block title %}Nebula Command{% endblock %}</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicons/dashboard.png') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
@@ -406,10 +406,12 @@
 <body class="cosmic-bg cosmic-fade-in">
     <canvas id="starfield-canvas"></canvas>
     <div class="nebula-overlay"></div>
+    <div class="black-hole-vortex top-left"></div>
+    <div class="black-hole-vortex bottom-right"></div>
     
     <nav class="sidebar cosmic">
         <div class="sidebar-brand">
-            <h4><i class="bi bi-stars"></i> Cosmic Homelab</h4>
+            <h4><i class="bi bi-stars"></i> Nebula Command</h4>
         </div>
         <ul>
             <li class="nav-item">

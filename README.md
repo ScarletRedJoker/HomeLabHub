@@ -1,8 +1,8 @@
-# 🏠 Homelab Development Workspace
+# 🌌 Nebula Command Development Workspace
 
-**Centralized development environment for all homelab services**
+**Centralized development environment for all infrastructure services**
 
-This Repo serves as your development environment for managing 7 production services across 3 domains. Edit code here, test changes, then deploy to your Ubuntu 25.10 homelab server.
+This Repo serves as your development environment for managing 7 production services across 3 domains. Edit code here, test changes, then deploy to your Ubuntu 25.10 server.
 
 ---
 
@@ -36,10 +36,10 @@ git commit -m "Updated Discord bot"
 ### Deployment (on Ubuntu Server)
 ```bash
 # 1. SSH to your server
-ssh evin@your-homelab
+ssh evin@your-server
 
 # 2. Pull latest changes
-cd /home/evin/contain/HomeLabHub
+cd /home/evin/contain/NebulaCommand
 git pull
 
 # 3. Run the manager
@@ -70,7 +70,7 @@ All services automatically receive SSL certificates via **Caddy**.
 
 ```
 services/
-├── dashboard/      ← Homelab management UI
+├── dashboard/      ← Nebula Command management UI
 ├── discord-bot/    ← Discord Ticket Bot
 ├── stream-bot/     ← Twitch/Kick Stream Bot
 ├── static-site/    ← scarletredjoker.com
@@ -108,8 +108,8 @@ See **[WORKSPACE_STRUCTURE.md](docs/WORKSPACE_STRUCTURE.md)** for complete detai
 ```bash
 # On Ubuntu server:
 cd /home/evin/contain
-git clone <this-replit-git-url> HomeLabHub
-cd HomeLabHub
+git clone <this-replit-git-url> NebulaCommand
+cd NebulaCommand
 ./deployment/generate-unified-env.sh
 ```
 
@@ -123,10 +123,10 @@ cd HomeLabHub
 ```bash
 # From Replit or local machine:
 rsync -avz --exclude='node_modules' --exclude='.git' \
-  . evin@your-server:/home/evin/contain/HomeLabHub/
+  . evin@your-server:/home/evin/contain/NebulaCommand/
 
 # Then on Ubuntu:
-cd /home/evin/contain/HomeLabHub
+cd /home/evin/contain/NebulaCommand
 ./deployment/deploy-unified.sh
 ```
 
@@ -249,8 +249,8 @@ See [SECURITY.md](docs/SECURITY.md) for security best practices.
 3. **Set up deployment to Ubuntu:**
    ```bash
    # On Ubuntu server:
-   git clone <this-repo> HomeLabHub
-   cd HomeLabHub
+   git clone <this-repo> NebulaCommand
+   cd NebulaCommand
    ./deployment/generate-unified-env.sh
    ./deployment/deploy-unified.sh
    ```

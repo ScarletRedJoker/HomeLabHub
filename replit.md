@@ -1,11 +1,11 @@
-# Homelab Dashboard Project
+# Nebula Command Dashboard Project
 
 ## Overview
-This project provides a comprehensive web-based dashboard for managing a Ubuntu 25.10 homelab server. Its core purpose is to offer a unified, user-friendly interface to minimize operational complexity, enhance server reliability, and facilitate intelligent automation and monitoring for intricate homelab environments. Key capabilities include one-click database deployments, game streaming integration, robust domain health monitoring, and integrations with Google Services and Smart Home platforms. The project aims to deliver production-ready source code for streamlined development, testing, and deployment. The long-term vision is to evolve into an AI-first homelab copilot, "Jarvis," capable of autonomous diagnosis, remediation, and execution of homelab issues, serving as a mission control UI for actionable intelligence and safe automation.
+This project provides a comprehensive web-based dashboard for managing a Ubuntu 25.10 server. Its core purpose is to offer a unified, user-friendly interface to minimize operational complexity, enhance server reliability, and facilitate intelligent automation and monitoring for complex infrastructure environments. Key capabilities include one-click database deployments, game streaming integration, robust domain health monitoring, and integrations with Google Services and Smart Home platforms. The project aims to deliver production-ready source code for streamlined development, testing, and deployment. The long-term vision is to evolve into an AI-first infrastructure copilot, "Jarvis," capable of autonomous diagnosis, remediation, and execution of infrastructure issues, serving as a mission control UI for actionable intelligence and safe automation.
 
 ## User Preferences
 - User: Evin
-- Ubuntu 25.10 desktop homelab with Twingate VPN and dynamic DNS (ZoneEdit)
+- Ubuntu 25.10 desktop with Twingate VPN and dynamic DNS (ZoneEdit)
 - Manages domains: rig-city.com, evindrake.net, scarletredjoker.com
 - All projects stored in: `/home/evin/contain/` (production) and Replit (development)
 - Development workflow: **Edit on Replit → Agent makes changes → Auto-sync to Ubuntu every 5 minutes**
@@ -16,7 +16,7 @@ This project provides a comprehensive web-based dashboard for managing a Ubuntu 
   - n8n Automation (n8n.evindrake.net) - Workflow automation
   - Static Website (scarletredjoker.com) - Personal website
   - VNC Desktop (vnc.evindrake.net) - Remote desktop access
-  - Homelab Dashboard (host.evindrake.net) - Management UI
+  - Nebula Command Dashboard (host.evindrake.net) - Management UI
   - **Home Assistant (home.evindrake.net) - Smart home automation hub with Google Home integration**
 - Prefers centralized development environment with clean structure
 - Needs public HTTPS access with automatic SSL (port forwarding configured)
@@ -43,12 +43,12 @@ HomeLabHub/
 ```
 
 ### UI/UX Decisions
-- **Homelab Dashboard**: Cosmic theme with deep space backgrounds, animated starfields, nebula gradients, glassmorphic UI panels. WCAG AA Accessibility for text contrast.
+- **Nebula Command Dashboard**: Nebular cloud theme with interconnected nodes, particle star effects, black hole vortex gradients, and glassmorphic UI panels. Dark mode only. WCAG AA Accessibility for text contrast.
 - **Stream Bot**: Candy theme with delicious gradients, glassmorphism effects, rounded edges, and glow effects.
 - **Discord Bot**: Utilizes React, Radix UI components, and Tailwind CSS.
 
 ### Technical Implementations
-- **Homelab Dashboard**: Built with Flask, Python, Bootstrap 5, Chart.js, SQLAlchemy, Alembic, Redis, Celery, MinIO. Features Docker management, system monitoring, AI assistant (Jarvis, powered by gpt-5), network analytics, domain health checks, one-click database deployments, game streaming integration, intelligent deployment analyzer, secure file upload. Integrates with Google Services (Calendar, Gmail, Drive) and Home Assistant for smart home control. Incorporates robust security measures like session-based auth, API key, secure file validation, antivirus scanning, rate limiting, audit logging, CSRF protection, and Celery/Redis health monitoring with a circuit breaker.
+- **Nebula Command Dashboard**: Built with Flask, Python, Bootstrap 5, Chart.js, SQLAlchemy, Alembic, Redis, Celery, MinIO. Features Docker management, system monitoring, AI assistant (Jarvis, powered by gpt-5), network analytics, domain health checks, one-click database deployments, game streaming integration, intelligent deployment analyzer, secure file upload. Integrates with Google Services (Calendar, Gmail, Drive) and Home Assistant for smart home control. Incorporates robust security measures like session-based auth, API key, secure file validation, antivirus scanning, rate limiting, audit logging, CSRF protection, and Celery/Redis health monitoring with a circuit breaker.
 - **Discord Ticket Bot**: Uses TypeScript, React, Express, Discord.js, Drizzle ORM, PostgreSQL for a support ticket system and multi-platform streamer go-live notifications. Features OAuth CSRF protection, atomic database transactions, and comprehensive security headers.
 - **Stream Bot / SnappleBotAI**: Developed with TypeScript, React, Express, tmi.js, @retconned/kick-js, OpenAI GPT-5, Spotify Web API, Drizzle ORM, PostgreSQL. Provides multi-tenant SaaS for AI-powered stream bot management across Twitch, YouTube, and Kick, including custom commands, AI auto-moderation, giveaway system, shoutouts, stream statistics, mini-games, and advanced analytics. Emphasizes "Fort Knox" OAuth security, multi-tenant isolation, and atomic currency operations.
 - **Other Services**: Includes a simple Static Website, n8n for workflow automation, Plex for media streaming, and a custom Dockerized VNC Desktop for remote access.
