@@ -156,16 +156,15 @@ code.evindrake.net {
     #     remote_ip 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
     # }
     # handle @vpn_only {
-    #     reverse_proxy https://code-server:8443 {
-    #         transport http {
-    #             tls_insecure_skip_verify
-    #         }
+    #     reverse_proxy http://code-server:8443 {
     #         header_up Host {host}
     #         header_up X-Real-IP {remote_host}
+    #         header_up X-Forwarded-For {remote_host}
+    #         header_up X-Forwarded-Proto {scheme}
     #         
-    #         # WebSocket support for VS Code
-    #         header_up Upgrade {>Upgrade}
-    #         header_up Connection {>Connection}
+    #         # WebSocket support for VS Code - CRITICAL for code-server
+    #         header_up Upgrade {http.request.header.Upgrade}
+    #         header_up Connection {http.request.header.Connection}
     #     }
     # }
     # handle {
@@ -178,24 +177,22 @@ code.evindrake.net {
     reverse_proxy http://code-server:8443 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
         
-        # WebSocket support for VS Code
-        header_up Upgrade {>Upgrade}
-        header_up Connection {>Connection}
+        # WebSocket support for VS Code - CRITICAL for code-server
+        # Using full placeholders to ensure headers are properly forwarded
+        header_up Upgrade {http.request.header.Upgrade}
+        header_up Connection {http.request.header.Connection}
     }
     
-    # Enhanced security headers
+    # Enhanced security headers (but don't break WebSocket upgrade)
     header {
         X-Content-Type-Options "nosniff"
         X-Frame-Options "DENY"
         X-XSS-Protection "1; mode=block"
         Referrer-Policy "no-referrer"
         Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-        
-        # Disable caching for dynamic content
-        Cache-Control "no-cache, no-store, must-revalidate"
-        Pragma "no-cache"
-        Expires "0"
     }
 }
 
