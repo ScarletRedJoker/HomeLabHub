@@ -115,7 +115,9 @@ full_deploy() {
         mkdir -p ./config/code-server
         sudo chown -R 1000:1000 ./config/code-server 2>/dev/null || true
         echo ""
-        docker-compose -f docker-compose.unified.yml up -d --build --remove-orphans
+        echo "Building with --no-cache to ensure fresh environment variables..."
+        docker-compose -f docker-compose.unified.yml build --no-cache
+        docker-compose -f docker-compose.unified.yml up -d --remove-orphans
     fi
     
     pause
