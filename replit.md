@@ -67,3 +67,126 @@ This project delivers a comprehensive web-based dashboard for managing a Ubuntu 
 - PostgreSQL 16 Alpine
 - Docker & Docker Compose
 - Let's Encrypt
+
+## Recent Changes
+
+### Replit Dependency Removal & Optional Integrations (November 18, 2025)
+
+**Issue:**
+Stream-bot had hard dependencies on Replit-specific environment variables (X_REPLIT_TOKEN, REPLIT_CONNECTORS_HOSTNAME) that prevented deployment on Ubuntu production servers.
+
+**Root Cause:**
+YouTube and Spotify integrations were tightly coupled to Replit's connector infrastructure, causing startup crashes when deployed outside Replit environment.
+
+**Solutions Implemented:**
+
+1. ✅ **YouTube Client Refactor** (services/stream-bot/server/youtube-client.ts):
+   - Removed Replit connector dependency
+   - Implemented standard OAuth2 using environment variables (YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN)
+   - Added graceful degradation - returns null when credentials not configured
+   - Integration is now **optional**
+
+2. ✅ **Spotify Service Refactor** (services/stream-bot/server/spotify-service.ts):
+   - Removed Replit connector dependency
+   - Implemented direct Spotify OAuth2 token refresh flow
+   - Uses environment variables (SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_REFRESH_TOKEN)
+   - Returns benign defaults ({ isPlaying: false }) when not configured
+   - Integration is now **optional**
+
+3. ✅ **Environment Configuration Updates**:
+   - Updated `.env.template` with YouTube/Spotify optional variables
+   - Updated `docker-compose.unified.yml` to pass all optional integration environment variables
+   - All integrations use `${VAR:-}` syntax for safe defaults
+
+4. ✅ **Deployment Guide Updates** (SYSTEMATIC_FIX.md):
+   - Documented optional YouTube/Spotify setup procedures
+   - Clarified which integrations are required (Twitch) vs optional (YouTube, Spotify, Kick)
+   - Added Twitch OAuth redirect URL configuration instructions
+
+**Technical Details:**
+
+```typescript
+// YouTube - graceful degradation
+async function getYouTubeAuth() {
+  const clientId = process.env.YOUTUBE_CLIENT_ID;
+  const clientSecret = process.env.YOUTUBE_CLIENT_SECRET;
+  const refreshToken = process.env.YOUTUBE_REFRESH_TOKEN;
+  
+  if (!clientId || !clientSecret || !refreshToken) {
+    return null; // Gracefully disable feature
+  }
+  // ... OAuth2 implementation
+}
+
+// Spotify - graceful degradation
+async function getAccessToken() {
+  const clientId = process.env.SPOTIFY_CLIENT_ID;
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+  const refreshToken = process.env.SPOTIFY_REFRESH_TOKEN;
+  
+  if (!clientId || !clientSecret || !refreshToken) {
+    return null; // Gracefully disable feature
+  }
+  // ... Token refresh implementation
+}
+```
+
+**Files Modified:**
+- `services/stream-bot/server/youtube-client.ts` - Replit-free YouTube integration
+- `services/stream-bot/server/spotify-service.ts` - Replit-free Spotify integration
+- `.env.template` - Added optional YouTube/Spotify variables
+- `docker-compose.unified.yml` - Added YouTube/Spotify environment variables
+- `SYSTEMATIC_FIX.md` - Updated deployment instructions
+
+**Result:**
+- Stream-bot now runs successfully on Ubuntu without Replit infrastructure
+- YouTube and Spotify integrations are truly optional
+- Only Twitch credentials are required for basic operation
+- No startup crashes when optional integrations not configured
+- All optional features gracefully disabled with clear log messages
+
+### PostgreSQL Idempotent Migrations (November 18, 2025)
+
+**Issue:**
+Dashboard migrations failed with "type serviceconnectionstatus already exists" errors on service restarts.
+
+**Solution:**
+✅ Updated `services/dashboard/alembic/versions/005_add_google_integration_models.py` to wrap all CREATE TYPE statements in DO blocks with duplicate_object exception handling.
+
+**Technical Details:**
+
+```python
+# Idempotent PostgreSQL enum creation
+op.execute("""
+    DO $$ BEGIN
+        CREATE TYPE serviceconnectionstatus AS ENUM ('connected', 'disconnected', 'error', 'pending');
+    EXCEPTION
+        WHEN duplicate_object THEN null;
+    END $$;
+""")
+```
+
+**Result:**
+- Database migrations now safe to run multiple times
+- No "already exists" errors on service restarts
+- Production-ready migration system
+
+### OpenAI API Parameter Fix (November 18, 2025)
+
+**Issue:**
+Stream-bot's AI Snapple facts generation was falling back from gpt-5-mini to gpt-4.1-mini due to incorrect parameter usage.
+
+**Root Cause:**
+OpenAI's newer models (gpt-5, gpt-5-mini) require `max_completion_tokens` instead of the deprecated `max_tokens` parameter.
+
+**Solution:**
+✅ Updated all OpenAI API calls across stream-bot services to use `max_completion_tokens`:
+- `services/stream-bot/server/openai.ts` - Snapple facts generation
+- `services/stream-bot/server/games-service.ts` - Magic 8-Ball and Trivia games
+- `services/stream-bot/server/analytics-service.ts` - Sentiment analysis
+- `services/stream-bot/server/chatbot-service.ts` - AI chatbot responses
+
+**Result:**
+- AI Snapple facts generation now works correctly with gpt-5-mini
+- All AI-powered features work without fallback errors
+- No more "400 Unsupported parameter" errors in logs
