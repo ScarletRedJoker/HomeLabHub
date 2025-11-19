@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 class ComposeManager:
     """Manage Docker Compose configuration files"""
     
-    def __init__(self, compose_file_path: str = 'docker-compose.unified.yml'):
-        self.compose_file_path = compose_file_path
+    def __init__(self, compose_file_path: Optional[str] = None):
+        self.compose_file_path = compose_file_path or os.getenv('COMPOSE_FILE', 'docker-compose.unified.yml')
         self.config: Dict[str, Any] = {}
         self.load_config()
     

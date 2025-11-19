@@ -141,12 +141,18 @@ services:
       - HOME_ASSISTANT_URL=${HOME_ASSISTANT_URL:-http://homeassistant:8123}
       - HOME_ASSISTANT_TOKEN=${HOME_ASSISTANT_TOKEN:-}
       - HOME_ASSISTANT_VERIFY_SSL=${HOME_ASSISTANT_VERIFY_SSL:-False}
+      - COMPOSE_FILE=/docker-compose.unified.yml
+      - CADDYFILE_PATH=/Caddyfile
+      - ENV_FILE=/.env
     env_file:
       - .env
     volumes:
       - ./services/dashboard:/app
       - /var/run/docker.sock:/var/run/docker.sock
       - ./services/dashboard/logs:/app/logs
+      - ./docker-compose.unified.yml:/docker-compose.unified.yml:ro
+      - ./Caddyfile:/Caddyfile:ro
+      - ./.env:/.env:ro
 
   # ============================================
   # Discord Ticket Bot + PostgreSQL

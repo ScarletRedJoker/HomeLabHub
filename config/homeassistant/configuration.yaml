@@ -90,12 +90,14 @@ sensor:
     scan_interval: 30
     headers:
       X-API-Key: "!secret jarvis_api_key"
+    json_attributes_path: "$.data"
     json_attributes:
       - active_deployments
       - pending_builds
       - ssl_certificates
       - total_projects
-    value_template: '{{ value_json.status }}'
+    value_template: '{{ value_json.data.status if value_json.data is defined else "unknown" }}'
+    availability: '{{ value_json.success is defined and value_json.success }}'
 
 # Google Assistant integration (setup via UI after first boot)
 # google_assistant: !include google_assistant.yaml

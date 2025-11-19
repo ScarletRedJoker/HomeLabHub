@@ -25,8 +25,8 @@ class CaddyChunk:
 class CaddyManager:
     """Manage Caddyfile for reverse proxy configuration using chunk-based parsing"""
     
-    def __init__(self, caddyfile_path: str = 'Caddyfile'):
-        self.caddyfile_path = caddyfile_path
+    def __init__(self, caddyfile_path: Optional[str] = None):
+        self.caddyfile_path = caddyfile_path or os.getenv('CADDYFILE_PATH', 'Caddyfile')
         self.chunks: List[CaddyChunk] = []
         self.load_config()
     

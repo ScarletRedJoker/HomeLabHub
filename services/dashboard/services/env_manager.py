@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 class EnvManager:
     """Manage environment variables in .env file"""
     
-    def __init__(self, env_file_path: str = '.env'):
-        self.env_file_path = env_file_path
+    def __init__(self, env_file_path: Optional[str] = None):
+        self.env_file_path = env_file_path or os.getenv('ENV_FILE', '.env')
         self.variables: Dict[str, str] = {}
         self.comments: Dict[str, str] = {}  # Store comments for each variable
         self.load_env()
