@@ -1,0 +1,302 @@
+{% extends 'base.html' %}
+
+{% block title %}NAS Management - Nebula Command{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <h1 class="mb-4">
+        <i class="fas fa-hdd me-2"></i>NAS Management
+        <small class="text-muted">Zyxel NAS326</small>
+    </h1>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card nebula-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-network-wired me-2"></i>NAS Discovery
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="nasStatus" class="mb-3">
+                        <p class="text-muted">Click "Discover NAS" to find the NAS on your network</p>
+                    </div>
+                    <button id="discoverBtn" class="btn btn-primary me-2">
+                        <i class="fas fa-search me-2"></i>Discover NAS
+                    </button>
+                    <button id="testConnectionBtn" class="btn btn-outline-primary">
+                        <i class="fas fa-plug me-2"></i>Test Connection
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card nebula-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-folder-open me-2"></i>Mount NAS Share
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="mountForm">
+                        <div class="mb-3">
+                            <label class="form-label">Share Name</label>
+                            <input type="text" class="form-control" id="shareName" placeholder="e.g., homelab-backups" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Mount Point</label>
+                            <input type="text" class="form-control" id="mountPoint" placeholder="e.g., /mnt/nas/backups" required>
+                        </div>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-link me-2"></i>Mount Share
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card nebula-card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-server me-2"></i>Active Mounts
+            </h5>
+        </div>
+        <div class="card-body">
+            <div id="mountsList"></div>
+        </div>
+    </div>
+
+    <div class="card nebula-card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-cloud-upload-alt me-2"></i>Backup to NAS
+            </h5>
+        </div>
+        <div class="card-body">
+            <form id="backupForm" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Source Path</label>
+                    <input type="text" class="form-control" id="sourcePath" placeholder="/path/to/backup" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Destination Share</label>
+                    <input type="text" class="form-control" id="destShare" placeholder="homelab-backups" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Backup Name</label>
+                    <input type="text" class="form-control" id="backupName" placeholder="backup-2025-11-19" required>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Start Backup
+                    </button>
+                </div>
+            </form>
+
+            <div class="mt-4">
+                <h6>Recent Backup Jobs</h6>
+                <div id="backupsList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadMounts();
+    loadBackups();
+
+    document.getElementById('discoverBtn').addEventListener('click', discoverNAS);
+    document.getElementById('testConnectionBtn').addEventListener('click', testConnection);
+    document.getElementById('mountForm').addEventListener('submit', mountShare);
+    document.getElementById('backupForm').addEventListener('submit', createBackup);
+});
+
+async function discoverNAS() {
+    try {
+        const response = await fetch('/nas/api/discover', { method: 'POST' });
+        const data = await response.json();
+
+        if (data.success) {
+            const nas = data.nas;
+            document.getElementById('nasStatus').innerHTML = `
+                <div class="alert alert-success">
+                    <strong>NAS Found!</strong><br>
+                    Hostname: ${nas.hostname}<br>
+                    IP Address: ${nas.ip_address}<br>
+                    Status: ${nas.is_alive ? 'Online' : 'Offline'}
+                </div>
+            `;
+        } else {
+            showError('NAS not found on network');
+        }
+    } catch (error) {
+        showError('Discovery failed: ' + error.message);
+    }
+}
+
+async function testConnection() {
+    try {
+        const response = await fetch('/nas/api/test-connection', { method: 'POST' });
+        const data = await response.json();
+
+        if (data.success) {
+            showSuccess('Connection successful!');
+        } else {
+            showError(data.error);
+        }
+    } catch (error) {
+        showError('Connection test failed: ' + error.message);
+    }
+}
+
+async function loadMounts() {
+    try {
+        const response = await fetch('/nas/api/mounts');
+        const data = await response.json();
+
+        if (data.success) {
+            const html = data.mounts.map(mount => `
+                <div class="border-bottom py-2">
+                    <strong>${mount.source}</strong> → ${mount.mount_point}
+                    <span class="badge bg-info">${mount.type}</span>
+                    ${mount.storage ? `
+                        <span class="text-muted ms-2">
+                            ${mount.storage.used_gb} GB / ${mount.storage.total_gb} GB 
+                            (${mount.storage.usage_percent}% used)
+                        </span>
+                    ` : ''}
+                    <button class="btn btn-sm btn-danger float-end" onclick="unmountShare('${mount.mount_point}')">
+                        Unmount
+                    </button>
+                </div>
+            `).join('');
+
+            document.getElementById('mountsList').innerHTML = html || '<p class="text-muted">No active mounts</p>';
+        }
+    } catch (error) {
+        console.error('Error loading mounts:', error);
+    }
+}
+
+async function mountShare(e) {
+    e.preventDefault();
+
+    const data = {
+        share_name: document.getElementById('shareName').value,
+        mount_point: document.getElementById('mountPoint').value
+    };
+
+    try {
+        const response = await fetch('/nas/api/mount', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showSuccess('Share mounted successfully!');
+            e.target.reset();
+            loadMounts();
+        } else {
+            showError(result.error);
+        }
+    } catch (error) {
+        showError('Mount failed: ' + error.message);
+    }
+}
+
+async function unmountShare(mountPoint) {
+    if (!confirm(`Unmount ${mountPoint}?`)) return;
+
+    try {
+        const response = await fetch('/nas/api/unmount', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mount_point: mountPoint })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showSuccess('Share unmounted successfully!');
+            loadMounts();
+        } else {
+            showError(result.error);
+        }
+    } catch (error) {
+        showError('Unmount failed: ' + error.message);
+    }
+}
+
+async function createBackup(e) {
+    e.preventDefault();
+
+    const data = {
+        source_path: document.getElementById('sourcePath').value,
+        dest_share: document.getElementById('destShare').value,
+        backup_name: document.getElementById('backupName').value
+    };
+
+    try {
+        const response = await fetch('/nas/api/backup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showSuccess('Backup job started!');
+            e.target.reset();
+            setTimeout(loadBackups, 2000);
+        } else {
+            showError(result.error);
+        }
+    } catch (error) {
+        showError('Backup creation failed: ' + error.message);
+    }
+}
+
+async function loadBackups() {
+    try {
+        const response = await fetch('/nas/api/backups');
+        const data = await response.json();
+
+        if (data.success) {
+            const html = data.backups.slice(0, 10).map(backup => `
+                <div class="border-bottom py-2">
+                    <strong>${backup.backup_name}</strong>
+                    <span class="badge bg-${backup.status === 'completed' ? 'success' : backup.status === 'failed' ? 'danger' : 'warning'}">
+                        ${backup.status}
+                    </span>
+                    <br>
+                    <small class="text-muted">
+                        ${backup.source_path} → ${backup.dest_share}
+                        (${new Date(backup.created_at).toLocaleString()})
+                    </small>
+                    ${backup.error_message ? `<br><small class="text-danger">${backup.error_message}</small>` : ''}
+                </div>
+            `).join('');
+
+            document.getElementById('backupsList').innerHTML = html || '<p class="text-muted">No backup jobs</p>';
+        }
+    } catch (error) {
+        console.error('Error loading backups:', error);
+    }
+}
+
+function showSuccess(message) {
+    alert(message);
+}
+
+function showError(message) {
+    alert('Error: ' + message);
+}
+</script>
+{% endblock %}

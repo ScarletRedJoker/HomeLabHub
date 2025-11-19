@@ -26,6 +26,7 @@ from routes.service_ops_routes import service_ops_bp
 from routes.storage_routes import storage_bp
 from routes.game_streaming_routes import game_streaming_bp
 from routes.db_admin_routes import db_admin_bp
+from routes.nas_routes import nas_bp
 # DISABLED: Subscription/licensing features removed per user request - "Remove subscriptions and don't block access. I never wanted that."
 # from routes.subscription_api import subscription_bp
 from services.activity_service import activity_service
@@ -135,6 +136,7 @@ app.register_blueprint(service_ops_bp)
 app.register_blueprint(storage_bp)
 app.register_blueprint(game_streaming_bp)
 app.register_blueprint(db_admin_bp)
+app.register_blueprint(nas_bp)
 # DISABLED: Subscription blueprint disabled - no subscription/licensing checks
 # app.register_blueprint(subscription_bp)
 

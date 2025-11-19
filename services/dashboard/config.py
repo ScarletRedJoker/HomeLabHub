@@ -78,6 +78,16 @@ class Config:
     DB_ADMIN_ENCRYPTION_KEY = os.environ.get('DB_ADMIN_ENCRYPTION_KEY', '')
     # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
     
+    # NAS (Zyxel NAS326) Configuration
+    NAS_IP = os.environ.get('NAS_IP', '192.168.1.100')  # Update with actual NAS IP
+    NAS_HOSTNAME = os.environ.get('NAS_HOSTNAME', 'zyxel-nas326')
+    NAS_USER = os.environ.get('NAS_USER', 'admin')
+    NAS_PASSWORD = os.environ.get('NAS_PASSWORD', '')
+    NAS_MOUNT_BASE = os.environ.get('NAS_MOUNT_BASE', '/mnt/nas')
+    NAS_BACKUP_SHARE = os.environ.get('NAS_BACKUP_SHARE', 'homelab-backups')
+    NAS_MEDIA_SHARE = os.environ.get('NAS_MEDIA_SHARE', 'media')
+    NAS_AUTO_MOUNT = os.environ.get('NAS_AUTO_MOUNT', 'false').lower() == 'true'
+    
     # Monitoring & Telemetry
     TELEMETRY_COLLECTION_INTERVAL = int(os.environ.get('TELEMETRY_COLLECTION_INTERVAL', '30'))  # seconds
     STORAGE_SCAN_INTERVAL = int(os.environ.get('STORAGE_SCAN_INTERVAL', '3600'))  # 1 hour
