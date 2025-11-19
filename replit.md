@@ -4,11 +4,16 @@
 The Nebula Command Dashboard is a web-based interface for managing a Ubuntu 25.10 server, designed to streamline operations, enhance reliability, and enable intelligent automation and monitoring. Key capabilities include one-click database deployments, game streaming integration, robust domain health monitoring, and integrations with Google Services and Smart Home platforms. The project aims to become an AI-first infrastructure copilot, "Jarvis," providing autonomous diagnosis, remediation, and execution of infrastructure issues, acting as a mission control for actionable intelligence and streamlined automation.
 
 ## Recent Changes (November 19, 2025)
-- ✅ **Home Assistant Environment Configuration**: Added HOME_ASSISTANT_URL, HOME_ASSISTANT_TOKEN, and HOME_ASSISTANT_VERIFY_SSL to `deployment/generate-unified-env.sh` with detailed setup instructions for obtaining long-lived access tokens.
-- ✅ **Stream-Bot TypeScript Fixes**: Resolved all 12 LSP errors in `bot-worker.ts` including missing shoutoutService import, Set iteration compatibility, boolean type conversions, and Kick API argument mismatches.
-- ✅ **Comprehensive Fix Guide**: Created `COMPREHENSIVE_FIX_GUIDE.md` with step-by-step instructions for fixing Home Assistant connectivity, OAuth configuration for Twitch/YouTube/Kick, Snapple facts troubleshooting, database migrations, and complete deployment validation.
-- ✅ **Database Migrations**: Verified automatic migration system for dashboard's homelab_jarvis database via docker-entrypoint.sh with Alembic.
-- ✅ **Stream-Bot Fact Generation**: Confirmed OpenAI GPT-4.1-mini integration working correctly for generating Snapple-style facts under 200 characters.
+
+### Critical Bug Fixes
+- ✅ **Database Migration Race Condition Fixed**: Resolved critical bug where both dashboard and celery-worker ran migrations concurrently, causing duplicate enum type errors and preventing Jarvis from starting. Migration 005 now uses idempotent SQL, and only dashboard runs migrations.
+- ✅ **Stream-Bot OpenAI Configuration Fixed**: Added fallback from `AI_INTEGRATIONS_OPENAI_API_KEY` to `OPENAI_API_KEY` so Stream-Bot works with both variable naming conventions. Previously caused bot to use demo "octopus facts" instead of real AI-generated Snapple facts.
+- ✅ **Production Database Cleanup Script**: Created `scripts/fix-database-migration-state.sh` to safely repair orphaned enum types and rerun migration 005 cleanly on Ubuntu production server.
+
+### Configuration & Documentation
+- ✅ **Home Assistant Environment Configuration**: Added HOME_ASSISTANT_URL, HOME_ASSISTANT_TOKEN, and HOME_ASSISTANT_VERIFY_SSL to `deployment/generate-unified-env.sh` with detailed setup instructions.
+- ✅ **Stream-Bot TypeScript Fixes**: Resolved all 12 LSP errors in `bot-worker.ts` including missing shoutoutService import, Set iteration compatibility, and type conversions.
+- ✅ **Comprehensive Deployment Fix Guide**: Created `URGENT_FIX_DEPLOYMENT_ISSUES.md` explaining root causes of deployment failures and providing clear recovery steps for production.
 
 ## User Preferences
 - User: Evin
