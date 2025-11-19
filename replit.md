@@ -60,6 +60,8 @@ The Nebula Command Dashboard provides a comprehensive web-based interface for ma
 - ✅ **Stream Bot AI facts diversity** - Rewrote OpenAI prompt to generate diverse facts about life, the universe, science, history, nature, and weird phenomena (removed octopus fact example that was biasing results)
 - ✅ **Ollama port conflict** - Commented out Docker service to use host installation at localhost:11434
 - ✅ **Stream Bot favicon** - Already present at services/stream-bot/client/public/favicon.png
+- ✅ **Enhanced homelab-manager.sh** - Added automatic cleanup of orphaned containers and old images to rebuild_deploy() function (Step 3), preventing accumulation of stale resources
+- ⚠️ **Dashboard migration pending** - Database `homelab_jarvis` exists but Alembic schema migrations need to be run manually (automatic migrations failed on startup)
 
 ### Production URLs
 - Dashboard: https://host.evindrake.net
