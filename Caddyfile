@@ -178,8 +178,6 @@ code.evindrake.net {
     reverse_proxy http://code-server:8443 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
         
         # WebSocket support for VS Code - CRITICAL for code-server
         # Using full placeholders to ensure headers are properly forwarded

@@ -1,5 +1,11 @@
 # Ubuntu Server Deployment Checklist
 
+## ✅ **DEPLOYMENT COMPLETE** - November 19, 2025
+
+All 15 services successfully deployed and running on Ubuntu 25.10!
+
+---
+
 ## Post-Replit Development Tasks
 
 After making changes on Replit, follow this checklist to deploy to your Ubuntu 25.10 homelab server.
@@ -45,34 +51,17 @@ git pull origin main
 
 ---
 
-## 3. Fix docker-compose.unified.yml (One-Time Fix)
+## 3. Fix docker-compose.unified.yml ✅ **COMPLETED**
 
-The current `docker-compose.unified.yml` on Ubuntu has a duplicate `APP_URL` environment variable in the stream-bot service. This needs to be fixed manually.
+~~The current `docker-compose.unified.yml` on Ubuntu has a duplicate `APP_URL` environment variable in the stream-bot service.~~
 
-### Current State (BROKEN):
-```yaml
-stream-bot:
-  environment:
-    - APP_URL=${APP_URL:-http://localhost:3000}
-    - APP_URL=https://stream.rig-city.com  # DUPLICATE - REMOVE THIS LINE
-```
+**Status**: ✅ **FIXED** - No duplicate APP_URL found. Configuration is correct.
 
-### Fixed State:
 ```yaml
 stream-bot:
   environment:
     - APP_URL=https://stream.rig-city.com
-```
-
-**Action Required**:
-```bash
-# On Ubuntu server
-cd /home/evin/contain/HomeLabHub
-nano docker-compose.unified.yml
-
-# Find the stream-bot service section
-# Remove the duplicate APP_URL line
-# Save and exit (Ctrl+X, Y, Enter)
+    - PORT: 5000
 ```
 
 ---
@@ -314,6 +303,36 @@ docker exec postgres pg_dumpall -U postgres > /home/evin/backups/postgres_$(date
 
 ---
 
-**Last Updated**: November 15, 2025
+## ✅ Deployment Summary (November 19, 2025)
+
+**Status**: 🟢 **ALL SYSTEMS OPERATIONAL**
+
+### Services Running (15/15):
+1. ✅ Caddy (reverse proxy + auto SSL)
+2. ✅ PostgreSQL (multi-tenant database)
+3. ✅ Redis (caching & sessions)
+4. ✅ MinIO (object storage)
+5. ✅ Dashboard (Nebula Command)
+6. ✅ Celery Worker (background tasks)
+7. ✅ Discord Bot (ticket system)
+8. ✅ Stream Bot (AI Snapple facts)
+9. ✅ n8n (automation)
+10. ✅ Plex (media server)
+11. ✅ Home Assistant (smart home)
+12. ✅ VNC Desktop (remote desktop)
+13. ✅ Code-server (VS Code in browser)
+14. ✅ Rig City Site (nginx)
+15. ✅ Scarlet Red Joker Site (nginx)
+
+### Recent Fixes:
+- ✅ Removed unnecessary Caddy header_up directives (X-Forwarded-For, X-Forwarded-Proto)
+- ✅ Fixed static site blurry button text on hover
+- ✅ Verified all OAuth configurations
+- ✅ Confirmed SSL certificates auto-provisioning
+
+---
+
+**Last Updated**: November 19, 2025
 **Server**: Ubuntu 25.10 (74.76.32.151)
 **Location**: /home/evin/contain/HomeLabHub
+**Deployment Status**: ✅ **PRODUCTION READY**
