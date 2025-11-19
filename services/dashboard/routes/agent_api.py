@@ -1,6 +1,7 @@
 """Agent Swarm API Routes - Multi-Agent Collaboration Endpoints"""
 from flask import Blueprint, jsonify, request
 from services.agent_orchestrator import AgentOrchestrator
+from services.cache_service import cache_service
 from utils.auth import require_web_auth
 import logging
 
@@ -27,8 +28,24 @@ def list_tasks():
     """List all agent tasks"""
     try:
         status = request.args.get('status')
+        
+        # Build cache key based on status filter
+        cache_key = f"agents:tasks:status={status or 'all'}"
+        
+        # Try to get from cache
+        cached = cache_service.get(cache_key)
+        if cached:
+            logger.debug(f"Returning cached agent tasks for {cache_key}")
+            return jsonify(cached)
+        
         tasks = orchestrator.list_tasks(status)
-        return jsonify({"success": True, "tasks": tasks})
+        
+        result = {"success": True, "tasks": tasks}
+        
+        # Cache for 1 minute (tasks change frequently)
+        cache_service.set(cache_key, result, ttl=60)
+        
+        return jsonify(result)
     except Exception as e:
         logger.error(f"Error listing tasks: {e}", exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500
@@ -38,6 +55,9 @@ def list_tasks():
 def create_task():
     """Create a new task for the agent swarm"""
     try:
+        # Invalidate agent tasks cache on creation
+        cache_service.invalidate_agent_tasks()
+        
         data = request.json
         if not data:
             return jsonify({"success": False, "message": "No data provided"}), 400

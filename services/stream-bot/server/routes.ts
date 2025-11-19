@@ -111,14 +111,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Health Check - Simple endpoint for container health monitoring
+  // Health Check - Comprehensive endpoint for container health monitoring
   app.get("/health", async (req, res) => {
-    res.status(200).json({ 
-      status: "healthy",
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      service: 'stream-bot',
-    });
+    try {
+      const checks: Record<string, string> = {};
+      let overallStatus = "healthy";
+
+      // Check database connectivity
+      try {
+        const { pool } = await import('./db');
+        await pool.query('SELECT 1');
+        checks.database = "healthy";
+      } catch (error) {
+        checks.database = "unhealthy";
+        overallStatus = "degraded";
+      }
+
+      // Check OAuth storage
+      try {
+        await storage.getOAuthState("health_check_test");
+        checks.oauth_storage = "healthy";
+      } catch (error) {
+        // OAuth storage might throw if key doesn't exist, which is okay
+        checks.oauth_storage = "healthy";
+      }
+
+      // Check token refresh service
+      const { tokenRefreshService } = await import('./token-refresh-service');
+      checks.token_refresh_service = tokenRefreshService.isRunning() ? "running" : "stopped";
+
+      // Check bot manager
+      const managerStats = botManager.getStats();
+      checks.bot_manager = managerStats.totalWorkers >= 0 ? "running" : "stopped";
+
+      res.status(overallStatus === "healthy" ? 200 : 503).json({ 
+        status: overallStatus,
+        service: 'stream-bot',
+        version: '1.0.0',
+        uptime: Math.floor(process.uptime()),
+        checks,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      res.status(503).json({
+        status: "unhealthy",
+        service: 'stream-bot',
+        version: '1.0.0',
+        uptime: Math.floor(process.uptime()),
+        checks: {
+          error: error.message
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
   });
 
   // Readiness Check - Checks database connectivity

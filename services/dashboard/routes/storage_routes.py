@@ -6,6 +6,7 @@ from functools import wraps
 
 from services.storage_monitor import storage_monitor
 from services.db_service import db_service
+from services.cache_service import cache_service
 from workers.storage_worker import (
     collect_storage_metrics,
     scan_plex_directories,
@@ -45,13 +46,26 @@ def get_current_metrics():
         JSON with current metrics for Plex, databases, Docker, and MinIO
     """
     try:
+        # Try to get from cache first
+        cache_key = 'storage:metrics:current'
+        cached = cache_service.get(cache_key)
+        if cached:
+            logger.debug("Returning cached storage metrics")
+            return jsonify(cached)
+        
+        # Query database if not cached
         metrics = storage_monitor.get_current_metrics()
         
-        return jsonify({
+        result = {
             'success': True,
             'metrics': metrics,
             'timestamp': datetime.utcnow().isoformat()
-        })
+        }
+        
+        # Cache for 5 minutes
+        cache_service.set(cache_key, result, ttl=cache_service.TTL_5_MIN)
+        
+        return jsonify(result)
     
     except Exception as e:
         logger.error(f"Error getting current metrics: {e}")
@@ -203,6 +217,10 @@ def get_alert_configurations():
     """
     Get all storage alert configurations
     
+    Query params:
+        page: Page number (default: 1)
+        per_page: Items per page (default: 50, max: 100)
+    
     Returns:
         JSON with alert configurations
     """
@@ -214,14 +232,35 @@ def get_alert_configurations():
             }), 503
         
         from models.storage import StorageAlert
-        from sqlalchemy import select
+        from sqlalchemy import select, func
+        
+        # Get pagination parameters
+        page = int(request.args.get('page', 1))
+        per_page = min(int(request.args.get('per_page', 50)), 100)
         
         with db_service.get_session() as session:
-            alerts = session.execute(select(StorageAlert)).scalars().all()
+            # Get total count
+            total = session.execute(
+                select(func.count()).select_from(StorageAlert)
+            ).scalar()
+            
+            # Get paginated results
+            alerts = session.execute(
+                select(StorageAlert)
+                .order_by(StorageAlert.created_at.desc())
+                .offset((page - 1) * per_page)
+                .limit(per_page)
+            ).scalars().all()
             
             return jsonify({
                 'success': True,
-                'alerts': [alert.to_dict() for alert in alerts]
+                'alerts': [alert.to_dict() for alert in alerts],
+                'pagination': {
+                    'page': page,
+                    'per_page': per_page,
+                    'total': total,
+                    'pages': (total + per_page - 1) // per_page
+                }
             })
     
     except Exception as e:
@@ -248,6 +287,8 @@ def create_or_update_alert():
         JSON with created/updated alert
     """
     try:
+        # Invalidate alerts cache on mutation
+        cache_service.delete_pattern('storage:alerts:*')
         data = request.get_json()
         
         if not data:

@@ -6,6 +6,7 @@ API endpoints for Docker marketplace/store
 from flask import Blueprint, jsonify, request
 from services.marketplace_service import MarketplaceService
 from services.db_service import db_service
+from services.cache_service import cache_service
 from utils.auth import require_auth
 from sqlalchemy import select
 import logging
@@ -31,6 +32,15 @@ def list_apps():
         category = request.args.get('category')
         search = request.args.get('search')
         
+        # Build cache key based on parameters
+        cache_key = f"marketplace:apps:cat={category or 'all'}:search={search or 'none'}"
+        
+        # Try to get from cache
+        cached = cache_service.get(cache_key)
+        if cached:
+            logger.debug(f"Returning cached marketplace apps for {cache_key}")
+            return jsonify(cached)
+        
         with db_service.get_session() as session:
             query = select(MarketplaceApp)
             
@@ -49,13 +59,18 @@ def list_apps():
             
             apps = session.execute(query).scalars().all()
             
-            return jsonify({
+            result = {
                 'success': True,
                 'data': {
                     'apps': [app.to_dict() for app in apps],
                     'count': len(apps)
                 }
-            })
+            }
+            
+            # Cache for 1 hour
+            cache_service.set(cache_key, result, ttl=cache_service.TTL_1_HOUR)
+            
+            return jsonify(result)
     except Exception as e:
         logger.error(f"Error listing apps: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -93,6 +108,9 @@ def get_app(slug):
 def deploy_app(slug):
     """Deploy an app from marketplace"""
     try:
+        # Invalidate marketplace apps cache on deployment
+        cache_service.invalidate_marketplace_apps()
+        
         data = request.get_json() or {}
         
         # Validate required fields based on app template

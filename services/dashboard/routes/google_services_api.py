@@ -17,6 +17,7 @@ from services.google.gmail_service import gmail_service
 from services.google.drive_service import drive_service
 from services.db_service import db_service
 from services.websocket_service import websocket_service
+from services.cache_service import cache_service
 from models.google_integration import (
     GoogleServiceStatus,
     CalendarAutomation,
@@ -99,6 +100,13 @@ def get_csrf_token():
 def get_status():
     """Get overall status of all Google services"""
     try:
+        # Try to get from cache first
+        cache_key = 'google:status:all'
+        cached = cache_service.get(cache_key)
+        if cached:
+            logger.debug("Returning cached Google services status")
+            return jsonify(cached)
+        
         status = google_orchestrator.get_status()
         
         # Update database status
@@ -131,11 +139,16 @@ def get_status():
                 
                 session.commit()
         
-        return jsonify({
+        result = {
             'success': True,
             'status': status,
             'timestamp': datetime.utcnow().isoformat()
-        }), 200
+        }
+        
+        # Cache for 5 minutes
+        cache_service.set(cache_key, result, ttl=cache_service.TTL_5_MIN)
+        
+        return jsonify(result), 200
     
     except Exception as e:
         logger.error(f"Error getting Google services status: {e}", exc_info=True)
@@ -257,18 +270,42 @@ def list_calendar_events():
 @google_services_bp.route('/api/calendar/automations', methods=['GET'])
 @require_auth
 def get_calendar_automations():
-    """Get all calendar automations"""
+    """Get all calendar automations
+    
+    Query params:
+        page: Page number (default: 1)
+        per_page: Items per page (default: 50, max: 100)
+    """
     try:
         if not db_service.is_available:
             return jsonify({'success': False, 'error': 'Database unavailable'}), 503
         
+        from sqlalchemy import func
+        
+        # Get pagination parameters
+        page = int(request.args.get('page', 1))
+        per_page = min(int(request.args.get('per_page', 50)), 100)
+        
         with db_service.get_session() as session:
-            automations = session.query(CalendarAutomation).all()
+            # Get total count
+            total = session.query(func.count(CalendarAutomation.id)).scalar()
+            
+            # Get paginated results
+            automations = session.query(CalendarAutomation)\
+                .order_by(CalendarAutomation.created_at.desc())\
+                .offset((page - 1) * per_page)\
+                .limit(per_page)\
+                .all()
             
             return jsonify({
                 'success': True,
                 'automations': [auto.to_dict() for auto in automations],
-                'count': len(automations)
+                'pagination': {
+                    'page': page,
+                    'per_page': per_page,
+                    'total': total,
+                    'pages': (total + per_page - 1) // per_page
+                }
             }), 200
     
     except Exception as e:
@@ -286,6 +323,8 @@ def create_calendar_automation():
         return csrf_error
     
     try:
+        # Invalidate Google services cache on mutation
+        cache_service.invalidate_google_services()
         data = request.get_json()
         
         if not data:

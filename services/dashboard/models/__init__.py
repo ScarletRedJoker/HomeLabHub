@@ -32,6 +32,7 @@ from .storage import StorageMetric, StorageAlert
 from .gaming import GameSession, SunshineHost
 from .db_admin import DBCredential, DBBackupJob
 from .nas import NASMount, NASBackupJob
+from .health_check import ServiceHealthCheck, ServiceHealthAlert
 
 __all__ = [
     'Base',
@@ -73,5 +74,7 @@ __all__ = [
     'DBCredential',
     'DBBackupJob',
     'NASMount',
-    'NASBackupJob'
+    'NASBackupJob',
+    'ServiceHealthCheck',
+    'ServiceHealthAlert'
 ]

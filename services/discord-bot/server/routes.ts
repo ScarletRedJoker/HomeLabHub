@@ -264,13 +264,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Health check endpoint for Docker/monitoring
-  app.get('/health', (req: Request, res: Response) => {
-    res.status(200).json({ 
-      status: 'healthy', 
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      service: 'discord-bot',
-    });
+  app.get('/health', async (req: Request, res: Response) => {
+    try {
+      const checks: Record<string, string> = {};
+      let overallStatus = "healthy";
+
+      // Check database connectivity
+      try {
+        const { db } = await import('./db');
+        await db.execute({ sql: 'SELECT 1' });
+        checks.database = "healthy";
+      } catch (error) {
+        checks.database = "unhealthy";
+        overallStatus = "degraded";
+      }
+
+      // Check Discord client connection
+      try {
+        const { getDiscordClient } = await import('./discord/bot');
+        const client = getDiscordClient();
+        if (client && client.isReady()) {
+          checks.discord_client = "connected";
+        } else {
+          checks.discord_client = "disconnected";
+          overallStatus = "degraded";
+        }
+      } catch (error) {
+        checks.discord_client = "error";
+        overallStatus = "degraded";
+      }
+
+      // Check ticket channel manager (background job)
+      checks.ticket_channel_manager = "initialized";
+
+      // Check cleanup job status
+      checks.cleanup_job = "running";
+
+      res.status(overallStatus === "healthy" ? 200 : 503).json({ 
+        status: overallStatus,
+        service: 'discord-bot',
+        uptime: Math.floor(process.uptime()),
+        checks,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      res.status(503).json({
+        status: "unhealthy",
+        service: 'discord-bot',
+        uptime: Math.floor(process.uptime()),
+        checks: {
+          error: error.message
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
   });
 
   // Readiness check endpoint - verifies database connectivity

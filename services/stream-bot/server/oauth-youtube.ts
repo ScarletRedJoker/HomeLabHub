@@ -1,5 +1,5 @@
 import { Router } from "express";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import querystring from "querystring";
 import { requireAuth } from "./auth/middleware";
 import { storage } from "./storage";
@@ -25,6 +25,52 @@ const YOUTUBE_SCOPES = [
 ].join(' ');
 
 /**
+ * Retry helper with exponential backoff for 5xx errors
+ */
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 1000
+): Promise<T> {
+  let lastError: any;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      
+      const status = error.response?.status;
+      const isRetryable = 
+        !status || 
+        (status >= 500 && status < 600);
+      
+      if (!isRetryable || attempt === maxRetries - 1) {
+        throw error;
+      }
+      
+      const delay = baseDelay * Math.pow(2, attempt);
+      console.log(`[YouTube OAuth] Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError;
+}
+
+/**
+ * Validate token response has required fields
+ */
+function validateTokenResponse(data: any): void {
+  if (!data.access_token) {
+    throw new Error('Token response missing access_token');
+  }
+  if (!data.expires_in) {
+    throw new Error('Token response missing expires_in');
+  }
+}
+
+/**
  * Step 1: Initiate YouTube/Google OAuth flow
  * GET /auth/youtube
  */
@@ -33,43 +79,60 @@ router.get('/youtube', requireAuth, async (req, res) => {
     const clientId = getEnv('YOUTUBE_CLIENT_ID');
     const redirectUri = getEnv('YOUTUBE_REDIRECT_URI');
 
-    if (!clientId || !redirectUri) {
+    if (!clientId) {
+      console.error('[YouTube OAuth] YOUTUBE_CLIENT_ID not configured');
       return res.status(500).json({ 
-        error: 'YouTube OAuth not configured. Please set YOUTUBE_CLIENT_ID and YOUTUBE_REDIRECT_URI' 
+        error: 'YouTube OAuth not configured',
+        message: 'Please set YOUTUBE_CLIENT_ID environment variable. Contact administrator for setup instructions.'
       });
     }
 
-    // Generate state and PKCE parameters
+    if (!redirectUri) {
+      console.error('[YouTube OAuth] YOUTUBE_REDIRECT_URI not configured');
+      return res.status(500).json({ 
+        error: 'YouTube OAuth not configured',
+        message: 'Please set YOUTUBE_REDIRECT_URI environment variable. Contact administrator for setup instructions.'
+      });
+    }
+
     const state = generateState();
     const codeVerifier = generateCodeVerifier();
     const codeChallenge = generateCodeChallenge(codeVerifier);
 
-    // Store OAuth session for callback verification (database-backed)
-    await oauthStorageDB.set(state, {
-      userId: req.user!.id,
-      platform: 'youtube',
-      codeVerifier,
-      ipAddress: req.ip,
-    });
+    try {
+      await oauthStorageDB.set(state, {
+        userId: req.user!.id,
+        platform: 'youtube',
+        codeVerifier,
+        ipAddress: req.ip,
+      });
+    } catch (dbError: any) {
+      console.error('[YouTube OAuth] Database error storing OAuth session:', dbError.message);
+      return res.status(500).json({ 
+        error: 'Database error',
+        message: 'Unable to initialize OAuth session. Please try again later.'
+      });
+    }
 
-    // Build authorization URL
     const authUrl = GOOGLE_AUTH_URL + '?' + querystring.stringify({
       client_id: clientId,
       response_type: 'code',
       redirect_uri: redirectUri,
       state: state,
       scope: YOUTUBE_SCOPES,
-      access_type: 'offline', // Get refresh token
-      prompt: 'consent', // Force consent to ensure refresh token
+      access_type: 'offline',
+      prompt: 'consent',
       code_challenge_method: 'S256',
       code_challenge: codeChallenge,
     });
 
-    // Redirect user to Google authorization
     res.redirect(authUrl);
   } catch (error: any) {
-    console.error('[YouTube OAuth] Initiation error:', error.message);
-    res.status(500).json({ error: 'Failed to initiate YouTube authorization' });
+    console.error('[YouTube OAuth] Initiation error:', error.message, error.stack);
+    res.status(500).json({ 
+      error: 'Failed to initiate YouTube authorization',
+      message: 'An unexpected error occurred. Please try again later.'
+    });
   }
 });
 
@@ -78,108 +141,193 @@ router.get('/youtube', requireAuth, async (req, res) => {
  * GET /auth/youtube/callback
  */
 router.get('/youtube/callback', async (req, res) => {
-  const { code, state, error } = req.query;
+  const { code, state, error: oauthError } = req.query;
 
-  // Handle authorization errors
-  if (error) {
-    console.error('[YouTube OAuth] Authorization error:', error);
-    return res.redirect(`/settings?error=youtube_${error}`);
+  if (oauthError) {
+    console.error('[YouTube OAuth] Authorization error:', oauthError);
+    
+    let errorMessage = 'youtube_auth_failed';
+    if (oauthError === 'access_denied') {
+      errorMessage = 'youtube_access_denied';
+      console.log('[YouTube OAuth] User denied required permissions');
+    }
+    
+    return res.redirect(`/settings?error=${errorMessage}&details=${encodeURIComponent(String(oauthError))}`);
   }
 
   if (!code || !state || typeof state !== 'string') {
-    console.error('[YouTube OAuth] Missing code or state');
-    return res.redirect('/settings?error=youtube_invalid_callback');
+    console.error('[YouTube OAuth] Missing or invalid callback parameters', { code: !!code, state: !!state });
+    return res.redirect('/settings?error=youtube_invalid_callback&details=missing_parameters');
   }
 
   try {
-    // Verify state and get OAuth session (database-backed with atomic replay protection)
-    const session = await oauthStorageDB.consume(state);
+    let session;
+    try {
+      session = await oauthStorageDB.consume(state);
+    } catch (dbError: any) {
+      console.error('[YouTube OAuth] Database error consuming state:', dbError.message);
+      return res.redirect('/settings?error=youtube_database_error&details=session_verification_failed');
+    }
+
     if (!session) {
-      console.error('[YouTube OAuth] Invalid or expired state');
-      return res.redirect('/settings?error=youtube_invalid_state');
+      console.error('[YouTube OAuth] Invalid or expired state token');
+      return res.redirect('/settings?error=youtube_invalid_state&details=state_expired_or_invalid');
     }
 
     const clientId = getEnv('YOUTUBE_CLIENT_ID');
     const clientSecret = getEnv('YOUTUBE_CLIENT_SECRET');
     const redirectUri = getEnv('YOUTUBE_REDIRECT_URI');
 
-    if (!clientId || !clientSecret || !redirectUri) {
-      throw new Error('YouTube OAuth credentials not configured');
+    if (!clientId) {
+      console.error('[YouTube OAuth] YOUTUBE_CLIENT_ID not configured');
+      return res.redirect('/settings?error=youtube_config_error&details=missing_client_id');
     }
 
-    // Exchange authorization code for tokens
-    const tokenResponse = await axios.post(
-      GOOGLE_TOKEN_URL,
-      querystring.stringify({
-        grant_type: 'authorization_code',
-        code: code as string,
-        redirect_uri: redirectUri,
-        client_id: clientId,
-        client_secret: clientSecret,
-        code_verifier: session.codeVerifier,
-      }),
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
+    if (!clientSecret) {
+      console.error('[YouTube OAuth] YOUTUBE_CLIENT_SECRET not configured');
+      return res.redirect('/settings?error=youtube_config_error&details=missing_client_secret');
+    }
+
+    if (!redirectUri) {
+      console.error('[YouTube OAuth] YOUTUBE_REDIRECT_URI not configured');
+      return res.redirect('/settings?error=youtube_config_error&details=missing_redirect_uri');
+    }
+
+    let tokenResponse;
+    try {
+      tokenResponse = await retryWithBackoff(async () => {
+        return await axios.post(
+          GOOGLE_TOKEN_URL,
+          querystring.stringify({
+            grant_type: 'authorization_code',
+            code: code as string,
+            redirect_uri: redirectUri,
+            client_id: clientId,
+            client_secret: clientSecret,
+            code_verifier: session.codeVerifier,
+          }),
+          {
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            timeout: 10000,
+          }
+        );
+      });
+    } catch (tokenError: any) {
+      const status = tokenError.response?.status;
+      const errorData = tokenError.response?.data;
+      
+      console.error('[YouTube OAuth] Token exchange failed:', {
+        status,
+        error: errorData?.error || tokenError.message,
+        message: errorData?.error_description || errorData?.message,
+      });
+
+      if (tokenError.code === 'ECONNABORTED' || tokenError.code === 'ETIMEDOUT') {
+        return res.redirect('/settings?error=youtube_timeout&details=network_timeout');
       }
-    );
+      
+      if (tokenError.code === 'ENOTFOUND' || tokenError.code === 'ECONNREFUSED') {
+        return res.redirect('/settings?error=youtube_network_error&details=connection_failed');
+      }
+
+      if (status === 400) {
+        return res.redirect('/settings?error=youtube_invalid_code&details=authorization_code_invalid_or_expired');
+      }
+
+      if (status === 401) {
+        return res.redirect('/settings?error=youtube_invalid_credentials&details=client_credentials_invalid');
+      }
+
+      if (status === 429) {
+        return res.redirect('/settings?error=youtube_rate_limit&details=too_many_requests');
+      }
+
+      if (status && status >= 500) {
+        return res.redirect('/settings?error=youtube_server_error&details=google_api_unavailable');
+      }
+
+      return res.redirect('/settings?error=youtube_token_failed&details=unknown_error');
+    }
+
+    try {
+      validateTokenResponse(tokenResponse.data);
+    } catch (validationError: any) {
+      console.error('[YouTube OAuth] Invalid token response:', validationError.message, tokenResponse.data);
+      return res.redirect('/settings?error=youtube_invalid_response&details=malformed_token_response');
+    }
 
     const { access_token, refresh_token, expires_in } = tokenResponse.data;
 
-    // Fetch user profile (Google user info)
-    const profileResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: { 'Authorization': `Bearer ${access_token}` },
-    });
+    if (!refresh_token) {
+      console.warn('[YouTube OAuth] No refresh_token received for user', session.userId);
+    }
+
+    let profileResponse;
+    try {
+      profileResponse = await retryWithBackoff(async () => {
+        return await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+          headers: { 'Authorization': `Bearer ${access_token}` },
+          timeout: 10000,
+        });
+      });
+    } catch (profileError: any) {
+      console.error('[YouTube OAuth] Profile fetch failed:', profileError.response?.data || profileError.message);
+      return res.redirect('/settings?error=youtube_profile_failed&details=unable_to_fetch_user_profile');
+    }
 
     const { id: platformUserId, name, email } = profileResponse.data;
 
-    // Encrypt tokens before storing
+    if (!platformUserId) {
+      console.error('[YouTube OAuth] Missing user ID in profile response:', profileResponse.data);
+      return res.redirect('/settings?error=youtube_invalid_user_data&details=missing_user_id');
+    }
+
     const encryptedAccessToken = encryptToken(access_token);
     const encryptedRefreshToken = refresh_token ? encryptToken(refresh_token) : null;
 
-    // Calculate token expiry
     const tokenExpiresAt = new Date(Date.now() + (expires_in * 1000));
 
-    // Store or update platform connection
     const existingConnection = await storage.getPlatformConnectionByPlatform(session.userId, 'youtube');
 
-    if (existingConnection) {
-      // Update existing connection
-      await storage.updatePlatformConnection(session.userId, existingConnection.id, {
-        accessToken: encryptedAccessToken,
-        refreshToken: encryptedRefreshToken,
-        tokenExpiresAt,
-        platformUserId,
-        platformUsername: name || email,
-        isConnected: true,
-        lastConnectedAt: new Date(),
-        connectionData: { scopes: YOUTUBE_SCOPES, email },
-      });
-    } else {
-      // Create new connection
-      await storage.createPlatformConnection(session.userId, {
-        userId: session.userId,
-        platform: 'youtube',
-        platformUserId,
-        platformUsername: name || email,
-        accessToken: encryptedAccessToken,
-        refreshToken: encryptedRefreshToken,
-        tokenExpiresAt,
-        isConnected: true,
-        lastConnectedAt: new Date(),
-        connectionData: { scopes: YOUTUBE_SCOPES, email },
-      });
+    try {
+      if (existingConnection) {
+        await storage.updatePlatformConnection(session.userId, existingConnection.id, {
+          accessToken: encryptedAccessToken,
+          refreshToken: encryptedRefreshToken,
+          tokenExpiresAt,
+          platformUserId,
+          platformUsername: name || email,
+          isConnected: true,
+          lastConnectedAt: new Date(),
+          connectionData: { scopes: YOUTUBE_SCOPES, email },
+        });
+      } else {
+        await storage.createPlatformConnection(session.userId, {
+          userId: session.userId,
+          platform: 'youtube',
+          platformUserId,
+          platformUsername: name || email,
+          accessToken: encryptedAccessToken,
+          refreshToken: encryptedRefreshToken,
+          tokenExpiresAt,
+          isConnected: true,
+          lastConnectedAt: new Date(),
+          connectionData: { scopes: YOUTUBE_SCOPES, email },
+        });
+      }
+    } catch (dbError: any) {
+      console.error('[YouTube OAuth] Database error storing connection:', dbError.message);
+      return res.redirect('/settings?error=youtube_database_error&details=failed_to_save_connection');
     }
 
-    console.log(`[YouTube OAuth] Successfully connected YouTube for user ${session.userId}`);
-
-    // Redirect to settings with success message
+    console.log(`[YouTube OAuth] ✓ Successfully connected YouTube for user ${session.userId}`);
     res.redirect('/settings?youtube=connected');
 
   } catch (error: any) {
-    console.error('[YouTube OAuth] Callback error:', error.message);
-    res.redirect('/settings?error=youtube_callback_failed');
+    console.error('[YouTube OAuth] Unexpected callback error:', error.message, error.stack);
+    res.redirect('/settings?error=youtube_unexpected_error&details=internal_error');
   }
 });
 
@@ -190,7 +338,7 @@ export async function refreshYouTubeToken(userId: string): Promise<string | null
   try {
     const connection = await storage.getPlatformConnectionByPlatform(userId, 'youtube');
     if (!connection || !connection.refreshToken) {
-      console.error('[YouTube OAuth] No refresh token available');
+      console.error('[YouTube OAuth] No refresh token available for user', userId);
       return null;
     }
 
@@ -198,53 +346,104 @@ export async function refreshYouTubeToken(userId: string): Promise<string | null
     const clientSecret = getEnv('YOUTUBE_CLIENT_SECRET');
 
     if (!clientId || !clientSecret) {
+      console.error('[YouTube OAuth] OAuth credentials not configured');
       throw new Error('YouTube OAuth credentials not configured');
     }
 
-    // Decrypt refresh token
+    console.log(`[YouTube OAuth] Attempting to refresh token for user ${userId}...`);
+
     const refreshToken = decryptToken(connection.refreshToken);
 
-    // Request new access token
-    const tokenResponse = await axios.post(
-      GOOGLE_TOKEN_URL,
-      querystring.stringify({
-        grant_type: 'refresh_token',
-        refresh_token: refreshToken,
-        client_id: clientId,
-        client_secret: clientSecret,
-      }),
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
+    let tokenResponse;
+    try {
+      tokenResponse = await retryWithBackoff(async () => {
+        return await axios.post(
+          GOOGLE_TOKEN_URL,
+          querystring.stringify({
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken,
+            client_id: clientId,
+            client_secret: clientSecret,
+          }),
+          {
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            timeout: 10000,
+          }
+        );
+      });
+    } catch (tokenError: any) {
+      const status = tokenError.response?.status;
+      const errorData = tokenError.response?.data;
+      
+      console.error('[YouTube OAuth] Token refresh failed:', {
+        userId,
+        status,
+        error: errorData?.error || tokenError.message,
+        message: errorData?.error_description || errorData?.message,
+      });
+
+      if (tokenError.code === 'ECONNABORTED' || tokenError.code === 'ETIMEDOUT') {
+        console.error(`[YouTube OAuth] ✗ Network timeout refreshing token for user ${userId}`);
+      } else if (tokenError.code === 'ENOTFOUND' || tokenError.code === 'ECONNREFUSED') {
+        console.error(`[YouTube OAuth] ✗ Network error refreshing token for user ${userId}`);
+      } else if (status === 400 || status === 401) {
+        if (errorData?.error === 'invalid_grant') {
+          console.error(`[YouTube OAuth] ✗ Token has been revoked for user ${userId}`);
+        } else {
+          console.error(`[YouTube OAuth] ✗ Authentication error for user ${userId}`);
+        }
       }
-    );
+
+      if (connection) {
+        await storage.updatePlatformConnection(userId, connection.id, {
+          isConnected: false,
+        });
+      }
+      
+      return null;
+    }
+
+    try {
+      validateTokenResponse(tokenResponse.data);
+    } catch (validationError: any) {
+      console.error('[YouTube OAuth] Invalid refresh token response:', validationError.message);
+      if (connection) {
+        await storage.updatePlatformConnection(userId, connection.id, {
+          isConnected: false,
+        });
+      }
+      return null;
+    }
 
     const { access_token, refresh_token: new_refresh_token, expires_in } = tokenResponse.data;
 
-    // Encrypt new tokens
     const encryptedAccessToken = encryptToken(access_token);
     const encryptedRefreshToken = new_refresh_token ? encryptToken(new_refresh_token) : connection.refreshToken;
 
-    // Update stored tokens
     const tokenExpiresAt = new Date(Date.now() + expires_in * 1000);
     await storage.updatePlatformConnection(userId, connection.id, {
       accessToken: encryptedAccessToken,
       refreshToken: encryptedRefreshToken,
       tokenExpiresAt,
+      isConnected: true,
     });
 
-    console.log(`[YouTube OAuth] Refreshed token for user ${userId}`);
+    console.log(`[YouTube OAuth] ✓ Successfully refreshed token for user ${userId} (expires at ${tokenExpiresAt.toISOString()})`);
     return access_token;
   } catch (error: any) {
-    console.error('[YouTube OAuth] Token refresh error:', error.response?.data || error.message);
+    console.error('[YouTube OAuth] ✗ Unexpected error refreshing token for user', userId, ':', error.message);
     
-    // Mark connection as disconnected if refresh fails
-    const connection = await storage.getPlatformConnectionByPlatform(userId, 'youtube');
-    if (connection) {
-      await storage.updatePlatformConnection(userId, connection.id, {
-        isConnected: false,
-      });
+    try {
+      const connection = await storage.getPlatformConnectionByPlatform(userId, 'youtube');
+      if (connection) {
+        await storage.updatePlatformConnection(userId, connection.id, {
+          isConnected: false,
+        });
+      }
+    } catch (dbError: any) {
+      console.error('[YouTube OAuth] Database error marking connection as disconnected:', dbError.message);
     }
     
     return null;
@@ -261,7 +460,6 @@ export async function getYouTubeAccessToken(userId: string): Promise<string | nu
       return null;
     }
 
-    // Check if token is expired or about to expire (within 5 minutes)
     const now = new Date();
     const expiryBuffer = new Date(now.getTime() + 5 * 60 * 1000);
     
@@ -270,7 +468,6 @@ export async function getYouTubeAccessToken(userId: string): Promise<string | nu
       return await refreshYouTubeToken(userId);
     }
 
-    // Token is still valid, decrypt and return
     return decryptToken(connection.accessToken);
   } catch (error: any) {
     console.error('[YouTube OAuth] Error getting access token:', error.message);
@@ -290,7 +487,6 @@ router.delete('/youtube/disconnect', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'No YouTube connection found' });
     }
 
-    // Mark as disconnected
     await storage.updatePlatformConnection(req.user!.id, connection.id, {
       accessToken: null,
       refreshToken: null,
@@ -301,7 +497,10 @@ router.delete('/youtube/disconnect', requireAuth, async (req, res) => {
     res.json({ success: true, message: 'YouTube disconnected successfully' });
   } catch (error: any) {
     console.error('[YouTube OAuth] Disconnect error:', error.message);
-    res.status(500).json({ error: 'Failed to disconnect YouTube' });
+    res.status(500).json({ 
+      error: 'Failed to disconnect YouTube',
+      message: 'An error occurred while disconnecting. Please try again later.'
+    });
   }
 });
 

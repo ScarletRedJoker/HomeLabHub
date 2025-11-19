@@ -138,6 +138,53 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Validate OAuth environment variables at startup
+  function validateOAuthEnvironment() {
+    console.log('\n' + '='.repeat(60));
+    console.log('Validating OAuth Configuration...');
+    console.log('='.repeat(60));
+
+    const platforms = [
+      {
+        name: 'Twitch',
+        vars: ['TWITCH_CLIENT_ID', 'TWITCH_CLIENT_SECRET', 'TWITCH_REDIRECT_URI'],
+      },
+      {
+        name: 'YouTube',
+        vars: ['YOUTUBE_CLIENT_ID', 'YOUTUBE_CLIENT_SECRET', 'YOUTUBE_REDIRECT_URI'],
+      },
+      {
+        name: 'Spotify',
+        vars: ['SPOTIFY_CLIENT_ID', 'SPOTIFY_CLIENT_SECRET', 'SPOTIFY_REDIRECT_URI'],
+      },
+    ];
+
+    let hasWarnings = false;
+
+    for (const platform of platforms) {
+      const missing = platform.vars.filter(varName => !getEnv(varName));
+      
+      if (missing.length > 0) {
+        hasWarnings = true;
+        console.warn(`\n⚠️  ${platform.name} OAuth NOT configured`);
+        console.warn(`   Missing environment variables: ${missing.join(', ')}`);
+        console.warn(`   Users will NOT be able to connect ${platform.name} accounts.`);
+        console.warn(`   Set these variables or use STREAMBOT_ prefix variants.`);
+      } else {
+        console.log(`✓ ${platform.name} OAuth configured`);
+      }
+    }
+
+    console.log('='.repeat(60) + '\n');
+
+    if (hasWarnings && NODE_ENV === 'production') {
+      console.warn('⚠️  WARNING: Some OAuth platforms are not configured in production!');
+      console.warn('   This may limit user functionality.\n');
+    }
+  }
+
+  validateOAuthEnvironment();
+
   const server = await registerRoutes(app);
 
   // Initialize OAuth session cleanup
