@@ -176,6 +176,11 @@ def ollama_models():
 def agent_swarm():
     return render_template('agent_swarm.html')
 
+@web_bp.route('/jarvis-voice')
+@require_web_auth
+def jarvis_voice():
+    return render_template('jarvis_voice.html')
+
 # DISABLED: Subscription/licensing routes removed per user request
 # User quote: "Remove subscriptions and don't block access. I never wanted that."
 # @web_bp.route('/pricing')

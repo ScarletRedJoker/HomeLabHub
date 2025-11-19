@@ -356,11 +356,11 @@ def create_database():
             logger.info(f"Created {db_type} database container: {container_name}")
             
             # Get container ID safely
-            container_id: str = 'unknown'
-            if hasattr(container, 'id') and container.id:
-                container_id = str(container.id)
-                if len(container_id) > 12:
-                    container_id = container_id[:12]
+            container_id = 'unknown'
+            if hasattr(container, 'id'):
+                raw_id = getattr(container, 'id', None)
+                if raw_id:
+                    container_id = str(raw_id)[:12]
             
             enhanced = personality.enhance_database_response(
                 success=True,
@@ -685,9 +685,13 @@ def conversational_query():
             }
             conversation_history.append(assistant_msg)
             
-            # Update session
-            ai_session.messages = conversation_history
-            ai_session.updated_at = datetime.utcnow()
+            # Update session using update() for complex types
+            from sqlalchemy import update
+            stmt = update(AISession).where(AISession.id == ai_session.id).values(
+                messages=conversation_history,
+                updated_at=datetime.utcnow()
+            )
+            session.execute(stmt)
             session.commit()
             
             logger.info(f"Processed query for session {ai_session.id}")

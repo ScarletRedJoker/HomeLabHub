@@ -1,0 +1,370 @@
+{% extends "base.html" %}
+
+{% block title %}Jarvis Voice Command - Nebula Command{% endblock %}
+
+{% block head %}
+<style>
+    .voice-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+    
+    .voice-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    
+    .voice-header h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0.5rem;
+    }
+    
+    .voice-header p {
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+    }
+    
+    .voice-controls {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+    
+    .voice-indicator {
+        display: inline-block;
+        padding: 0.75rem 1.5rem;
+        border-radius: 50px;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .voice-indicator.idle {
+        background: rgba(96, 165, 250, 0.1);
+        color: var(--accent-blue);
+    }
+    
+    .voice-indicator.listening {
+        background: rgba(52, 211, 153, 0.2);
+        color: var(--accent-green);
+        animation: pulse 1.5s ease-in-out infinite;
+    }
+    
+    .voice-indicator.speaking {
+        background: rgba(167, 139, 250, 0.2);
+        color: var(--accent-purple);
+        animation: pulse 1.5s ease-in-out infinite;
+    }
+    
+    .voice-indicator.processing {
+        background: rgba(251, 191, 36, 0.2);
+        color: var(--accent-yellow);
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.8; transform: scale(1.05); }
+    }
+    
+    .voice-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+    }
+    
+    .voice-button {
+        padding: 1rem 2rem;
+        border: none;
+        border-radius: 50px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .voice-button.primary {
+        background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+        color: white;
+    }
+    
+    .voice-button.primary:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(96, 165, 250, 0.3);
+    }
+    
+    .voice-button.primary.active {
+        background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
+        animation: pulse 1.5s ease-in-out infinite;
+    }
+    
+    .voice-button.secondary {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--accent-red);
+        border: 1px solid var(--accent-red);
+    }
+    
+    .voice-button.secondary:hover:not(:disabled) {
+        background: rgba(239, 68, 68, 0.2);
+    }
+    
+    .voice-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    .voice-transcript {
+        padding: 1rem;
+        background: rgba(96, 165, 250, 0.05);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        min-height: 60px;
+        font-size: 1.1rem;
+        color: var(--text-secondary);
+        font-style: italic;
+    }
+    
+    .voice-transcript.final {
+        color: var(--text-primary);
+        font-style: normal;
+        font-weight: 500;
+    }
+    
+    .voice-status {
+        margin-top: 1rem;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        font-weight: 500;
+        display: none;
+    }
+    
+    .voice-status.info {
+        background: rgba(96, 165, 250, 0.1);
+        color: var(--accent-blue);
+        border: 1px solid var(--accent-blue);
+    }
+    
+    .voice-status.success {
+        background: rgba(52, 211, 153, 0.1);
+        color: var(--accent-green);
+        border: 1px solid var(--accent-green);
+    }
+    
+    .voice-status.error {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--accent-red);
+        border: 1px solid var(--accent-red);
+    }
+    
+    .voice-history {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 2rem;
+        max-height: 600px;
+        overflow-y: auto;
+    }
+    
+    .voice-history h3 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        color: var(--text-primary);
+    }
+    
+    .voice-message {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        border-radius: 12px;
+        transition: all 0.2s ease;
+    }
+    
+    .voice-message:hover {
+        background: rgba(96, 165, 250, 0.05);
+    }
+    
+    .voice-message.user {
+        border-left: 3px solid var(--accent-blue);
+    }
+    
+    .voice-message.jarvis {
+        border-left: 3px solid var(--accent-purple);
+    }
+    
+    .voice-message.error {
+        border-left: 3px solid var(--accent-red);
+    }
+    
+    .voice-message-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+    
+    .voice-message.user .voice-message-icon {
+        background: rgba(96, 165, 250, 0.2);
+        color: var(--accent-blue);
+    }
+    
+    .voice-message.jarvis .voice-message-icon {
+        background: rgba(167, 139, 250, 0.2);
+        color: var(--accent-purple);
+    }
+    
+    .voice-message.error .voice-message-icon {
+        background: rgba(239, 68, 68, 0.2);
+        color: var(--accent-red);
+    }
+    
+    .voice-message-content {
+        flex: 1;
+    }
+    
+    .voice-message-role {
+        font-weight: 700;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.25rem;
+        color: var(--text-secondary);
+    }
+    
+    .voice-message-text {
+        color: var(--text-primary);
+        line-height: 1.6;
+    }
+    
+    .voice-message-time {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+    }
+    
+    .voice-examples {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-top: 2rem;
+    }
+    
+    .voice-examples h3 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        color: var(--text-primary);
+    }
+    
+    .example-category {
+        margin-bottom: 1.5rem;
+    }
+    
+    .example-category h4 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--accent-blue);
+        margin-bottom: 0.5rem;
+    }
+    
+    .example-command {
+        padding: 0.75rem 1rem;
+        background: rgba(96, 165, 250, 0.05);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        font-family: 'Courier New', monospace;
+        color: var(--text-secondary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="voice-container">
+    <div class="voice-header">
+        <h1><i class="bi bi-robot"></i> Jarvis Voice Command</h1>
+        <p>Speak naturally to deploy projects, manage databases, and control your infrastructure</p>
+    </div>
+    
+    <div class="voice-controls">
+        <div id="voice-indicator" class="voice-indicator idle">Ready</div>
+        
+        <div class="voice-buttons">
+            <button id="voice-mic-button" class="voice-button primary">
+                <i class="bi bi-mic-fill"></i>
+                Start Listening
+            </button>
+            <button id="voice-stop-button" class="voice-button secondary" disabled>
+                <i class="bi bi-stop-fill"></i>
+                Stop
+            </button>
+        </div>
+        
+        <div id="voice-transcript" class="voice-transcript">
+            Say something like "Deploy my portfolio website" or "Create a Postgres database named myapp"
+        </div>
+        
+        <div id="voice-status" class="voice-status"></div>
+    </div>
+    
+    <div class="voice-history">
+        <h3><i class="bi bi-clock-history"></i> Conversation History</h3>
+        <div id="voice-history">
+            <!-- Messages will be added here dynamically -->
+        </div>
+    </div>
+    
+    <div class="voice-examples">
+        <h3><i class="bi bi-lightbulb-fill"></i> Voice Command Examples</h3>
+        
+        <div class="example-category">
+            <h4><i class="bi bi-cloud-upload"></i> Deployment Commands</h4>
+            <div class="example-command">"Deploy my portfolio website"</div>
+            <div class="example-command">"Create a blog application on myblog.com"</div>
+            <div class="example-command">"Build a new e-commerce project"</div>
+        </div>
+        
+        <div class="example-category">
+            <h4><i class="bi bi-database"></i> Database Commands</h4>
+            <div class="example-command">"Create a Postgres database named myapp"</div>
+            <div class="example-command">"Make a MySQL database called shopdata"</div>
+            <div class="example-command">"Setup a MongoDB database named analytics"</div>
+        </div>
+        
+        <div class="example-category">
+            <h4><i class="bi bi-shield-lock"></i> SSL Commands</h4>
+            <div class="example-command">"Check SSL for example.com"</div>
+            <div class="example-command">"Renew SSL certificate for mysite.net"</div>
+            <div class="example-command">"Create SSL for newdomain.org"</div>
+        </div>
+        
+        <div class="example-category">
+            <h4><i class="bi bi-chat-dots"></i> General Queries</h4>
+            <div class="example-command">"What services are currently running?"</div>
+            <div class="example-command">"Show me system health"</div>
+            <div class="example-command">"Tell me about disk usage"</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/jarvis_voice.js') }}"></script>
+{% endblock %}
