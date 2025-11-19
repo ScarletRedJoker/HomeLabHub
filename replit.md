@@ -9,13 +9,15 @@ The Nebula Command Dashboard is a web-based interface for managing a Ubuntu 25.1
 - Manages domains: rig-city.com, evindrake.net, scarletredjoker.com
 - All projects stored in: `/home/evin/contain/` (production) and Replit (development)
 - Development workflow: **Edit on Replit → Agent makes changes → Auto-sync to Ubuntu every 5 minutes**
+- **Authentication:** Code-Server and VNC Desktop require password authentication (see FIX_CODE_SERVER_AND_VNC.md)
 - Services to manage:
   - Discord Ticket Bot (bot.rig-city.com) - Custom support bot with PostgreSQL
   - Stream Bot / SnappleBotAI (stream.rig-city.com) - AI Snapple facts for Twitch/Kick
   - Plex Server (plex.evindrake.net) - Media streaming
   - n8n Automation (n8n.evindrake.net) - Workflow automation
   - Static Website (scarletredjoker.com) - Personal website
-  - VNC Desktop (vnc.evindrake.net) - Remote desktop access
+  - VNC Desktop (vnc.evindrake.net) - Remote desktop access (password-protected)
+  - Code-Server (code.evindrake.net) - VS Code in browser (password-protected)
   - Nebula Command Dashboard (host.evindrake.net) - Management UI
   - **Home Assistant (home.evindrake.net) - Smart home automation hub with Google Home integration**
 - Prefers centralized development environment with clean structure
