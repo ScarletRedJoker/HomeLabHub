@@ -1340,6 +1340,20 @@ export class BotWorker {
           } else if (response && this.kickClient && !this.kickClientReady) {
             console.log(`[BotWorker] Skipping Kick message send - client not ready yet (user ${this.userId})`);
           }
+
+          // Check for giveaway entry if no custom command matched
+          const isSubscriber = message.sender.badges?.some((b: any) => b.type === "subscriber") || false;
+          const giveawayResponse = await this.handleGiveawayEntry(
+            trimmedContent,
+            message.sender.username,
+            "kick",
+            isSubscriber
+          );
+          
+          if (giveawayResponse && this.kickClient && this.kickClientReady) {
+            await this.kickClient.sendMessage(giveawayResponse);
+            return; // Don't check keywords if giveaway entry was processed
+          }
         }
 
         // Check for Snapple fact keywords

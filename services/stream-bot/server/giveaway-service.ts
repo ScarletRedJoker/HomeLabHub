@@ -338,6 +338,21 @@ export class GiveawayService {
     };
   }
 
+  async getGiveawayEntries(userId: string, giveawayId: string): Promise<GiveawayEntry[]> {
+    const giveaway = await this.getGiveaway(userId, giveawayId);
+    if (!giveaway) {
+      throw new Error("Giveaway not found");
+    }
+
+    const entries = await db
+      .select()
+      .from(giveawayEntries)
+      .where(eq(giveawayEntries.giveawayId, giveawayId))
+      .orderBy(sql`${giveawayEntries.enteredAt} ASC`);
+
+    return entries;
+  }
+
   async cancelGiveaway(userId: string, giveawayId: string): Promise<void> {
     await db.transaction(async (tx) => {
       const [giveaway] = await tx

@@ -46,8 +46,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Trophy, Copy, Check, Trash2, Timer } from "lucide-react";
+import { Plus, Trophy, Copy, Check, Trash2, Timer, ChevronDown, ChevronUp, Users } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface Giveaway {
   id: string;
@@ -99,6 +104,7 @@ export default function Giveaways() {
   const [selectedGiveaway, setSelectedGiveaway] = useState<Giveaway | null>(null);
   const [copiedWinners, setCopiedWinners] = useState(false);
   const [endResult, setEndResult] = useState<{ giveaway: Giveaway; winners: GiveawayWinner[] } | null>(null);
+  const [isEntriesOpen, setIsEntriesOpen] = useState(true);
 
   const { data: giveaways, isLoading } = useQuery<Giveaway[]>({
     queryKey: ["/api/giveaways"],
@@ -415,6 +421,78 @@ export default function Giveaways() {
               </div>
             </div>
           </CardContent>
+        </Card>
+      )}
+
+      {activeGiveaway && entries && entries.length > 0 && (
+        <Card>
+          <Collapsible open={isEntriesOpen} onOpenChange={setIsEntriesOpen}>
+            <CardHeader>
+              <CollapsibleTrigger asChild>
+                <div className="flex justify-between items-center cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-5 w-5 text-muted-foreground" />
+                    <CardTitle>
+                      Entries ({entries.length})
+                    </CardTitle>
+                  </div>
+                  {isEntriesOpen ? (
+                    <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </div>
+              </CollapsibleTrigger>
+              <CardDescription>
+                Participants who have entered the giveaway
+              </CardDescription>
+            </CardHeader>
+            <CollapsibleContent>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Username</TableHead>
+                      <TableHead>Platform</TableHead>
+                      <TableHead>Subscriber</TableHead>
+                      <TableHead>Entry Time</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {entries.map((entry) => (
+                      <TableRow key={entry.id}>
+                        <TableCell className="font-medium">{entry.username}</TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant="outline"
+                            className={
+                              entry.platform === "twitch" 
+                                ? "border-purple-500 text-purple-500" 
+                                : entry.platform === "youtube"
+                                ? "border-red-500 text-red-500"
+                                : "border-green-500 text-green-500"
+                            }
+                          >
+                            {entry.platform}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {entry.subscriberStatus ? (
+                            <Badge variant="default" className="bg-green-600">✓ Sub</Badge>
+                          ) : (
+                            <Badge variant="secondary">✗ Non-sub</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatDistanceToNow(new Date(entry.enteredAt))} ago
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
         </Card>
       )}
 
