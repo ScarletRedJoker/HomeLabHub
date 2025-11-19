@@ -18,6 +18,8 @@ await build({
     // Optional native bindings (don't exist in production)
     'bufferutil',
     'utf-8-validate',
+    // OBS WebSocket (Node.js module with native dependencies)
+    'obs-websocket-js',
     // Vite and dev-only modules (won't exist in production)
     'vite',
     './vite.dev.js',
