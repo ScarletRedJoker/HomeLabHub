@@ -95,6 +95,21 @@ sudo systemctl enable docker
 echo "✅ Docker installed. Please log out and log back in."
 ```
 
+**Configure System for Redis (Optional but Recommended):**
+
+```bash
+# Enable memory overcommit for Redis
+sudo sysctl vm.overcommit_memory=1
+
+# Make it permanent
+echo 'vm.overcommit_memory = 1' | sudo tee -a /etc/sysctl.conf
+
+# Verify
+sysctl vm.overcommit_memory
+```
+
+> **Note:** Without this setting, Redis may show warnings about memory overcommit. This setting improves Redis reliability during background saves and replication.
+
 **Verify Docker Installation:**
 
 ```bash
