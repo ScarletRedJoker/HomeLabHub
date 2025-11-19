@@ -843,6 +843,127 @@ def stop_host_app(host_id):
         }), 500
 
 
+@game_streaming_bp.route('/api/gaming/app-templates', methods=['GET'])
+@login_required
+def get_app_templates():
+    """
+    Get categorized list of Windows application templates
+    
+    Returns comprehensive templates for:
+    - Gaming (Steam, Epic, GOG, Xbox)
+    - Productivity (Office, Adobe)
+    - Development (VS Code, Visual Studio, IntelliJ)
+    - Communication (Discord, Slack, Teams, Zoom)
+    - Browsers (Chrome, Firefox, Edge, Opera, Brave)
+    - Utilities (File Explorer, PowerShell, etc.)
+    - Desktop (Full desktop streaming)
+    
+    Returns:
+        JSON with categorized templates:
+        {
+            'success': True,
+            'templates': {
+                'gaming': [...],
+                'productivity': [...],
+                ...
+            },
+            'categories': ['gaming', 'productivity', ...],
+            'total_count': int
+        }
+    """
+    try:
+        templates = game_streaming_service.get_app_templates()
+        
+        # Count total templates
+        total_count = sum(len(apps) for apps in templates.values())
+        
+        return jsonify({
+            'success': True,
+            'templates': templates,
+            'categories': list(templates.keys()),
+            'total_count': total_count
+        })
+        
+    except Exception as e:
+        logger.error(f"Failed to get app templates: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to load app templates',
+            'error_details': str(e)
+        }), 500
+
+
+@game_streaming_bp.route('/api/gaming/hosts/<host_id>/scan-apps', methods=['POST'])
+@login_required
+def scan_installed_apps(host_id):
+    """
+    Scan remote Windows host for installed applications via SSH
+    
+    This endpoint:
+    1. Connects to the Sunshine host via SSH
+    2. Runs PowerShell scripts to scan Program Files, Program Files (x86), and LocalAppData
+    3. Detects installed applications
+    4. Returns a list of detected apps with auto-populated paths and categories
+    
+    Args:
+        host_id: Host UUID
+    
+    Returns:
+        JSON with detected applications:
+        {
+            'success': True,
+            'apps': [
+                {
+                    'name': 'Google Chrome',
+                    'cmd': ['C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'],
+                    'category': 'browsers',
+                    'detected': True,
+                    'size_mb': 123.45,
+                    'modified': '2025-11-15 10:30:00'
+                },
+                ...
+            ],
+            'count': 15,
+            'total_scanned': 234,
+            'message': 'Scan complete'
+        }
+    
+    Notes:
+        - Requires SSH access to be configured on the Sunshine host
+        - Scan can take 30-60 seconds depending on installed apps
+        - Only returns common applications, filters out system files
+    """
+    try:
+        result = game_streaming_service.scan_installed_apps(host_id)
+        
+        if result.get('success'):
+            return jsonify(result)
+        else:
+            # Return error with appropriate status code
+            status_code = 500
+            
+            if 'SSH service not available' in result.get('error', ''):
+                status_code = 503
+                result['help'] = 'Please configure SSH access to the Sunshine host in host settings'
+            elif 'not found' in result.get('error', '').lower():
+                status_code = 404
+            
+            return jsonify(result), status_code
+            
+    except ValueError as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 404
+    except Exception as e:
+        logger.error(f"Failed to scan apps on host {host_id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'App scan failed',
+            'error_details': str(e)
+        }), 500
+
+
 @game_streaming_bp.route('/api/gaming/hosts/<host_id>/sessions/active', methods=['GET'])
 @login_required
 def get_active_sessions(host_id):

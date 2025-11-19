@@ -260,6 +260,487 @@ class GameStreamingService:
                 'error_details': str(e)
             }
     
+    def get_app_templates(self) -> Dict[str, List[Dict]]:
+        """
+        Returns categorized list of app templates for Windows applications
+        
+        This provides a comprehensive set of pre-configured templates for
+        common Windows applications, organized by category.
+        
+        Returns:
+            Dictionary with categories as keys, each containing a list of app templates:
+            {
+                'gaming': [...],
+                'productivity': [...],
+                'development': [...],
+                'communication': [...],
+                'utilities': [...],
+                'desktop': [...]
+            }
+        """
+        templates = {
+            'gaming': [
+                {
+                    'name': 'Steam Big Picture',
+                    'cmd': ['C:\\Program Files (x86)\\Steam\\steam.exe', '-bigpicture'],
+                    'category': 'gaming',
+                    'icon_url': 'https://cdn.cloudflare.steamstatic.com/store/home/store_icon.svg',
+                    'description': 'Launch Steam in Big Picture mode'
+                },
+                {
+                    'name': 'Epic Games Launcher',
+                    'cmd': ['C:\\Program Files (x86)\\Epic Games\\Launcher\\Portal\\Binaries\\Win64\\EpicGamesLauncher.exe'],
+                    'category': 'gaming',
+                    'icon_url': 'https://static-assets-prod.epicgames.com/epic-store/static/favicon.ico',
+                    'description': 'Epic Games Store launcher'
+                },
+                {
+                    'name': 'GOG Galaxy',
+                    'cmd': ['C:\\Program Files (x86)\\GOG Galaxy\\GalaxyClient.exe'],
+                    'category': 'gaming',
+                    'description': 'GOG Galaxy game launcher'
+                },
+                {
+                    'name': 'Xbox App',
+                    'cmd': ['C:\\Program Files\\WindowsApps\\Microsoft.GamingApp_*\\XboxPcApp.exe'],
+                    'category': 'gaming',
+                    'description': 'Xbox Game Pass launcher'
+                }
+            ],
+            'productivity': [
+                {
+                    'name': 'Microsoft Word',
+                    'cmd': ['C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE'],
+                    'category': 'productivity',
+                    'icon_url': 'https://res.cdn.office.net/files/fabric-cdn-prod_20230815.002/assets/item-types/96/docx.svg',
+                    'description': 'Microsoft Word document editor'
+                },
+                {
+                    'name': 'Microsoft Excel',
+                    'cmd': ['C:\\Program Files\\Microsoft Office\\root\\Office16\\EXCEL.EXE'],
+                    'category': 'productivity',
+                    'icon_url': 'https://res.cdn.office.net/files/fabric-cdn-prod_20230815.002/assets/item-types/96/xlsx.svg',
+                    'description': 'Microsoft Excel spreadsheet editor'
+                },
+                {
+                    'name': 'Microsoft PowerPoint',
+                    'cmd': ['C:\\Program Files\\Microsoft Office\\root\\Office16\\POWERPNT.EXE'],
+                    'category': 'productivity',
+                    'icon_url': 'https://res.cdn.office.net/files/fabric-cdn-prod_20230815.002/assets/item-types/96/pptx.svg',
+                    'description': 'Microsoft PowerPoint presentation editor'
+                },
+                {
+                    'name': 'Microsoft Outlook',
+                    'cmd': ['C:\\Program Files\\Microsoft Office\\root\\Office16\\OUTLOOK.EXE'],
+                    'category': 'productivity',
+                    'icon_url': 'https://res.cdn.office.net/files/fabric-cdn-prod_20230815.002/assets/item-types/96/email.svg',
+                    'description': 'Microsoft Outlook email client'
+                },
+                {
+                    'name': 'Adobe Photoshop',
+                    'cmd': ['C:\\Program Files\\Adobe\\Adobe Photoshop 2024\\Photoshop.exe'],
+                    'category': 'productivity',
+                    'description': 'Adobe Photoshop image editor'
+                },
+                {
+                    'name': 'Adobe Illustrator',
+                    'cmd': ['C:\\Program Files\\Adobe\\Adobe Illustrator 2024\\Support Files\\Contents\\Windows\\Illustrator.exe'],
+                    'category': 'productivity',
+                    'description': 'Adobe Illustrator vector graphics editor'
+                },
+                {
+                    'name': 'Adobe Premiere Pro',
+                    'cmd': ['C:\\Program Files\\Adobe\\Adobe Premiere Pro 2024\\Adobe Premiere Pro.exe'],
+                    'category': 'productivity',
+                    'description': 'Adobe Premiere Pro video editor'
+                },
+                {
+                    'name': 'Adobe After Effects',
+                    'cmd': ['C:\\Program Files\\Adobe\\Adobe After Effects 2024\\Support Files\\AfterFX.exe'],
+                    'category': 'productivity',
+                    'description': 'Adobe After Effects motion graphics and VFX'
+                }
+            ],
+            'development': [
+                {
+                    'name': 'Visual Studio Code',
+                    'cmd': ['C:\\Program Files\\Microsoft VS Code\\Code.exe'],
+                    'category': 'development',
+                    'icon_url': 'https://code.visualstudio.com/favicon.ico',
+                    'description': 'Visual Studio Code text editor'
+                },
+                {
+                    'name': 'Visual Studio 2022',
+                    'cmd': ['C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE\\devenv.exe'],
+                    'category': 'development',
+                    'description': 'Visual Studio IDE'
+                },
+                {
+                    'name': 'JetBrains IntelliJ IDEA',
+                    'cmd': ['C:\\Program Files\\JetBrains\\IntelliJ IDEA\\bin\\idea64.exe'],
+                    'category': 'development',
+                    'icon_url': 'https://resources.jetbrains.com/storage/products/intellij-idea/img/meta/intellij-idea_logo_300x300.png',
+                    'description': 'IntelliJ IDEA Java IDE'
+                },
+                {
+                    'name': 'JetBrains PyCharm',
+                    'cmd': ['C:\\Program Files\\JetBrains\\PyCharm\\bin\\pycharm64.exe'],
+                    'category': 'development',
+                    'description': 'PyCharm Python IDE'
+                },
+                {
+                    'name': 'Git Bash',
+                    'cmd': ['C:\\Program Files\\Git\\git-bash.exe'],
+                    'category': 'development',
+                    'description': 'Git Bash terminal'
+                },
+                {
+                    'name': 'Docker Desktop',
+                    'cmd': ['C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe'],
+                    'category': 'development',
+                    'description': 'Docker Desktop container platform'
+                }
+            ],
+            'communication': [
+                {
+                    'name': 'Discord',
+                    'cmd': ['%LocalAppData%\\Discord\\Update.exe', '--processStart', 'Discord.exe'],
+                    'category': 'communication',
+                    'icon_url': 'https://discord.com/assets/f8389ca1a741a115313bede9ac02e2c0.svg',
+                    'description': 'Discord voice and chat app'
+                },
+                {
+                    'name': 'Slack',
+                    'cmd': ['%LocalAppData%\\slack\\slack.exe'],
+                    'category': 'communication',
+                    'icon_url': 'https://a.slack-edge.com/80588/marketing/img/meta/favicon-32.png',
+                    'description': 'Slack team communication'
+                },
+                {
+                    'name': 'Microsoft Teams',
+                    'cmd': ['%LocalAppData%\\Microsoft\\Teams\\current\\Teams.exe'],
+                    'category': 'communication',
+                    'description': 'Microsoft Teams collaboration'
+                },
+                {
+                    'name': 'Zoom',
+                    'cmd': ['C:\\Program Files\\Zoom\\bin\\Zoom.exe'],
+                    'category': 'communication',
+                    'icon_url': 'https://st1.zoom.us/static/6.3.11701/image/new/topNav/Zoom_logo.svg',
+                    'description': 'Zoom video conferencing'
+                },
+                {
+                    'name': 'Skype',
+                    'cmd': ['C:\\Program Files\\Microsoft\\Skype for Desktop\\Skype.exe'],
+                    'category': 'communication',
+                    'description': 'Skype video calling'
+                }
+            ],
+            'browsers': [
+                {
+                    'name': 'Google Chrome',
+                    'cmd': ['C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'],
+                    'category': 'browsers',
+                    'icon_url': 'https://www.google.com/chrome/static/images/favicons/favicon-96x96.png',
+                    'description': 'Google Chrome web browser'
+                },
+                {
+                    'name': 'Mozilla Firefox',
+                    'cmd': ['C:\\Program Files\\Mozilla Firefox\\firefox.exe'],
+                    'category': 'browsers',
+                    'icon_url': 'https://www.mozilla.org/media/img/favicons/firefox/browser/favicon.196fdf3ca83c.svg',
+                    'description': 'Mozilla Firefox web browser'
+                },
+                {
+                    'name': 'Microsoft Edge',
+                    'cmd': ['C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'],
+                    'category': 'browsers',
+                    'description': 'Microsoft Edge web browser'
+                },
+                {
+                    'name': 'Opera',
+                    'cmd': ['C:\\Program Files\\Opera\\opera.exe'],
+                    'category': 'browsers',
+                    'description': 'Opera web browser'
+                },
+                {
+                    'name': 'Brave',
+                    'cmd': ['C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe'],
+                    'category': 'browsers',
+                    'description': 'Brave privacy-focused browser'
+                }
+            ],
+            'utilities': [
+                {
+                    'name': 'File Explorer',
+                    'cmd': ['explorer.exe'],
+                    'category': 'utilities',
+                    'description': 'Windows File Explorer'
+                },
+                {
+                    'name': 'Task Manager',
+                    'cmd': ['taskmgr.exe'],
+                    'category': 'utilities',
+                    'description': 'Windows Task Manager'
+                },
+                {
+                    'name': 'PowerShell',
+                    'cmd': ['powershell.exe'],
+                    'category': 'utilities',
+                    'description': 'Windows PowerShell terminal'
+                },
+                {
+                    'name': 'Command Prompt',
+                    'cmd': ['cmd.exe'],
+                    'category': 'utilities',
+                    'description': 'Windows Command Prompt'
+                },
+                {
+                    'name': 'Windows Terminal',
+                    'cmd': ['wt.exe'],
+                    'category': 'utilities',
+                    'description': 'Modern Windows Terminal'
+                },
+                {
+                    'name': 'Notepad++',
+                    'cmd': ['C:\\Program Files\\Notepad++\\notepad++.exe'],
+                    'category': 'utilities',
+                    'description': 'Notepad++ text editor'
+                },
+                {
+                    'name': '7-Zip File Manager',
+                    'cmd': ['C:\\Program Files\\7-Zip\\7zFM.exe'],
+                    'category': 'utilities',
+                    'description': '7-Zip archive manager'
+                }
+            ],
+            'desktop': [
+                {
+                    'name': 'Full Windows Desktop',
+                    'cmd': ['explorer.exe'],
+                    'category': 'desktop',
+                    'description': 'Stream full Windows desktop'
+                }
+            ]
+        }
+        
+        return templates
+    
+    def scan_installed_apps(self, host_id: str) -> Dict:
+        """
+        Scans remote Windows host for installed applications via SSH
+        
+        Runs PowerShell commands to detect installed applications in common directories:
+        - C:\\Program Files\\
+        - C:\\Program Files (x86)\\
+        - %LocalAppData%\\
+        - Common executable locations
+        
+        Args:
+            host_id: Host UUID
+            
+        Returns:
+            Dictionary with scan results:
+            {
+                'success': bool,
+                'apps': List[Dict] (detected applications),
+                'count': int,
+                'error': str (if failed)
+            }
+        """
+        from models.gaming import SunshineHost
+        
+        if not self.db_service or not self.db_service.is_available:
+            return {
+                'success': False,
+                'error': 'Database service not available'
+            }
+        
+        try:
+            # Get SSH connection details
+            host_ip, ssh_service = self._get_ssh_connection(host_id)
+            
+            if not ssh_service:
+                return {
+                    'success': False,
+                    'error': 'SSH service not available'
+                }
+            
+            # PowerShell script to scan for installed applications
+            powershell_script = r'''
+$apps = @()
+
+# Scan Program Files
+$programFiles = "C:\Program Files"
+$programFilesX86 = "C:\Program Files (x86)"
+
+# Get executables from Program Files (depth 2 to avoid deep recursion)
+Get-ChildItem -Path $programFiles -Filter *.exe -Recurse -Depth 2 -ErrorAction SilentlyContinue | 
+    Select-Object FullName, Name, @{Name='Size';Expression={$_.Length}}, LastWriteTime | 
+    ForEach-Object {
+        $apps += [PSCustomObject]@{
+            name = $_.Name -replace '\.exe$', ''
+            path = $_.FullName
+            size = $_.Size
+            modified = $_.LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss')
+        }
+    }
+
+# Get executables from Program Files (x86)
+if (Test-Path $programFilesX86) {
+    Get-ChildItem -Path $programFilesX86 -Filter *.exe -Recurse -Depth 2 -ErrorAction SilentlyContinue | 
+        Select-Object FullName, Name, @{Name='Size';Expression={$_.Length}}, LastWriteTime | 
+        ForEach-Object {
+            $apps += [PSCustomObject]@{
+                name = $_.Name -replace '\.exe$', ''
+                path = $_.FullName
+                size = $_.Size
+                modified = $_.LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss')
+            }
+        }
+}
+
+# Convert to JSON
+$apps | ConvertTo-Json -Compress
+'''
+            
+            # Execute PowerShell script via SSH
+            logger.info(f"Scanning for installed apps on host {host_ip}...")
+            
+            result = ssh_service.execute_command(
+                host_ip,
+                f'powershell -NoProfile -Command "{powershell_script}"',
+                timeout=60
+            )
+            
+            if not result['success']:
+                return {
+                    'success': False,
+                    'error': 'Failed to execute scan command',
+                    'error_details': result.get('error', 'Unknown error')
+                }
+            
+            # Parse JSON output
+            import json
+            try:
+                output = result.get('output', '').strip()
+                
+                if not output:
+                    return {
+                        'success': True,
+                        'apps': [],
+                        'count': 0,
+                        'message': 'No applications found'
+                    }
+                
+                apps_data = json.loads(output)
+                
+                # Ensure it's a list
+                if not isinstance(apps_data, list):
+                    apps_data = [apps_data]
+                
+                # Filter out system files and duplicates
+                seen_paths = set()
+                filtered_apps = []
+                
+                # Common app keywords to filter for
+                app_keywords = [
+                    'chrome', 'firefox', 'edge', 'opera', 'brave',
+                    'code', 'studio', 'intellij', 'pycharm', 'eclipse',
+                    'office', 'word', 'excel', 'powerpoint', 'outlook',
+                    'photoshop', 'illustrator', 'premiere', 'afterfx',
+                    'discord', 'slack', 'teams', 'zoom', 'skype',
+                    'steam', 'epic', 'gog', 'xbox',
+                    'notepad++', '7zfm', 'winrar'
+                ]
+                
+                for app in apps_data:
+                    path = app.get('path', '').lower()
+                    name = app.get('name', '').lower()
+                    
+                    # Skip duplicates
+                    if path in seen_paths:
+                        continue
+                    
+                    # Skip system directories
+                    if any(sys_dir in path for sys_dir in ['windows\\system32', 'windows\\syswow64', 'windowsapps']):
+                        continue
+                    
+                    # Only include if it matches known app keywords or is in a root Program Files folder
+                    is_root_app = path.count('\\') <= 4  # Not too deep in folder structure
+                    matches_keyword = any(keyword in name for keyword in app_keywords)
+                    
+                    if is_root_app or matches_keyword:
+                        seen_paths.add(path)
+                        filtered_apps.append({
+                            'name': app.get('name', 'Unknown').replace('.exe', ''),
+                            'cmd': [app.get('path', '')],
+                            'category': self._detect_app_category(app.get('name', '')),
+                            'detected': True,
+                            'size_mb': round(app.get('size', 0) / (1024 * 1024), 2),
+                            'modified': app.get('modified', '')
+                        })
+                
+                logger.info(f"Found {len(filtered_apps)} applications on host {host_ip}")
+                
+                return {
+                    'success': True,
+                    'apps': filtered_apps,
+                    'count': len(filtered_apps),
+                    'total_scanned': len(apps_data)
+                }
+                
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse scan results: {e}")
+                return {
+                    'success': False,
+                    'error': 'Failed to parse scan results',
+                    'error_details': str(e)
+                }
+                
+        except Exception as e:
+            logger.error(f"App scan failed for host {host_id}: {e}", exc_info=True)
+            return {
+                'success': False,
+                'error': 'App scan failed',
+                'error_details': str(e)
+            }
+    
+    def _detect_app_category(self, app_name: str) -> str:
+        """
+        Detect app category based on application name
+        
+        Args:
+            app_name: Application name
+            
+        Returns:
+            Category string
+        """
+        app_lower = app_name.lower()
+        
+        # Gaming
+        if any(keyword in app_lower for keyword in ['steam', 'epic', 'gog', 'xbox', 'game']):
+            return 'gaming'
+        
+        # Development
+        if any(keyword in app_lower for keyword in ['code', 'studio', 'intellij', 'pycharm', 'eclipse', 'git', 'docker']):
+            return 'development'
+        
+        # Productivity
+        if any(keyword in app_lower for keyword in ['office', 'word', 'excel', 'powerpoint', 'outlook', 'photoshop', 'illustrator', 'premiere', 'afterfx']):
+            return 'productivity'
+        
+        # Communication
+        if any(keyword in app_lower for keyword in ['discord', 'slack', 'teams', 'zoom', 'skype']):
+            return 'communication'
+        
+        # Browsers
+        if any(keyword in app_lower for keyword in ['chrome', 'firefox', 'edge', 'opera', 'brave', 'browser']):
+            return 'browsers'
+        
+        # Utilities (default)
+        return 'utilities'
+    
     def update_sunshine_quality_config(self, host_id: str, quality_preset: Dict) -> Dict:
         """
         Update Sunshine quality configuration via API

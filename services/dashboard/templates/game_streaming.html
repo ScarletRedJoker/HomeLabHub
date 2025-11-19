@@ -1196,77 +1196,146 @@ chmod +x setup-sunshine.sh verify-nvenc.sh</pre>
 
 <!-- Add/Edit App Modal -->
 <div class="modal fade" id="addAppModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="appModalTitle">Add New App</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form id="addAppForm">
-                    <input type="hidden" id="appEditIndex">
-                    
-                    <div class="mb-3">
-                        <label class="form-label">App Name *</label>
-                        <input type="text" class="form-control" id="appName" required 
-                               placeholder="My Game">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Executable Command *</label>
-                        <input type="text" class="form-control" id="appCmd" required 
-                               placeholder="/usr/bin/steam -bigpicture">
-                        <small class="text-muted">Full path to executable or command</small>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Working Directory</label>
-                        <input type="text" class="form-control" id="appWorkingDir" 
-                               placeholder="/home/user/games">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Icon/Image Path</label>
-                        <input type="text" class="form-control" id="appImagePath" 
-                               placeholder="/path/to/icon.png">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Prep Commands</label>
-                        <textarea class="form-control" id="appPrepCmd" rows="2" 
-                                  placeholder="Commands to run before launching app"></textarea>
-                        <small class="text-muted">Run before app launches (one per line)</small>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Detached Commands</label>
-                        <textarea class="form-control" id="appDetached" rows="2" 
-                                  placeholder="Background processes"></textarea>
-                        <small class="text-muted">Background processes (one per line)</small>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Quick Templates</label>
-                        <div class="btn-group d-flex" role="group">
-                            <button type="button" class="btn btn-outline-secondary btn-sm" 
-                                    onclick="GameStreaming.applyTemplate('steam')">
-                                <i class="bi bi-steam"></i> Steam
+                <div class="row">
+                    <!-- Left Column: Template Browser -->
+                    <div class="col-md-5 border-end">
+                        <h6 class="mb-3">
+                            <i class="bi bi-grid"></i> App Templates
+                            <button class="btn btn-sm btn-primary float-end" onclick="GameStreaming.scanApps()">
+                                <i class="bi bi-radar"></i> Scan for Apps
                             </button>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" 
-                                    onclick="GameStreaming.applyTemplate('epic')">
-                                <i class="bi bi-controller"></i> Epic
-                            </button>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" 
-                                    onclick="GameStreaming.applyTemplate('desktop')">
-                                <i class="bi bi-display"></i> Desktop
-                            </button>
+                        </h6>
+                        
+                        <!-- Template Search -->
+                        <div class="mb-3">
+                            <input type="text" class="form-control form-control-sm" id="templateSearch" 
+                                   placeholder="Search templates..." onkeyup="GameStreaming.filterTemplates()">
+                        </div>
+                        
+                        <!-- Category Filter -->
+                        <div class="mb-3">
+                            <select class="form-select form-select-sm" id="templateCategoryFilter" 
+                                    onchange="GameStreaming.filterTemplates()">
+                                <option value="">All Categories</option>
+                                <option value="gaming">Gaming</option>
+                                <option value="productivity">Productivity (Office, Adobe)</option>
+                                <option value="development">Development</option>
+                                <option value="browsers">Web Browsers</option>
+                                <option value="communication">Communication</option>
+                                <option value="utilities">Utilities</option>
+                                <option value="desktop">Desktop</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Template List -->
+                        <div id="templateList" style="max-height: 500px; overflow-y: auto;">
+                            <div class="text-center py-3">
+                                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="small text-muted mt-2">Loading templates...</p>
+                            </div>
                         </div>
                     </div>
-                </form>
+                    
+                    <!-- Right Column: App Configuration -->
+                    <div class="col-md-7">
+                        <h6 class="mb-3"><i class="bi bi-gear"></i> App Configuration</h6>
+                        
+                        <form id="addAppForm">
+                            <input type="hidden" id="appEditIndex">
+                            
+                            <div class="row">
+                                <div class="col-md-8 mb-3">
+                                    <label class="form-label">App Name *</label>
+                                    <input type="text" class="form-control" id="appName" required 
+                                           placeholder="Google Chrome">
+                                </div>
+                                
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Category</label>
+                                    <select class="form-select" id="appCategory">
+                                        <option value="gaming">Gaming</option>
+                                        <option value="productivity">Productivity</option>
+                                        <option value="development">Development</option>
+                                        <option value="browsers">Browsers</option>
+                                        <option value="communication">Communication</option>
+                                        <option value="utilities">Utilities</option>
+                                        <option value="desktop">Desktop</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Executable Command *</label>
+                                <input type="text" class="form-control" id="appCmd" required 
+                                       placeholder='C:\Program Files\Google\Chrome\Application\chrome.exe'>
+                                <small class="text-muted">Full path to Windows executable</small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Icon URL</label>
+                                <input type="text" class="form-control" id="appIconUrl" 
+                                       placeholder="https://example.com/icon.png">
+                                <small class="text-muted">URL to app icon for display</small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Working Directory</label>
+                                <input type="text" class="form-control" id="appWorkingDir" 
+                                       placeholder="C:\Program Files\MyApp">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Local Image Path</label>
+                                <input type="text" class="form-control" id="appImagePath" 
+                                       placeholder="C:\path\to\icon.png">
+                                <small class="text-muted">Optional: Local path on Sunshine host</small>
+                            </div>
+                            
+                            <div class="accordion accordion-flush" id="advancedSettings">
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" 
+                                                data-bs-toggle="collapse" data-bs-target="#advancedCollapse">
+                                            <i class="bi bi-sliders"></i> Advanced Settings
+                                        </button>
+                                    </h2>
+                                    <div id="advancedCollapse" class="accordion-collapse collapse">
+                                        <div class="accordion-body">
+                                            <div class="mb-3">
+                                                <label class="form-label">Prep Commands</label>
+                                                <textarea class="form-control" id="appPrepCmd" rows="2" 
+                                                          placeholder="Commands to run before launching app"></textarea>
+                                                <small class="text-muted">Run before app launches (one per line)</small>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <label class="form-label">Detached Commands</label>
+                                                <textarea class="form-control" id="appDetached" rows="2" 
+                                                          placeholder="Background processes"></textarea>
+                                                <small class="text-muted">Background processes (one per line)</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" onclick="GameStreaming.saveApp()">Save App</button>
+                <button type="button" class="btn btn-success" onclick="GameStreaming.saveApp()">
+                    <i class="bi bi-check-circle"></i> Save App
+                </button>
             </div>
         </div>
     </div>
@@ -2279,6 +2348,8 @@ chmod +x setup-sunshine.sh verify-nvenc.sh`;
 
     const GameStreaming = {
         currentApps: [],
+        appTemplates: {},
+        allTemplates: [],
         
         loadApps: function() {
             const hostId = document.getElementById('app-host-selector').value;
@@ -2363,6 +2434,8 @@ chmod +x setup-sunshine.sh verify-nvenc.sh`;
             document.getElementById('addAppForm').reset();
             document.getElementById('appEditIndex').value = '';
             
+            this.loadTemplates();
+            
             const modal = new bootstrap.Modal(document.getElementById('addAppModal'));
             modal.show();
         },
@@ -2374,10 +2447,14 @@ chmod +x setup-sunshine.sh verify-nvenc.sh`;
             document.getElementById('appEditIndex').value = index;
             document.getElementById('appName').value = app.name || app.output || '';
             document.getElementById('appCmd').value = app.cmd ? app.cmd.join(' ') : '';
+            document.getElementById('appCategory').value = app.category || 'utilities';
+            document.getElementById('appIconUrl').value = app.icon_url || '';
             document.getElementById('appWorkingDir').value = app['working-dir'] || '';
             document.getElementById('appImagePath').value = app.image || '';
             document.getElementById('appPrepCmd').value = app['prep-cmd'] ? app['prep-cmd'].join('\n') : '';
             document.getElementById('appDetached').value = app.detached ? app.detached.join('\n') : '';
+            
+            this.loadTemplates();
             
             const modal = new bootstrap.Modal(document.getElementById('addAppModal'));
             modal.show();
@@ -2392,6 +2469,8 @@ chmod +x setup-sunshine.sh verify-nvenc.sh`;
                 name: document.getElementById('appName').value,
                 output: document.getElementById('appName').value,
                 cmd: document.getElementById('appCmd').value.trim().split(/\s+/),
+                category: document.getElementById('appCategory').value,
+                icon_url: document.getElementById('appIconUrl').value || undefined,
                 'working-dir': document.getElementById('appWorkingDir').value || undefined,
                 image: document.getElementById('appImagePath').value || undefined,
                 'prep-cmd': document.getElementById('appPrepCmd').value 
@@ -2570,6 +2649,194 @@ chmod +x setup-sunshine.sh verify-nvenc.sh`;
                 }).join('');
                 
                 container.innerHTML = html;
+            });
+        },
+        
+        loadTemplates: function() {
+            const listContainer = document.getElementById('templateList');
+            
+            if (Object.keys(this.appTemplates).length > 0) {
+                this.renderTemplates();
+                return;
+            }
+            
+            listContainer.innerHTML = `
+                <div class="text-center py-3">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="small text-muted mt-2">Loading templates...</p>
+                </div>`;
+            
+            fetch('/api/gaming/app-templates')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        this.appTemplates = data.templates;
+                        this.allTemplates = [];
+                        
+                        Object.keys(data.templates).forEach(category => {
+                            data.templates[category].forEach(template => {
+                                this.allTemplates.push(template);
+                            });
+                        });
+                        
+                        this.renderTemplates();
+                    } else {
+                        listContainer.innerHTML = `
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i> Failed to load templates
+                            </div>`;
+                    }
+                })
+                .catch(error => {
+                    listContainer.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="bi bi-x-circle"></i> Error: ${error.message}
+                        </div>`;
+                });
+        },
+        
+        filterTemplates: function() {
+            const searchTerm = document.getElementById('templateSearch').value.toLowerCase();
+            const categoryFilter = document.getElementById('templateCategoryFilter').value;
+            
+            let filtered = this.allTemplates;
+            
+            if (categoryFilter) {
+                filtered = filtered.filter(t => t.category === categoryFilter);
+            }
+            
+            if (searchTerm) {
+                filtered = filtered.filter(t => 
+                    t.name.toLowerCase().includes(searchTerm) || 
+                    (t.description && t.description.toLowerCase().includes(searchTerm))
+                );
+            }
+            
+            this.renderTemplates(filtered);
+        },
+        
+        renderTemplates: function(templates = null) {
+            const listContainer = document.getElementById('templateList');
+            const templatesToRender = templates || this.allTemplates;
+            
+            if (templatesToRender.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> No templates found
+                    </div>`;
+                return;
+            }
+            
+            const groupedByCategory = {};
+            templatesToRender.forEach(template => {
+                const category = template.category || 'other';
+                if (!groupedByCategory[category]) {
+                    groupedByCategory[category] = [];
+                }
+                groupedByCategory[category].push(template);
+            });
+            
+            const categoryNames = {
+                'gaming': '🎮 Gaming',
+                'productivity': '📊 Productivity',
+                'development': '💻 Development',
+                'browsers': '🌐 Web Browsers',
+                'communication': '💬 Communication',
+                'utilities': '🛠️ Utilities',
+                'desktop': '🖥️ Desktop'
+            };
+            
+            let html = '';
+            Object.keys(groupedByCategory).forEach(category => {
+                const displayName = categoryNames[category] || category;
+                html += `<div class="mb-3">
+                    <h6 class="text-muted small mb-2">${displayName}</h6>`;
+                
+                groupedByCategory[category].forEach(template => {
+                    const iconHtml = template.icon_url 
+                        ? `<img src="${this.escapeHtml(template.icon_url)}" style="width:16px; height:16px; margin-right:8px;" onerror="this.style.display='none'">` 
+                        : `<i class="bi bi-app me-2"></i>`;
+                    
+                    html += `
+                        <div class="card mb-2 template-item" style="cursor:pointer;" 
+                             onclick="GameStreaming.applyTemplateFromList(${JSON.stringify(template).replace(/"/g, '&quot;')})">
+                            <div class="card-body py-2 px-3">
+                                <div class="d-flex align-items-center">
+                                    ${iconHtml}
+                                    <div class="flex-grow-1">
+                                        <div class="fw-bold small">${this.escapeHtml(template.name)}</div>
+                                        ${template.description ? `<div class="text-muted" style="font-size:0.75rem;">${this.escapeHtml(template.description)}</div>` : ''}
+                                    </div>
+                                    <i class="bi bi-chevron-right text-muted"></i>
+                                </div>
+                            </div>
+                        </div>`;
+                });
+                
+                html += '</div>';
+            });
+            
+            listContainer.innerHTML = html;
+        },
+        
+        applyTemplateFromList: function(template) {
+            document.getElementById('appName').value = template.name || '';
+            document.getElementById('appCmd').value = template.cmd ? template.cmd.join(' ') : '';
+            document.getElementById('appCategory').value = template.category || 'utilities';
+            document.getElementById('appIconUrl').value = template.icon_url || '';
+            document.getElementById('appWorkingDir').value = template['working-dir'] || '';
+            document.getElementById('appImagePath').value = '';
+            
+            this.showToast(`Applied template: ${template.name}`, 'success');
+        },
+        
+        scanApps: function() {
+            const hostId = document.getElementById('app-host-selector').value;
+            if (!hostId) {
+                this.showToast('Please select a Sunshine host first', 'warning');
+                return;
+            }
+            
+            const listContainer = document.getElementById('templateList');
+            listContainer.innerHTML = `
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Scanning...</span>
+                    </div>
+                    <p class="mt-2 small">Scanning remote host for installed apps...</p>
+                    <p class="text-muted small">This may take 30-60 seconds</p>
+                </div>`;
+            
+            fetch(`/api/gaming/hosts/${hostId}/scan-apps`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.showToast(`Found ${data.count} applications!`, 'success');
+                    
+                    const scannedApps = data.apps || [];
+                    this.allTemplates = [...this.allTemplates, ...scannedApps];
+                    
+                    this.renderTemplates(scannedApps);
+                } else {
+                    listContainer.innerHTML = `
+                        <div class="alert alert-warning">
+                            <strong><i class="bi bi-exclamation-triangle"></i> Scan Failed</strong><br>
+                            ${data.error || 'Unknown error'}<br>
+                            ${data.help ? `<small class="text-muted">${data.help}</small>` : ''}
+                        </div>`;
+                    this.showToast('App scan failed: ' + (data.error || 'Unknown error'), 'danger');
+                }
+            })
+            .catch(error => {
+                listContainer.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-x-circle"></i> Connection error: ${error.message}
+                    </div>`;
+                this.showToast('Connection error: ' + error.message, 'danger');
             });
         },
         
