@@ -8,6 +8,7 @@ import querystring from "querystring";
 
 const TWITCH_TOKEN_URL = 'https://id.twitch.tv/oauth2/token';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const KICK_TOKEN_URL = 'https://id.kick.com/oauth/token';
 
 // Check tokens every 30 minutes
 const REFRESH_INTERVAL = 30 * 60 * 1000;
@@ -130,9 +131,8 @@ export class TokenRefreshService {
           newTokens = await this.refreshYouTubeToken(connection);
           break;
         case 'kick':
-          // Kick doesn't support refresh tokens yet
-          console.log(`[TokenRefresh] Kick platform doesn't support token refresh`);
-          return;
+          newTokens = await this.refreshKickToken(connection);
+          break;
         default:
           console.warn(`[TokenRefresh] Unknown platform: ${platform}`);
           return;
@@ -237,6 +237,49 @@ export class TokenRefreshService {
       return {
         accessToken: access_token,
         refreshToken: new_refresh_token, // May be undefined if Google doesn't return a new one
+        expiresAt: new Date(Date.now() + expires_in * 1000),
+      };
+    });
+  }
+
+  /**
+   * Refresh Kick access token using refresh_token grant
+   * 
+   * IMPORTANT: Kick returns BOTH a new access token AND a new refresh token.
+   * The old refresh token is invalidated after use (single-use).
+   */
+  private async refreshKickToken(connection: any): Promise<{ accessToken: string; refreshToken?: string; expiresAt: Date } | null> {
+    const clientId = getEnv('KICK_CLIENT_ID');
+    const clientSecret = getEnv('KICK_CLIENT_SECRET');
+
+    if (!clientId || !clientSecret) {
+      console.error('[TokenRefresh] Kick OAuth credentials not configured');
+      return null;
+    }
+
+    const refreshToken = decryptToken(connection.refreshToken);
+
+    return await this.retryWithBackoff(async () => {
+      const response = await axios.post(
+        KICK_TOKEN_URL,
+        querystring.stringify({
+          grant_type: 'refresh_token',
+          refresh_token: refreshToken,
+          client_id: clientId,
+          client_secret: clientSecret,
+        }),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
+
+      const { access_token, refresh_token: new_refresh_token, expires_in } = response.data;
+
+      return {
+        accessToken: access_token,
+        refreshToken: new_refresh_token, // CRITICAL: Kick always returns a new refresh token
         expiresAt: new Date(Date.now() + expires_in * 1000),
       };
     });

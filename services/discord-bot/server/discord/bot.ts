@@ -22,13 +22,18 @@ import {
 } from './thread-sync';
 import { handlePresenceUpdate, initializeStreamTracking } from './stream-notifications';
 import { initializeAutoDetection, scheduleAutoDetectionScans } from './stream-auto-detection';
+import { TicketChannelManager, startThreadCleanupJob } from './ticket-channel-manager';
 
 // Discord bot instance
 let client: Client | null = null;
 
+// Ticket channel manager instance
+let ticketChannelManager: TicketChannelManager | null = null;
+
 // Background job handles for cleanup
 let ticketMappingRefreshInterval: NodeJS.Timeout | null = null;
 let autoDetectionScanInterval: NodeJS.Timeout | null = null;
+let threadCleanupJobInterval: NodeJS.Timeout | null = null;
 
 // Map to track Discord channels/threads to ticket IDs
 const channelToTicketMap = new Map<string, number>();
@@ -900,6 +905,17 @@ export async function startBot(storage: IStorage, broadcast: (data: any) => void
             await interaction.message.edit({ embeds: [originalEmbed] });
           }
           
+          // Archive the ticket thread using TicketChannelManager
+          if (ticket.discordId && ticketChannelManager) {
+            console.log(`[TicketChannelManager] Archiving thread for closed ticket #${ticketId}`);
+            const archived = await ticketChannelManager.archiveTicket(ticket.discordId);
+            if (archived) {
+              console.log(`[TicketChannelManager] ✅ Successfully archived thread ${ticket.discordId}`);
+            } else {
+              console.log(`[TicketChannelManager] Failed to archive thread ${ticket.discordId}, thread may already be archived`);
+            }
+          }
+          
           // Broadcast update
           broadcast({ type: 'TICKET_UPDATED', data: updatedTicket });
           
@@ -1357,6 +1373,17 @@ export async function startBot(storage: IStorage, broadcast: (data: any) => void
               const reopenedEmbed = createTicketReopenedEmbed(ticket, interaction.user);
               const actionButtons = createTicketActionButtons(ticketId);
               await ticketChannel.send({ embeds: [reopenedEmbed], components: [actionButtons] });
+            }
+          }
+          
+          // Reopen the ticket thread using TicketChannelManager
+          if (ticket.discordId && ticketChannelManager) {
+            console.log(`[TicketChannelManager] Reopening thread for ticket #${ticketId}`);
+            const reopened = await ticketChannelManager.reopenTicket(ticket.discordId);
+            if (reopened) {
+              console.log(`[TicketChannelManager] ✅ Successfully reopened thread ${ticket.discordId}`);
+            } else {
+              console.log(`[TicketChannelManager] Failed to reopen thread ${ticket.discordId}, thread may not exist`);
             }
           }
           
@@ -1988,6 +2015,36 @@ export async function startBot(storage: IStorage, broadcast: (data: any) => void
       
       if (!mappingsLoaded) {
         console.warn('[Discord] ⚠️  Bot started with incomplete ticket mappings. Will retry every 5 minutes.');
+      }
+      
+      // Initialize TicketChannelManager for organized ticket channels
+      try {
+        console.log('[TicketChannelManager] Initializing ticket channel organization...');
+        
+        // Get guild ID from env or use first guild
+        const guildId = process.env.DISCORD_PRIMARY_GUILD_ID || guilds.first()?.id;
+        
+        if (!guildId) {
+          console.warn('[TicketChannelManager] No guild ID available, skipping initialization');
+        } else {
+          // Create manager instance
+          ticketChannelManager = new TicketChannelManager({
+            serverId: guildId,
+            client: readyClient,
+            storage
+          });
+          
+          // Cache existing channel structure
+          await ticketChannelManager.cacheChannelStructure();
+          
+          // Start daily cleanup job for old archived threads
+          threadCleanupJobInterval = startThreadCleanupJob(ticketChannelManager);
+          
+          console.log('[TicketChannelManager] ✅ Ticket channel manager initialized successfully');
+        }
+      } catch (error) {
+        console.error('[TicketChannelManager] Failed to initialize:', error);
+        console.warn('[TicketChannelManager] Ticket system will fall back to admin channel only');
       }
       
       // NOTE: registerCommands() is commented out because it adds a duplicate
@@ -2708,5 +2765,30 @@ export function shutdownBot(): Promise<void> {
   }
   
   console.log('Shutting down Discord bot...');
+  
+  // Clear all background job intervals
+  if (ticketMappingRefreshInterval) {
+    clearInterval(ticketMappingRefreshInterval);
+    ticketMappingRefreshInterval = null;
+    console.log('[Discord] Cleared ticket mapping refresh interval');
+  }
+  
+  if (autoDetectionScanInterval) {
+    clearInterval(autoDetectionScanInterval);
+    autoDetectionScanInterval = null;
+    console.log('[Discord] Cleared auto-detection scan interval');
+  }
+  
+  if (threadCleanupJobInterval) {
+    clearInterval(threadCleanupJobInterval);
+    threadCleanupJobInterval = null;
+    console.log('[Discord] Cleared thread cleanup job interval');
+  }
+  
   return client.destroy();
+}
+
+// Export ticketChannelManager for use in other modules
+export function getTicketChannelManager(): TicketChannelManager | null {
+  return ticketChannelManager;
 }

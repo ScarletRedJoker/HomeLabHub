@@ -270,6 +270,99 @@ export class TicketChannelManager {
   }
 
   /**
+   * Reopen an archived ticket thread
+   * Unarchives and unlocks the thread for continued discussion
+   */
+  async reopenTicket(threadId: string): Promise<boolean> {
+    try {
+      const guild = this.config.client.guilds.cache.get(this.config.serverId);
+      if (!guild) return false;
+
+      const thread = await this.config.client.channels.fetch(threadId) as ThreadChannel;
+      if (!thread || !thread.isThread()) {
+        console.error(`[TicketChannelManager] Thread ${threadId} not found`);
+        return false;
+      }
+
+      // Unarchive the thread
+      if (thread.archived) {
+        await thread.setArchived(false, 'Ticket reopened');
+      }
+
+      // Unlock the thread to allow messages
+      if (thread.locked) {
+        await thread.setLocked(false, 'Ticket reopened');
+      }
+
+      console.log(`[TicketChannelManager] ✅ Reopened thread ${threadId}`);
+      return true;
+    } catch (error) {
+      console.error('[TicketChannelManager] Failed to reopen ticket:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Cache the channel structure on bot startup
+   * Populates the category and channel caches for faster lookups
+   */
+  async cacheChannelStructure(): Promise<void> {
+    try {
+      const guild = this.config.client.guilds.cache.get(this.config.serverId);
+      if (!guild) {
+        console.error(`[TicketChannelManager] Guild ${this.config.serverId} not found`);
+        return;
+      }
+
+      console.log('[TicketChannelManager] Caching channel structure...');
+
+      // Cache Active Tickets category
+      const activeCategory = guild.channels.cache.find(
+        (ch) => ch.name === '🎫 Active Tickets' && ch.type === 4
+      );
+      if (activeCategory) {
+        this.activeTicketsCategoryCache.set(guild.id, activeCategory.id);
+        console.log(`[TicketChannelManager] Cached Active Tickets category: ${activeCategory.id}`);
+      }
+
+      // Cache Archive category
+      const archiveCategory = guild.channels.cache.find(
+        (ch) => ch.name === '📦 Ticket Archive' && ch.type === 4
+      );
+      if (archiveCategory) {
+        this.archiveCategoryCache.set(guild.id, archiveCategory.id);
+        console.log(`[TicketChannelManager] Cached Archive category: ${archiveCategory.id}`);
+      }
+
+      // Cache ticket category channels
+      const allCategories = await this.config.storage.getAllTicketCategories(this.config.serverId);
+      let cachedChannels = 0;
+      
+      for (const category of allCategories) {
+        const channelName = category.name.toLowerCase().replace(/\s+/g, '-');
+        const channel = guild.channels.cache.find(
+          (ch) => ch.name === channelName && ch.isTextBased() && 
+          (ch.parentId === activeCategory?.id || ch.parentId === archiveCategory?.id)
+        );
+        
+        if (channel) {
+          let serverCache = this.ticketChannelCache.get(guild.id);
+          if (!serverCache) {
+            serverCache = new Map();
+            this.ticketChannelCache.set(guild.id, serverCache);
+          }
+          serverCache.set(category.id, channel.id);
+          cachedChannels++;
+        }
+      }
+
+      console.log(`[TicketChannelManager] ✅ Cached ${cachedChannels} ticket category channels`);
+    } catch (error) {
+      console.error('[TicketChannelManager] Failed to cache channel structure:', error);
+    }
+  }
+
+  /**
    * Cleanup old archived threads (older than 30 days)
    * This should be run periodically to prevent Discord thread limit issues
    */
