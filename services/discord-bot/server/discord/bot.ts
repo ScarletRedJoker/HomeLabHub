@@ -22,7 +22,6 @@ import {
 } from './thread-sync';
 import { handlePresenceUpdate, initializeStreamTracking } from './stream-notifications';
 import { initializeAutoDetection, scheduleAutoDetectionScans } from './stream-auto-detection';
-import { TicketChannelManager, startThreadCleanupJob } from './ticket-channel-manager.js';
 
 // Discord bot instance
 let client: Client | null = null;
@@ -30,10 +29,6 @@ let client: Client | null = null;
 // Background job handles for cleanup
 let ticketMappingRefreshInterval: NodeJS.Timeout | null = null;
 let autoDetectionScanInterval: NodeJS.Timeout | null = null;
-
-// Ticket channel manager for organized ticket threading
-let ticketChannelManager: TicketChannelManager | null = null;
-let threadCleanupJobInterval: NodeJS.Timeout | null = null;
 
 // Map to track Discord channels/threads to ticket IDs
 const channelToTicketMap = new Map<string, number>();
