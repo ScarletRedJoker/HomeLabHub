@@ -46,6 +46,72 @@ The Nebula Command Dashboard provides a comprehensive web-based interface for ma
 
 ## Recent Changes (November 19, 2025)
 
+### 🚀 **MAJOR FEATURE EXPANSION** (November 19, 2025 - 5 New Modules)
+
+All 5 advanced feature modules implemented in full parallel - **PRODUCTION READY**:
+
+1. **📁 Plex Media Import Module** - Upload, auto-organize, and scan media files
+   - Drag & drop file upload with real-time progress tracking
+   - Automatic media type detection (movies, TV shows, music)
+   - Smart filename parsing (TMDb format support)
+   - Direct integration with Plex Media Server API for library scanning
+   - Background job processing with Celery workers
+   - **Files**: `services/plex_service.py`, `routes/plex_routes.py`, `workers/plex_worker.py`, `templates/plex_import.html`
+   - **Database**: 2 tables (`plex_import_jobs`, `plex_import_items`) with proper indexing
+
+2. **⚡ Service Quick Actions Module** - Real-time container monitoring and control
+   - One-click service restart/stop/start controls
+   - Live Docker stats (CPU, memory, network, uptime)
+   - Service health checks with automatic status detection
+   - 30-second telemetry collection beat task
+   - Real-time dashboard with auto-refresh
+   - **Files**: `services/service_ops.py`, `routes/service_ops_routes.py`, `workers/service_ops_worker.py`, `templates/service_actions.html`
+   - **Database**: 1 table (`service_telemetry`) with timestamp indexing
+
+3. **💾 Disk Space Monitoring Module** - Comprehensive storage analytics
+   - Plex media library size tracking
+   - Database and Docker volume monitoring
+   - MinIO object storage tracking
+   - Storage alerts with configurable thresholds (default: 80%)
+   - Chart.js visualizations (pie charts, trend graphs)
+   - Hourly collection beat task
+   - **Files**: `services/storage_monitor.py`, `routes/storage_routes.py`, `workers/storage_worker.py`, `templates/storage.html`
+   - **Database**: 2 tables (`storage_metrics`, `storage_alerts`) with category indexing
+
+4. **🎮 Game Streaming Enhancement Module** - Sunshine/Moonlight integration
+   - Automatic Sunshine host discovery on local network
+   - Gaming session tracking (game title, duration, performance metrics)
+   - Pairing flow with PIN code generation
+   - Windows KVM integration for GPU passthrough
+   - Low-latency streaming diagnostics
+   - **Files**: `services/game_streaming_service.py`, `routes/game_streaming_routes.py`, `workers/gaming_worker.py`, `templates/game_streaming.html`
+   - **Database**: 2 tables (`game_sessions`, `sunshine_hosts`) with host indexing
+
+5. **🗄️ Database Management Module** - Encrypted credential storage and backups
+   - Secure password encryption with Fernet (cryptography library)
+   - pg_dump/pg_restore integration for backup/restore
+   - Daily automated backup beat task (2 AM default, configurable)
+   - 30-day backup retention (configurable)
+   - Schema migration tracking
+   - Multi-database support (Discord Bot, Stream Bot, Jarvis)
+   - **Files**: `services/db_admin_service.py`, `routes/db_admin_routes.py`, `workers/db_admin_worker.py`, `templates/db_management.html`
+   - **Database**: 2 tables (`db_credentials`, `db_backup_jobs`) with encrypted password storage
+
+**Infrastructure Updates:**
+- ✅ **Alembic Migration 009** - Created 9 new tables with proper foreign keys, indexes, and constraints
+- ✅ **ORM Integration** - All models use shared `Base` from `models/__init__.py` for unified metadata
+- ✅ **Configuration** - Added 25+ environment variables to `config.py` and `.env.template`
+- ✅ **Feature Flags** - Enable/disable features via `ENABLE_*` variables
+- ✅ **Security** - Added `DB_ADMIN_ENCRYPTION_KEY` for Fernet-based credential encryption
+- ✅ **Celery Beat** - 4 new scheduled tasks (telemetry, storage, discovery, backups)
+
+**Code Statistics:**
+- ~5,000 lines of production Python code across 20 new files
+- 7-13 REST endpoints per module (44 total)
+- 4 Celery worker files with beat schedules
+- 5 Jinja2 templates with Bootstrap 5 + Chart.js
+- Full error handling, logging, and validation
+
 ### Deployment Completion
 - ✅ **All 15 services deployed** to Ubuntu 25.10 production server
 - ✅ **Caddy optimization** - Removed unnecessary header_up directives (X-Forwarded-For, X-Forwarded-Proto)
