@@ -215,7 +215,7 @@ class DeploymentService:
                              environment_vars: Dict[str, str],
                              custom_config: Dict[str, Any]) -> Dict[str, Any]:
         """Build the docker-compose service configuration with complete environment variables"""
-        config = {
+        config: Dict[str, Any] = {
             'image': template.image,
             'container_name': service_name,
             'restart': 'unless-stopped'

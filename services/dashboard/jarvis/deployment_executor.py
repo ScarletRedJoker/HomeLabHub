@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Dict, Optional
 from .compose_templates import generate_compose_spec, compose_to_yaml
 from models.jarvis import Project, ComposeSpec
-from models.deployment import Deployment
+from models.deployment import Deployment, DeploymentStatus
 from services.db_service import db_service
 
 logger = logging.getLogger(__name__)
@@ -152,13 +152,13 @@ class DeploymentExecutor:
             try:
                 self._execute_deployment(deployment, compose_spec, yaml_content)
                 
-                deployment.status = 'running'
+                deployment.status = DeploymentStatus.running
                 session.commit()
                 
                 logger.info(f"Deployment {deployment.id} running successfully")
                 
             except Exception as e:
-                deployment.status = 'failed'
+                deployment.status = DeploymentStatus.failed
                 session.commit()
                 logger.error(f"Deployment {deployment.id} failed: {e}")
                 raise

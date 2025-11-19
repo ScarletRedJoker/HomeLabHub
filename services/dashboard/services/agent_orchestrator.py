@@ -170,7 +170,7 @@ When analyzing security:
             logger.error(f"Failed to initialize agents: {e}")
     
     def create_task(self, description: str, task_type: str = 'diagnose', 
-                   priority: int = 5, context: Dict = None) -> Optional[AgentTask]:
+                   priority: int = 5, context: Optional[Dict] = None) -> Optional[AgentTask]:
         """Create a new task for the agent swarm"""
         if not db_service.is_available:
             logger.error("Database not available, cannot create task")
@@ -205,6 +205,20 @@ When analyzing security:
                 task = session.get(AgentTask, task_id)
                 if not task:
                     return {"success": False, "error": "Task not found"}
+                
+                # SERVER-SIDE APPROVAL CHECK
+                context = task.context or {}
+                requires_approval = context.get('requires_approval', False)
+                is_approved = context.get('approved', False)
+                
+                if requires_approval and not is_approved:
+                    logger.warning(f"Task {task_id} requires approval but has not been approved")
+                    return {
+                        "success": False,
+                        "error": f"Task {task_id} requires approval but has not been approved",
+                        "requires_approval": True,
+                        "approved": False
+                    }
                 
                 # Get orchestrator agent
                 orchestrator = session.execute(
@@ -393,8 +407,9 @@ Generate a step-by-step action plan in JSON format:
 }}
 """
         
+        system_content = (orchestrator.system_prompt or 'You are a helpful assistant.') + '\nRespond only with valid JSON.'
         messages = [
-            {'role': 'system', 'content': orchestrator.system_prompt + '\nRespond only with valid JSON.'},
+            {'role': 'system', 'content': system_content},
             {'role': 'user', 'content': prompt}
         ]
         
@@ -438,7 +453,7 @@ Generate a step-by-step action plan in JSON format:
             logger.error(f"Failed to list agents: {e}")
             return []
     
-    def list_tasks(self, status: str = None) -> List[Dict]:
+    def list_tasks(self, status: Optional[str] = None) -> List[Dict]:
         """List all tasks, optionally filtered by status"""
         if not db_service.is_available:
             return []

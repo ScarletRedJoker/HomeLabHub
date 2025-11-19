@@ -1,4 +1,5 @@
 from celery import Celery, signals
+from celery.schedules import crontab
 from config import Config
 import logging
 import redis
@@ -11,7 +12,7 @@ celery_app = Celery(
     'jarvis_workflow_engine',
     broker=Config.CELERY_BROKER_URL,
     backend=Config.CELERY_RESULT_BACKEND,
-    include=['workers.workflow_worker', 'workers.analysis_worker', 'workers.google_tasks', 'workers.plex_worker', 'workers.service_ops_worker', 'workers.storage_worker', 'workers.gaming_worker', 'workers.db_admin_worker', 'workers.nas_worker']
+    include=['workers.workflow_worker', 'workers.analysis_worker', 'workers.google_tasks', 'workers.plex_worker', 'workers.service_ops_worker', 'workers.storage_worker', 'workers.gaming_worker', 'workers.db_admin_worker', 'workers.nas_worker', 'workers.celery_tasks']
 )
 
 def check_redis_health():
@@ -108,10 +109,42 @@ celery_app.conf.update(
         'workers.nas_worker.run_nas_backup': {'queue': 'nas'},
         'workers.nas_worker.discover_nas_periodic': {'queue': 'nas'},
         'workers.nas_worker.check_mount_health': {'queue': 'nas'},
+        'autonomous.health_check': {'queue': 'autonomous'},
+        'autonomous.monitoring': {'queue': 'autonomous'},
+        'autonomous.optimization': {'queue': 'autonomous'},
+        'autonomous.security_scan': {'queue': 'autonomous'},
+        'autonomous.efficiency_report': {'queue': 'autonomous'},
+        'autonomous.security_summary': {'queue': 'autonomous'},
     },
     task_default_queue='default',
     task_default_exchange='tasks',
     task_default_routing_key='task.default',
+    beat_schedule={
+        'health-check-every-2-minutes': {
+            'task': 'autonomous.health_check',
+            'schedule': 120.0,
+        },
+        'monitoring-every-5-minutes': {
+            'task': 'autonomous.monitoring',
+            'schedule': 300.0,
+        },
+        'optimization-every-30-minutes': {
+            'task': 'autonomous.optimization',
+            'schedule': 1800.0,
+        },
+        'security-scan-every-hour': {
+            'task': 'autonomous.security_scan',
+            'schedule': 3600.0,
+        },
+        'efficiency-report-daily': {
+            'task': 'autonomous.efficiency_report',
+            'schedule': crontab(hour=2, minute=0),
+        },
+        'security-summary-daily': {
+            'task': 'autonomous.security_summary',
+            'schedule': crontab(hour=3, minute=0),
+        },
+    },
 )
 
 @signals.task_prerun.connect
