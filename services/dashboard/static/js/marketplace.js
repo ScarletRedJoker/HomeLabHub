@@ -37,7 +37,11 @@ function setupEventListeners() {
     // Deploy form submission
     document.getElementById('deploy-form').addEventListener('submit', (e) => {
         e.preventDefault();
-        submitDeployment();
+        if (currentTemplateWizard) {
+            submitTemplateInstallation();
+        } else {
+            submitDeployment();
+        }
     });
 }
 
@@ -430,3 +434,449 @@ function showNotification(message, type = 'info') {
         alert(message);
     }
 }
+
+// TEMPLATE-BASED MARKETPLACE FUNCTIONALITY
+let templates = [];
+let templateDeployments = [];
+let currentTemplateWizard = null;
+
+async function loadTemplates() {
+    try {
+        const response = await fetch('/api/marketplace/templates');
+        const data = await response.json();
+        
+        if (data.success) {
+            templates = data.data.templates;
+            renderTemplates();
+        } else {
+            console.error('Failed to load templates:', data.message);
+        }
+    } catch (error) {
+        console.error('Error loading templates:', error);
+    }
+}
+
+async function loadTemplateDeployments() {
+    try {
+        const response = await fetch('/api/marketplace/deployments');
+        const data = await response.json();
+        
+        if (data.success) {
+            templateDeployments = data.data.deployments;
+            renderTemplateDeployments();
+        } else {
+            console.error('Failed to load deployments:', data.message);
+        }
+    } catch (error) {
+        console.error('Error loading deployments:', error);
+    }
+}
+
+function renderTemplates() {
+    const grid = document.getElementById('apps-grid');
+    if (!grid || templates.length === 0) return;
+    
+    let filteredTemplates = templates;
+    if (currentCategory !== 'all') {
+        filteredTemplates = templates.filter(t => t.category === currentCategory);
+    }
+    
+    const templateCards = filteredTemplates.map(template => `
+        <div class="app-card" onclick="openTemplateModal('${template.id}', '${template.category}')">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">${template.icon || '📦'}</div>
+            <div class="app-category">${template.category}</div>
+            <div class="app-name">${template.name}</div>
+            <div class="app-description">${template.description}</div>
+            <button class="deploy-btn" onclick="event.stopPropagation(); openTemplateModal('${template.id}', '${template.category}')">
+                Install →
+            </button>
+        </div>
+    `).join('');
+    
+    grid.innerHTML = templateCards || '<div class="empty-state">No templates available</div>';
+}
+
+async function openTemplateModal(templateId, category) {
+    try {
+        const response = await fetch(`/api/marketplace/templates/${category}/${templateId}`);
+        const data = await response.json();
+        
+        if (!data.success) {
+            showNotification('Failed to load template', 'error');
+            return;
+        }
+        
+        const template = data.data.template;
+        currentTemplateWizard = {
+            template_id: templateId,
+            category: category,
+            template: template,
+            variables: {},
+            step: 0
+        };
+        
+        showTemplateWizard();
+    } catch (error) {
+        console.error('Error loading template:', error);
+        showNotification('Failed to load template', 'error');
+    }
+}
+
+function showTemplateWizard() {
+    if (!currentTemplateWizard) return;
+    
+    const template = currentTemplateWizard.template;
+    const variables = template.configuration?.variables || [];
+    
+    document.getElementById('deploy-modal-title').textContent = `Install ${template.metadata.name}`;
+    
+    const formFields = document.getElementById('deploy-form-fields');
+    formFields.innerHTML = `
+        <div class="form-group">
+            <p style="color: var(--text-secondary); font-size: 0.9rem;">${template.metadata.description}</p>
+        </div>
+    `;
+    
+    variables.forEach((varDef) => {
+        const fieldId = `template-field-${varDef.name}`;
+        let inputHtml = '';
+        
+        if (varDef.type === 'number') {
+            inputHtml = `
+                <input type="number" id="${fieldId}" name="${varDef.name}" 
+                       value="${varDef.default || ''}"
+                       placeholder="${varDef.placeholder || ''}" 
+                       ${varDef.required ? 'required' : ''}>
+            `;
+        } else if (varDef.type === 'boolean') {
+            inputHtml = `
+                <select id="${fieldId}" name="${varDef.name}" ${varDef.required ? 'required' : ''}>
+                    <option value="true" ${varDef.default === true ? 'selected' : ''}>Yes</option>
+                    <option value="false" ${varDef.default === false ? 'selected' : ''}>No</option>
+                </select>
+            `;
+        } else {
+            inputHtml = `
+                <input type="text" id="${fieldId}" name="${varDef.name}" 
+                       value="${varDef.default || ''}"
+                       placeholder="${varDef.placeholder || ''}" 
+                       ${varDef.required ? 'required' : ''}>
+            `;
+        }
+        
+        formFields.innerHTML += `
+            <div class="form-group">
+                <label for="${fieldId}">
+                    ${varDef.label}
+                    ${varDef.required ? '<span style="color: #ef4444;">*</span>' : ''}
+                </label>
+                ${inputHtml}
+                ${varDef.description ? `<small style="color: var(--text-secondary);">${varDef.description}</small>` : ''}
+            </div>
+        `;
+    });
+    
+    document.getElementById('deploy-modal').classList.add('active');
+}
+
+async function submitTemplateInstallation() {
+    if (!currentTemplateWizard) return;
+    
+    const formData = new FormData(document.getElementById('deploy-form'));
+    const variables = {};
+    
+    for (const [key, value] of formData.entries()) {
+        variables[key] = value;
+    }
+    
+    try {
+        const response = await fetch('/api/marketplace/install', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                category: currentTemplateWizard.category,
+                template_id: currentTemplateWizard.template_id,
+                variables: variables
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification(`Installing ${currentTemplateWizard.template.metadata.name}...`, 'success');
+            closeDeployModal();
+            currentTemplateWizard = null;
+            
+            setTimeout(() => {
+                loadTemplateDeployments();
+            }, 2000);
+        } else {
+            showNotification('Installation failed: ' + (data.message || 'Unknown error'), 'error');
+        }
+    } catch (error) {
+        console.error('Error installing template:', error);
+        showNotification('Failed to install template', 'error');
+    }
+}
+
+function renderTemplateDeployments() {
+    const container = document.getElementById('deployed-apps');
+    if (!container) return;
+    
+    if (templateDeployments.length === 0) {
+        container.innerHTML = '<div class="empty-state">No template deployments yet</div>';
+        return;
+    }
+    
+    container.innerHTML = templateDeployments.map(deployment => {
+        const statusClass = deployment.status === 'running' ? 'status-running' : 
+                           deployment.status === 'installing' ? 'status-deploying' : 
+                           'status-stopped';
+        
+        return `
+            <div class="deployed-app">
+                <div class="deployed-app-header">
+                    <div>
+                        <div class="deployed-app-name">${deployment.template_id}</div>
+                        <small style="color: var(--text-secondary);">${deployment.variables.APP_NAME || deployment.id}</small>
+                    </div>
+                    <span class="status-badge ${statusClass}">${deployment.status}</span>
+                </div>
+                ${deployment.error_message ? `<div style="color: #ef4444; font-size: 0.9rem; margin-bottom: 0.5rem;">${deployment.error_message}</div>` : ''}
+                <div class="app-actions">
+                    ${deployment.status === 'stopped' ? `
+                        <button class="action-btn" onclick="startTemplateDeployment('${deployment.id}')">
+                            ▶ Start
+                        </button>
+                    ` : ''}
+                    ${deployment.status === 'running' ? `
+                        <button class="action-btn" onclick="stopTemplateDeployment('${deployment.id}')">
+                            ⏹ Stop
+                        </button>
+                    ` : ''}
+                    <button class="action-btn" onclick="uninstallTemplateDeployment('${deployment.id}')">
+                        🗑 Uninstall
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function startTemplateDeployment(deploymentId) {
+    try {
+        const response = await fetch(`/api/marketplace/deployments/${deploymentId}/start`, {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('Deployment started', 'success');
+            loadTemplateDeployments();
+        } else {
+            showNotification('Failed to start: ' + data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error starting deployment:', error);
+        showNotification('Failed to start deployment', 'error');
+    }
+}
+
+async function stopTemplateDeployment(deploymentId) {
+    try {
+        const response = await fetch(`/api/marketplace/deployments/${deploymentId}/stop`, {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('Deployment stopped', 'success');
+            loadTemplateDeployments();
+        } else {
+            showNotification('Failed to stop: ' + data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error stopping deployment:', error);
+        showNotification('Failed to stop deployment', 'error');
+    }
+}
+
+async function uninstallTemplateDeployment(deploymentId) {
+    if (!confirm('Are you sure you want to uninstall this deployment? This will remove all data.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/marketplace/deployments/${deploymentId}?remove_volumes=true`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('Deployment uninstalled', 'success');
+            loadTemplateDeployments();
+        } else {
+            showNotification('Failed to uninstall: ' + data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error uninstalling deployment:', error);
+        showNotification('Failed to uninstall deployment', 'error');
+    }
+}
+
+// JARVIS VOICE INTEGRATION
+let jarvisWizardSession = null;
+
+function initJarvisVoiceIntegration() {
+    const jarvisBtn = document.getElementById('jarvis-install-btn');
+    if (jarvisBtn) {
+        jarvisBtn.addEventListener('click', startJarvisInstall);
+    }
+}
+
+async function startJarvisInstall() {
+    if (!('webkitSpeechRecognition' in window)) {
+        showNotification('Voice recognition not supported in this browser', 'error');
+        return;
+    }
+    
+    const recognition = new webkitSpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    
+    showNotification('Listening... Say "Install [app name]"', 'info');
+    
+    recognition.onresult = async function(event) {
+        const command = event.results[0][0].transcript;
+        console.log('Voice command:', command);
+        
+        try {
+            const response = await fetch('/api/jarvis/marketplace/install', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ command: command })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success && data.action === 'start_wizard') {
+                jarvisWizardSession = data.wizard;
+                showNotification(data.message, 'success');
+                
+                if (data.next_question) {
+                    continueJarvisWizard(data.next_question);
+                } else if (data.action === 'ready_to_install') {
+                    executeJarvisInstall();
+                }
+            } else {
+                showNotification(data.message || 'Command not recognized', 'error');
+            }
+        } catch (error) {
+            console.error('Error processing voice command:', error);
+            showNotification('Failed to process voice command', 'error');
+        }
+    };
+    
+    recognition.onerror = function(event) {
+        console.error('Speech recognition error:', event.error);
+        showNotification('Voice recognition error: ' + event.error, 'error');
+    };
+    
+    recognition.start();
+}
+
+async function continueJarvisWizard(question) {
+    const answer = prompt(question.prompt + (question.default ? ` (default: ${question.default})` : ''));
+    
+    if (answer === null) {
+        jarvisWizardSession = null;
+        return;
+    }
+    
+    const value = answer || question.default;
+    
+    try {
+        const response = await fetch('/api/jarvis/marketplace/wizard/step', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                session_id: jarvisWizardSession.session_id,
+                template_id: jarvisWizardSession.template_id,
+                category: jarvisWizardSession.category,
+                current_step: jarvisWizardSession.current_step,
+                variable_name: question.variable,
+                variable_value: value,
+                all_variables: jarvisWizardSession.variables || {}
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            if (data.action === 'next_variable') {
+                jarvisWizardSession.current_step = data.current_step;
+                jarvisWizardSession.variables = data.variables;
+                continueJarvisWizard(data.next_question);
+            } else if (data.action === 'ready_to_install') {
+                jarvisWizardSession.variables = data.variables;
+                executeJarvisInstall();
+            }
+        } else {
+            showNotification('Wizard error: ' + (data.message || 'Unknown error'), 'error');
+            jarvisWizardSession = null;
+        }
+    } catch (error) {
+        console.error('Error in wizard step:', error);
+        showNotification('Wizard step failed', 'error');
+        jarvisWizardSession = null;
+    }
+}
+
+async function executeJarvisInstall() {
+    if (!jarvisWizardSession) return;
+    
+    try {
+        const response = await fetch('/api/jarvis/marketplace/wizard/install', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                session_id: jarvisWizardSession.session_id,
+                template_id: jarvisWizardSession.template_id,
+                category: jarvisWizardSession.category,
+                variables: jarvisWizardSession.variables
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification(data.message, 'success');
+            jarvisWizardSession = null;
+            
+            setTimeout(() => {
+                loadTemplateDeployments();
+            }, 2000);
+        } else {
+            showNotification('Installation failed: ' + (data.error || 'Unknown error'), 'error');
+            jarvisWizardSession = null;
+        }
+    } catch (error) {
+        console.error('Error executing install:', error);
+        showNotification('Failed to execute installation', 'error');
+        jarvisWizardSession = null;
+    }
+}
+
+// Initialize template functionality on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadTemplates();
+    loadTemplateDeployments();
+    initJarvisVoiceIntegration();
+    
+    // Auto-refresh template deployments
+    setInterval(loadTemplateDeployments, 30000);
+});

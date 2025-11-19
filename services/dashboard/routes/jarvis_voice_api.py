@@ -810,3 +810,295 @@ def get_jarvis_status():
             'status': 'error',
             'error': str(e)
         }), 500
+
+
+# Marketplace Installation Wizard Endpoints
+
+@jarvis_voice_bp.route('/marketplace/install', methods=['POST'])
+@require_auth
+def jarvis_install_app():
+    """
+    Jarvis voice command to install marketplace app
+    
+    Expected input:
+    {
+        "command": "install wordpress",
+        "session_id": "uuid" (optional)
+    }
+    
+    Returns wizard initialization or error
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No JSON data provided'}), 400
+        
+        command = data.get('command', '').lower()
+        session_id = data.get('session_id') or str(uuid.uuid4())
+        
+        # Import marketplace service
+        from services.marketplace_service import MarketplaceService
+        marketplace_service = MarketplaceService()
+        
+        # List all templates
+        templates = marketplace_service.list_templates()
+        
+        # Find matching template
+        matched_template = None
+        for template in templates:
+            template_name = template['name'].lower()
+            template_id = template['id'].lower()
+            
+            if template_name in command or template_id in command:
+                matched_template = template
+                break
+        
+        if not matched_template:
+            return jsonify({
+                'success': False,
+                'message': f'App not found in command: "{command}". Try: "Install WordPress", "Install Plex", "Install PostgreSQL", etc.',
+                'available_apps': [t['name'] for t in templates[:10]]
+            }), 404
+        
+        # Load full template details
+        full_template = marketplace_service.load_template(
+            matched_template['category'], 
+            matched_template['id']
+        )
+        
+        # Initialize wizard session
+        wizard_session = {
+            'session_id': session_id,
+            'template_id': matched_template['id'],
+            'category': matched_template['category'],
+            'template_name': matched_template['name'],
+            'variables': {},
+            'current_step': 0,
+            'total_steps': len(full_template.get('configuration', {}).get('variables', []))
+        }
+        
+        response = {
+            'success': True,
+            'action': 'start_wizard',
+            'session_id': session_id,
+            'template': {
+                'id': matched_template['id'],
+                'name': matched_template['name'],
+                'category': matched_template['category'],
+                'description': matched_template['description']
+            },
+            'message': f"Starting {matched_template['name']} installation wizard. I'll guide you through the configuration.",
+            'wizard': wizard_session
+        }
+        
+        # If there are configuration variables, ask for the first one
+        if wizard_session['total_steps'] > 0:
+            first_var = full_template['configuration']['variables'][0]
+            response['next_question'] = {
+                'variable': first_var['name'],
+                'label': first_var.get('label', first_var['name']),
+                'type': first_var.get('type', 'string'),
+                'required': first_var.get('required', False),
+                'default': first_var.get('default'),
+                'prompt': f"What should be the {first_var.get('label', first_var['name'])}?"
+            }
+        else:
+            response['message'] = f"{matched_template['name']} has no configuration required. Ready to install."
+            response['action'] = 'ready_to_install'
+        
+        logger.info(f"Started marketplace wizard for {matched_template['name']}")
+        return jsonify(response), 200
+        
+    except Exception as e:
+        logger.error(f"Error in marketplace install wizard: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@jarvis_voice_bp.route('/marketplace/wizard/step', methods=['POST'])
+@require_auth
+def jarvis_wizard_step():
+    """
+    Process wizard step and collect configuration
+    
+    Expected input:
+    {
+        "session_id": "uuid",
+        "template_id": "wordpress",
+        "category": "apps",
+        "current_step": 0,
+        "variable_name": "APP_NAME",
+        "variable_value": "my-wordpress",
+        "all_variables": {}
+    }
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No JSON data provided'}), 400
+        
+        session_id = data.get('session_id')
+        template_id = data.get('template_id')
+        category = data.get('category')
+        current_step = data.get('current_step', 0)
+        variable_name = data.get('variable_name')
+        variable_value = data.get('variable_value')
+        all_variables = data.get('all_variables', {})
+        
+        if not template_id or not category:
+            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+        
+        # Import marketplace service
+        from services.marketplace_service import MarketplaceService
+        marketplace_service = MarketplaceService()
+        
+        # Load template
+        template = marketplace_service.load_template(category, template_id)
+        variables_config = template.get('configuration', {}).get('variables', [])
+        
+        # Store the current variable value
+        if variable_name and variable_value is not None:
+            all_variables[variable_name] = variable_value
+        
+        # Move to next step
+        next_step = current_step + 1
+        
+        # Check if we have more variables to configure
+        if next_step < len(variables_config):
+            next_var = variables_config[next_step]
+            
+            return jsonify({
+                'success': True,
+                'action': 'next_variable',
+                'current_step': next_step,
+                'total_steps': len(variables_config),
+                'variables': all_variables,
+                'next_question': {
+                    'variable': next_var['name'],
+                    'label': next_var.get('label', next_var['name']),
+                    'type': next_var.get('type', 'string'),
+                    'required': next_var.get('required', False),
+                    'default': next_var.get('default'),
+                    'prompt': f"What should be the {next_var.get('label', next_var['name'])}?"
+                }
+            }), 200
+        else:
+            # All variables collected - validate and prepare for installation
+            is_valid, errors = marketplace_service.validate_variables(template, all_variables)
+            
+            if not is_valid:
+                return jsonify({
+                    'success': False,
+                    'action': 'validation_failed',
+                    'errors': errors,
+                    'message': 'Configuration validation failed. Please check the values.'
+                }), 400
+            
+            return jsonify({
+                'success': True,
+                'action': 'ready_to_install',
+                'session_id': session_id,
+                'template_id': template_id,
+                'category': category,
+                'variables': all_variables,
+                'message': f"Configuration complete! Ready to install {template['metadata']['name']}."
+            }), 200
+        
+    except Exception as e:
+        logger.error(f"Error in wizard step: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@jarvis_voice_bp.route('/marketplace/wizard/install', methods=['POST'])
+@require_auth
+def jarvis_wizard_install():
+    """
+    Execute installation from wizard session
+    
+    Expected input:
+    {
+        "session_id": "uuid",
+        "template_id": "wordpress",
+        "category": "apps",
+        "variables": {}
+    }
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No JSON data provided'}), 400
+        
+        template_id = data.get('template_id')
+        category = data.get('category')
+        variables = data.get('variables', {})
+        
+        if not template_id or not category or not variables:
+            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+        
+        # Import marketplace service
+        from services.marketplace_service import MarketplaceService
+        marketplace_service = MarketplaceService()
+        
+        # Load and validate template
+        template = marketplace_service.load_template(category, template_id)
+        is_valid, errors = marketplace_service.validate_variables(template, variables)
+        
+        if not is_valid:
+            return jsonify({
+                'success': False,
+                'message': 'Variable validation failed',
+                'errors': errors
+            }), 400
+        
+        # Render template with variables
+        rendered = marketplace_service.render_template(template, variables)
+        
+        # Generate docker-compose.yml
+        compose_content = marketplace_service.generate_docker_compose(rendered)
+        
+        # Create deployment directory
+        from pathlib import Path
+        import uuid as uuid_module
+        
+        deployment_id = str(uuid_module.uuid4())
+        app_name = variables.get('APP_NAME', template_id)
+        deployment_dir = Path(f"/home/evin/contain/marketplace/{app_name}")
+        deployment_dir.mkdir(parents=True, exist_ok=True)
+        
+        compose_file = deployment_dir / "docker-compose.yml"
+        compose_file.write_text(compose_content)
+        
+        # Create deployment record
+        deployment = marketplace_service.create_deployment(
+            deployment_id=deployment_id,
+            template_id=template_id,
+            category=category,
+            variables=variables,
+            compose_path=str(compose_file)
+        )
+        
+        # Start installation via Celery
+        from workers.marketplace_tasks import install_marketplace_app
+        install_marketplace_app.delay(deployment_id)
+        
+        logger.info(f"Jarvis wizard initiated installation of {template_id} with deployment_id {deployment_id}")
+        
+        return jsonify({
+            'success': True,
+            'deployment_id': deployment_id,
+            'status': 'installing',
+            'message': f"Installing {template['metadata']['name']}... I'll notify you when it's ready.",
+            'app_name': app_name
+        }), 202
+        
+    except Exception as e:
+        logger.error(f"Error in wizard install: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500

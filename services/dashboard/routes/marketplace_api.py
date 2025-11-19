@@ -434,3 +434,182 @@ def render_template(category, template_id):
     except Exception as e:
         logger.error(f"Error rendering template: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# Template Installation and Deployment Management Routes
+
+@marketplace_bp.route('/install', methods=['POST'])
+@require_auth
+def install_template():
+    """
+    Install an app from a template
+    
+    POST /api/marketplace/install
+    Body: {
+        "category": "apps",
+        "template_id": "wordpress",
+        "variables": {
+            "APP_NAME": "my-wordpress",
+            "PORT": 8080,
+            ...
+        }
+    }
+    """
+    try:
+        data = request.get_json() or {}
+        
+        category = data.get('category')
+        template_id = data.get('template_id')
+        variables = data.get('variables', {})
+        
+        if not category or not template_id:
+            return jsonify({
+                'success': False,
+                'message': 'category and template_id are required'
+            }), 400
+        
+        # Load template
+        template = marketplace_service.load_template(category, template_id)
+        
+        # Validate variables
+        is_valid, errors = marketplace_service.validate_variables(template, variables)
+        if not is_valid:
+            return jsonify({
+                'success': False,
+                'message': 'Variable validation failed',
+                'errors': errors
+            }), 400
+        
+        # Render template with variables
+        rendered = marketplace_service.render_template(template, variables)
+        
+        # Generate docker-compose.yml
+        compose_content = marketplace_service.generate_docker_compose(rendered)
+        
+        # Create deployment directory
+        import uuid
+        from pathlib import Path
+        
+        deployment_id = str(uuid.uuid4())
+        app_name = variables.get('APP_NAME', template_id)
+        deployment_dir = Path(f"/home/evin/contain/marketplace/{app_name}")
+        deployment_dir.mkdir(parents=True, exist_ok=True)
+        
+        compose_file = deployment_dir / "docker-compose.yml"
+        compose_file.write_text(compose_content)
+        
+        # Create deployment record in database
+        deployment = marketplace_service.create_deployment(
+            deployment_id=deployment_id,
+            template_id=template_id,
+            category=category,
+            variables=variables,
+            compose_path=str(compose_file)
+        )
+        
+        # Start installation (async using Celery task)
+        from workers.marketplace_tasks import install_marketplace_app
+        install_marketplace_app.delay(deployment_id)
+        
+        logger.info(f"Started installation of {template_id} with deployment_id {deployment_id}")
+        
+        return jsonify({
+            'success': True,
+            'deployment_id': deployment_id,
+            'status': 'installing',
+            'message': f"Installing {template['metadata']['name']}..."
+        }), 202
+        
+    except FileNotFoundError as e:
+        return jsonify({'success': False, 'message': str(e)}), 404
+    except Exception as e:
+        logger.error(f"Error installing template: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@marketplace_bp.route('/deployments', methods=['GET'])
+@require_auth
+def list_template_deployments():
+    """List all template-based deployments"""
+    try:
+        deployments = marketplace_service.list_deployments()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'deployments': deployments,
+                'count': len(deployments)
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error listing deployments: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@marketplace_bp.route('/deployments/<deployment_id>', methods=['GET'])
+@require_auth
+def get_template_deployment(deployment_id):
+    """Get details of a specific deployment"""
+    try:
+        deployment = marketplace_service.get_deployment(deployment_id)
+        
+        if not deployment:
+            return jsonify({'success': False, 'message': 'Deployment not found'}), 404
+        
+        return jsonify({
+            'success': True,
+            'data': deployment
+        })
+    except Exception as e:
+        logger.error(f"Error getting deployment: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@marketplace_bp.route('/deployments/<deployment_id>/start', methods=['POST'])
+@require_auth
+def start_template_deployment(deployment_id):
+    """Start a stopped deployment"""
+    try:
+        success, message = marketplace_service.start_deployment(deployment_id)
+        
+        if success:
+            return jsonify({'success': True, 'message': message})
+        else:
+            return jsonify({'success': False, 'message': message}), 400
+    except Exception as e:
+        logger.error(f"Error starting deployment: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@marketplace_bp.route('/deployments/<deployment_id>/stop', methods=['POST'])
+@require_auth
+def stop_template_deployment(deployment_id):
+    """Stop a running deployment"""
+    try:
+        success, message = marketplace_service.stop_deployment(deployment_id)
+        
+        if success:
+            return jsonify({'success': True, 'message': message})
+        else:
+            return jsonify({'success': False, 'message': message}), 400
+    except Exception as e:
+        logger.error(f"Error stopping deployment: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@marketplace_bp.route('/deployments/<deployment_id>', methods=['DELETE'])
+@require_auth
+def uninstall_template_deployment(deployment_id):
+    """Uninstall a deployment (stop + remove files)"""
+    try:
+        remove_volumes = request.args.get('remove_volumes', 'false').lower() == 'true'
+        
+        success, message = marketplace_service.uninstall_deployment(deployment_id, remove_volumes)
+        
+        if success:
+            return jsonify({'success': True, 'message': message})
+        else:
+            return jsonify({'success': False, 'message': message}), 400
+    except Exception as e:
+        logger.error(f"Error uninstalling deployment: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500

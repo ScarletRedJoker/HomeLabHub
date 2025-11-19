@@ -716,3 +716,195 @@ class MarketplaceService:
                             logger.warning(f"Invalid regex pattern in template: {pattern}")
         
         return len(errors) == 0, errors
+    
+    # Template-based deployment management methods
+    
+    def create_deployment(self, deployment_id: str, template_id: str, category: str, 
+                         variables: Dict[str, Any], compose_path: str) -> Dict[str, Any]:
+        """Create deployment record in database"""
+        try:
+            if not db_service.is_available:
+                raise Exception("Database service not available")
+            
+            from models.marketplace import MarketplaceDeployment
+            
+            with db_service.get_session() as session:
+                deployment = MarketplaceDeployment(
+                    id=deployment_id,
+                    template_id=template_id,
+                    category=category,
+                    variables=variables,
+                    compose_path=compose_path,
+                    status='installing'
+                )
+                session.add(deployment)
+                session.commit()
+                session.refresh(deployment)
+                
+                logger.info(f"Created deployment {deployment_id} for template {template_id}")
+                return deployment.to_dict()
+        except Exception as e:
+            logger.error(f"Error creating deployment: {e}")
+            raise
+    
+    def list_deployments(self) -> List[Dict[str, Any]]:
+        """List all deployed apps from templates"""
+        try:
+            if not db_service.is_available:
+                return []
+            
+            from models.marketplace import MarketplaceDeployment
+            
+            with db_service.get_session() as session:
+                deployments = session.query(MarketplaceDeployment).all()
+                return [d.to_dict() for d in deployments]
+        except Exception as e:
+            logger.error(f"Error listing deployments: {e}")
+            return []
+    
+    def get_deployment(self, deployment_id: str) -> Optional[Dict[str, Any]]:
+        """Get deployment by ID"""
+        try:
+            if not db_service.is_available:
+                return None
+            
+            from models.marketplace import MarketplaceDeployment
+            
+            with db_service.get_session() as session:
+                deployment = session.get(MarketplaceDeployment, deployment_id)
+                return deployment.to_dict() if deployment else None
+        except Exception as e:
+            logger.error(f"Error getting deployment: {e}")
+            return None
+    
+    def start_deployment(self, deployment_id: str) -> Tuple[bool, str]:
+        """Start deployed app via docker-compose"""
+        try:
+            deployment = self.get_deployment(deployment_id)
+            if not deployment:
+                return False, "Deployment not found"
+            
+            compose_path = Path(deployment['compose_path'])
+            deployment_dir = compose_path.parent
+            
+            if not compose_path.exists():
+                return False, f"Compose file not found: {compose_path}"
+            
+            # Run docker-compose up
+            logger.info(f"Starting deployment {deployment_id}")
+            result = subprocess.run(
+                ['docker-compose', 'up', '-d'],
+                cwd=deployment_dir,
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode == 0:
+                # Update status
+                if db_service.is_available:
+                    from models.marketplace import MarketplaceDeployment
+                    with db_service.get_session() as session:
+                        dep = session.get(MarketplaceDeployment, deployment_id)
+                        if dep:
+                            dep.status = 'running'
+                            session.commit()
+                
+                logger.info(f"Successfully started deployment {deployment_id}")
+                return True, "Deployment started successfully"
+            else:
+                error_msg = f"docker-compose up failed: {result.stderr}"
+                logger.error(error_msg)
+                return False, error_msg
+        except Exception as e:
+            logger.error(f"Error starting deployment: {e}")
+            return False, str(e)
+    
+    def stop_deployment(self, deployment_id: str) -> Tuple[bool, str]:
+        """Stop deployed app"""
+        try:
+            deployment = self.get_deployment(deployment_id)
+            if not deployment:
+                return False, "Deployment not found"
+            
+            compose_path = Path(deployment['compose_path'])
+            deployment_dir = compose_path.parent
+            
+            if not compose_path.exists():
+                return False, f"Compose file not found: {compose_path}"
+            
+            # Run docker-compose down
+            logger.info(f"Stopping deployment {deployment_id}")
+            result = subprocess.run(
+                ['docker-compose', 'down'],
+                cwd=deployment_dir,
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode == 0:
+                # Update status
+                if db_service.is_available:
+                    from models.marketplace import MarketplaceDeployment
+                    with db_service.get_session() as session:
+                        dep = session.get(MarketplaceDeployment, deployment_id)
+                        if dep:
+                            dep.status = 'stopped'
+                            session.commit()
+                
+                logger.info(f"Successfully stopped deployment {deployment_id}")
+                return True, "Deployment stopped successfully"
+            else:
+                error_msg = f"docker-compose down failed: {result.stderr}"
+                logger.error(error_msg)
+                return False, error_msg
+        except Exception as e:
+            logger.error(f"Error stopping deployment: {e}")
+            return False, str(e)
+    
+    def uninstall_deployment(self, deployment_id: str, remove_volumes: bool = False) -> Tuple[bool, str]:
+        """Uninstall app (stop + remove files)"""
+        try:
+            deployment = self.get_deployment(deployment_id)
+            if not deployment:
+                return False, "Deployment not found"
+            
+            compose_path = Path(deployment['compose_path'])
+            deployment_dir = compose_path.parent
+            
+            # Stop containers and remove volumes if requested
+            if compose_path.exists():
+                logger.info(f"Uninstalling deployment {deployment_id}")
+                cmd = ['docker-compose', 'down']
+                if remove_volumes:
+                    cmd.append('-v')
+                
+                result = subprocess.run(
+                    cmd,
+                    cwd=deployment_dir,
+                    capture_output=True,
+                    text=True
+                )
+                
+                if result.returncode != 0:
+                    logger.warning(f"docker-compose down returned non-zero: {result.stderr}")
+            
+            # Remove deployment directory
+            import shutil
+            if deployment_dir.exists():
+                logger.info(f"Removing deployment directory: {deployment_dir}")
+                shutil.rmtree(deployment_dir)
+            
+            # Delete from database
+            if db_service.is_available:
+                from models.marketplace import MarketplaceDeployment
+                with db_service.get_session() as session:
+                    dep = session.get(MarketplaceDeployment, deployment_id)
+                    if dep:
+                        session.delete(dep)
+                        session.commit()
+            
+            logger.info(f"Successfully uninstalled deployment {deployment_id}")
+            return True, "Deployment uninstalled successfully"
+        except Exception as e:
+            logger.error(f"Error uninstalling deployment: {e}")
+            return False, str(e)

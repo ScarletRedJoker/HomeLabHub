@@ -93,3 +93,34 @@ class DeployedApp(Base):
             'last_check': self.last_check.isoformat() if self.last_check else None,
             'error_message': self.error_message
         }
+
+
+class MarketplaceDeployment(Base):
+    """Represents a template-based deployment from marketplace"""
+    __tablename__ = 'marketplace_deployments'
+    
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    template_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    category: Mapped[str] = mapped_column(String(50), nullable=False)
+    variables: Mapped[dict] = mapped_column(JSON, nullable=False)
+    compose_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    status: Mapped[str] = mapped_column(String(50), default='installing', index=True)
+    error_message: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    def __repr__(self):
+        return f"<MarketplaceDeployment(id='{self.id}', template_id='{self.template_id}', status='{self.status}')>"
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'template_id': self.template_id,
+            'category': self.category,
+            'variables': self.variables,
+            'compose_path': self.compose_path,
+            'status': self.status,
+            'error_message': self.error_message,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }

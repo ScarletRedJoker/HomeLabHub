@@ -313,8 +313,15 @@
 {% block content %}
 <div class="marketplace-container">
     <div class="marketplace-header">
-        <h1 class="marketplace-title">🛍️ Docker Store</h1>
-        <p style="color: var(--text-secondary);">Deploy popular self-hosted applications with one click</p>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h1 class="marketplace-title">🛍️ Docker Store</h1>
+                <p style="color: var(--text-secondary);">Deploy popular self-hosted applications with one click</p>
+            </div>
+            <button id="jarvis-install-btn" class="category-btn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                🎤 Ask Jarvis to Install
+            </button>
+        </div>
     </div>
 
     <div class="tabs">
