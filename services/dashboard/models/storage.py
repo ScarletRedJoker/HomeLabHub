@@ -19,7 +19,7 @@ class StorageMetric(Base):
     size_bytes = Column(BigInteger, nullable=False)
     file_count = Column(Integer, nullable=True)
     usage_percent = Column(Float, nullable=True)
-    metadata = Column(JSONB, nullable=True)
+    storage_metadata = Column(JSONB, nullable=True)
     timestamp = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     
     def to_dict(self):
@@ -33,7 +33,7 @@ class StorageMetric(Base):
             'size_gb': round(self.size_bytes / (1024 * 1024 * 1024), 2),
             'file_count': self.file_count,
             'usage_percent': self.usage_percent,
-            'metadata': self.metadata,
+            'storage_metadata': self.storage_metadata,
             'timestamp': self.timestamp.isoformat() if self.timestamp else None,
         }
 

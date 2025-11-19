@@ -24,7 +24,7 @@ class GameSession(Base):
     bitrate_mbps = Column(Float, nullable=True)
     latency_ms = Column(Float, nullable=True)
     game_name = Column(String(255), nullable=True)
-    metadata = Column(JSONB, nullable=True)
+    game_metadata = Column(JSONB, nullable=True)
     started_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     ended_at = Column(DateTime(timezone=True), nullable=True)
     
@@ -42,7 +42,7 @@ class GameSession(Base):
             'bitrate_mbps': self.bitrate_mbps,
             'latency_ms': self.latency_ms,
             'game_name': self.game_name,
-            'metadata': self.metadata,
+            'game_metadata': self.game_metadata,
             'started_at': self.started_at.isoformat() if self.started_at else None,
             'ended_at': self.ended_at.isoformat() if self.ended_at else None,
             'duration_seconds': (self.ended_at - self.started_at).total_seconds() if self.ended_at else None,
@@ -62,7 +62,7 @@ class SunshineHost(Base):
     last_online = Column(DateTime(timezone=True), nullable=True)
     gpu_model = Column(String(255), nullable=True)
     applications = Column(JSONB, nullable=True)  # List of available games/apps
-    metadata = Column(JSONB, nullable=True)
+    host_metadata = Column(JSONB, nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
@@ -77,7 +77,7 @@ class SunshineHost(Base):
             'last_online': self.last_online.isoformat() if self.last_online else None,
             'gpu_model': self.gpu_model,
             'applications': self.applications,
-            'metadata': self.metadata,
+            'host_metadata': self.host_metadata,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }

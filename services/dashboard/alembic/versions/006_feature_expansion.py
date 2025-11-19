@@ -29,7 +29,7 @@ def upgrade() -> None:
         sa.Column('total_files', sa.Integer, nullable=False, server_default='0'),
         sa.Column('processed_files', sa.Integer, nullable=False, server_default='0'),
         sa.Column('target_directory', sa.String(500), nullable=True),
-        sa.Column('metadata', postgresql.JSONB, nullable=True),
+        sa.Column('job_metadata', postgresql.JSONB, nullable=True),
         sa.Column('error_message', sa.Text, nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('NOW()'), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('NOW()'), onupdate=sa.text('NOW()'), nullable=False),
@@ -49,7 +49,7 @@ def upgrade() -> None:
         sa.Column('storage_path', sa.String(1000), nullable=False),  # MinIO path
         sa.Column('final_path', sa.String(1000), nullable=True),  # Final Plex path
         sa.Column('status', sa.String(50), nullable=False, server_default='pending'),
-        sa.Column('metadata', postgresql.JSONB, nullable=True),  # Title, year, season, episode, etc.
+        sa.Column('item_metadata', postgresql.JSONB, nullable=True),  # Title, year, season, episode, etc.
         sa.Column('error_message', sa.Text, nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('NOW()'), nullable=False),
         sa.Column('processed_at', sa.DateTime(timezone=True), nullable=True),
@@ -74,7 +74,7 @@ def upgrade() -> None:
         sa.Column('health_status', sa.String(50), nullable=True),  # 'healthy', 'unhealthy', 'starting'
         sa.Column('restart_count', sa.Integer, nullable=True),
         sa.Column('uptime_seconds', sa.Integer, nullable=True),
-        sa.Column('metadata', postgresql.JSONB, nullable=True),
+        sa.Column('service_metadata', postgresql.JSONB, nullable=True),
         sa.Column('timestamp', sa.DateTime(timezone=True), server_default=sa.text('NOW()'), nullable=False),
     )
     op.create_index('ix_service_telemetry_service_name', 'service_telemetry', ['service_name'])
@@ -93,7 +93,7 @@ def upgrade() -> None:
         sa.Column('size_bytes', sa.BigInteger, nullable=False),
         sa.Column('file_count', sa.Integer, nullable=True),
         sa.Column('usage_percent', sa.Float, nullable=True),
-        sa.Column('metadata', postgresql.JSONB, nullable=True),
+        sa.Column('storage_metadata', postgresql.JSONB, nullable=True),
         sa.Column('timestamp', sa.DateTime(timezone=True), server_default=sa.text('NOW()'), nullable=False),
     )
     op.create_index('ix_storage_metrics_type', 'storage_metrics', ['metric_type'])
@@ -130,7 +130,7 @@ def upgrade() -> None:
         sa.Column('bitrate_mbps', sa.Float, nullable=True),
         sa.Column('latency_ms', sa.Float, nullable=True),
         sa.Column('game_name', sa.String(255), nullable=True),
-        sa.Column('metadata', postgresql.JSONB, nullable=True),
+        sa.Column('game_metadata', postgresql.JSONB, nullable=True),
         sa.Column('started_at', sa.DateTime(timezone=True), server_default=sa.text('NOW()'), nullable=False),
         sa.Column('ended_at', sa.DateTime(timezone=True), nullable=True),
     )
@@ -148,7 +148,7 @@ def upgrade() -> None:
         sa.Column('last_online', sa.DateTime(timezone=True), nullable=True),
         sa.Column('gpu_model', sa.String(255), nullable=True),
         sa.Column('applications', postgresql.JSONB, nullable=True),  # List of available games/apps
-        sa.Column('metadata', postgresql.JSONB, nullable=True),
+        sa.Column('host_metadata', postgresql.JSONB, nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('NOW()'), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('NOW()'), onupdate=sa.text('NOW()'), nullable=False),
     )
@@ -168,7 +168,7 @@ def upgrade() -> None:
         sa.Column('is_active', sa.Boolean, nullable=False, server_default='true'),
         sa.Column('last_tested_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('test_status', sa.String(50), nullable=True),  # 'success', 'failed'
-        sa.Column('metadata', postgresql.JSONB, nullable=True),
+        sa.Column('credential_metadata', postgresql.JSONB, nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('NOW()'), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('NOW()'), onupdate=sa.text('NOW()'), nullable=False),
     )
@@ -185,7 +185,7 @@ def upgrade() -> None:
         sa.Column('file_size', sa.BigInteger, nullable=True),
         sa.Column('compression', sa.String(50), nullable=True),  # 'gzip', 'none'
         sa.Column('error_message', sa.Text, nullable=True),
-        sa.Column('metadata', postgresql.JSONB, nullable=True),
+        sa.Column('backup_metadata', postgresql.JSONB, nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('NOW()'), nullable=False),
         sa.Column('started_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),

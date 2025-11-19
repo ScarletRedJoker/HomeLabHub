@@ -22,7 +22,7 @@ class DBCredential(Base):
     is_active = Column(Boolean, nullable=False, default=True)
     last_tested_at = Column(DateTime(timezone=True), nullable=True)
     test_status = Column(String(50), nullable=True)  # 'success', 'failed'
-    meta_info = Column(JSONB, nullable=True)
+    credential_metadata = Column(JSONB, nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
@@ -36,7 +36,7 @@ class DBCredential(Base):
             'is_active': self.is_active,
             'last_tested_at': self.last_tested_at.isoformat() if self.last_tested_at else None,
             'test_status': self.test_status,
-            'meta_info': self.meta_info,
+            'credential_metadata': self.credential_metadata,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -57,7 +57,7 @@ class DBBackupJob(Base):
     file_size = Column(BigInteger, nullable=True)
     compression = Column(String(50), nullable=True)  # 'gzip', 'none'
     error_message = Column(Text, nullable=True)
-    meta_info = Column(JSONB, nullable=True)
+    backup_metadata = Column(JSONB, nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
@@ -73,7 +73,7 @@ class DBBackupJob(Base):
             'file_size_mb': round(self.file_size / (1024 * 1024), 2) if self.file_size else None,
             'compression': self.compression,
             'error_message': self.error_message,
-            'meta_info': self.meta_info,
+            'backup_metadata': self.backup_metadata,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'started_at': self.started_at.isoformat() if self.started_at else None,
             'completed_at': self.completed_at.isoformat() if self.completed_at else None,
