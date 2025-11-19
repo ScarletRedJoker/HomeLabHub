@@ -22,33 +22,33 @@ def upgrade() -> None:
     inspector = inspect(bind)
     
     # Create enums for Google integration (fully idempotent - safe to run multiple times)
-    # Using raw SQL with IF NOT EXISTS is appropriate for PostgreSQL enum types
+    # Using EXCEPTION handling to prevent race conditions during concurrent migrations
     op.execute("""
         DO $$ BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'serviceconnectionstatus') THEN
-                CREATE TYPE serviceconnectionstatus AS ENUM ('connected', 'disconnected', 'error', 'pending');
-            END IF;
+            CREATE TYPE serviceconnectionstatus AS ENUM ('connected', 'disconnected', 'error', 'pending');
+        EXCEPTION
+            WHEN duplicate_object THEN null;
         END $$;
     """)
     op.execute("""
         DO $$ BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'automationstatus') THEN
-                CREATE TYPE automationstatus AS ENUM ('active', 'inactive', 'error');
-            END IF;
+            CREATE TYPE automationstatus AS ENUM ('active', 'inactive', 'error');
+        EXCEPTION
+            WHEN duplicate_object THEN null;
         END $$;
     """)
     op.execute("""
         DO $$ BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'emailnotificationstatus') THEN
-                CREATE TYPE emailnotificationstatus AS ENUM ('pending', 'sent', 'failed');
-            END IF;
+            CREATE TYPE emailnotificationstatus AS ENUM ('pending', 'sent', 'failed');
+        EXCEPTION
+            WHEN duplicate_object THEN null;
         END $$;
     """)
     op.execute("""
         DO $$ BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'backupstatus') THEN
-                CREATE TYPE backupstatus AS ENUM ('pending', 'uploading', 'completed', 'failed');
-            END IF;
+            CREATE TYPE backupstatus AS ENUM ('pending', 'uploading', 'completed', 'failed');
+        EXCEPTION
+            WHEN duplicate_object THEN null;
         END $$;
     """)
     

@@ -12,12 +12,17 @@ if [ -z "$JARVIS_DATABASE_URL" ]; then
     exit 1
 fi
 
-# Run database migrations
-# NOTE: This assumes single-instance deployment (no replicas)
-# For multi-instance deployments, add PostgreSQL advisory locks to prevent race conditions
-echo "Running database migrations..."
-alembic upgrade head 2>&1 | tee -a /app/logs/migrations.log
-echo "✓ Migrations complete"
+# Run database migrations (can be disabled for worker instances)
+# Default to true if not set
+RUN_MIGRATIONS=${RUN_MIGRATIONS:-true}
+
+if [ "$RUN_MIGRATIONS" = "true" ]; then
+    echo "Running database migrations..."
+    alembic upgrade head 2>&1 | tee -a /app/logs/migrations.log
+    echo "✓ Migrations complete"
+else
+    echo "⏭️  Skipping migrations (RUN_MIGRATIONS=$RUN_MIGRATIONS)"
+fi
 
 echo ""
 echo "Starting Gunicorn server..."

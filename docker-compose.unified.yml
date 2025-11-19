@@ -134,6 +134,7 @@ services:
       discord-bot-db:
         condition: service_healthy
     environment:
+      - RUN_MIGRATIONS=false
       - REDIS_URL=redis://redis:6379/0
       - JARVIS_DATABASE_URL=postgresql://jarvis:${JARVIS_DB_PASSWORD}@discord-bot-db:5432/homelab_jarvis
       - PYTHONUNBUFFERED=1
