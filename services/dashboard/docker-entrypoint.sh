@@ -13,6 +13,8 @@ if [ -z "$JARVIS_DATABASE_URL" ]; then
 fi
 
 # Run database migrations
+# NOTE: This assumes single-instance deployment (no replicas)
+# For multi-instance deployments, add PostgreSQL advisory locks to prevent race conditions
 echo "Running database migrations..."
 alembic upgrade head 2>&1 | tee -a /app/logs/migrations.log
 echo "✓ Migrations complete"
