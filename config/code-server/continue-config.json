@@ -1,0 +1,35 @@
+{
+  "models": [
+    {
+      "title": "GPT-4",
+      "provider": "openai",
+      "model": "gpt-4",
+      "apiKey": "${CONTINUE_API_KEY}"
+    },
+    {
+      "title": "Claude 3.5 Sonnet",
+      "provider": "anthropic",
+      "model": "claude-3-5-sonnet-20241022",
+      "apiKey": "${CONTINUE_API_KEY}"
+    },
+    {
+      "title": "Qwen2.5-Coder (Local)",
+      "provider": "ollama",
+      "model": "qwen2.5-coder:14b",
+      "apiBase": "http://homelab-dashboard:11434"
+    }
+  ],
+  "tabAutocompleteModel": {
+    "title": "DeepSeek-Coder",
+    "provider": "ollama",
+    "model": "deepseek-coder:6.7b",
+    "apiBase": "http://homelab-dashboard:11434"
+  },
+  "embeddingsProvider": {
+    "provider": "ollama",
+    "model": "nomic-embed-text",
+    "apiBase": "http://homelab-dashboard:11434"
+  },
+  "allowAnonymousTelemetry": false,
+  "docs": []
+}

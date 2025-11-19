@@ -56,6 +56,12 @@ show_menu() {
     echo -e "    ${GREEN}20)${NC} 🔌 Check All Integration Status"
     echo -e "    ${GREEN}21)${NC} 📝 View Integration Setup Guide"
     echo ""
+    echo -e "  ${BOLD}Database Maintenance:${NC}"
+    echo -e "    ${GREEN}22)${NC} 🔧 Fix Stuck Database Migrations"
+    echo ""
+    echo -e "  ${BOLD}Verification:${NC}"
+    echo -e "    ${GREEN}23)${NC} ✅ Run Full Deployment Verification"
+    echo ""
     echo -e "  ${BOLD}Configuration:${NC}"
     echo -e "    ${GREEN}9)${NC} ⚙️  Generate/Edit .env File"
     echo -e "    ${GREEN}10)${NC} 📋 View Current Configuration"
@@ -1556,6 +1562,391 @@ view_integration_guide() {
     pause
 }
 
+# Fix Stuck Database Migrations
+fix_stuck_migrations() {
+    echo ""
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}${BLUE}  🔧 FIX STUCK DATABASE MIGRATIONS${NC}"
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "${BOLD}${RED}⚠️  WARNING: This operation will modify your database${NC}"
+    echo ""
+    echo "This script will:"
+    echo "  • Drop stuck enum types (serviceconnectionstatus, automationstatus, etc.)"
+    echo "  • Drop Google integration tables if they exist"
+    echo "  • Re-run alembic upgrade head to create them cleanly"
+    echo ""
+    echo -e "${YELLOW}This is designed to fix migration 005 errors that prevent Dashboard/Celery from starting.${NC}"
+    echo ""
+    echo -e "${BOLD}IMPORTANT:${NC}"
+    echo "  1. This script is idempotent - safe to run multiple times"
+    echo "  2. It will NOT delete your main application data"
+    echo "  3. It only affects Google integration tables (which may be empty)"
+    echo "  4. Backup your database first if you have important Google integration data"
+    echo ""
+    
+    read -p "Do you want to proceed? (yes/no): " confirm
+    
+    if [ "$confirm" != "yes" ]; then
+        echo ""
+        echo -e "${YELLOW}Migration fix cancelled${NC}"
+        pause
+        return
+    fi
+    
+    echo ""
+    echo "Starting migration fix..."
+    echo ""
+    
+    # Check if script exists
+    if [ ! -f "./deployment/fix-stuck-migrations.sh" ]; then
+        echo -e "${RED}✗ Error: fix-stuck-migrations.sh not found${NC}"
+        echo -e "${YELLOW}Expected location: ./deployment/fix-stuck-migrations.sh${NC}"
+        pause
+        return
+    fi
+    
+    # Make script executable
+    chmod +x ./deployment/fix-stuck-migrations.sh
+    
+    # Run the fix script
+    if ./deployment/fix-stuck-migrations.sh; then
+        echo ""
+        echo -e "${GREEN}✓ Migration fix completed successfully${NC}"
+        echo ""
+        echo "Recommended next steps:"
+        echo "  1. Restart Dashboard: Option 6 → homelab-dashboard"
+        echo "  2. Restart Celery Worker: Option 6 → homelab-celery-worker"
+        echo "  3. Check logs: Option 11 → View Service Logs"
+        echo "  4. Verify AI features: See docs/AI_FEATURES_VERIFICATION.md"
+    else
+        echo ""
+        echo -e "${RED}✗ Migration fix encountered errors${NC}"
+        echo -e "${YELLOW}Please review the error messages above${NC}"
+        echo ""
+        echo "Troubleshooting tips:"
+        echo "  • Ensure PostgreSQL is running (check with option 7)"
+        echo "  • Verify .env has correct database credentials"
+        echo "  • Check database logs: docker logs discord-bot-db"
+    fi
+    
+    pause
+}
+
+# Run Full Deployment Verification
+run_deployment_verification() {
+    echo ""
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}${BLUE}  ✅ FULL DEPLOYMENT VERIFICATION${NC}"
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    
+    local passed=0
+    local failed=0
+    local warnings=0
+    
+    # Test 1: Check Critical Environment Variables
+    echo -e "${BOLD}TEST 1: Critical Environment Variables${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    if [ -f ".env" ]; then
+        echo -e "${GREEN}✓${NC} .env file exists"
+        ((passed++))
+        
+        # Check AI Integration keys (shared by Dashboard and Stream Bot)
+        if grep -q "^AI_INTEGRATIONS_OPENAI_API_KEY=" .env && [ -n "$(grep "^AI_INTEGRATIONS_OPENAI_API_KEY=" .env | cut -d'=' -f2)" ]; then
+            echo -e "${GREEN}✓${NC} AI_INTEGRATIONS_OPENAI_API_KEY is set"
+            ((passed++))
+        else
+            echo -e "${RED}✗${NC} AI_INTEGRATIONS_OPENAI_API_KEY is missing or empty"
+            ((failed++))
+        fi
+        
+        if grep -q "^AI_INTEGRATIONS_OPENAI_BASE_URL=" .env && [ -n "$(grep "^AI_INTEGRATIONS_OPENAI_BASE_URL=" .env | cut -d'=' -f2)" ]; then
+            echo -e "${GREEN}✓${NC} AI_INTEGRATIONS_OPENAI_BASE_URL is set"
+            ((passed++))
+        else
+            echo -e "${YELLOW}⚠${NC} AI_INTEGRATIONS_OPENAI_BASE_URL is missing (will use default)"
+            ((warnings++))
+        fi
+        
+        # Check database URL
+        if grep -q "^DATABASE_URL=" .env && [ -n "$(grep "^DATABASE_URL=" .env | cut -d'=' -f2)" ]; then
+            echo -e "${GREEN}✓${NC} DATABASE_URL is set"
+            ((passed++))
+        else
+            echo -e "${RED}✗${NC} DATABASE_URL is missing or empty"
+            ((failed++))
+        fi
+        
+        # Check session secrets
+        if grep -q "^SESSION_SECRET=" .env && [ -n "$(grep "^SESSION_SECRET=" .env | cut -d'=' -f2)" ]; then
+            echo -e "${GREEN}✓${NC} SESSION_SECRET is set"
+            ((passed++))
+        else
+            echo -e "${RED}✗${NC} SESSION_SECRET is missing or empty"
+            ((failed++))
+        fi
+    else
+        echo -e "${RED}✗${NC} .env file not found"
+        echo -e "${YELLOW}  → Run option 9 to generate .env file${NC}"
+        ((failed++))
+    fi
+    
+    echo ""
+    
+    # Test 2: Database Connectivity
+    echo -e "${BOLD}TEST 2: Database Connectivity${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    if docker ps --filter "name=discord-bot-db" --filter "status=running" | grep -q "discord-bot-db"; then
+        echo -e "${GREEN}✓${NC} PostgreSQL container is running"
+        ((passed++))
+        
+        # Try to connect to database
+        if docker exec discord-bot-db psql -U postgres -c "SELECT 1" >/dev/null 2>&1; then
+            echo -e "${GREEN}✓${NC} PostgreSQL is accepting connections"
+            ((passed++))
+            
+            # Check if Jarvis database exists
+            if docker exec discord-bot-db psql -U postgres -lqt | cut -d \| -f 1 | grep -qw "jarvis"; then
+                echo -e "${GREEN}✓${NC} Jarvis database exists"
+                ((passed++))
+            else
+                echo -e "${YELLOW}⚠${NC} Jarvis database not found"
+                ((warnings++))
+            fi
+        else
+            echo -e "${RED}✗${NC} Cannot connect to PostgreSQL"
+            ((failed++))
+        fi
+    else
+        echo -e "${RED}✗${NC} PostgreSQL container is not running"
+        ((failed++))
+    fi
+    
+    echo ""
+    
+    # Test 3: Redis Connectivity
+    echo -e "${BOLD}TEST 3: Redis Connectivity${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    if docker ps --filter "name=homelab-redis" --filter "status=running" | grep -q "homelab-redis"; then
+        echo -e "${GREEN}✓${NC} Redis container is running"
+        ((passed++))
+        
+        # Try to ping Redis
+        if docker exec homelab-redis redis-cli ping 2>/dev/null | grep -q "PONG"; then
+            echo -e "${GREEN}✓${NC} Redis is responding to ping"
+            ((passed++))
+        else
+            echo -e "${RED}✗${NC} Redis is not responding"
+            ((failed++))
+        fi
+    else
+        echo -e "${RED}✗${NC} Redis container is not running"
+        ((failed++))
+    fi
+    
+    echo ""
+    
+    # Test 4: AI Services Health
+    echo -e "${BOLD}TEST 4: AI Services Health${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    # Check Dashboard AI
+    if docker ps --filter "name=homelab-dashboard" --filter "status=running" | grep -q "homelab-dashboard"; then
+        echo -e "${GREEN}✓${NC} Dashboard container is running"
+        ((passed++))
+        
+        # Check if AI is enabled in dashboard
+        if docker exec homelab-dashboard env | grep -q "AI_INTEGRATIONS_OPENAI_API_KEY"; then
+            echo -e "${GREEN}✓${NC} Dashboard has AI_INTEGRATIONS_OPENAI_API_KEY"
+            ((passed++))
+        else
+            echo -e "${YELLOW}⚠${NC} Dashboard AI credentials not found in container env"
+            ((warnings++))
+        fi
+    else
+        echo -e "${YELLOW}⚠${NC} Dashboard container is not running"
+        ((warnings++))
+    fi
+    
+    # Check Stream Bot AI
+    if docker ps --filter "name=stream-bot" --filter "status=running" | grep -q "stream-bot"; then
+        echo -e "${GREEN}✓${NC} Stream Bot container is running"
+        ((passed++))
+        
+        # Check if AI is enabled in stream-bot
+        if docker exec stream-bot env | grep -q "AI_INTEGRATIONS_OPENAI_API_KEY"; then
+            echo -e "${GREEN}✓${NC} Stream Bot has AI_INTEGRATIONS_OPENAI_API_KEY"
+            ((passed++))
+        else
+            echo -e "${YELLOW}⚠${NC} Stream Bot AI credentials not found in container env"
+            ((warnings++))
+        fi
+    else
+        echo -e "${YELLOW}⚠${NC} Stream Bot container is not running"
+        ((warnings++))
+    fi
+    
+    echo ""
+    
+    # Test 5: Critical Services Status
+    echo -e "${BOLD}TEST 5: Critical Services Status${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    local services=("homelab-dashboard" "stream-bot" "caddy" "homelab-redis" "discord-bot-db" "homelab-minio")
+    local running_services=0
+    local total_services=${#services[@]}
+    
+    for service in "${services[@]}"; do
+        if docker ps --filter "name=$service" --filter "status=running" | grep -q "$service"; then
+            echo -e "${GREEN}✓${NC} $service is running"
+            ((running_services++))
+            ((passed++))
+        else
+            echo -e "${RED}✗${NC} $service is not running"
+            ((failed++))
+        fi
+    done
+    
+    echo ""
+    echo "Services running: $running_services/$total_services"
+    
+    echo ""
+    
+    # Test 6: Code-Server AI Extensions
+    echo -e "${BOLD}TEST 6: Code-Server AI Extensions${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    # Check if code-server is running
+    if docker ps --filter "name=code-server" --filter "status=running" | grep -q "code-server"; then
+        echo -e "${GREEN}✓${NC} Code-Server container is running"
+        ((passed++))
+        
+        # Check if AI extensions are recommended in config
+        if [ -f "config/code-server/extensions.json" ]; then
+            if grep -q "Continue.continue" config/code-server/extensions.json && \
+               grep -q "Codeium.codeium" config/code-server/extensions.json; then
+                echo -e "${GREEN}✓${NC} AI extensions configured in recommendations"
+                ((passed++))
+            else
+                echo -e "${YELLOW}⚠${NC} AI extensions not found in recommendations"
+                ((warnings++))
+            fi
+        else
+            echo -e "${YELLOW}⚠${NC} extensions.json not found"
+            ((warnings++))
+        fi
+        
+        # Check if AI extension settings are configured
+        if [ -f "config/code-server/settings.json" ]; then
+            if grep -q "continue.enableTabAutocomplete" config/code-server/settings.json || \
+               grep -q "codeium.enableCodeLens" config/code-server/settings.json; then
+                echo -e "${GREEN}✓${NC} AI extension settings configured"
+                ((passed++))
+            else
+                echo -e "${YELLOW}⚠${NC} AI extension settings not configured"
+                ((warnings++))
+            fi
+        else
+            echo -e "${YELLOW}⚠${NC} settings.json not found"
+            ((warnings++))
+        fi
+        
+        # Check if Continue.dev config exists
+        if [ -f "config/code-server/continue-config.json" ]; then
+            echo -e "${GREEN}✓${NC} Continue.dev configuration file exists"
+            ((passed++))
+        else
+            echo -e "${YELLOW}⚠${NC} Continue.dev config not found (optional)"
+            ((warnings++))
+        fi
+        
+        # Check AI extension installation status
+        INSTALLED_EXTENSIONS=$(docker exec code-server code-server --list-extensions 2>/dev/null | grep -E "continue|codeium|copilot" || echo "")
+        if [ -n "$INSTALLED_EXTENSIONS" ]; then
+            echo -e "${GREEN}✓${NC} AI extensions installed:"
+            echo "$INSTALLED_EXTENSIONS" | sed 's/^/    /'
+            ((passed++))
+        else
+            echo -e "${YELLOW}⚠${NC} No AI extensions installed yet (can be installed via UI)"
+            ((warnings++))
+        fi
+        
+        # Check Ollama connectivity for local AI models (optional)
+        if docker exec code-server curl -s -o /dev/null -w "%{http_code}" http://homelab-dashboard:11434/api/tags 2>/dev/null | grep -q "200"; then
+            echo -e "${GREEN}✓${NC} Ollama accessible from code-server (local AI available)"
+            ((passed++))
+        else
+            echo -e "${YELLOW}⚠${NC} Ollama not accessible (local AI models unavailable, cloud models still work)"
+            ((warnings++))
+        fi
+        
+    else
+        echo -e "${YELLOW}⚠${NC} Code-Server container is not running (optional service)"
+        ((warnings++))
+    fi
+    
+    echo ""
+    echo ""
+    
+    # Summary
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}${BLUE}  VERIFICATION SUMMARY${NC}"
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "  ${GREEN}Passed:${NC}   $passed tests"
+    echo -e "  ${YELLOW}Warnings:${NC} $warnings tests"
+    echo -e "  ${RED}Failed:${NC}   $failed tests"
+    echo ""
+    
+    if [ $failed -eq 0 ] && [ $warnings -eq 0 ]; then
+        echo -e "${BOLD}${GREEN}✅ ALL SYSTEMS GO! Deployment is ready for production!${NC}"
+        echo ""
+        echo "Your deployment is 'sock-knocking' ready! 🚀"
+        echo ""
+        echo "Next steps:"
+        echo "  • Access dashboard at configured domain"
+        echo "  • Test AI features (see docs/AI_FEATURES_VERIFICATION.md)"
+        echo "  • Monitor service logs for any issues"
+    elif [ $failed -eq 0 ]; then
+        echo -e "${BOLD}${YELLOW}⚠️  DEPLOYMENT READY WITH WARNINGS${NC}"
+        echo ""
+        echo "Your deployment is mostly ready, but review the warnings above."
+        echo ""
+        echo "Common warnings:"
+        echo "  • Optional services not running (plex, vnc, etc.)"
+        echo "  • Optional integrations not configured"
+        echo ""
+        echo "To proceed:"
+        echo "  • Review warnings and decide if action needed"
+        echo "  • Test critical features work correctly"
+    else
+        echo -e "${BOLD}${RED}❌ DEPLOYMENT HAS ISSUES - NOT READY${NC}"
+        echo ""
+        echo "Critical issues detected. Please fix the following:"
+        echo ""
+        echo "If environment variables are missing:"
+        echo "  → Run option 9 to generate/edit .env file"
+        echo ""
+        echo "If services are not running:"
+        echo "  → Run option 1 (Full Deploy) or option 3 (Rebuild & Deploy)"
+        echo ""
+        echo "If database issues:"
+        echo "  → Run option 7 (Check Database Status)"
+        echo "  → Run option 22 (Fix Stuck Database Migrations)"
+        echo ""
+        echo "For detailed AI feature testing:"
+        echo "  → See docs/AI_FEATURES_VERIFICATION.md"
+        echo "  → See docs/DEPLOYMENT_CHECKLIST.md"
+    fi
+    
+    echo ""
+    pause
+}
+
 # Pause helper
 pause() {
     echo ""
@@ -1594,6 +1985,8 @@ main() {
             19) check_sync_status ;;
             20) check_all_integrations ;;
             21) view_integration_guide ;;
+            22) fix_stuck_migrations ;;
+            23) run_deployment_verification ;;
             0) 
                 echo ""
                 echo -e "${GREEN}Goodbye! 👋${NC}"

@@ -36,7 +36,7 @@ class AIService:
             self.ollama = None
     
     def analyze_logs(self, logs: str, context: str = "") -> str:
-        if not self.enabled:
+        if not self.enabled or self.client is None:
             return "AI troubleshooting is not available. Please check API configuration."
         
         try:
@@ -70,7 +70,7 @@ Provide a clear, actionable response."""
             return f"Error analyzing logs: {str(e)}"
     
     def get_troubleshooting_advice(self, issue_description: str, service_name: str = "") -> str:
-        if not self.enabled:
+        if not self.enabled or self.client is None:
             return "AI troubleshooting is not available. Please check API configuration."
         
         try:
@@ -97,7 +97,7 @@ Provide specific troubleshooting steps and potential solutions."""
             return f"Error: {str(e)}"
     
     def chat(self, message: str, conversation_history: List[Dict] = None, model: str = "gpt-5") -> str:
-        if not self.enabled:
+        if not self.enabled or self.client is None:
             return "AI chat is not available. Please check API configuration."
         
         try:
@@ -191,7 +191,7 @@ Format your responses using Markdown for better readability:
             return
         
         # OpenAI streaming
-        if not self.enabled:
+        if not self.enabled or self.client is None:
             yield f"data: {json.dumps({'error': 'AI chat is not available. Please check API configuration.'})}\n\n"
             yield "data: [DONE]\n\n"
             return

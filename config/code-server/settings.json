@@ -44,5 +44,15 @@
   "prettier.semi": true,
   "prettier.trailingComma": "es5",
   "docker.enableDockerComposeLanguageService": true,
-  "docker.showStartPage": false
+  "docker.showStartPage": false,
+  "github.copilot.enable": {
+    "*": true,
+    "yaml": true,
+    "plaintext": false,
+    "markdown": true
+  },
+  "codeium.enableCodeLens": true,
+  "codeium.enableSearch": true,
+  "continue.telemetryEnabled": false,
+  "continue.enableTabAutocomplete": true
 }

@@ -20,6 +20,9 @@
     "mikestead.dotenv",
     "usernamehw.errorlens",
     "oderwat.indent-rainbow",
-    "PKief.material-icon-theme"
+    "PKief.material-icon-theme",
+    "Continue.continue",
+    "Codeium.codeium",
+    "GitHub.copilot"
   ]
 }

@@ -356,9 +356,11 @@ def create_database():
             logger.info(f"Created {db_type} database container: {container_name}")
             
             # Get container ID safely
-            container_id = container.id if hasattr(container, 'id') else 'unknown'
-            if isinstance(container_id, str) and len(container_id) > 12:
-                container_id = container_id[:12]
+            container_id: str = 'unknown'
+            if hasattr(container, 'id') and container.id:
+                container_id = str(container.id)
+                if len(container_id) > 12:
+                    container_id = container_id[:12]
             
             enhanced = personality.enhance_database_response(
                 success=True,
@@ -649,7 +651,7 @@ def conversational_query():
                 session.refresh(ai_session)
             
             # Get conversation history
-            conversation_history = ai_session.messages or []
+            conversation_history: list = list(ai_session.messages) if ai_session.messages else []
             
             # Add greeting for new sessions
             greeting = ""
@@ -657,7 +659,7 @@ def conversational_query():
                 greeting = personality.get_greeting() + " "
             
             # Add user message to history
-            user_msg = {
+            user_msg: dict = {
                 'role': 'user',
                 'content': message,
                 'timestamp': datetime.utcnow().isoformat()
@@ -666,8 +668,8 @@ def conversational_query():
             
             # Get AI response using conversation history
             # Extract just role and content for AI service
-            ai_messages = [{'role': msg['role'], 'content': msg['content']} 
-                          for msg in conversation_history if 'role' in msg and 'content' in msg]
+            ai_messages: list = [{'role': msg['role'], 'content': msg['content']} 
+                          for msg in conversation_history if isinstance(msg, dict) and 'role' in msg and 'content' in msg]
             
             response_text = ai_service.chat(message, ai_messages[:-1])
             
@@ -676,7 +678,7 @@ def conversational_query():
                 response_text = greeting + response_text
             
             # Add assistant response to history
-            assistant_msg = {
+            assistant_msg: dict = {
                 'role': 'assistant',
                 'content': response_text,
                 'timestamp': datetime.utcnow().isoformat()
@@ -749,12 +751,13 @@ def get_jarvis_status():
         }
         
         # Check Docker
-        try:
-            docker_client = docker.from_env()
-            docker_client.ping()
-            services['docker'] = True
-        except:
-            pass
+        if DOCKER_AVAILABLE and docker is not None:
+            try:
+                docker_client = docker.from_env()
+                docker_client.ping()
+                services['docker'] = True
+            except:
+                pass
         
         # Check Celery
         try:

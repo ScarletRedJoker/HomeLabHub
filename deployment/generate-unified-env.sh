@@ -151,7 +151,12 @@ SESSION_SECRET=$(get_or_generate "SESSION_SECRET" "Dashboard session secret" "GE
 DASHBOARD_API_KEY=$(get_or_generate "DASHBOARD_API_KEY" "Dashboard API key" "GENERATE" "generate_secret")
 WEB_USERNAME=$(get_or_generate "WEB_USERNAME" "Dashboard web login username" "PROMPT" "evin")
 WEB_PASSWORD=$(get_or_generate "WEB_PASSWORD" "Dashboard web login password" "PROMPT" "homelab")
-AI_INTEGRATIONS_OPENAI_API_KEY=$(get_or_generate "AI_INTEGRATIONS_OPENAI_API_KEY" "Dashboard-specific OpenAI key (leave empty to use shared)" "PROMPT" "")
+
+echo ""
+echo "=== OpenAI AI Integrations Configuration ==="
+echo "Both Dashboard (Jarvis) and Stream Bot use these shared AI Integration keys."
+echo "Get API key from: https://platform.openai.com/api-keys"
+AI_INTEGRATIONS_OPENAI_API_KEY=$(get_or_generate "AI_INTEGRATIONS_OPENAI_API_KEY" "OpenAI API Key (required for AI features)" "PROMPT" "")
 AI_INTEGRATIONS_OPENAI_BASE_URL=$(get_or_generate "AI_INTEGRATIONS_OPENAI_BASE_URL" "OpenAI base URL" "PROMPT" "https://api.openai.com/v1")
 
 DOCKER_HOST=$(get_or_generate "DOCKER_HOST" "Docker socket path" "PROMPT" "unix:///var/run/docker.sock")
@@ -164,6 +169,14 @@ ENABLE_SCRIPT_EXECUTION=$(get_or_generate "ENABLE_SCRIPT_EXECUTION" "Enable remo
 # Write to temp file
 cat >> "$TEMP_ENV" << EOF
 # ============================================
+# AI Integrations (Shared by Dashboard & Stream Bot)
+# ============================================
+# Both Dashboard (Jarvis) and Stream Bot use these keys for AI features
+# Get API key from: https://platform.openai.com/api-keys
+AI_INTEGRATIONS_OPENAI_API_KEY=${AI_INTEGRATIONS_OPENAI_API_KEY}
+AI_INTEGRATIONS_OPENAI_BASE_URL=${AI_INTEGRATIONS_OPENAI_BASE_URL}
+
+# ============================================
 # Homelab Dashboard (host.evindrake.net)
 # ============================================
 SESSION_SECRET=${SESSION_SECRET}
@@ -172,10 +185,6 @@ DASHBOARD_API_KEY=${DASHBOARD_API_KEY}
 # Web Login
 WEB_USERNAME=${WEB_USERNAME}
 WEB_PASSWORD=${WEB_PASSWORD}
-
-# Dashboard-specific OpenAI (optional - uses OPENAI_API_KEY if empty)
-AI_INTEGRATIONS_OPENAI_API_KEY=${AI_INTEGRATIONS_OPENAI_API_KEY}
-AI_INTEGRATIONS_OPENAI_BASE_URL=${AI_INTEGRATIONS_OPENAI_BASE_URL}
 
 # Docker & SSH Configuration
 DOCKER_HOST=${DOCKER_HOST}
@@ -223,10 +232,9 @@ ZONEEDIT_API_TOKEN=${ZONEEDIT_API_TOKEN}
 EOF
 
 # Collect StreamBot values (moved before Plex)
+# Note: StreamBot uses AI_INTEGRATIONS_OPENAI_API_KEY (shared with Dashboard)
 STREAMBOT_DB_PASSWORD=$(get_or_generate "STREAMBOT_DB_PASSWORD" "StreamBot database password" "GENERATE" "generate_password")
 STREAMBOT_SESSION_SECRET=$(get_or_generate "STREAMBOT_SESSION_SECRET" "StreamBot session secret" "GENERATE" "generate_hex_secret")
-STREAMBOT_OPENAI_API_KEY=$(get_or_generate "STREAMBOT_OPENAI_API_KEY" "StreamBot OpenAI key (leave empty to use shared OPENAI_API_KEY)" "PROMPT" "")
-STREAMBOT_OPENAI_BASE_URL=$(get_or_generate "STREAMBOT_OPENAI_BASE_URL" "OpenAI base URL" "PROMPT" "https://api.openai.com/v1")
 STREAMBOT_NODE_ENV=$(get_or_generate "STREAMBOT_NODE_ENV" "Node environment" "PROMPT" "production")
 STREAMBOT_PORT=$(get_or_generate "STREAMBOT_PORT" "Server port" "PROMPT" "5000")
 TWITCH_CLIENT_ID=$(get_or_generate "TWITCH_CLIENT_ID" "Twitch client ID (optional)" "PROMPT" "")
@@ -258,10 +266,9 @@ cat >> "$TEMP_ENV" << EOF
 # ============================================
 # Stream Bot (Snapple Facts AI - stream.rig-city.com)
 # ============================================
+# Note: Stream Bot uses AI_INTEGRATIONS_OPENAI_API_KEY (shared with Dashboard)
 STREAMBOT_DB_PASSWORD=${STREAMBOT_DB_PASSWORD}
 STREAMBOT_SESSION_SECRET=${STREAMBOT_SESSION_SECRET}
-STREAMBOT_OPENAI_API_KEY=${STREAMBOT_OPENAI_API_KEY}
-STREAMBOT_OPENAI_BASE_URL=${STREAMBOT_OPENAI_BASE_URL}
 STREAMBOT_NODE_ENV=${STREAMBOT_NODE_ENV}
 STREAMBOT_PORT=${STREAMBOT_PORT}
 
@@ -297,6 +304,42 @@ VNC_PASSWORD=${VNC_PASSWORD}
 VNC_USER=${VNC_USER}
 VNC_USER_PASSWORD=${VNC_USER_PASSWORD}
 NOVNC_URL=${NOVNC_URL}
+
+EOF
+
+# Collect Code-Server AI Extension values
+echo ""
+echo "=== Code-Server AI Extensions Configuration ==="
+echo "Code-Server supports AI coding assistants for enhanced development:"
+echo ""
+echo "Recommended FREE options:"
+echo "  1. Continue.dev - Open-source, supports local & cloud AI models"
+echo "     Get API key from: https://continue.dev (or use local Ollama)"
+echo "     Features: Chat, inline edits, works with GPT-4/Claude/local models"
+echo ""
+echo "  2. Codeium - Free forever for individuals, unlimited autocomplete"
+echo "     Sign up at: https://codeium.com"
+echo "     Features: Autocomplete, chat, search, 70+ languages"
+echo ""
+echo "  3. GitHub Copilot - \$10/month (premium quality)"
+echo "     Get token from: https://github.com/settings/copilot"
+echo ""
+echo "Leave blank to skip and install AI extensions manually later."
+CODEIUM_API_KEY=$(get_or_generate "CODEIUM_API_KEY" "Codeium API Key (optional, free at codeium.com)" "PROMPT" "")
+CONTINUE_API_KEY=$(get_or_generate "CONTINUE_API_KEY" "Continue.dev API Key (optional, or use local models)" "PROMPT" "")
+GITHUB_COPILOT_TOKEN=$(get_or_generate "GITHUB_COPILOT_TOKEN" "GitHub Copilot Token (optional, \$10/mo)" "PROMPT" "")
+
+# Write to temp file
+cat >> "$TEMP_ENV" << EOF
+# ============================================
+# Code-Server AI Extensions
+# ============================================
+# AI coding assistants for code-server web IDE
+# Free options: Continue.dev (supports local models) or Codeium
+# Premium: GitHub Copilot (\$10/month)
+CODEIUM_API_KEY=${CODEIUM_API_KEY}
+CONTINUE_API_KEY=${CONTINUE_API_KEY}
+GITHUB_COPILOT_TOKEN=${GITHUB_COPILOT_TOKEN}
 
 EOF
 
