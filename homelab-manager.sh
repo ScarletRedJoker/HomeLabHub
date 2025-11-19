@@ -60,6 +60,7 @@ show_menu() {
     echo -e "    ${GREEN}11)${NC} 🔍 View Service Logs"
     echo -e "    ${GREEN}12)${NC} 🏥 Health Check (all services)"
     echo -e "    ${GREEN}12a)${NC} 🌐 Check Docker Network Status"
+    echo -e "    ${GREEN}12b)${NC} 🔬 Run Lifecycle Diagnostics & Auto-Fix"
     echo -e "    ${GREEN}13)${NC} 🔧 Full Troubleshoot Mode"
     echo -e "    ${GREEN}13a)${NC} 📝 Format Caddyfile (fix formatting warnings)"
     echo ""
@@ -187,7 +188,19 @@ rebuild_deploy() {
     docker-compose -f docker-compose.unified.yml up -d --remove-orphans
     
     echo ""
-    echo -e "${GREEN}✓ Rebuild complete - All orphaned containers and old images cleaned up${NC}"
+    echo "Step 7: Waiting for services to initialize (15 seconds)..."
+    sleep 15
+    
+    echo ""
+    echo "Step 8: Running automatic diagnostics and fixes..."
+    if [ -f "./homelab-lifecycle-diagnostics.sh" ]; then
+        ./homelab-lifecycle-diagnostics.sh
+    else
+        echo -e "${YELLOW}⚠ Diagnostics script not found, skipping auto-fix${NC}"
+    fi
+    
+    echo ""
+    echo -e "${GREEN}✓ Rebuild complete - All lifecycle issues handled automatically${NC}"
     pause
 }
 
@@ -249,6 +262,24 @@ graceful_shutdown() {
     echo -e "${GREEN}✓ Graceful shutdown complete${NC}"
     echo ""
     echo "Safe to rebuild or redeploy now."
+    pause
+}
+
+# Run Lifecycle Diagnostics & Auto-Fix
+run_lifecycle_diagnostics() {
+    echo ""
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}${BLUE}  🔬 LIFECYCLE DIAGNOSTICS & AUTO-FIX${NC}"
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    
+    if [ -f "./homelab-lifecycle-diagnostics.sh" ]; then
+        ./homelab-lifecycle-diagnostics.sh
+    else
+        echo -e "${RED}✗ Diagnostics script not found at ./homelab-lifecycle-diagnostics.sh${NC}"
+        echo -e "${YELLOW}Please make sure the script exists in the project root${NC}"
+    fi
+    
     pause
 }
 
@@ -1394,6 +1425,7 @@ main() {
             11) view_logs ;;
             12) health_check ;;
             12a) check_docker_network ;;
+            12b) run_lifecycle_diagnostics ;;
             13) troubleshoot ;;
             13a) format_caddy ;;
             14) update_service ;;

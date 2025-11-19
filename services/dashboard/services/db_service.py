@@ -1,22 +1,24 @@
 import os
 import logging
 from contextlib import contextmanager
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, Engine
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import OperationalError
 from alembic import command
 from alembic.config import Config
 import sys
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 class DatabaseService:
     def __init__(self):
-        self.database_url = os.environ.get('JARVIS_DATABASE_URL')
+        self.database_url: Optional[str] = os.environ.get('JARVIS_DATABASE_URL')
+        self._engine: Optional[Engine] = None
+        self._session_factory: Optional[sessionmaker] = None
+        
         if not self.database_url:
             logger.warning("JARVIS_DATABASE_URL not set. Database features will be unavailable.")
-            self._engine = None
-            self._session_factory = None
             return
             
         try:
@@ -35,8 +37,8 @@ class DatabaseService:
             self._session_factory = None
     
     @property
-    def is_available(self):
-        return self._engine is not None
+    def is_available(self) -> bool:
+        return self._engine is not None and self._session_factory is not None
     
     def get_engine(self):
         if not self.is_available:
@@ -45,7 +47,7 @@ class DatabaseService:
     
     @contextmanager
     def get_session(self):
-        if not self.is_available:
+        if not self.is_available or self._session_factory is None:
             raise RuntimeError("Database service is not available. Check JARVIS_DATABASE_URL.")
         
         session = self._session_factory()
@@ -90,7 +92,7 @@ class DatabaseService:
             }
     
     def run_migrations(self, upgrade=True):
-        if not self.is_available:
+        if not self.is_available or not self.database_url:
             logger.warning("Skipping migrations: Database service not available")
             return False
         
@@ -105,6 +107,7 @@ class DatabaseService:
             alembic_cfg = Config(alembic_ini)
             alembic_cfg.set_main_option('script_location', os.path.join(dashboard_dir, 'alembic'))
             
+            # Set database URL for Alembic
             os.environ['JARVIS_DATABASE_URL'] = self.database_url
             
             if upgrade:
@@ -135,7 +138,7 @@ class DatabaseService:
             return False
     
     def get_migration_status(self):
-        if not self.is_available:
+        if not self.is_available or self._engine is None:
             return {
                 'available': False,
                 'current': None,

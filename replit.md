@@ -55,13 +55,23 @@ The Nebula Command Dashboard provides a comprehensive web-based interface for ma
 - ✅ **SSL certificates** - Auto-provisioning via Let's Encrypt through Caddy
 - ✅ **Auto-sync enabled** - Replit to Ubuntu sync every 5 minutes via cron
 
-### Post-Deployment Fixes (Latest)
+### Post-Deployment Fixes & Enhancements (Latest - November 19, 2025)
 - ✅ **Home Assistant reverse proxy** - Fixed WebSocket support, added X-Forwarded-Host header, increased timeouts for long-polling, added CORS for home.evindrake.net
 - ✅ **Stream Bot AI facts diversity** - Rewrote OpenAI prompt to generate diverse facts about life, the universe, science, history, nature, and weird phenomena (removed octopus fact example that was biasing results)
 - ✅ **Ollama port conflict** - Commented out Docker service to use host installation at localhost:11434
 - ✅ **Stream Bot favicon** - Already present at services/stream-bot/client/public/favicon.png
-- ✅ **Enhanced homelab-manager.sh** - Added automatic cleanup of orphaned containers and old images to rebuild_deploy() function (Step 3), preventing accumulation of stale resources
-- ⚠️ **Dashboard migration pending** - Database `homelab_jarvis` exists but Alembic schema migrations need to be run manually (automatic migrations failed on startup)
+- ✅ **Enhanced homelab-manager.sh with comprehensive lifecycle management:**
+  - Added automatic cleanup of orphaned containers and old images to rebuild_deploy() (Step 3)
+  - **NEW: Automatic diagnostics and fixes after rebuild (Step 8)** - Detects and fixes database migrations, orphaned resources, disk space, and more
+  - **NEW: Manual diagnostics option (12b)** - Run lifecycle diagnostics on-demand to detect and auto-fix common issues
+- ✅ **Fixed LSP type errors** - Added proper type hints to services/dashboard/services/db_service.py
+- ✅ **Comprehensive Lifecycle Diagnostics** - Created `homelab-lifecycle-diagnostics.sh` that automatically detects and fixes:
+  - Database migrations (runs Alembic migrations if needed)
+  - Orphaned containers cleanup
+  - Dangling Docker images removal
+  - Service health issues detection
+  - Disk space management
+  - Large log file rotation (>100MB)
 
 ### Production URLs
 - Dashboard: https://host.evindrake.net
