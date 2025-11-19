@@ -1,0 +1,186 @@
+metadata:
+  id: ghost-mysql
+  name: Ghost with MySQL
+  category: stack
+  description: "Complete Ghost blogging platform with MySQL database"
+  icon: "👻📦"
+  version: "latest"
+  author: "Marketplace"
+  tags: ["cms", "blog", "ghost", "mysql", "stack"]
+
+services:
+  - ghost
+  - mysql
+
+docker-compose:
+  version: '3.8'
+  
+  services:
+    mysql:
+      image: mysql:8.0
+      container_name: "{{ STACK_NAME }}-mysql"
+      restart: always
+      environment:
+        MYSQL_ROOT_PASSWORD: "{{ MYSQL_ROOT_PASSWORD }}"
+        MYSQL_DATABASE: "{{ DB_NAME }}"
+        MYSQL_USER: "{{ DB_USER }}"
+        MYSQL_PASSWORD: "{{ DB_PASSWORD }}"
+      volumes:
+        - "{{ DATA_DIR }}/mysql:/var/lib/mysql"
+      networks:
+        - "{{ NETWORK }}"
+      command: --default-authentication-plugin=mysql_native_password
+      healthcheck:
+        test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u{{ DB_USER }}", "-p{{ DB_PASSWORD }}"]
+        interval: 30s
+        timeout: 10s
+        retries: 5
+    
+    ghost:
+      image: ghost:latest
+      container_name: "{{ STACK_NAME }}-ghost"
+      restart: always
+      depends_on:
+        - mysql
+      ports:
+        - "{{ PORT }}:2368"
+      environment:
+        database__client: mysql
+        database__connection__host: "{{ STACK_NAME }}-mysql"
+        database__connection__user: "{{ DB_USER }}"
+        database__connection__password: "{{ DB_PASSWORD }}"
+        database__connection__database: "{{ DB_NAME }}"
+        url: "{{ SITE_URL }}"
+        NODE_ENV: production
+      volumes:
+        - "{{ DATA_DIR }}/ghost/content:/var/lib/ghost/content"
+      networks:
+        - "{{ NETWORK }}"
+  
+  networks:
+    homelab:
+      external: true
+
+configuration:
+  variables:
+    - name: STACK_NAME
+      label: "Stack Name"
+      type: string
+      default: "ghost-stack"
+      required: true
+      validation: "^[a-z0-9-]+$"
+    
+    - name: PORT
+      label: "Ghost Port"
+      type: number
+      default: 8081
+      required: true
+    
+    - name: DB_NAME
+      label: "Database Name"
+      type: string
+      default: "ghost_db"
+      required: true
+    
+    - name: DB_USER
+      label: "Database User"
+      type: string
+      default: "ghost"
+      required: true
+    
+    - name: DB_PASSWORD
+      label: "Database Password"
+      type: password
+      required: true
+      generate: true
+    
+    - name: MYSQL_ROOT_PASSWORD
+      label: "MySQL Root Password"
+      type: password
+      required: true
+      generate: true
+    
+    - name: SITE_URL
+      label: "Site URL"
+      type: string
+      default: "http://localhost:8081"
+      required: true
+    
+    - name: DATA_DIR
+      label: "Data Directory"
+      type: string
+      default: "/var/lib/ghost-stack"
+      required: true
+    
+    - name: NETWORK
+      label: "Docker Network"
+      type: string
+      default: "homelab"
+      required: true
+    
+    - name: DOMAIN
+      label: "Domain (optional)"
+      type: string
+      required: false
+
+setup:
+  steps:
+    - name: "Create data directories"
+      action: create_directories
+      params:
+        paths:
+          - "{{ DATA_DIR }}/mysql"
+          - "{{ DATA_DIR }}/ghost/content"
+    
+    - name: "Start MySQL first"
+      action: start_service
+      service: "{{ STACK_NAME }}-mysql"
+      wait_for_healthy: true
+    
+    - name: "Start Ghost"
+      action: start_service
+      service: "{{ STACK_NAME }}-ghost"
+    
+    - name: "Configure Caddy reverse proxy"
+      action: update_caddyfile
+      params:
+        domain: "{{ DOMAIN }}"
+        target: "http://{{ STACK_NAME }}-ghost:2368"
+
+health_check:
+  endpoint: "http://localhost:{{ PORT }}"
+  interval: 30s
+  timeout: 10s
+  retries: 5
+
+documentation:
+  readme: |
+    # Ghost + MySQL Stack
+    
+    Access Ghost at: {{ SITE_URL }}
+    Admin panel: {{ SITE_URL }}/ghost
+    
+    ## Services:
+    - Ghost: {{ STACK_NAME }}-ghost
+    - MySQL: {{ STACK_NAME }}-mysql
+    
+    ## Database Connection:
+    - Database: {{ DB_NAME }}
+    - User: {{ DB_USER }}
+    - Password: {{ DB_PASSWORD }}
+    - Root Password: {{ MYSQL_ROOT_PASSWORD }}
+    
+    ## Next Steps:
+    1. Navigate to {{ SITE_URL }}/ghost
+    2. Create your admin account
+    3. Configure your site settings
+    4. Start publishing content!
+    
+    ## Data Location:
+    {{ DATA_DIR }}
+  
+  links:
+    - name: "Ghost Documentation"
+      url: "https://ghost.org/docs/"
+    - name: "Ghost Themes"
+      url: "https://ghost.org/themes/"

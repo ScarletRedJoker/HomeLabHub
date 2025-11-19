@@ -1,0 +1,146 @@
+metadata:
+  id: code-server
+  name: Code Server
+  category: development
+  description: "VS Code in the browser - code anywhere"
+  icon: "💻"
+  version: "latest"
+  author: "Coder"
+  tags: ["ide", "development", "vscode", "coding"]
+  
+docker:
+  image: "linuxserver/code-server:latest"
+  container_name: "{{ APP_NAME }}"
+  restart: always
+  
+  ports:
+    - "{{ PORT }}:8443"
+  
+  environment:
+    PUID: "{{ PUID }}"
+    PGID: "{{ PGID }}"
+    TZ: "{{ TIMEZONE }}"
+    PASSWORD: "{{ PASSWORD }}"
+    SUDO_PASSWORD: "{{ SUDO_PASSWORD }}"
+    DEFAULT_WORKSPACE: "{{ WORKSPACE }}"
+  
+  volumes:
+    - "{{ CONFIG_DIR }}:/config"
+    - "{{ WORKSPACE }}:/workspace"
+  
+  networks:
+    - "{{ NETWORK }}"
+
+requirements:
+  database: none
+  storage: "5GB"
+  memory: "1GB"
+  cpu: "2"
+
+configuration:
+  variables:
+    - name: APP_NAME
+      label: "Application Name"
+      type: string
+      default: "code-server"
+      required: true
+      validation: "^[a-z0-9-]+$"
+    
+    - name: PORT
+      label: "Port"
+      type: number
+      default: 8443
+      required: true
+    
+    - name: PUID
+      label: "User ID"
+      type: number
+      default: 1000
+      required: true
+    
+    - name: PGID
+      label: "Group ID"
+      type: number
+      default: 1000
+      required: true
+    
+    - name: TIMEZONE
+      label: "Timezone"
+      type: string
+      default: "America/New_York"
+      required: true
+    
+    - name: PASSWORD
+      label: "Access Password"
+      type: password
+      required: true
+      generate: true
+    
+    - name: SUDO_PASSWORD
+      label: "Sudo Password"
+      type: password
+      required: true
+      generate: true
+    
+    - name: CONFIG_DIR
+      label: "Config Directory"
+      type: string
+      default: "/var/lib/code-server/config"
+      required: true
+    
+    - name: WORKSPACE
+      label: "Workspace Directory"
+      type: string
+      default: "/var/lib/code-server/workspace"
+      required: true
+    
+    - name: NETWORK
+      label: "Docker Network"
+      type: string
+      default: "homelab"
+      required: true
+
+setup:
+  steps:
+    - name: "Create directories"
+      action: create_directories
+      params:
+        paths:
+          - "{{ CONFIG_DIR }}"
+          - "{{ WORKSPACE }}"
+    
+    - name: "Configure Caddy reverse proxy"
+      action: update_caddyfile
+      params:
+        domain: "{{ DOMAIN }}"
+        target: "http://{{ APP_NAME }}:8443"
+
+health_check:
+  endpoint: "http://localhost:{{ PORT }}"
+  interval: 30s
+  timeout: 10s
+  retries: 3
+
+documentation:
+  readme: |
+    # Code Server Installation
+    
+    Access Code Server at: http://localhost:{{ PORT }}
+    
+    Password: {{ PASSWORD }}
+    Sudo Password: {{ SUDO_PASSWORD }}
+    
+    ## Features:
+    - Full VS Code experience in your browser
+    - Install extensions from the marketplace
+    - Terminal access with sudo support
+    - Git integration
+    
+    ## Workspace:
+    Your workspace is located at: {{ WORKSPACE }}
+  
+  links:
+    - name: "Code Server Documentation"
+      url: "https://coder.com/docs/code-server"
+    - name: "VS Code Extensions"
+      url: "https://marketplace.visualstudio.com/"

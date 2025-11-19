@@ -1,0 +1,139 @@
+metadata:
+  id: ghost
+  name: Ghost
+  category: cms
+  description: "Modern publishing platform for blogs and content creators"
+  icon: "👻"
+  version: "latest"
+  author: "Ghost Foundation"
+  tags: ["cms", "blog", "publishing", "nodejs"]
+  
+docker:
+  image: "ghost:latest"
+  container_name: "{{ APP_NAME }}"
+  restart: always
+  
+  ports:
+    - "{{ PORT }}:2368"
+  
+  environment:
+    database__client: "{{ DB_CLIENT }}"
+    database__connection__host: "{{ DB_HOST }}"
+    database__connection__user: "{{ DB_USER }}"
+    database__connection__password: "{{ DB_PASS }}"
+    database__connection__database: "{{ DB_NAME }}"
+    url: "{{ SITE_URL }}"
+    NODE_ENV: "production"
+  
+  volumes:
+    - "{{ DATA_DIR }}/content:/var/lib/ghost/content"
+  
+  networks:
+    - "{{ NETWORK }}"
+
+requirements:
+  database: mysql
+  storage: "2GB"
+  memory: "512MB"
+  cpu: "1"
+
+configuration:
+  variables:
+    - name: APP_NAME
+      label: "Application Name"
+      type: string
+      default: "ghost"
+      required: true
+      validation: "^[a-z0-9-]+$"
+    
+    - name: PORT
+      label: "Port"
+      type: number
+      default: 8081
+      required: true
+    
+    - name: DB_CLIENT
+      label: "Database Client"
+      type: string
+      default: "mysql"
+      required: true
+    
+    - name: DB_HOST
+      label: "Database Host"
+      type: string
+      default: "mysql"
+      required: true
+    
+    - name: DB_NAME
+      label: "Database Name"
+      type: string
+      default: "ghost_db"
+      required: true
+    
+    - name: DB_USER
+      label: "Database User"
+      type: string
+      default: "ghost"
+      required: true
+    
+    - name: DB_PASS
+      label: "Database Password"
+      type: password
+      required: true
+      generate: true
+    
+    - name: SITE_URL
+      label: "Site URL"
+      type: string
+      default: "http://localhost:8081"
+      required: true
+    
+    - name: DATA_DIR
+      label: "Data Directory"
+      type: string
+      default: "/var/lib/ghost"
+      required: true
+    
+    - name: NETWORK
+      label: "Docker Network"
+      type: string
+      default: "homelab"
+      required: true
+
+setup:
+  steps:
+    - name: "Create database"
+      action: create_database
+      params:
+        name: "{{ DB_NAME }}"
+        user: "{{ DB_USER }}"
+        password: "{{ DB_PASS }}"
+    
+    - name: "Configure Caddy reverse proxy"
+      action: update_caddyfile
+      params:
+        domain: "{{ DOMAIN }}"
+        target: "http://{{ APP_NAME }}:2368"
+
+health_check:
+  endpoint: "http://localhost:{{ PORT }}"
+  interval: 30s
+  timeout: 10s
+  retries: 3
+
+documentation:
+  readme: |
+    # Ghost Installation
+    
+    Access your Ghost blog at: {{ SITE_URL }}
+    
+    ## Setup:
+    1. Navigate to {{ SITE_URL }}/ghost
+    2. Create your admin account
+    3. Start publishing!
+  
+  links:
+    - name: "Ghost Documentation"
+      url: "https://ghost.org/docs/"
+    - name: "Ghost Themes"
+      url: "https://ghost.org/themes/"

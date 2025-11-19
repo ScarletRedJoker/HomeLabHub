@@ -302,3 +302,135 @@ def get_categories():
     except Exception as e:
         logger.error(f"Error getting categories: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# Template-based Marketplace Routes (YAML/JSON configs)
+@marketplace_bp.route('/templates', methods=['GET'])
+@require_auth
+def list_templates():
+    """List all available templates from YAML configs"""
+    try:
+        category = request.args.get('category')
+        templates = marketplace_service.list_templates(category)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'templates': templates,
+                'count': len(templates)
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error listing templates: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@marketplace_bp.route('/templates/<category>/<template_id>', methods=['GET'])
+@require_auth
+def get_template(category, template_id):
+    """Get a specific template with all details"""
+    try:
+        template = marketplace_service.load_template(category, template_id)
+        
+        # Validate template structure
+        is_valid, errors = marketplace_service.validate_template(template)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'template': template,
+                'valid': is_valid,
+                'errors': errors if not is_valid else []
+            }
+        })
+    except FileNotFoundError as e:
+        return jsonify({'success': False, 'message': str(e)}), 404
+    except Exception as e:
+        logger.error(f"Error getting template: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@marketplace_bp.route('/templates/<category>/<template_id>/validate', methods=['POST'])
+@require_auth
+def validate_template_config(category, template_id):
+    """Validate user-provided variables against template requirements"""
+    try:
+        template = marketplace_service.load_template(category, template_id)
+        variables = request.get_json() or {}
+        
+        # Validate variables
+        is_valid, errors = marketplace_service.validate_variables(template, variables)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'valid': is_valid,
+                'errors': errors
+            }
+        })
+    except FileNotFoundError as e:
+        return jsonify({'success': False, 'message': str(e)}), 404
+    except Exception as e:
+        logger.error(f"Error validating template config: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@marketplace_bp.route('/templates/<category>/<template_id>/compose', methods=['POST'])
+@require_auth
+def generate_compose(category, template_id):
+    """Generate docker-compose.yml from template with provided variables"""
+    try:
+        template = marketplace_service.load_template(category, template_id)
+        variables = request.get_json() or {}
+        
+        # Validate variables first
+        is_valid, errors = marketplace_service.validate_variables(template, variables)
+        if not is_valid:
+            return jsonify({
+                'success': False,
+                'message': 'Validation failed',
+                'errors': errors
+            }), 400
+        
+        # Render template with variables
+        rendered_template = marketplace_service.render_template(template, variables)
+        
+        # Generate docker-compose.yml
+        compose_yaml = marketplace_service.generate_docker_compose(rendered_template)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'docker_compose': compose_yaml,
+                'rendered_template': rendered_template
+            }
+        })
+    except FileNotFoundError as e:
+        return jsonify({'success': False, 'message': str(e)}), 404
+    except Exception as e:
+        logger.error(f"Error generating compose: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@marketplace_bp.route('/templates/<category>/<template_id>/render', methods=['POST'])
+@require_auth
+def render_template(category, template_id):
+    """Render template with variables (preview without deploying)"""
+    try:
+        template = marketplace_service.load_template(category, template_id)
+        variables = request.get_json() or {}
+        
+        # Render template with variables
+        rendered_template = marketplace_service.render_template(template, variables)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'rendered_template': rendered_template
+            }
+        })
+    except FileNotFoundError as e:
+        return jsonify({'success': False, 'message': str(e)}), 404
+    except Exception as e:
+        logger.error(f"Error rendering template: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500

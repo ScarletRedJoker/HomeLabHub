@@ -1,0 +1,133 @@
+metadata:
+  id: mongodb
+  name: MongoDB
+  category: database
+  description: "Document-oriented NoSQL database"
+  icon: "🍃"
+  version: "7.0"
+  author: "MongoDB, Inc."
+  tags: ["database", "nosql", "document", "mongodb"]
+  
+docker:
+  image: "mongo:7.0"
+  container_name: "{{ DB_NAME }}"
+  restart: always
+  
+  environment:
+    MONGO_INITDB_ROOT_USERNAME: "{{ ROOT_USER }}"
+    MONGO_INITDB_ROOT_PASSWORD: "{{ ROOT_PASS }}"
+    MONGO_INITDB_DATABASE: "{{ DB_NAME }}"
+  
+  volumes:
+    - "{{ DATA_DIR }}/data:/data/db"
+    - "{{ DATA_DIR }}/configdb:/data/configdb"
+  
+  networks:
+    - "{{ NETWORK }}"
+  
+  ports:
+    - "{{ PORT }}:27017"
+
+requirements:
+  database: none
+  storage: "10GB"
+  memory: "512MB"
+  cpu: "2"
+
+configuration:
+  variables:
+    - name: DB_NAME
+      label: "Database Name"
+      type: string
+      default: "app_db"
+      required: true
+      validation: "^[a-z0-9_]+$"
+    
+    - name: ROOT_USER
+      label: "Root Username"
+      type: string
+      default: "admin"
+      required: true
+    
+    - name: ROOT_PASS
+      label: "Root Password"
+      type: password
+      required: true
+      generate: true
+    
+    - name: PORT
+      label: "Port"
+      type: number
+      default: 27017
+      required: true
+    
+    - name: DATA_DIR
+      label: "Data Directory"
+      type: string
+      default: "/var/lib/mongodb"
+      required: true
+    
+    - name: NETWORK
+      label: "Docker Network"
+      type: string
+      default: "homelab"
+      required: true
+
+setup:
+  steps:
+    - name: "Create data directories"
+      action: create_directories
+      params:
+        paths:
+          - "{{ DATA_DIR }}/data"
+          - "{{ DATA_DIR }}/configdb"
+    
+    - name: "Wait for MongoDB to be ready"
+      action: wait_for_healthy
+      container: "{{ DB_NAME }}"
+      timeout: 60
+
+health_check:
+  endpoint: "mongodb://{{ ROOT_USER }}:{{ ROOT_PASS }}@localhost:{{ PORT }}/{{ DB_NAME }}"
+  interval: 30s
+  timeout: 10s
+  retries: 3
+
+documentation:
+  readme: |
+    # MongoDB Database
+    
+    Connection details:
+    - Host: localhost
+    - Port: {{ PORT }}
+    - Database: {{ DB_NAME }}
+    - Root User: {{ ROOT_USER }}
+    - Root Password: {{ ROOT_PASS }}
+    
+    ## Connection String:
+    mongodb://{{ ROOT_USER }}:{{ ROOT_PASS }}@localhost:{{ PORT }}/{{ DB_NAME }}?authSource=admin
+    
+    ## Management:
+    - Use mongosh: `docker exec -it {{ DB_NAME }} mongosh -u {{ ROOT_USER }} -p {{ ROOT_PASS }} --authenticationDatabase admin`
+    - MongoDB Compass recommended for GUI management
+    
+    ## Common Commands:
+    - show dbs - List databases
+    - use {{ DB_NAME }} - Switch database
+    - show collections - List collections
+    - db.collection.find() - Query documents
+    
+    ## Features:
+    - Flexible schema
+    - Horizontal scalability
+    - Rich query language
+    - Aggregation framework
+    - GridFS for large files
+  
+  links:
+    - name: "MongoDB Documentation"
+      url: "https://docs.mongodb.com/"
+    - name: "MongoDB Compass"
+      url: "https://www.mongodb.com/products/compass"
+    - name: "MongoDB University"
+      url: "https://university.mongodb.com/"

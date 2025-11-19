@@ -1,0 +1,203 @@
+metadata:
+  id: nextcloud-postgres
+  name: Nextcloud with PostgreSQL
+  category: stack
+  description: "Complete Nextcloud file sync platform with PostgreSQL database"
+  icon: "☁️📦"
+  version: "latest"
+  author: "Marketplace"
+  tags: ["file-sync", "collaboration", "nextcloud", "postgresql", "stack"]
+
+services:
+  - nextcloud
+  - postgresql
+
+docker-compose:
+  version: '3.8'
+  
+  services:
+    postgres:
+      image: postgres:16-alpine
+      container_name: "{{ STACK_NAME }}-postgres"
+      restart: always
+      environment:
+        POSTGRES_USER: "{{ DB_USER }}"
+        POSTGRES_PASSWORD: "{{ DB_PASSWORD }}"
+        POSTGRES_DB: "{{ DB_NAME }}"
+        PGDATA: /var/lib/postgresql/data/pgdata
+      volumes:
+        - "{{ DATA_DIR }}/postgres:/var/lib/postgresql/data"
+      networks:
+        - "{{ NETWORK }}"
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U {{ DB_USER }} -d {{ DB_NAME }}"]
+        interval: 30s
+        timeout: 10s
+        retries: 5
+    
+    nextcloud:
+      image: nextcloud:latest
+      container_name: "{{ STACK_NAME }}-nextcloud"
+      restart: always
+      depends_on:
+        - postgres
+      ports:
+        - "{{ PORT }}:80"
+      environment:
+        POSTGRES_HOST: "{{ STACK_NAME }}-postgres"
+        POSTGRES_DB: "{{ DB_NAME }}"
+        POSTGRES_USER: "{{ DB_USER }}"
+        POSTGRES_PASSWORD: "{{ DB_PASSWORD }}"
+        NEXTCLOUD_ADMIN_USER: "{{ ADMIN_USER }}"
+        NEXTCLOUD_ADMIN_PASSWORD: "{{ ADMIN_PASSWORD }}"
+        NEXTCLOUD_TRUSTED_DOMAINS: "{{ TRUSTED_DOMAINS }}"
+      volumes:
+        - "{{ DATA_DIR }}/nextcloud/html:/var/www/html"
+        - "{{ DATA_DIR }}/nextcloud/data:/var/www/html/data"
+        - "{{ DATA_DIR }}/nextcloud/config:/var/www/html/config"
+      networks:
+        - "{{ NETWORK }}"
+  
+  networks:
+    homelab:
+      external: true
+
+configuration:
+  variables:
+    - name: STACK_NAME
+      label: "Stack Name"
+      type: string
+      default: "nextcloud-stack"
+      required: true
+      validation: "^[a-z0-9-]+$"
+    
+    - name: PORT
+      label: "Nextcloud Port"
+      type: number
+      default: 8082
+      required: true
+    
+    - name: DB_NAME
+      label: "Database Name"
+      type: string
+      default: "nextcloud_db"
+      required: true
+    
+    - name: DB_USER
+      label: "Database User"
+      type: string
+      default: "nextcloud"
+      required: true
+    
+    - name: DB_PASSWORD
+      label: "Database Password"
+      type: password
+      required: true
+      generate: true
+    
+    - name: ADMIN_USER
+      label: "Admin Username"
+      type: string
+      default: "admin"
+      required: true
+    
+    - name: ADMIN_PASSWORD
+      label: "Admin Password"
+      type: password
+      required: true
+      generate: true
+    
+    - name: TRUSTED_DOMAINS
+      label: "Trusted Domains"
+      type: string
+      default: "localhost"
+      required: true
+    
+    - name: DATA_DIR
+      label: "Data Directory"
+      type: string
+      default: "/var/lib/nextcloud-stack"
+      required: true
+    
+    - name: NETWORK
+      label: "Docker Network"
+      type: string
+      default: "homelab"
+      required: true
+    
+    - name: DOMAIN
+      label: "Domain (optional)"
+      type: string
+      required: false
+
+setup:
+  steps:
+    - name: "Create data directories"
+      action: create_directories
+      params:
+        paths:
+          - "{{ DATA_DIR }}/postgres"
+          - "{{ DATA_DIR }}/nextcloud/html"
+          - "{{ DATA_DIR }}/nextcloud/data"
+          - "{{ DATA_DIR }}/nextcloud/config"
+    
+    - name: "Start PostgreSQL first"
+      action: start_service
+      service: "{{ STACK_NAME }}-postgres"
+      wait_for_healthy: true
+    
+    - name: "Start Nextcloud"
+      action: start_service
+      service: "{{ STACK_NAME }}-nextcloud"
+    
+    - name: "Configure Caddy reverse proxy"
+      action: update_caddyfile
+      params:
+        domain: "{{ DOMAIN }}"
+        target: "http://{{ STACK_NAME }}-nextcloud:80"
+
+health_check:
+  endpoint: "http://localhost:{{ PORT }}/status.php"
+  interval: 30s
+  timeout: 10s
+  retries: 5
+
+documentation:
+  readme: |
+    # Nextcloud + PostgreSQL Stack
+    
+    Access Nextcloud at: http://localhost:{{ PORT }}
+    
+    ## Services:
+    - Nextcloud: {{ STACK_NAME }}-nextcloud
+    - PostgreSQL: {{ STACK_NAME }}-postgres
+    
+    ## Admin Credentials:
+    - Username: {{ ADMIN_USER }}
+    - Password: {{ ADMIN_PASSWORD }}
+    
+    ## Database Connection:
+    - Database: {{ DB_NAME }}
+    - User: {{ DB_USER }}
+    - Password: {{ DB_PASSWORD }}
+    
+    ## Next Steps:
+    1. Log in with admin credentials
+    2. Configure trusted domains
+    3. Install apps from the app store
+    4. Set up external storage (optional)
+    5. Configure user accounts
+    
+    ## Data Location:
+    {{ DATA_DIR }}
+    
+    ## Performance Tips:
+    - Enable Redis cache for better performance
+    - Configure background jobs
+    - Set up memory caching
+  
+  links:
+    - name: "Nextcloud Documentation"
+      url: "https://docs.nextcloud.com/"
+    - name: "Nextcloud Apps"
+      url: "https://apps.nextcloud.com/"

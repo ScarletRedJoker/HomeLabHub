@@ -8,6 +8,8 @@ import subprocess
 import secrets
 import string
 import re
+import yaml
+from pathlib import Path
 from typing import Dict, Any, Optional, Tuple, List
 from datetime import datetime
 import docker
@@ -23,6 +25,7 @@ class MarketplaceService:
     
     def __init__(self, caddyfile_path: str = 'Caddyfile'):
         self.caddy_manager = CaddyManager(caddyfile_path)
+        self.template_dir = Path(__file__).parent.parent / 'templates' / 'marketplace'
         try:
             self.docker_client = docker.from_env()
         except Exception as e:
@@ -525,3 +528,191 @@ class MarketplaceService:
         except Exception as e:
             logger.error(f"Error checking app health: {e}")
             return False, str(e), "unknown"
+    
+    def load_template(self, category: str, template_id: str) -> Dict[str, Any]:
+        """Load and parse a YAML template"""
+        try:
+            template_path = self.template_dir / category / f"{template_id}.yaml"
+            
+            if not template_path.exists():
+                raise FileNotFoundError(f"Template {category}/{template_id} not found")
+            
+            with open(template_path, 'r') as f:
+                return yaml.safe_load(f)
+        except Exception as e:
+            logger.error(f"Error loading template {category}/{template_id}: {e}")
+            raise
+    
+    def list_templates(self, category: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List all available templates"""
+        templates = []
+        
+        try:
+            categories = [category] if category else ['apps', 'databases', 'stacks']
+            
+            for cat in categories:
+                cat_path = self.template_dir / cat
+                if cat_path.exists():
+                    for file in cat_path.glob('*.yaml'):
+                        try:
+                            template = self.load_template(cat, file.stem)
+                            templates.append({
+                                'id': template['metadata']['id'],
+                                'name': template['metadata']['name'],
+                                'category': cat,
+                                'description': template['metadata']['description'],
+                                'icon': template['metadata']['icon'],
+                                'version': template['metadata'].get('version', 'latest'),
+                                'author': template['metadata'].get('author', ''),
+                                'tags': template['metadata'].get('tags', [])
+                            })
+                        except Exception as e:
+                            logger.warning(f"Error loading template {file}: {e}")
+                            continue
+            
+            return templates
+        except Exception as e:
+            logger.error(f"Error listing templates: {e}")
+            return []
+    
+    def validate_template(self, template: Dict[str, Any]) -> Tuple[bool, List[str]]:
+        """Validate template structure"""
+        errors = []
+        
+        # Check required top-level fields
+        required_fields = ['metadata', 'docker', 'configuration']
+        for field in required_fields:
+            if field not in template:
+                errors.append(f"Missing required field: {field}")
+        
+        # Check metadata fields
+        if 'metadata' in template:
+            metadata_required = ['id', 'name', 'category', 'description']
+            for field in metadata_required:
+                if field not in template['metadata']:
+                    errors.append(f"Missing metadata field: {field}")
+        
+        # Check docker fields
+        if 'docker' in template:
+            docker_required = ['image', 'container_name']
+            for field in docker_required:
+                if field not in template['docker']:
+                    errors.append(f"Missing docker field: {field}")
+        
+        # Check configuration
+        if 'configuration' in template:
+            if 'variables' not in template['configuration']:
+                errors.append("Missing configuration.variables")
+        
+        return len(errors) == 0, errors
+    
+    def render_template(self, template: Dict[str, Any], variables: Dict[str, Any]) -> Dict[str, Any]:
+        """Replace {{ VAR }} placeholders with actual values"""
+        def replace_vars(obj: Any) -> Any:
+            if isinstance(obj, str):
+                # Replace {{ VAR }} with values
+                for key, value in variables.items():
+                    obj = obj.replace(f"{{{{ {key} }}}}", str(value))
+                return obj
+            elif isinstance(obj, dict):
+                return {k: replace_vars(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [replace_vars(item) for item in obj]
+            return obj
+        
+        return replace_vars(template)
+    
+    def generate_docker_compose(self, template: Dict[str, Any]) -> str:
+        """Generate docker-compose.yml from template"""
+        try:
+            # Check if this is a stack template (has docker-compose key)
+            if 'docker-compose' in template:
+                compose = template['docker-compose']
+            else:
+                # Generate compose for single service
+                compose = {
+                    'version': '3.8',
+                    'services': {
+                        template['docker']['container_name']: {
+                            'image': template['docker']['image'],
+                            'container_name': template['docker']['container_name'],
+                            'restart': template['docker'].get('restart', 'unless-stopped'),
+                        }
+                    }
+                }
+                
+                # Add optional fields if they exist
+                service = compose['services'][template['docker']['container_name']]
+                
+                if 'environment' in template['docker']:
+                    service['environment'] = template['docker']['environment']
+                
+                if 'volumes' in template['docker']:
+                    service['volumes'] = template['docker']['volumes']
+                
+                if 'ports' in template['docker']:
+                    service['ports'] = template['docker']['ports']
+                
+                if 'networks' in template['docker']:
+                    service['networks'] = template['docker']['networks']
+                    compose['networks'] = {
+                        network: {'external': True}
+                        for network in template['docker']['networks']
+                    }
+                
+                if 'command' in template['docker']:
+                    service['command'] = template['docker']['command']
+            
+            return yaml.dump(compose, default_flow_style=False, sort_keys=False)
+        except Exception as e:
+            logger.error(f"Error generating docker-compose: {e}")
+            raise
+    
+    def validate_variables(self, template: Dict[str, Any], variables: Dict[str, Any]) -> Tuple[bool, List[str]]:
+        """Validate user-provided variables against template requirements"""
+        errors = []
+        
+        if 'configuration' not in template or 'variables' not in template['configuration']:
+            return True, []
+        
+        for var_def in template['configuration']['variables']:
+            var_name = var_def['name']
+            
+            # Check required fields
+            if var_def.get('required', False) and var_name not in variables:
+                errors.append(f"{var_def.get('label', var_name)} is required")
+                continue
+            
+            # Validate type if variable is provided
+            if var_name in variables:
+                value = variables[var_name]
+                var_type = var_def.get('type', 'string')
+                
+                if var_type == 'number' and not isinstance(value, (int, float)):
+                    try:
+                        int(value)
+                    except (ValueError, TypeError):
+                        errors.append(f"{var_def.get('label', var_name)} must be a number")
+                
+                elif var_type == 'boolean' and not isinstance(value, bool):
+                    if str(value).lower() not in ['true', 'false', '1', '0']:
+                        errors.append(f"{var_def.get('label', var_name)} must be true or false")
+                
+                elif var_type == 'email' and isinstance(value, str):
+                    import re
+                    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+                    if not re.match(email_pattern, value):
+                        errors.append(f"{var_def.get('label', var_name)} must be a valid email address")
+                
+                # Validate regex pattern if specified
+                if 'validation' in var_def and isinstance(value, str):
+                    pattern = var_def['validation']
+                    if pattern != 'email':  # email already validated above
+                        try:
+                            import re
+                            if not re.match(pattern, value):
+                                errors.append(f"{var_def.get('label', var_name)} format is invalid")
+                        except re.error:
+                            logger.warning(f"Invalid regex pattern in template: {pattern}")
+        
+        return len(errors) == 0, errors

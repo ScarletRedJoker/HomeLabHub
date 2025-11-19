@@ -1,0 +1,154 @@
+metadata:
+  id: jellyfin
+  name: Jellyfin
+  category: media
+  description: "Free software media system - alternative to Plex"
+  icon: "🎥"
+  version: "latest"
+  author: "Jellyfin Project"
+  tags: ["media", "streaming", "movies", "tv", "music"]
+  
+docker:
+  image: "jellyfin/jellyfin:latest"
+  container_name: "{{ APP_NAME }}"
+  restart: always
+  
+  ports:
+    - "{{ PORT }}:8096"
+    - "8920:8920"
+    - "7359:7359/udp"
+    - "1900:1900/udp"
+  
+  environment:
+    PUID: "{{ PUID }}"
+    PGID: "{{ PGID }}"
+    TZ: "{{ TIMEZONE }}"
+    JELLYFIN_PublishedServerUrl: "{{ SERVER_URL }}"
+  
+  volumes:
+    - "{{ CONFIG_DIR }}:/config"
+    - "{{ CACHE_DIR }}:/cache"
+    - "{{ MEDIA_DIR }}:/media"
+  
+  networks:
+    - "{{ NETWORK }}"
+
+requirements:
+  database: none
+  storage: "50GB"
+  memory: "2GB"
+  cpu: "4"
+
+configuration:
+  variables:
+    - name: APP_NAME
+      label: "Application Name"
+      type: string
+      default: "jellyfin"
+      required: true
+      validation: "^[a-z0-9-]+$"
+    
+    - name: PORT
+      label: "Web UI Port"
+      type: number
+      default: 8096
+      required: true
+    
+    - name: PUID
+      label: "User ID"
+      type: number
+      default: 1000
+      required: true
+    
+    - name: PGID
+      label: "Group ID"
+      type: number
+      default: 1000
+      required: true
+    
+    - name: TIMEZONE
+      label: "Timezone"
+      type: string
+      default: "America/New_York"
+      required: true
+    
+    - name: SERVER_URL
+      label: "Public Server URL"
+      type: string
+      default: "http://localhost:8096"
+      required: false
+    
+    - name: CONFIG_DIR
+      label: "Config Directory"
+      type: string
+      default: "/var/lib/jellyfin/config"
+      required: true
+    
+    - name: CACHE_DIR
+      label: "Cache Directory"
+      type: string
+      default: "/var/lib/jellyfin/cache"
+      required: true
+    
+    - name: MEDIA_DIR
+      label: "Media Directory"
+      type: string
+      default: "/media"
+      required: true
+    
+    - name: NETWORK
+      label: "Docker Network"
+      type: string
+      default: "homelab"
+      required: true
+
+setup:
+  steps:
+    - name: "Create directories"
+      action: create_directories
+      params:
+        paths:
+          - "{{ CONFIG_DIR }}"
+          - "{{ CACHE_DIR }}"
+    
+    - name: "Configure Caddy reverse proxy"
+      action: update_caddyfile
+      params:
+        domain: "{{ DOMAIN }}"
+        target: "http://{{ APP_NAME }}:8096"
+
+health_check:
+  endpoint: "http://localhost:{{ PORT }}/health"
+  interval: 60s
+  timeout: 30s
+  retries: 3
+
+documentation:
+  readme: |
+    # Jellyfin Media Server
+    
+    Access Jellyfin at: http://localhost:{{ PORT }}
+    
+    ## Setup Instructions:
+    1. Complete the initial setup wizard
+    2. Create your admin account
+    3. Add your media libraries
+    4. Configure metadata providers
+    5. Set up user accounts
+    
+    ## Media Directories:
+    - Config: {{ CONFIG_DIR }}
+    - Cache: {{ CACHE_DIR }}
+    - Media: {{ MEDIA_DIR }}
+    
+    ## Features:
+    - No subscription required
+    - Live TV & DVR support
+    - Mobile apps available
+    - Hardware acceleration support
+  
+  links:
+    - name: "Jellyfin Documentation"
+      url: "https://jellyfin.org/docs/"
+    - name: "Jellyfin Downloads"
+      url: "https://jellyfin.org/downloads/"

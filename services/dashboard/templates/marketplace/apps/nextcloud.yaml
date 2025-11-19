@@ -1,0 +1,151 @@
+metadata:
+  id: nextcloud
+  name: Nextcloud
+  category: productivity
+  description: "Self-hosted file sync and collaboration platform"
+  icon: "☁️"
+  version: "latest"
+  author: "Nextcloud GmbH"
+  tags: ["file-sync", "collaboration", "storage", "php"]
+  
+docker:
+  image: "nextcloud:latest"
+  container_name: "{{ APP_NAME }}"
+  restart: always
+  
+  ports:
+    - "{{ PORT }}:80"
+  
+  environment:
+    POSTGRES_HOST: "{{ DB_HOST }}"
+    POSTGRES_DB: "{{ DB_NAME }}"
+    POSTGRES_USER: "{{ DB_USER }}"
+    POSTGRES_PASSWORD: "{{ DB_PASS }}"
+    NEXTCLOUD_ADMIN_USER: "{{ ADMIN_USER }}"
+    NEXTCLOUD_ADMIN_PASSWORD: "{{ ADMIN_PASS }}"
+    NEXTCLOUD_TRUSTED_DOMAINS: "{{ TRUSTED_DOMAINS }}"
+  
+  volumes:
+    - "{{ DATA_DIR }}/html:/var/www/html"
+    - "{{ DATA_DIR }}/data:/var/www/html/data"
+    - "{{ DATA_DIR }}/config:/var/www/html/config"
+  
+  networks:
+    - "{{ NETWORK }}"
+
+requirements:
+  database: postgresql
+  storage: "10GB"
+  memory: "1GB"
+  cpu: "2"
+
+configuration:
+  variables:
+    - name: APP_NAME
+      label: "Application Name"
+      type: string
+      default: "nextcloud"
+      required: true
+      validation: "^[a-z0-9-]+$"
+    
+    - name: PORT
+      label: "Port"
+      type: number
+      default: 8082
+      required: true
+    
+    - name: DB_HOST
+      label: "Database Host"
+      type: string
+      default: "postgres"
+      required: true
+    
+    - name: DB_NAME
+      label: "Database Name"
+      type: string
+      default: "nextcloud_db"
+      required: true
+    
+    - name: DB_USER
+      label: "Database User"
+      type: string
+      default: "nextcloud"
+      required: true
+    
+    - name: DB_PASS
+      label: "Database Password"
+      type: password
+      required: true
+      generate: true
+    
+    - name: ADMIN_USER
+      label: "Admin Username"
+      type: string
+      default: "admin"
+      required: true
+    
+    - name: ADMIN_PASS
+      label: "Admin Password"
+      type: password
+      required: true
+      generate: true
+    
+    - name: TRUSTED_DOMAINS
+      label: "Trusted Domains"
+      type: string
+      default: "localhost"
+      required: true
+    
+    - name: DATA_DIR
+      label: "Data Directory"
+      type: string
+      default: "/var/lib/nextcloud"
+      required: true
+    
+    - name: NETWORK
+      label: "Docker Network"
+      type: string
+      default: "homelab"
+      required: true
+
+setup:
+  steps:
+    - name: "Create database"
+      action: create_database
+      params:
+        name: "{{ DB_NAME }}"
+        user: "{{ DB_USER }}"
+        password: "{{ DB_PASS }}"
+    
+    - name: "Configure Caddy reverse proxy"
+      action: update_caddyfile
+      params:
+        domain: "{{ DOMAIN }}"
+        target: "http://{{ APP_NAME }}:80"
+
+health_check:
+  endpoint: "http://localhost:{{ PORT }}/status.php"
+  interval: 30s
+  timeout: 10s
+  retries: 5
+
+documentation:
+  readme: |
+    # Nextcloud Installation
+    
+    Access Nextcloud at: http://localhost:{{ PORT }}
+    
+    Admin credentials:
+    - Username: {{ ADMIN_USER }}
+    - Password: {{ ADMIN_PASS }}
+    
+    ## Next Steps:
+    1. Configure your trusted domains
+    2. Install apps from the Nextcloud app store
+    3. Set up external storage (optional)
+  
+  links:
+    - name: "Nextcloud Documentation"
+      url: "https://docs.nextcloud.com/"
+    - name: "Nextcloud Apps"
+      url: "https://apps.nextcloud.com/"

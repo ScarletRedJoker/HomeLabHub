@@ -1,0 +1,151 @@
+metadata:
+  id: n8n
+  name: n8n
+  category: automation
+  description: "Workflow automation tool with visual editor"
+  icon: "🔄"
+  version: "latest"
+  author: "n8n GmbH"
+  tags: ["automation", "workflow", "integration", "nodejs"]
+  
+docker:
+  image: "n8nio/n8n:latest"
+  container_name: "{{ APP_NAME }}"
+  restart: always
+  
+  ports:
+    - "{{ PORT }}:5678"
+  
+  environment:
+    N8N_BASIC_AUTH_ACTIVE: "{{ BASIC_AUTH }}"
+    N8N_BASIC_AUTH_USER: "{{ AUTH_USER }}"
+    N8N_BASIC_AUTH_PASSWORD: "{{ AUTH_PASS }}"
+    N8N_HOST: "{{ N8N_HOST }}"
+    N8N_PORT: "5678"
+    N8N_PROTOCOL: "{{ N8N_PROTOCOL }}"
+    NODE_ENV: "production"
+    WEBHOOK_URL: "{{ WEBHOOK_URL }}"
+    GENERIC_TIMEZONE: "{{ TIMEZONE }}"
+  
+  volumes:
+    - "{{ DATA_DIR }}:/home/node/.n8n"
+  
+  networks:
+    - "{{ NETWORK }}"
+
+requirements:
+  database: none
+  storage: "2GB"
+  memory: "512MB"
+  cpu: "1"
+
+configuration:
+  variables:
+    - name: APP_NAME
+      label: "Application Name"
+      type: string
+      default: "n8n"
+      required: true
+      validation: "^[a-z0-9-]+$"
+    
+    - name: PORT
+      label: "Port"
+      type: number
+      default: 5678
+      required: true
+    
+    - name: BASIC_AUTH
+      label: "Enable Basic Auth"
+      type: boolean
+      default: true
+      required: true
+    
+    - name: AUTH_USER
+      label: "Auth Username"
+      type: string
+      default: "admin"
+      required: true
+    
+    - name: AUTH_PASS
+      label: "Auth Password"
+      type: password
+      required: true
+      generate: true
+    
+    - name: N8N_HOST
+      label: "n8n Host"
+      type: string
+      default: "localhost"
+      required: true
+    
+    - name: N8N_PROTOCOL
+      label: "Protocol"
+      type: string
+      default: "http"
+      required: true
+    
+    - name: WEBHOOK_URL
+      label: "Webhook URL"
+      type: string
+      default: "http://localhost:5678/"
+      required: false
+    
+    - name: TIMEZONE
+      label: "Timezone"
+      type: string
+      default: "America/New_York"
+      required: true
+    
+    - name: DATA_DIR
+      label: "Data Directory"
+      type: string
+      default: "/var/lib/n8n"
+      required: true
+    
+    - name: NETWORK
+      label: "Docker Network"
+      type: string
+      default: "homelab"
+      required: true
+
+setup:
+  steps:
+    - name: "Create data directory"
+      action: create_directories
+      params:
+        paths:
+          - "{{ DATA_DIR }}"
+    
+    - name: "Configure Caddy reverse proxy"
+      action: update_caddyfile
+      params:
+        domain: "{{ DOMAIN }}"
+        target: "http://{{ APP_NAME }}:5678"
+
+health_check:
+  endpoint: "http://localhost:{{ PORT }}/healthz"
+  interval: 30s
+  timeout: 10s
+  retries: 3
+
+documentation:
+  readme: |
+    # n8n Workflow Automation
+    
+    Access n8n at: http://localhost:{{ PORT }}
+    
+    Login credentials:
+    - Username: {{ AUTH_USER }}
+    - Password: {{ AUTH_PASS }}
+    
+    ## Quick Start:
+    1. Create your first workflow
+    2. Connect to external services
+    3. Set up webhooks for automation
+    4. Schedule recurring workflows
+  
+  links:
+    - name: "n8n Documentation"
+      url: "https://docs.n8n.io/"
+    - name: "Workflow Templates"
+      url: "https://n8n.io/workflows"

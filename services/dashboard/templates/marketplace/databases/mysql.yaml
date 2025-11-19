@@ -1,0 +1,133 @@
+metadata:
+  id: mysql
+  name: MySQL
+  category: database
+  description: "World's most popular open source database"
+  icon: "🐬"
+  version: "8.0"
+  author: "Oracle Corporation"
+  tags: ["database", "sql", "relational", "mysql"]
+  
+docker:
+  image: "mysql:8.0"
+  container_name: "{{ DB_NAME }}"
+  restart: always
+  
+  environment:
+    MYSQL_ROOT_PASSWORD: "{{ ROOT_PASS }}"
+    MYSQL_DATABASE: "{{ DB_NAME }}"
+    MYSQL_USER: "{{ DB_USER }}"
+    MYSQL_PASSWORD: "{{ DB_PASS }}"
+  
+  volumes:
+    - "{{ DATA_DIR }}/data:/var/lib/mysql"
+    - "{{ DATA_DIR }}/conf:/etc/mysql/conf.d"
+  
+  networks:
+    - "{{ NETWORK }}"
+  
+  ports:
+    - "{{ PORT }}:3306"
+  
+  command: "--default-authentication-plugin=mysql_native_password"
+
+requirements:
+  database: none
+  storage: "5GB"
+  memory: "512MB"
+  cpu: "1"
+
+configuration:
+  variables:
+    - name: DB_NAME
+      label: "Database Name"
+      type: string
+      default: "app_db"
+      required: true
+      validation: "^[a-z0-9_]+$"
+    
+    - name: DB_USER
+      label: "Database User"
+      type: string
+      default: "dbuser"
+      required: true
+      validation: "^[a-z0-9_]+$"
+    
+    - name: DB_PASS
+      label: "User Password"
+      type: password
+      required: true
+      generate: true
+    
+    - name: ROOT_PASS
+      label: "Root Password"
+      type: password
+      required: true
+      generate: true
+    
+    - name: PORT
+      label: "Port"
+      type: number
+      default: 3306
+      required: true
+    
+    - name: DATA_DIR
+      label: "Data Directory"
+      type: string
+      default: "/var/lib/mysql"
+      required: true
+    
+    - name: NETWORK
+      label: "Docker Network"
+      type: string
+      default: "homelab"
+      required: true
+
+setup:
+  steps:
+    - name: "Create data directory"
+      action: create_directories
+      params:
+        paths:
+          - "{{ DATA_DIR }}/data"
+          - "{{ DATA_DIR }}/conf"
+    
+    - name: "Wait for database to be ready"
+      action: wait_for_healthy
+      container: "{{ DB_NAME }}"
+      timeout: 60
+
+health_check:
+  endpoint: "mysql://{{ DB_USER }}:{{ DB_PASS }}@localhost:{{ PORT }}/{{ DB_NAME }}"
+  interval: 30s
+  timeout: 10s
+  retries: 3
+
+documentation:
+  readme: |
+    # MySQL Database
+    
+    Connection details:
+    - Host: localhost
+    - Port: {{ PORT }}
+    - Database: {{ DB_NAME }}
+    - User: {{ DB_USER }}
+    - Password: {{ DB_PASS }}
+    - Root Password: {{ ROOT_PASS }}
+    
+    ## Connection String:
+    mysql://{{ DB_USER }}:{{ DB_PASS }}@localhost:{{ PORT }}/{{ DB_NAME }}
+    
+    ## Management:
+    - Use mysql client: `docker exec -it {{ DB_NAME }} mysql -u {{ DB_USER }} -p{{ DB_PASS }} {{ DB_NAME }}`
+    - phpMyAdmin or MySQL Workbench recommended for GUI
+    
+    ## Important:
+    - Keep your root password secure
+    - Regular backups recommended
+  
+  links:
+    - name: "MySQL Documentation"
+      url: "https://dev.mysql.com/doc/"
+    - name: "MySQL Workbench"
+      url: "https://www.mysql.com/products/workbench/"

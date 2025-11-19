@@ -1,0 +1,139 @@
+metadata:
+  id: wordpress
+  name: WordPress
+  category: cms
+  description: "Popular CMS for blogs and websites"
+  icon: "🌐"
+  version: "latest"
+  author: "WordPress Foundation"
+  tags: ["cms", "blog", "website", "php"]
+  
+docker:
+  image: "wordpress:latest"
+  container_name: "{{ APP_NAME }}"
+  restart: always
+  
+  ports:
+    - "{{ PORT }}:80"
+  
+  environment:
+    WORDPRESS_DB_HOST: "{{ DB_HOST }}"
+    WORDPRESS_DB_USER: "{{ DB_USER }}"
+    WORDPRESS_DB_PASSWORD: "{{ DB_PASS }}"
+    WORDPRESS_DB_NAME: "{{ DB_NAME }}"
+  
+  volumes:
+    - "{{ DATA_DIR }}/html:/var/www/html"
+    - "{{ DATA_DIR }}/config:/var/www/html/wp-content"
+  
+  networks:
+    - "{{ NETWORK }}"
+
+requirements:
+  database: mysql
+  storage: "5GB"
+  memory: "512MB"
+  cpu: "1"
+
+configuration:
+  variables:
+    - name: APP_NAME
+      label: "Application Name"
+      type: string
+      default: "wordpress"
+      required: true
+      validation: "^[a-z0-9-]+$"
+    
+    - name: PORT
+      label: "Port"
+      type: number
+      default: 8080
+      required: true
+      validation: "^[0-9]{2,5}$"
+    
+    - name: DB_HOST
+      label: "Database Host"
+      type: string
+      default: "mysql"
+      required: true
+    
+    - name: DB_NAME
+      label: "Database Name"
+      type: string
+      default: "wordpress_db"
+      required: true
+    
+    - name: DB_USER
+      label: "Database User"
+      type: string
+      default: "wordpress"
+      required: true
+    
+    - name: DB_PASS
+      label: "Database Password"
+      type: password
+      required: true
+      generate: true
+    
+    - name: DATA_DIR
+      label: "Data Directory"
+      type: string
+      default: "/var/lib/wordpress"
+      required: true
+    
+    - name: NETWORK
+      label: "Docker Network"
+      type: string
+      default: "homelab"
+      required: true
+    
+    - name: ADMIN_EMAIL
+      label: "Admin Email"
+      type: email
+      required: true
+      validation: "email"
+    
+    - name: DOMAIN
+      label: "Domain (optional)"
+      type: string
+      required: false
+
+setup:
+  steps:
+    - name: "Create database"
+      action: create_database
+      params:
+        name: "{{ DB_NAME }}"
+        user: "{{ DB_USER }}"
+        password: "{{ DB_PASS }}"
+    
+    - name: "Configure Caddy reverse proxy"
+      action: update_caddyfile
+      params:
+        domain: "{{ DOMAIN }}"
+        target: "http://{{ APP_NAME }}:80"
+
+health_check:
+  endpoint: "http://localhost:{{ PORT }}/wp-admin"
+  interval: 30s
+  timeout: 10s
+  retries: 3
+
+documentation:
+  readme: |
+    # WordPress Installation
+    
+    Access your WordPress site at: http://{{ DOMAIN }}
+    
+    Default admin: {{ ADMIN_EMAIL }}
+    
+    ## Next Steps:
+    1. Complete the WordPress setup wizard
+    2. Install your favorite theme
+    3. Add plugins as needed
+  
+  links:
+    - name: "WordPress Documentation"
+      url: "https://wordpress.org/support/"
+    - name: "Theme Directory"
+      url: "https://wordpress.org/themes/"

@@ -1,0 +1,176 @@
+metadata:
+  id: wordpress-mysql
+  name: WordPress with MySQL
+  category: stack
+  description: "Complete WordPress stack with MySQL database"
+  icon: "🌐📦"
+  version: "latest"
+  author: "Marketplace"
+  tags: ["cms", "blog", "wordpress", "mysql", "stack"]
+
+services:
+  - wordpress
+  - mysql
+
+docker-compose:
+  version: '3.8'
+  
+  services:
+    mysql:
+      image: mysql:8.0
+      container_name: "{{ STACK_NAME }}-mysql"
+      restart: always
+      environment:
+        MYSQL_ROOT_PASSWORD: "{{ MYSQL_ROOT_PASSWORD }}"
+        MYSQL_DATABASE: "{{ DB_NAME }}"
+        MYSQL_USER: "{{ DB_USER }}"
+        MYSQL_PASSWORD: "{{ DB_PASSWORD }}"
+      volumes:
+        - "{{ DATA_DIR }}/mysql:/var/lib/mysql"
+      networks:
+        - "{{ NETWORK }}"
+      healthcheck:
+        test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u{{ DB_USER }}", "-p{{ DB_PASSWORD }}"]
+        interval: 30s
+        timeout: 10s
+        retries: 5
+    
+    wordpress:
+      image: wordpress:latest
+      container_name: "{{ STACK_NAME }}-wordpress"
+      restart: always
+      depends_on:
+        - mysql
+      ports:
+        - "{{ PORT }}:80"
+      environment:
+        WORDPRESS_DB_HOST: "{{ STACK_NAME }}-mysql:3306"
+        WORDPRESS_DB_USER: "{{ DB_USER }}"
+        WORDPRESS_DB_PASSWORD: "{{ DB_PASSWORD }}"
+        WORDPRESS_DB_NAME: "{{ DB_NAME }}"
+      volumes:
+        - "{{ DATA_DIR }}/wordpress/html:/var/www/html"
+        - "{{ DATA_DIR }}/wordpress/config:/var/www/html/wp-content"
+      networks:
+        - "{{ NETWORK }}"
+  
+  networks:
+    homelab:
+      external: true
+
+configuration:
+  variables:
+    - name: STACK_NAME
+      label: "Stack Name"
+      type: string
+      default: "wordpress-stack"
+      required: true
+      validation: "^[a-z0-9-]+$"
+    
+    - name: PORT
+      label: "WordPress Port"
+      type: number
+      default: 8080
+      required: true
+    
+    - name: DB_NAME
+      label: "Database Name"
+      type: string
+      default: "wordpress_db"
+      required: true
+    
+    - name: DB_USER
+      label: "Database User"
+      type: string
+      default: "wordpress"
+      required: true
+    
+    - name: DB_PASSWORD
+      label: "Database Password"
+      type: password
+      required: true
+      generate: true
+    
+    - name: MYSQL_ROOT_PASSWORD
+      label: "MySQL Root Password"
+      type: password
+      required: true
+      generate: true
+    
+    - name: DATA_DIR
+      label: "Data Directory"
+      type: string
+      default: "/var/lib/wordpress-stack"
+      required: true
+    
+    - name: NETWORK
+      label: "Docker Network"
+      type: string
+      default: "homelab"
+      required: true
+    
+    - name: DOMAIN
+      label: "Domain (optional)"
+      type: string
+      required: false
+
+setup:
+  steps:
+    - name: "Create data directories"
+      action: create_directories
+      params:
+        paths:
+          - "{{ DATA_DIR }}/mysql"
+          - "{{ DATA_DIR }}/wordpress/html"
+          - "{{ DATA_DIR }}/wordpress/config"
+    
+    - name: "Start MySQL first"
+      action: start_service
+      service: "{{ STACK_NAME }}-mysql"
+      wait_for_healthy: true
+    
+    - name: "Start WordPress"
+      action: start_service
+      service: "{{ STACK_NAME }}-wordpress"
+    
+    - name: "Configure Caddy reverse proxy"
+      action: update_caddyfile
+      params:
+        domain: "{{ DOMAIN }}"
+        target: "http://{{ STACK_NAME }}-wordpress:80"
+
+health_check:
+  endpoint: "http://localhost:{{ PORT }}"
+  interval: 30s
+  timeout: 10s
+  retries: 5
+
+documentation:
+  readme: |
+    # WordPress + MySQL Stack
+    
+    Access WordPress at: http://localhost:{{ PORT }}
+    
+    ## Services:
+    - WordPress: {{ STACK_NAME }}-wordpress
+    - MySQL: {{ STACK_NAME }}-mysql
+    
+    ## Database Connection:
+    - Database: {{ DB_NAME }}
+    - User: {{ DB_USER }}
+    - Password: {{ DB_PASSWORD }}
+    - Root Password: {{ MYSQL_ROOT_PASSWORD }}
+    
+    ## Next Steps:
+    1. Complete WordPress installation wizard
+    2. Configure permalinks
+    3. Install your favorite theme and plugins
+    
+    ## Data Location:
+    {{ DATA_DIR }}
+  
+  links:
+    - name: "WordPress Documentation"
+      url: "https://wordpress.org/support/"
+    - name: "MySQL Documentation"
+      url: "https://dev.mysql.com/doc/"

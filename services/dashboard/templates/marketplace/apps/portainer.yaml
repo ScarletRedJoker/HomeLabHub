@@ -1,0 +1,129 @@
+metadata:
+  id: portainer
+  name: Portainer
+  category: management
+  description: "Docker management UI - manage containers visually"
+  icon: "🐳"
+  version: "latest"
+  author: "Portainer.io"
+  tags: ["docker", "management", "containers", "monitoring"]
+  
+docker:
+  image: "portainer/portainer-ce:latest"
+  container_name: "{{ APP_NAME }}"
+  restart: always
+  
+  ports:
+    - "{{ PORT }}:9000"
+    - "{{ EDGE_PORT }}:8000"
+  
+  environment:
+    TZ: "{{ TIMEZONE }}"
+  
+  volumes:
+    - "{{ DATA_DIR }}:/data"
+    - "/var/run/docker.sock:/var/run/docker.sock"
+  
+  networks:
+    - "{{ NETWORK }}"
+
+requirements:
+  database: none
+  storage: "1GB"
+  memory: "256MB"
+  cpu: "1"
+
+configuration:
+  variables:
+    - name: APP_NAME
+      label: "Application Name"
+      type: string
+      default: "portainer"
+      required: true
+      validation: "^[a-z0-9-]+$"
+    
+    - name: PORT
+      label: "Web UI Port"
+      type: number
+      default: 9000
+      required: true
+    
+    - name: EDGE_PORT
+      label: "Edge Agent Port"
+      type: number
+      default: 8000
+      required: true
+    
+    - name: TIMEZONE
+      label: "Timezone"
+      type: string
+      default: "America/New_York"
+      required: true
+    
+    - name: DATA_DIR
+      label: "Data Directory"
+      type: string
+      default: "/var/lib/portainer"
+      required: true
+    
+    - name: NETWORK
+      label: "Docker Network"
+      type: string
+      default: "homelab"
+      required: true
+    
+    - name: ADMIN_PASSWORD
+      label: "Admin Password"
+      type: password
+      required: true
+      generate: true
+
+setup:
+  steps:
+    - name: "Create data directory"
+      action: create_directories
+      params:
+        paths:
+          - "{{ DATA_DIR }}"
+    
+    - name: "Configure Caddy reverse proxy"
+      action: update_caddyfile
+      params:
+        domain: "{{ DOMAIN }}"
+        target: "http://{{ APP_NAME }}:9000"
+
+health_check:
+  endpoint: "http://localhost:{{ PORT }}/api/status"
+  interval: 30s
+  timeout: 10s
+  retries: 3
+
+documentation:
+  readme: |
+    # Portainer Installation
+    
+    Access Portainer at: http://localhost:{{ PORT }}
+    
+    ## First Time Setup:
+    1. On first access, you'll be prompted to create an admin account
+    2. Set your admin password (or use: {{ ADMIN_PASSWORD }})
+    3. Select "Docker" as your environment
+    4. Connect to local Docker socket
+    
+    ## Features:
+    - Visual container management
+    - Image registry management
+    - Network and volume management
+    - Template deployment
+    - User access control
+    - Stack deployment
+    
+    ## Security Note:
+    Portainer has access to your Docker socket, which gives it full control
+    over your Docker environment. Ensure proper network security.
+  
+  links:
+    - name: "Portainer Documentation"
+      url: "https://docs.portainer.io/"
+    - name: "App Templates"
+      url: "https://github.com/portainer/templates"

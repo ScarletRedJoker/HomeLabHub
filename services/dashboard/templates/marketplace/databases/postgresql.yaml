@@ -1,0 +1,118 @@
+metadata:
+  id: postgresql
+  name: PostgreSQL
+  category: database
+  description: "Powerful open-source relational database"
+  icon: "🐘"
+  version: "16-alpine"
+  author: "PostgreSQL Global Development Group"
+  tags: ["database", "sql", "relational", "postgres"]
+  
+docker:
+  image: "postgres:16-alpine"
+  container_name: "{{ DB_NAME }}"
+  restart: always
+  
+  environment:
+    POSTGRES_USER: "{{ DB_USER }}"
+    POSTGRES_PASSWORD: "{{ DB_PASS }}"
+    POSTGRES_DB: "{{ DB_NAME }}"
+    PGDATA: "/var/lib/postgresql/data/pgdata"
+  
+  volumes:
+    - "{{ DATA_DIR }}/data:/var/lib/postgresql/data"
+  
+  networks:
+    - "{{ NETWORK }}"
+  
+  ports:
+    - "{{ PORT }}:5432"
+
+requirements:
+  database: none
+  storage: "5GB"
+  memory: "256MB"
+  cpu: "1"
+
+configuration:
+  variables:
+    - name: DB_NAME
+      label: "Database Name"
+      type: string
+      default: "app_db"
+      required: true
+      validation: "^[a-z0-9_]+$"
+    
+    - name: DB_USER
+      label: "Database User"
+      type: string
+      default: "dbuser"
+      required: true
+      validation: "^[a-z0-9_]+$"
+    
+    - name: DB_PASS
+      label: "Database Password"
+      type: password
+      required: true
+      generate: true
+    
+    - name: PORT
+      label: "Port"
+      type: number
+      default: 5432
+      required: true
+    
+    - name: DATA_DIR
+      label: "Data Directory"
+      type: string
+      default: "/var/lib/postgresql"
+      required: true
+    
+    - name: NETWORK
+      label: "Docker Network"
+      type: string
+      default: "homelab"
+      required: true
+
+setup:
+  steps:
+    - name: "Create data directory"
+      action: create_directories
+      params:
+        paths:
+          - "{{ DATA_DIR }}"
+    
+    - name: "Wait for database to be ready"
+      action: wait_for_healthy
+      container: "{{ DB_NAME }}"
+      timeout: 60
+
+health_check:
+  endpoint: "postgresql://{{ DB_USER }}:{{ DB_PASS }}@localhost:{{ PORT }}/{{ DB_NAME }}"
+  interval: 30s
+  timeout: 10s
+  retries: 3
+
+documentation:
+  readme: |
+    # PostgreSQL Database
+    
+    Connection details:
+    - Host: localhost
+    - Port: {{ PORT }}
+    - Database: {{ DB_NAME }}
+    - User: {{ DB_USER }}
+    - Password: {{ DB_PASS }}
+    
+    ## Connection String:
+    postgresql://{{ DB_USER }}:{{ DB_PASS }}@localhost:{{ PORT }}/{{ DB_NAME }}
+    
+    ## Management:
+    - Use psql: `docker exec -it {{ DB_NAME }} psql -U {{ DB_USER }} -d {{ DB_NAME }}`
+    - pgAdmin recommended for GUI management
+  
+  links:
+    - name: "PostgreSQL Documentation"
+      url: "https://www.postgresql.org/docs/"
+    - name: "pgAdmin"
+      url: "https://www.pgadmin.org/"
