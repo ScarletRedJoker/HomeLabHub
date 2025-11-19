@@ -25,6 +25,10 @@ COPY . .
 # Create logs directory
 RUN mkdir -p /app/logs
 
+# Copy entrypoint script
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
 # Set environment
 ENV PYTHONUNBUFFERED=1
 ENV FLASK_ENV=production
@@ -32,5 +36,5 @@ ENV FLASK_ENV=production
 # Expose port
 EXPOSE 5000
 
-# Run with gunicorn (production WSGI server)
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "3", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-", "main:app"]
+# Use entrypoint script to run migrations before starting gunicorn
+ENTRYPOINT ["/app/docker-entrypoint.sh"]

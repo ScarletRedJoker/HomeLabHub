@@ -55,7 +55,10 @@ The Nebula Command Dashboard provides a comprehensive web-based interface for ma
 - ✅ **SSL certificates** - Auto-provisioning via Let's Encrypt through Caddy
 - ✅ **Auto-sync enabled** - Replit to Ubuntu sync every 5 minutes via cron
 
-### Post-Deployment Fixes & Enhancements (Latest - November 19, 2025)
+### Latest Fix (November 19, 2025 - Final)
+- ✅ **Dashboard automatic migrations** - Added docker-entrypoint.sh that runs `alembic upgrade head` on every startup, ensuring database schema is always up to date
+
+### Post-Deployment Fixes & Enhancements (November 19, 2025)
 - ✅ **Home Assistant reverse proxy** - Fixed WebSocket support, added X-Forwarded-Host header, increased timeouts for long-polling, added CORS for home.evindrake.net
 - ✅ **Stream Bot AI facts diversity** - Rewrote OpenAI prompt to generate diverse facts about life, the universe, science, history, nature, and weird phenomena (removed octopus fact example that was biasing results)
 - ✅ **Ollama port conflict** - Commented out Docker service to use host installation at localhost:11434
