@@ -288,6 +288,7 @@ export class BotWorker {
     platform: string,
     username: string,
     action: string,
+    reason?: string,
     timeoutDuration?: number
   ): Promise<void> {
     try {
@@ -295,11 +296,27 @@ export class BotWorker {
         const channel = (await this.storage.getPlatformConnectionByPlatform("twitch"))?.platformUsername;
         if (!channel) return;
 
-        if (action === "timeout" && timeoutDuration) {
+        if (action === "warn") {
+          const warningMessage = `@${username}, please follow chat rules. ${reason || "Your message violated moderation rules."}`;
+          await this.twitchClient.say(channel, warningMessage);
+        } else if (action === "timeout" && timeoutDuration) {
           await this.twitchClient.timeout(channel, username, timeoutDuration, "Auto-moderation");
         } else if (action === "ban") {
           await this.twitchClient.ban(channel, username, "Auto-moderation");
         }
+      } else if (platform === "youtube" && this.youtubeActiveLiveChatId) {
+        if (action === "warn") {
+          const warningMessage = `@${username}, please follow chat rules. ${reason || "Your message violated moderation rules."}`;
+          await sendYouTubeChatMessage(this.youtubeActiveLiveChatId, warningMessage);
+        }
+        // Note: YouTube Live Chat API doesn't support direct timeout/ban actions
+        // These would need to be handled via YouTube Studio API or manually
+      } else if (platform === "kick" && this.kickClient && this.kickClientReady) {
+        if (action === "warn") {
+          const warningMessage = `@${username}, please follow chat rules. ${reason || "Your message violated moderation rules."}`;
+          await this.kickClient.sendMessage(warningMessage);
+        }
+        // Note: Kick API timeout/ban support would need to be implemented when available
       }
     } catch (error) {
       console.error(`[BotWorker] Error executing moderation action:`, error);
@@ -1079,21 +1096,14 @@ export class BotWorker {
         const moderationResult = await this.checkModeration(trimmedMessage, username, "twitch");
         
         if (!moderationResult.allowed) {
-          // Execute moderation action if needed
-          if (moderationResult.action && moderationResult.action !== "warn") {
+          // Execute moderation action (warn, timeout, or ban)
+          if (moderationResult.action) {
             await this.executeModerationAction(
               "twitch",
               username,
               moderationResult.action,
+              moderationResult.reason,
               moderationResult.timeoutDuration
-            );
-          }
-          
-          // Send warning message if action is warn
-          if (moderationResult.action === "warn" && this.twitchClient) {
-            await this.twitchClient.say(
-              channel,
-              `@${username}, please follow chat rules. ${moderationResult.reason || ""}`
             );
           }
           
@@ -1300,6 +1310,24 @@ export class BotWorker {
         
         // Track chat message for statistics
         await statsService.trackChatMessage(this.userId, "kick", username);
+        
+        // Check moderation FIRST, before processing anything
+        const moderationResult = await this.checkModeration(trimmedContent, username, "kick");
+        
+        if (!moderationResult.allowed) {
+          // Execute moderation action (warn, timeout, or ban)
+          if (moderationResult.action) {
+            await this.executeModerationAction(
+              "kick",
+              username,
+              moderationResult.action,
+              moderationResult.reason,
+              moderationResult.timeoutDuration
+            );
+          }
+          
+          return;
+        }
         
         // Check for custom commands (starts with !)
         if (trimmedContent.startsWith("!")) {

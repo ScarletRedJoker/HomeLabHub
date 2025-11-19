@@ -933,6 +933,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/moderation/rules", requireAuth, async (req, res) => {
+    try {
+      const { ruleType, isEnabled, severity, action, timeoutDuration } = req.body;
+      
+      if (!ruleType || !severity || !action) {
+        return res.status(400).json({ error: "ruleType, severity, and action are required" });
+      }
+
+      const existing = await storage.getModerationRuleByType(req.user!.id, ruleType);
+      if (existing) {
+        return res.status(400).json({ error: "A rule with this type already exists" });
+      }
+
+      const rule = await storage.createModerationRule(req.user!.id, {
+        userId: req.user!.id,
+        ruleType,
+        isEnabled: isEnabled !== undefined ? isEnabled : true,
+        severity,
+        action,
+        timeoutDuration: timeoutDuration || (action === "timeout" ? 600 : undefined),
+      });
+      
+      res.json(rule);
+    } catch (error: any) {
+      console.error("Failed to create moderation rule:", error);
+      res.status(500).json({ error: "Failed to create moderation rule" });
+    }
+  });
+
+  app.delete("/api/moderation/rules/:id", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteModerationRule(req.user!.id, req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete moderation rule" });
+    }
+  });
+
+  app.post("/api/moderation/test", requireAuth, async (req, res) => {
+    try {
+      const { message, username } = req.body;
+      
+      if (!message || !username) {
+        return res.status(400).json({ error: "message and username are required" });
+      }
+
+      const [rules, whitelist, config] = await Promise.all([
+        storage.getModerationRules(req.user!.id),
+        storage.getLinkWhitelist(req.user!.id),
+        storage.getBotSettings(req.user!.id),
+      ]);
+
+      const { moderationService } = await import('./moderation-service');
+      const bannedWords = config?.bannedWords || [];
+      const decision = await moderationService.checkMessage(message, username, rules, whitelist, bannedWords);
+
+      res.json({
+        allowed: decision.allow,
+        action: decision.action,
+        ruleTriggered: decision.ruleTriggered,
+        severity: decision.severity,
+        reason: decision.reason,
+        timeoutDuration: decision.timeoutDuration,
+      });
+    } catch (error: any) {
+      console.error("Failed to test message:", error);
+      res.status(500).json({ error: "Failed to test message", details: error.message });
+    }
+  });
+
   // Bulk Moderation Settings (convenience endpoint)
   app.get("/api/moderation/settings", requireAuth, async (req, res) => {
     try {

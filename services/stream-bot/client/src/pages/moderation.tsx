@@ -104,11 +104,23 @@ const actionColors: Record<string, string> = {
   ban: "bg-red-500",
 };
 
+interface TestResult {
+  allowed: boolean;
+  action: string | null;
+  ruleTriggered: string | null;
+  severity: string | null;
+  reason: string | null;
+  timeoutDuration: number | null;
+}
+
 export default function Moderation() {
   const { toast } = useToast();
   const [newDomain, setNewDomain] = useState("");
   const [newBannedWord, setNewBannedWord] = useState("");
   const [realtimeLogs, setRealtimeLogs] = useState<ModerationLog[]>([]);
+  const [testMessage, setTestMessage] = useState("");
+  const [testUsername, setTestUsername] = useState("testuser");
+  const [testResult, setTestResult] = useState<TestResult | null>(null);
 
   const { data: rules } = useQuery<ModerationRule[]>({
     queryKey: ["/api/moderation/rules"],
@@ -287,6 +299,31 @@ export default function Moderation() {
       });
     },
   });
+
+  const testMessageMutation = useMutation({
+    mutationFn: async (data: { message: string; username: string }) => {
+      return await apiRequest("POST", "/api/moderation/test", data);
+    },
+    onSuccess: (data: TestResult) => {
+      setTestResult(data);
+      toast({
+        title: "Test completed",
+        description: data.allowed ? "Message would be allowed" : `Message would be ${data.action || 'blocked'}`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to test message",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleTestMessage = () => {
+    if (!testMessage.trim()) return;
+    testMessageMutation.mutate({ message: testMessage, username: testUsername });
+  };
 
   const handleAddBannedWord = () => {
     if (!newBannedWord.trim()) return;
@@ -522,6 +559,75 @@ export default function Moderation() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Test Message</CardTitle>
+          <CardDescription>
+            Test a message against your moderation rules to see if it would be allowed
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="test-username">Username (optional)</Label>
+              <Input
+                id="test-username"
+                placeholder="testuser"
+                value={testUsername}
+                onChange={(e) => setTestUsername(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="test-message">Message to test</Label>
+              <Input
+                id="test-message"
+                placeholder="Type a message to test against moderation rules..."
+                value={testMessage}
+                onChange={(e) => setTestMessage(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleTestMessage()}
+              />
+            </div>
+            <Button 
+              onClick={handleTestMessage} 
+              disabled={!testMessage.trim() || testMessageMutation.isPending}
+            >
+              {testMessageMutation.isPending ? "Testing..." : "Test Message"}
+            </Button>
+          </div>
+
+          {testResult && (
+            <div className={`p-4 rounded-lg border-2 ${testResult.allowed ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-semibold">
+                  {testResult.allowed ? "✅ Message Allowed" : "❌ Message Blocked"}
+                </span>
+                {!testResult.allowed && testResult.action && (
+                  <Badge className={`${actionColors[testResult.action]} text-white`}>
+                    {testResult.action}
+                  </Badge>
+                )}
+              </div>
+              {!testResult.allowed && (
+                <div className="space-y-1 text-sm">
+                  {testResult.ruleTriggered && (
+                    <p><strong>Rule:</strong> {testResult.ruleTriggered}</p>
+                  )}
+                  {testResult.severity && (
+                    <p><strong>Severity:</strong> {testResult.severity}</p>
+                  )}
+                  {testResult.reason && (
+                    <p><strong>Reason:</strong> {testResult.reason}</p>
+                  )}
+                  {testResult.timeoutDuration && (
+                    <p><strong>Timeout Duration:</strong> {testResult.timeoutDuration}s</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
