@@ -59,6 +59,7 @@ show_menu() {
     echo -e "  ${BOLD}Database Maintenance:${NC}"
     echo -e "    ${GREEN}22)${NC} 🔧 Fix Stuck Database Migrations"
     echo -e "    ${GREEN}22a)${NC} 🗄️ Fix Production Database Schema (VARCHAR → UUID)"
+    echo -e "    ${GREEN}22b)${NC} 👤 Fix PostgreSQL User (create 'postgres' superuser)"
     echo ""
     echo -e "  ${BOLD}Verification:${NC}"
     echo -e "    ${GREEN}23)${NC} ✅ Run Full Deployment Verification"
@@ -1733,6 +1734,70 @@ fix_production_database_schema() {
     pause
 }
 
+# Fix PostgreSQL User (create 'postgres' superuser)
+fix_postgres_user() {
+    echo ""
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}${BLUE}  👤 FIX POSTGRESQL USER${NC}"
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "${BOLD}${YELLOW}⚠️  INFO: This will create the 'postgres' superuser${NC}"
+    echo ""
+    echo "This script will:"
+    echo "  • Auto-detect existing PostgreSQL superuser (ticketbot or postgres)"
+    echo "  • Create 'postgres' superuser role if it doesn't exist"
+    echo "  • Grant full superuser privileges to postgres role"
+    echo "  • Fix FATAL: role 'postgres' does not exist errors"
+    echo ""
+    echo -e "${YELLOW}This is needed when homelab-postgres was initialized with a different user.${NC}"
+    echo ""
+    echo -e "${BOLD}IMPORTANT:${NC}"
+    echo "  1. This script is idempotent - safe to run multiple times"
+    echo "  2. It does NOT delete any data or existing users"
+    echo "  3. It only adds/updates the postgres superuser role"
+    echo "  4. No confirmation required - this is a safe operation"
+    echo ""
+    
+    # Don't require confirmation for this safe operation
+    echo "Starting postgres user fix..."
+    echo ""
+    
+    # Check if script exists
+    if [ ! -f "./deployment/fix-postgres-user.sh" ]; then
+        echo -e "${RED}✗ Error: fix-postgres-user.sh not found${NC}"
+        echo -e "${YELLOW}Expected location: ./deployment/fix-postgres-user.sh${NC}"
+        pause
+        return
+    fi
+    
+    # Make script executable
+    chmod +x ./deployment/fix-postgres-user.sh
+    
+    # Run the fix script
+    if ./deployment/fix-postgres-user.sh; then
+        echo ""
+        echo -e "${GREEN}✓ PostgreSQL user fix completed successfully${NC}"
+        echo ""
+        echo "You can now connect with: docker exec homelab-postgres psql -U postgres"
+        echo ""
+        echo "Recommended next steps:"
+        echo "  1. Test connection: docker exec homelab-postgres psql -U postgres -c 'SELECT version();'"
+        echo "  2. Restart services if needed: Option 2 (Quick Restart)"
+        echo "  3. Check database status: Option 7 (Check Database Status)"
+    else
+        echo ""
+        echo -e "${RED}✗ PostgreSQL user fix encountered errors${NC}"
+        echo -e "${YELLOW}Please review the error messages above${NC}"
+        echo ""
+        echo "Troubleshooting tips:"
+        echo "  • Ensure homelab-postgres container is running"
+        echo "  • Check container logs: docker logs homelab-postgres"
+        echo "  • Verify .env has POSTGRES_PASSWORD set"
+    fi
+    
+    pause
+}
+
 # Run Full Deployment Verification
 run_deployment_verification() {
     echo ""
@@ -2076,6 +2141,7 @@ main() {
             21) view_integration_guide ;;
             22) fix_stuck_migrations ;;
             22a) fix_production_database_schema ;;
+            22b) fix_postgres_user ;;
             23) run_deployment_verification ;;
             0) 
                 echo ""
