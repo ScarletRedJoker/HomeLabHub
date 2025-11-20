@@ -85,7 +85,7 @@ services:
     container_name: homelab-dashboard
     restart: unless-stopped
     depends_on:
-      discord-bot-db:
+      homelab-postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -131,7 +131,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-      discord-bot-db:
+      homelab-postgres:
         condition: service_healthy
     environment:
       - RUN_MIGRATIONS=false
@@ -155,22 +155,23 @@ services:
       - ./.env:/.env:ro
 
   # ============================================
-  # Discord Ticket Bot + PostgreSQL
+  # PostgreSQL Database Server (Homelab Infrastructure)
   # ============================================
-  discord-bot-db:
+  homelab-postgres:
     image: postgres:16-alpine
-    container_name: discord-bot-db
+    container_name: homelab-postgres
     restart: unless-stopped
     networks:
       homelab:
         aliases:
           - postgres
-          - discord-bot-db
+          - homelab-postgres
+          - discord-bot-db  # Backward compatibility alias
     environment:
-      POSTGRES_DB: ticketbot
-      POSTGRES_USER: ticketbot
-      POSTGRES_PASSWORD: ${DISCORD_DB_PASSWORD}
-      # Pass passwords to init script for creating additional databases
+      POSTGRES_USER: postgres  # Standard PostgreSQL superuser
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres  # Default database
+      # Database passwords for init scripts
       DISCORD_DB_PASSWORD: ${DISCORD_DB_PASSWORD}
       STREAMBOT_DB_PASSWORD: ${STREAMBOT_DB_PASSWORD}
       JARVIS_DB_PASSWORD: ${JARVIS_DB_PASSWORD}
@@ -178,7 +179,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./config/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ticketbot -d ticketbot"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -191,7 +192,7 @@ services:
     container_name: discord-bot
     restart: unless-stopped
     depends_on:
-      discord-bot-db:
+      homelab-postgres:
         condition: service_healthy
     networks:
       - homelab
@@ -231,7 +232,7 @@ services:
     networks:
       - homelab
     depends_on:
-      discord-bot-db:
+      homelab-postgres:
         condition: service_healthy
     dns:
       - 8.8.8.8

@@ -32,6 +32,7 @@ from routes.health_monitoring_api import health_monitoring_bp
 from routes.storage_optimization_api import storage_optimization_bp
 from routes.unified_logs_api import unified_logs_bp
 from routes.ai_chat_api import ai_chat_bp
+from routes.database_routes import database_bp
 # DISABLED: Subscription/licensing features removed per user request - "Remove subscriptions and don't block access. I never wanted that."
 # from routes.subscription_api import subscription_bp
 from services.activity_service import activity_service
@@ -147,6 +148,7 @@ app.register_blueprint(health_monitoring_bp)
 app.register_blueprint(storage_optimization_bp)
 app.register_blueprint(unified_logs_bp)
 app.register_blueprint(ai_chat_bp)
+app.register_blueprint(database_bp)
 # DISABLED: Subscription blueprint disabled - no subscription/licensing checks
 # app.register_blueprint(subscription_bp)
 
