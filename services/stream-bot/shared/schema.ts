@@ -786,6 +786,7 @@ export const insertCustomCommandSchema = createInsertSchema(customCommands, {
   permission: z.enum(["everyone", "subs", "mods", "broadcaster"]),
 }).omit({
   id: true,
+  userId: true,
   createdAt: true,
   updatedAt: true,
 });
