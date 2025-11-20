@@ -1,280 +1,341 @@
-# 🌌 Nebula Command Development Workspace
+# 🚀 HomeLabHub - Unified Infrastructure Management
 
-**Centralized development environment for all infrastructure services**
+**Single command tool for complete homelab management**
 
-This Repo serves as your development environment for managing 7 production services across 3 domains. Edit code here, test changes, then deploy to your Ubuntu 25.10 server.
-
----
-
-## 🎯 Quick Start
-
-### 🚀 One Command to Rule Them All
+## ⚡ Quick Start
 
 ```bash
-./homelab-manager.sh
+# Make executable and run
+chmod +x homelab
+./homelab
 ```
 
-This launches an **interactive menu** with everything you need:
-- Deploy/redeploy services
-- Start/stop/restart
-- Database management
-- Configuration
-- Logs and troubleshooting
-- Health checks
+That's it! The interactive menu will guide you through everything.
 
-### Development Workflow (on Replit)
+## 🎯 One Tool, All Functions
+
+The `homelab` script is your single control point for:
+- 🚀 **Deployment** - Fresh, quick, or smart auto-deployment
+- 🎛️ **Management** - Start, stop, restart services
+- 🔍 **Diagnostics** - Health checks, testing, troubleshooting
+- 🔧 **Fixes** - Auto-fix issues, repair Jarvis AI, fix permissions
+- 💻 **Development** - Sync code, build services, setup environment
+- 💾 **Backup** - Create and manage backups
+
+## 📦 Services Overview
+
+| **Service** | **URL** | **Purpose** | **Status** |
+|------------|---------|-------------|------------|
+| **Dashboard** | host.evindrake.net | Main control panel with Jarvis AI | ✅ Fixed |
+| **Discord Bot** | bot.rig-city.com | Server management bot | ✅ Working |
+| **Stream Bot** | stream.rig-city.com | Twitch/YouTube integration | ✅ Fixed |
+| **VNC Desktop** | vnc.evindrake.net | Remote desktop access | ✅ Working |
+| **Code Server** | code.evindrake.net | Web-based VS Code | ✅ Working |
+| **Plex** | plex.evindrake.net | Media streaming | ✅ Working |
+| **N8N** | n8n.evindrake.net | Workflow automation | ✅ Working |
+| **Home Assistant** | home.evindrake.net | Smart home control | ✅ Working |
+
+## 🛠️ Command Reference
+
+### Interactive Mode (Recommended)
 ```bash
-# 1. Edit any service code
-cd services/discord-bot
-# Make your changes...
-
-# 2. Commit changes
-git add .
-git commit -m "Updated Discord bot"
+./homelab
 ```
+Opens the full menu system with all options.
 
-### Deployment (on Ubuntu Server)
+### Direct Commands
+
+#### Deployment
 ```bash
-# 1. SSH to your server
-ssh evin@your-server
-
-# 2. Pull latest changes
-cd /home/evin/contain/NebulaCommand
-git pull
-
-# 3. Run the manager
-./homelab-manager.sh
-# Select: 1) Full Deploy
+./homelab deploy       # Smart auto-deployment
+./homelab fresh        # Clean build from scratch
+./homelab quick        # Fast deployment with cache
 ```
 
----
-
-## 📦 Services
-
-| **Service** | **Domain** | **Stack** | **Database** |
-|------------|------------|-----------|-------------|
-| **Dashboard** | host.evindrake.net | Flask/Python | None |
-| **Discord Bot** | bot.rig-city.com | TypeScript/React | PostgreSQL |
-| **Stream Bot** | stream.rig-city.com | TypeScript/React | PostgreSQL |
-| **Plex** | plex.evindrake.net | Plex Server | SQLite |
-| **n8n** | n8n.evindrake.net | Node.js | SQLite |
-| **VNC Desktop** | vnc.evindrake.net | noVNC | None |
-| **Code-Server** | code.evindrake.net | VS Code | None |
-| **Static Site** | scarletredjoker.com | HTML/CSS/JS | None |
-
-All services automatically receive SSL certificates via **Caddy**.
-
----
-
-## 📁 Workspace Structure
-
-```
-services/
-├── dashboard/      ← Nebula Command management UI
-├── discord-bot/    ← Discord Ticket Bot
-├── stream-bot/     ← Twitch/Kick Stream Bot
-├── static-site/    ← scarletredjoker.com
-├── n8n/            ← Workflow automation
-└── plex/           ← Media server config
-
-deployment/         ← Deployment scripts
-├── deploy-unified.sh
-├── generate-unified-env.sh
-├── fix-existing-deployment.sh
-└── ...
-
-docs/              ← Documentation
-├── WORKSPACE_STRUCTURE.md
-├── DEPLOYMENT_FIX_COMPLETE.md
-└── ...
-
-config/            ← Configuration files
-├── postgres-init/ ← Database initialization
-└── ...
-
-docker-compose.unified.yml  ← Main deployment file
-Caddyfile                   ← Reverse proxy config
-```
-
-See **[WORKSPACE_STRUCTURE.md](docs/WORKSPACE_STRUCTURE.md)** for complete details.
-
----
-
-## 🔄 Development Workflow
-
-### **Option 1: Git-Based (Recommended)**
-
-**Setup (one-time):**
+#### Service Management
 ```bash
-# On Ubuntu server:
-cd /home/evin/contain
-git clone <this-replit-git-url> NebulaCommand
-cd NebulaCommand
-./deployment/generate-unified-env.sh
+./homelab start        # Start all services
+./homelab stop         # Stop all services
+./homelab restart [service]  # Restart specific service
+./homelab logs [service]     # View logs (use 'all' for everything)
+./homelab status       # Show service status
 ```
 
-**Daily workflow:**
-1. Edit code on Replit
-2. Commit changes
-3. On Ubuntu: `git pull && ./deployment/deploy-unified.sh`
-
-### **Option 2: rsync/scp**
-
+#### Diagnostics & Testing
 ```bash
-# From Replit or local machine:
-rsync -avz --exclude='node_modules' --exclude='.git' \
-  . evin@your-server:/home/evin/contain/NebulaCommand/
-
-# Then on Ubuntu:
-cd /home/evin/contain/NebulaCommand
-./deployment/deploy-unified.sh
+./homelab health       # Quick health check
+./homelab diagnose     # Full system diagnostics
+./homelab test jarvis  # Test Jarvis AI
+./homelab test db      # Test database connectivity
+./homelab test redis   # Test Redis cache
 ```
 
----
-
-## 🛠️ Common Tasks
-
-### All-in-One Manager (Recommended)
+#### Fixes & Troubleshooting
 ```bash
-./homelab-manager.sh
+./homelab fix          # Auto-fix detected issues
+./homelab fix-jarvis   # Fix Jarvis AI (40% error)
+./homelab fix-perms    # Fix permission issues
 ```
 
-**Menu Options:**
-- **1** - 🚀 Full Deploy (build and start all)
-- **2** - 🔄 Quick Restart (no rebuild)
-- **6** - 🔄 Restart Specific Service
-- **7** - 🗄️ Fix Database Issues
-- **9** - ⚙️ Generate/Edit .env
-- **11** - 🔍 View Service Logs
-- **13** - 🔧 Full Troubleshoot Mode
-
-### Manual Commands (Advanced Users)
+#### Development
 ```bash
-# Full deployment
-./deployment/deploy-unified.sh
-
-# Database maintenance
-./deployment/ensure-databases.sh
-
-# Generate .env
-./deployment/generate-unified-env.sh
-
-# View logs
-docker-compose -f docker-compose.unified.yml logs -f
-
-# Restart a service
-docker-compose -f docker-compose.unified.yml restart discord-bot
+./homelab dev          # Setup development environment
+./homelab sync         # Pull latest from Git
+./homelab build [service]  # Rebuild specific service
 ```
 
----
-
-## 🗄️ Database Architecture
-
-**Single PostgreSQL container** hosts multiple databases:
-
-```
-discord-bot-db (PostgreSQL 16)
-├── ticketbot (Discord Bot database)
-└── streambot (Stream Bot database)
+#### Utilities
+```bash
+./homelab backup       # Create backup
+./homelab urls         # Display all service URLs
+./homelab info         # System information
+./homelab help         # Show help
 ```
 
-- **Automatic initialization** via scripts in `config/postgres-init/`
-- **For existing deployments:** Run `./deployment/fix-existing-deployment.sh`
-- See [DATABASE_AUTOCONFIGURE_SUMMARY.md](docs/DATABASE_AUTOCONFIGURE_SUMMARY.md) for details
+## 🔧 Initial Setup
 
----
+### 1. Prerequisites
+- Ubuntu 20.04+ or similar Linux
+- Docker & Docker Compose installed
+- 8GB RAM minimum, 50GB disk space
+- Git installed
 
-## 🌐 Domains & SSL
+### 2. Clone Repository
+```bash
+git clone https://github.com/yourusername/HomeLabHub.git
+cd HomeLabHub
+```
 
-All domains configured with automatic SSL via Caddy:
+### 3. Configure Environment
+```bash
+cp .env.example .env
+nano .env  # Add your API keys
+```
 
-- **host.evindrake.net** → Homelab Dashboard
-- **bot.rig-city.com** → Discord Ticket Bot  
-- **stream.rig-city.com** → Stream Bot
-- **plex.evindrake.net** → Plex Server
-- **n8n.evindrake.net** → n8n Automation
-- **vnc.evindrake.net** → VNC Desktop
-- **scarletredjoker.com** → Static Website
+### 4. Deploy Everything
+```bash
+chmod +x homelab
+./homelab deploy
+```
 
-SSL certificates automatically obtained from Let's Encrypt.
+## 🔑 Required API Keys
 
----
+Add these to your `.env` file:
+
+```env
+# OpenAI (for Jarvis AI) - REQUIRED
+OPENAI_API_KEY=sk-proj-...
+
+# Discord Bot - REQUIRED
+DISCORD_BOT_TOKEN=...
+DISCORD_CLIENT_ID=...
+DISCORD_CLIENT_SECRET=...
+
+# Streaming Services (optional)
+TWITCH_CLIENT_ID=...
+TWITCH_CLIENT_SECRET=...
+YOUTUBE_API_KEY=...
+SPOTIFY_CLIENT_ID=...
+SPOTIFY_CLIENT_SECRET=...
+
+# Database (Neon PostgreSQL)
+DATABASE_URL=postgresql://...
+```
+
+## 📁 Clean Project Structure
+
+```
+HomeLabHub/
+├── homelab                    # 🎯 Main unified management script
+├── docker-compose.yml         # Service definitions
+├── Caddyfile                 # Reverse proxy config
+├── .env                      # Your configuration
+│
+├── services/                 # Service code
+│   ├── dashboard/           # Jarvis AI & control panel
+│   ├── discord-bot/         # Discord bot
+│   ├── stream-bot/          # Twitch/YouTube bot
+│   ├── vnc-desktop/         # Remote desktop
+│   └── ...
+│
+├── config/                   # Configurations
+│   └── postgres-init/       # Database setup
+│
+├── deployment/              # Essential scripts
+│   └── generate-unified-env.sh  # Environment helper
+│
+└── scripts-archive/         # Old scripts (archived)
+    ├── fixes/              # Old fix scripts
+    ├── deployment/         # Old deployment scripts
+    └── migrations/         # Old migration scripts
+```
+
+## 🐛 Common Issues & Solutions
+
+### Jarvis AI Shows 40% Error
+**Cause:** Was using deprecated GPT-5 model  
+**Fix:** Already fixed! Now uses GPT-3.5-turbo
+```bash
+./homelab fix-jarvis  # If issue persists
+```
+
+### Services Won't Start
+```bash
+./homelab diagnose    # See what's wrong
+./homelab fix         # Auto-fix issues
+```
+
+### Database Connection Failed
+```bash
+./homelab test db     # Test connection
+./homelab fix         # Auto-repair
+```
+
+### Permission Errors
+```bash
+./homelab fix-perms   # Fix Docker permissions
+```
+
+## 🔄 Updating
+
+### Pull Latest Changes
+```bash
+./homelab sync        # Pulls from Git
+./homelab deploy      # Redeploy with updates
+```
+
+### Auto-Update Setup
+```bash
+# Add to crontab for daily updates
+0 3 * * * cd /path/to/HomeLabHub && ./homelab sync && ./homelab deploy
+```
+
+## 💾 Backup & Recovery
+
+### Create Backup
+```bash
+./homelab backup
+# Backups saved to /tmp/homelab-backups/
+```
+
+### Restore from Backup
+```bash
+# Manual restore (automated coming soon)
+cd /tmp/homelab-backups/
+tar -xzf homelab_backup_[timestamp].tar.gz
+```
+
+## 🚀 Advanced Usage
+
+### Custom Deployment Order
+Edit the `deploy_services_ordered()` function in `homelab` script.
+
+### Add New Service
+1. Add to `docker-compose.yml`
+2. Add to `Caddyfile` if web-accessible
+3. Update `homelab` script health checks
+4. Deploy: `./homelab fresh`
+
+### Production Deployment
+```bash
+# On production server
+cd /home/evin/contain/HomeLabHub
+git pull origin main
+./homelab deploy
+```
+
+## 📊 System Requirements
+
+### Minimum
+- 4 CPU cores
+- 8GB RAM
+- 50GB storage
+- 10Mbps internet
+
+### Recommended
+- 8+ CPU cores
+- 16GB+ RAM
+- 100GB+ SSD storage
+- 100Mbps+ internet
 
 ## 🔐 Security
 
-- **Environment variables** stored in `.env` (git-ignored)
-- **Secrets management** via `generate-unified-env.sh`
-- **PostgreSQL passwords** auto-generated
-- **No hardcoded credentials** in any code
-- **SSH access** for remote management
+- All services behind Caddy reverse proxy
+- Automatic SSL via Let's Encrypt
+- Secrets in `.env` (never committed)
+- PostgreSQL with strong passwords
+- VNC password protected
+- API keys properly managed
 
-See [SECURITY.md](docs/SECURITY.md) for security best practices.
+## 📈 Monitoring
 
----
+Check system health:
+```bash
+./homelab health      # Quick check
+./homelab diagnose    # Full diagnostics
+./homelab info        # System resources
+```
+
+Monitor specific service:
+```bash
+./homelab logs dashboard -f    # Follow dashboard logs
+./homelab logs discord-bot -f  # Follow Discord bot logs
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create feature branch
+3. Make your changes
+4. Test thoroughly: `./homelab health`
+5. Submit pull request
 
 ## 📚 Documentation
 
-### Core Guides
-- **[WORKSPACE_STRUCTURE.md](docs/WORKSPACE_STRUCTURE.md)** - Complete workspace guide
-- **[DEPLOYMENT_FIX_COMPLETE.md](docs/DEPLOYMENT_FIX_COMPLETE.md)** - Deployment troubleshooting
-- **[DATABASE_AUTOCONFIGURE_SUMMARY.md](docs/DATABASE_AUTOCONFIGURE_SUMMARY.md)** - Database setup
-- **[ENV_QUICK_GUIDE.md](docs/ENV_QUICK_GUIDE.md)** - Environment variables reference
+- [Script Archive Summary](scripts-archive/ARCHIVE_SUMMARY.md) - Old scripts reference
+- [Environment Setup](.env.example) - Configuration template
+- [Docker Compose](docker-compose.yml) - Service definitions
+- [Caddy Config](Caddyfile) - Reverse proxy setup
 
-### Service-Specific Setup
-- **[ZONEEDIT_SETUP.md](docs/ZONEEDIT_SETUP.md)** - ZoneEdit Dynamic DNS integration
-- **[FIX_CODE_SERVER_AND_VNC.md](FIX_CODE_SERVER_AND_VNC.md)** - Code-Server & VNC authentication
+## 🆘 Troubleshooting Guide
 
----
+### Can't find homelab script?
+```bash
+ls -la homelab
+chmod +x homelab
+```
 
-## 🎉 Why This Workspace?
+### Docker permission denied?
+```bash
+sudo ./homelab fix-perms
+```
 
-✅ **Unified Development** - All services in one place  
-✅ **Version Control** - Full Git history  
-✅ **Easy Testing** - Test before deploying to production  
-✅ **Replit AI** - AI-powered development assistance  
-✅ **Automatic Deployment** - One command deploys everything  
-✅ **Clean Organization** - Maintainable codebase structure  
+### Services keep restarting?
+```bash
+./homelab diagnose
+./homelab logs [service]
+```
 
----
+### Out of disk space?
+```bash
+docker system prune -a
+./homelab info
+```
 
-## 🚀 Getting Started
+## 📝 Version History
 
-**New to this workspace?**
+- **v2.0.0** - Complete unification into single `homelab` tool
+- **v1.5.0** - Fixed Jarvis AI GPT-5 → GPT-3.5 migration
+- **v1.0.0** - Initial multi-script version
 
-1. **Explore the services:**
-   ```bash
-   ls services/
-   ```
+## 📞 Support
 
-2. **Read the structure guide:**
-   ```bash
-   cat docs/WORKSPACE_STRUCTURE.md
-   ```
-
-3. **Set up deployment to Ubuntu:**
-   ```bash
-   # On Ubuntu server:
-   git clone <this-repo> NebulaCommand
-   cd NebulaCommand
-   ./deployment/generate-unified-env.sh
-   ./deployment/deploy-unified.sh
-   ```
-
-4. **Start developing!**
+- **Quick Help:** `./homelab help`
+- **Diagnostics:** `./homelab diagnose`
+- **All Logs:** `./homelab logs all`
+- **GitHub Issues:** Create issue with diagnostic output
 
 ---
 
-## 🆘 Need Help?
-
-- **Quick fix:** Run `./homelab-manager.sh` → **Option 13** (Troubleshoot)
-- **Database problems:** Run `./homelab-manager.sh` → **Option 7** (Ensure Databases)
-- **Deployment issues:** See `docs/DATABASE_TROUBLESHOOTING.md`
-- **Environment setup:** Run `./homelab-manager.sh` → **Option 9** (Generate .env)
-- **Ask Replit AI:** I can help with any service!
-
----
-
-**Maintained by:** Evin  
-**Last Updated:** November 2025  
-**Ubuntu Version:** 25.10 Desktop  
-**Architecture:** Docker Compose + Caddy + PostgreSQL
+**HomeLabHub v2.0** - Unified Management System  
+*All your services, one simple command*
