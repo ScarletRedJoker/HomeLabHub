@@ -139,9 +139,13 @@ vnc.evindrake.net {
     #     respond "⛔ VPN Access Required - Connect to VPN to access VNC" 403
     # }
     
-    reverse_proxy vnc-desktop:80 {
+    reverse_proxy vnc-desktop:6080 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
+        
+        # WebSocket support for NoVNC - CRITICAL for VNC connection
+        header_up Upgrade {http.request.header.Upgrade}
+        header_up Connection {http.request.header.Connection}
     }
     
     # Enhanced security headers

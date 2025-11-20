@@ -8,20 +8,21 @@ logger = logging.getLogger(__name__)
 
 class AIService:
     def __init__(self):
-        ai_api_key = os.environ.get('AI_INTEGRATIONS_OPENAI_API_KEY')
-        ai_base_url = os.environ.get('AI_INTEGRATIONS_OPENAI_BASE_URL')
+        # Try Replit integration variables first, then fall back to standard OpenAI vars
+        ai_api_key = os.environ.get('AI_INTEGRATIONS_OPENAI_API_KEY') or os.environ.get('OPENAI_API_KEY')
+        ai_base_url = os.environ.get('AI_INTEGRATIONS_OPENAI_BASE_URL') or os.environ.get('OPENAI_BASE_URL', 'https://api.openai.com/v1')
         
-        if ai_api_key and ai_base_url:
+        if ai_api_key:
             self.client = OpenAI(
                 api_key=ai_api_key,
                 base_url=ai_base_url
             )
             self.enabled = True
-            logger.info("AI Service initialized with Replit AI Integrations")
+            logger.info(f"AI Service initialized with {'Replit' if 'AI_INTEGRATIONS' in os.environ.get('AI_INTEGRATIONS_OPENAI_API_KEY', '') else 'OpenAI'} credentials")
         else:
             self.client = None
             self.enabled = False
-            logger.warning("AI Service not initialized - missing API credentials")
+            logger.warning("AI Service not initialized - missing API credentials (checked AI_INTEGRATIONS_OPENAI_API_KEY and OPENAI_API_KEY)")
         
         # Initialize Ollama support
         try:
