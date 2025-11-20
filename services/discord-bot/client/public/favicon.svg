@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="discordGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#5865F2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4752C4;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Ticket shape -->
+  <rect x="8" y="16" width="48" height="32" rx="4" fill="url(#discordGrad)"/>
+  
+  <!-- Ticket perforation notches -->
+  <circle cx="8" cy="32" r="3" fill="#202225"/>
+  <circle cx="56" cy="32" r="3" fill="#202225"/>
+  
+  <!-- Support icon (headset) -->
+  <path d="M 32 24 C 26 24 22 28 22 34 L 22 38 L 26 38 L 26 34 C 26 30 28 28 32 28 C 36 28 38 30 38 34 L 38 38 L 42 38 L 42 34 C 42 28 38 24 32 24 Z" fill="#FFF"/>
+  <rect x="20" y="36" width="6" height="8" rx="2" fill="#43B581"/>
+  <rect x="38" y="36" width="6" height="8" rx="2" fill="#43B581"/>
+  
+  <!-- Microphone -->
+  <rect x="30" y="40" width="4" height="6" rx="2" fill="#FFF"/>
+  <path d="M 27 46 L 37 46" stroke="#FFF" stroke-width="2" stroke-linecap="round"/>
+</svg>
