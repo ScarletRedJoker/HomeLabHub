@@ -51,7 +51,7 @@ When facing a problem:
 5. Execute with approval
 ''',
                 'capabilities': ['orchestration', 'decision-making', 'synthesis', 'planning'],
-                'model': 'gpt-5'
+                'model': 'gpt-3.5-turbo'
             },
             {
                 'agent_type': AgentType.DATABASE.value,
@@ -74,7 +74,7 @@ When analyzing issues, provide:
 - Prevention strategies
 ''',
                 'capabilities': ['database-health', 'query-optimization', 'connection-repair', 'migrations'],
-                'model': 'gpt-5'
+                'model': 'gpt-3.5-turbo'
             },
             {
                 'agent_type': AgentType.NETWORK.value,
@@ -99,7 +99,7 @@ When diagnosing issues:
 - Suggest specific commands (ping, curl, nslookup, etc.)
 ''',
                 'capabilities': ['network-diagnosis', 'dns-analysis', 'ssl-monitoring', 'connectivity-testing'],
-                'model': 'gpt-5'
+                'model': 'gpt-3.5-turbo'
             },
             {
                 'agent_type': AgentType.CONTAINER.value,
@@ -124,7 +124,7 @@ When analyzing containers:
 - Suggest docker commands for diagnosis
 ''',
                 'capabilities': ['container-health', 'log-analysis', 'resource-optimization', 'docker-troubleshooting'],
-                'model': 'gpt-5'
+                'model': 'gpt-3.5-turbo'
             },
             {
                 'agent_type': AgentType.SECURITY.value,
@@ -149,7 +149,7 @@ When analyzing security:
 - Suggest hardening measures
 ''',
                 'capabilities': ['security-audit', 'intrusion-detection', 'ssl-monitoring', 'vulnerability-scan'],
-                'model': 'gpt-5'
+                'model': 'gpt-3.5-turbo'
             }
         ]
         

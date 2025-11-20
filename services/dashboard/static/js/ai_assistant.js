@@ -3,7 +3,7 @@ let conversationHistory = [];
 let currentEventSource = null;
 let isStreaming = false;
 let useStreaming = true;
-let currentModel = 'gpt-5';
+let currentModel = 'gpt-3.5-turbo';
 
 // Load settings from localStorage
 function loadSettings() {

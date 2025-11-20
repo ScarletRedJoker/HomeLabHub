@@ -36,7 +36,7 @@ class Agent(Base):
     system_prompt: Mapped[Optional[str]] = mapped_column(Text)
     capabilities: Mapped[Optional[dict]] = mapped_column(JSONB)
     config: Mapped[Optional[dict]] = mapped_column(JSONB)
-    model: Mapped[str] = mapped_column(String(50), default='gpt-5')
+    model: Mapped[str] = mapped_column(String(50), default='gpt-3.5-turbo')
     status: Mapped[str] = mapped_column(String(20), default=AgentStatus.IDLE.value)
     current_task_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('agent_tasks.id', ondelete='SET NULL'))
     tasks_completed: Mapped[int] = mapped_column(Integer, default=0)

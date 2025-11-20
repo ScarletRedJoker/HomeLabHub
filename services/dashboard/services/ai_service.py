@@ -57,7 +57,7 @@ Provide a clear, actionable response."""
             # the newest OpenAI model is "gpt-5" which was released August 7, 2025.
             # do not change this unless explicitly requested by the user
             response = self.client.chat.completions.create(
-                model="gpt-5",
+                model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are an expert DevOps engineer helping troubleshoot server and container issues."},
                     {"role": "user", "content": prompt}
@@ -84,7 +84,7 @@ Provide specific troubleshooting steps and potential solutions."""
             # the newest OpenAI model is "gpt-5" which was released August 7, 2025.
             # do not change this unless explicitly requested by the user
             response = self.client.chat.completions.create(
-                model="gpt-5",
+                model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are an expert homelab administrator helping with Docker, networking, and server management."},
                     {"role": "user", "content": prompt}
@@ -97,10 +97,10 @@ Provide specific troubleshooting steps and potential solutions."""
             logger.error(f"Error getting troubleshooting advice: {e}")
             return f"Error: {str(e)}"
     
-    def chat(self, message: str, conversation_history: List[Dict] = None, model: str = "gpt-5") -> str:
+    def chat(self, message: str, conversation_history: List[Dict] = None, model: str = "gpt-3.5-turbo") -> str:
         # Validate and default model parameter
         if not model or not isinstance(model, str):
-            model = "gpt-5"
+            model = "gpt-3.5-turbo"
         
         # Check if using Ollama model
         if model.startswith("ollama/"):
@@ -195,7 +195,7 @@ Format your responses using Markdown for better readability:
         messages.append({"role": "user", "content": message})
         return messages
     
-    def chat_stream(self, message: str, conversation_history: List[Dict] = None, model: str = "gpt-5") -> Generator[str, None, None]:
+    def chat_stream(self, message: str, conversation_history: List[Dict] = None, model: str = "gpt-3.5-turbo") -> Generator[str, None, None]:
         """
         Stream chat responses using Server-Sent Events (SSE)
         Supports both OpenAI and Ollama models
@@ -204,7 +204,7 @@ Format your responses using Markdown for better readability:
         """
         # Validate and default model parameter
         if not model or not isinstance(model, str):
-            model = "gpt-5"
+            model = "gpt-3.5-turbo"
         
         # Detect if using Ollama model (starts with "ollama/")
         if model.startswith("ollama/"):
@@ -327,8 +327,8 @@ Format your responses using Markdown for better readability:
         """
         models = [
             {
-                "id": "gpt-5",
-                "name": "GPT-5 (OpenAI)",
+                "id": "gpt-3.5-turbo",
+                "name": "GPT-3.5 Turbo (OpenAI)",
                 "description": "Latest OpenAI model (August 2025) - Best for complex reasoning",
                 "provider": "openai"
             },

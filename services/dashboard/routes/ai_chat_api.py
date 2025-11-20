@@ -26,7 +26,7 @@ def status():
             "openai_available": ai_service.client is not None,
             "ollama_available": ai_service.ollama.enabled if ai_service.ollama else False,
             "models": {
-                "openai": ["gpt-5", "gpt-4"] if ai_service.enabled else [],
+                "openai": ["gpt-3.5-turbo", "gpt-4"] if ai_service.enabled else [],
                 "ollama": ai_service.ollama.list_models() if ai_service.ollama and ai_service.ollama.enabled else []
             }
         })
@@ -51,7 +51,7 @@ def chat():
         
         message = data.get('message', '').strip()
         conversation_history = data.get('conversation_history', [])
-        model = data.get('model', 'gpt-5')
+        model = data.get('model', 'gpt-3.5-turbo')
         session_id = data.get('session_id')
         
         if not message:
@@ -129,7 +129,7 @@ def chat_stream():
         
         message = data.get('message', '').strip()
         conversation_history = data.get('conversation_history', [])
-        model = data.get('model', 'gpt-5')
+        model = data.get('model', 'gpt-3.5-turbo')
         session_id = data.get('session_id')
         
         if not message:
