@@ -14,9 +14,11 @@ echo "3. ✅ Discord Bot offline"
 echo ""
 
 # SSH connection details
-read -p "Enter your Ubuntu server IP: " UBUNTU_IP
-read -p "Enter your SSH user (default: root): " SSH_USER
-SSH_USER=${SSH_USER:-root}
+read -p "Enter your Ubuntu server IP or hostname (e.g., 74.76.32.151 or host.evindrake.net): " UBUNTU_HOST
+read -p "Enter your SSH user (default: evin): " SSH_USER
+SSH_USER=${SSH_USER:-evin}
+read -p "Enter project path (default: /home/evin/contain/HomeLabHub): " PROJECT_PATH
+PROJECT_PATH=${PROJECT_PATH:-/home/evin/contain/HomeLabHub}
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -25,11 +27,11 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 
 # Copy the fixed AI service file
 echo "→ Copying fixed AI service..."
-scp services/dashboard/services/ai_service.py ${SSH_USER}@${UBUNTU_IP}:/root/homelabhub/services/dashboard/services/
+scp services/dashboard/services/ai_service.py ${SSH_USER}@${UBUNTU_HOST}:${PROJECT_PATH}/services/dashboard/services/
 
 # Copy the fixed Caddyfile
 echo "→ Copying fixed Caddyfile..."
-scp Caddyfile ${SSH_USER}@${UBUNTU_IP}:/root/homelabhub/
+scp Caddyfile ${SSH_USER}@${UBUNTU_HOST}:${PROJECT_PATH}/
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -55,11 +57,11 @@ EOF
 
 # Copy to Ubuntu and append to .env
 echo "→ Adding Discord secrets to Ubuntu .env..."
-scp /tmp/discord_env.txt ${SSH_USER}@${UBUNTU_IP}:/tmp/
-ssh ${SSH_USER}@${UBUNTU_IP} << 'ENDSSH'
-cd /root/homelabhub
+scp /tmp/discord_env.txt ${SSH_USER}@${UBUNTU_HOST}:/tmp/
+ssh ${SSH_USER}@${UBUNTU_HOST} << ENDSSH
+cd ${PROJECT_PATH}
 # Backup current .env
-cp .env .env.backup.$(date +%Y%m%d_%H%M%S)
+cp .env .env.backup.\$(date +%Y%m%d_%H%M%S)
 # Append Discord secrets
 cat /tmp/discord_env.txt >> .env
 rm /tmp/discord_env.txt
@@ -71,8 +73,8 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "  Step 3: Rebuild and restart services"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-ssh ${SSH_USER}@${UBUNTU_IP} << 'ENDSSH'
-cd /root/homelabhub
+ssh ${SSH_USER}@${UBUNTU_HOST} << ENDSSH
+cd ${PROJECT_PATH}
 
 echo "→ Stopping services..."
 docker compose down
@@ -128,4 +130,4 @@ echo "2. VNC Desktop: https://vnc.evindrake.net (should show password prompt)"
 echo "3. Discord Bot: Type /ping in your Discord server"
 echo ""
 echo "If any issues persist, check logs with:"
-echo "  ssh ${SSH_USER}@${UBUNTU_IP} 'cd /root/homelabhub && docker logs [service-name]'"
+echo "  ssh ${SSH_USER}@${UBUNTU_HOST} 'cd ${PROJECT_PATH} && docker logs [service-name]'"
