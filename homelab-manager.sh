@@ -1803,13 +1803,19 @@ run_deployment_verification() {
         echo -e "${GREEN}✓${NC} PostgreSQL container is running"
         passed=$((passed + 1))
         
-        # Try to connect to database
+        # Detect which superuser to use (legacy container uses ticketbot, new uses postgres)
+        local pg_superuser="ticketbot"
         if docker exec discord-bot-db psql -U postgres -c "SELECT 1" >/dev/null 2>&1; then
+            pg_superuser="postgres"
+        fi
+        
+        # Try to connect to database
+        if docker exec discord-bot-db psql -U "$pg_superuser" -c "SELECT 1" >/dev/null 2>&1; then
             echo -e "${GREEN}✓${NC} PostgreSQL is accepting connections"
             passed=$((passed + 1))
             
             # Check if Jarvis database exists
-            if docker exec discord-bot-db psql -U postgres -lqt | cut -d \| -f 1 | grep -qw "jarvis"; then
+            if docker exec discord-bot-db psql -U "$pg_superuser" -lqt | cut -d \| -f 1 | grep -qw "homelab_jarvis"; then
                 echo -e "${GREEN}✓${NC} Jarvis database exists"
                 passed=$((passed + 1))
             else

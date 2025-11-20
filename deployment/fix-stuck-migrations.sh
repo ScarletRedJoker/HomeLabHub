@@ -18,51 +18,48 @@ echo -e "  2. Dropping Google integration tables if they exist"
 echo -e "  3. Re-running alembic upgrade head cleanly"
 echo ""
 
-# Check if .env file exists
-if [ ! -f ".env" ]; then
-    echo -e "${RED}✗ Error: .env file not found${NC}"
-    echo -e "${YELLOW}Please create a .env file with database credentials first${NC}"
+# Check if PostgreSQL container is running
+POSTGRES_CONTAINER="discord-bot-db"
+
+if ! docker ps --filter "name=${POSTGRES_CONTAINER}" --filter "status=running" | grep -q "${POSTGRES_CONTAINER}"; then
+    echo -e "${RED}✗ Error: PostgreSQL container '${POSTGRES_CONTAINER}' is not running${NC}"
+    echo -e "${YELLOW}Please start the database container first${NC}"
     exit 1
 fi
 
-# Load environment variables from .env
-echo "Loading environment variables from .env..."
-set -a
-source .env
-set +a
-
-# Check for required PostgreSQL environment variables
-POSTGRES_HOST="${POSTGRES_HOST:-localhost}"
-POSTGRES_DB="${POSTGRES_DB:-jarvis}"
-POSTGRES_USER="${POSTGRES_USER:-jarvis}"
-POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-}"
-
-if [ -z "$POSTGRES_PASSWORD" ]; then
-    echo -e "${RED}✗ Error: POSTGRES_PASSWORD not set in .env${NC}"
-    echo -e "${YELLOW}Please set POSTGRES_PASSWORD in your .env file${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}✓ Environment variables loaded${NC}"
+echo -e "${GREEN}✓ PostgreSQL container is running${NC}"
 echo ""
+
+# Detect which superuser to use (legacy container uses ticketbot, new uses postgres)
+echo "Detecting PostgreSQL superuser..."
+PG_SUPERUSER="ticketbot"
+if docker exec "${POSTGRES_CONTAINER}" psql -U postgres -c "SELECT 1" >/dev/null 2>&1; then
+    PG_SUPERUSER="postgres"
+    echo -e "${GREEN}✓ Using superuser: postgres (new architecture)${NC}"
+else
+    echo -e "${GREEN}✓ Using superuser: ticketbot (legacy container)${NC}"
+fi
+
+# Use homelab_jarvis database
+POSTGRES_DB="homelab_jarvis"
+
 echo "Database connection details:"
-echo "  Host: $POSTGRES_HOST"
-echo "  Database: $POSTGRES_DB"
-echo "  User: $POSTGRES_USER"
+echo "  Container: ${POSTGRES_CONTAINER}"
+echo "  Database: ${POSTGRES_DB}"
+echo "  Superuser: ${PG_SUPERUSER}"
 echo ""
 
 # Test database connection
 echo "Testing database connection..."
-export PGPASSWORD="$POSTGRES_PASSWORD"
 
-if ! psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT 1;" &>/dev/null; then
+if ! docker exec "${POSTGRES_CONTAINER}" psql -U "${PG_SUPERUSER}" -d "${POSTGRES_DB}" -c "SELECT 1;" &>/dev/null; then
     echo -e "${RED}✗ Error: Cannot connect to database${NC}"
-    echo -e "${YELLOW}Please check your database credentials and ensure PostgreSQL is running${NC}"
+    echo -e "${YELLOW}Please check that the database exists and is accessible${NC}"
     echo ""
     echo "Connection details:"
-    echo "  Host: $POSTGRES_HOST"
-    echo "  Database: $POSTGRES_DB"
-    echo "  User: $POSTGRES_USER"
+    echo "  Container: ${POSTGRES_CONTAINER}"
+    echo "  Database: ${POSTGRES_DB}"
+    echo "  Superuser: ${PG_SUPERUSER}"
     exit 1
 fi
 
@@ -71,7 +68,7 @@ echo ""
 
 # Check if migration 005 is already applied
 echo "Checking migration status..."
-MIGRATION_005_EXISTS=$(psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -t -c "SELECT COUNT(*) FROM alembic_version WHERE version_num = '005';" 2>/dev/null || echo "0")
+MIGRATION_005_EXISTS=$(docker exec "${POSTGRES_CONTAINER}" psql -U "${PG_SUPERUSER}" -d "${POSTGRES_DB}" -t -c "SELECT COUNT(*) FROM alembic_version WHERE version_num = '005';" 2>/dev/null || echo "0")
 
 if [ "$MIGRATION_005_EXISTS" -gt 0 ]; then
     echo -e "${YELLOW}⚠ Migration 005 is already applied in alembic_version table${NC}"
@@ -88,11 +85,11 @@ echo ""
 ENUM_TYPES=("serviceconnectionstatus" "automationstatus" "emailnotificationstatus" "backupstatus")
 for enum_type in "${ENUM_TYPES[@]}"; do
     echo "  Checking enum type: $enum_type"
-    ENUM_EXISTS=$(psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -t -c "SELECT COUNT(*) FROM pg_type WHERE typname = '$enum_type';" 2>/dev/null || echo "0")
+    ENUM_EXISTS=$(docker exec "${POSTGRES_CONTAINER}" psql -U "${PG_SUPERUSER}" -d "${POSTGRES_DB}" -t -c "SELECT COUNT(*) FROM pg_type WHERE typname = '$enum_type';" 2>/dev/null || echo "0")
     
     if [ "$ENUM_EXISTS" -gt 0 ]; then
         echo -e "    ${YELLOW}Found - dropping with CASCADE${NC}"
-        if psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "DROP TYPE IF EXISTS $enum_type CASCADE;" &>/dev/null; then
+        if docker exec "${POSTGRES_CONTAINER}" psql -U "${PG_SUPERUSER}" -d "${POSTGRES_DB}" -c "DROP TYPE IF EXISTS $enum_type CASCADE;" &>/dev/null; then
             echo -e "    ${GREEN}✓ Dropped $enum_type${NC}"
         else
             echo -e "    ${RED}✗ Failed to drop $enum_type${NC}"
@@ -111,11 +108,11 @@ echo ""
 TABLES=("drive_backups" "email_notifications" "calendar_automations" "google_service_status")
 for table in "${TABLES[@]}"; do
     echo "  Checking table: $table"
-    TABLE_EXISTS=$(psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = '$table';" 2>/dev/null || echo "0")
+    TABLE_EXISTS=$(docker exec "${POSTGRES_CONTAINER}" psql -U "${PG_SUPERUSER}" -d "${POSTGRES_DB}" -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = '$table';" 2>/dev/null || echo "0")
     
     if [ "$TABLE_EXISTS" -gt 0 ]; then
         echo -e "    ${YELLOW}Found - dropping${NC}"
-        if psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "DROP TABLE IF EXISTS $table CASCADE;" &>/dev/null; then
+        if docker exec "${POSTGRES_CONTAINER}" psql -U "${PG_SUPERUSER}" -d "${POSTGRES_DB}" -c "DROP TABLE IF EXISTS $table CASCADE;" &>/dev/null; then
             echo -e "    ${GREEN}✓ Dropped $table${NC}"
         else
             echo -e "    ${RED}✗ Failed to drop $table${NC}"
