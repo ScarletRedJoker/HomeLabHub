@@ -3,26 +3,32 @@ from openai import OpenAI
 from typing import List, Dict, Generator, Optional
 import logging
 import json
+from config.environment import get_openai_config, is_replit
 
 logger = logging.getLogger(__name__)
 
 class AIService:
     def __init__(self):
-        # Try Replit integration variables first, then fall back to standard OpenAI vars
-        ai_api_key = os.environ.get('AI_INTEGRATIONS_OPENAI_API_KEY') or os.environ.get('OPENAI_API_KEY')
-        ai_base_url = os.environ.get('AI_INTEGRATIONS_OPENAI_BASE_URL') or os.environ.get('OPENAI_BASE_URL', 'https://api.openai.com/v1')
-        
-        if ai_api_key:
+        # Use environment-aware configuration
+        try:
+            config = get_openai_config()
             self.client = OpenAI(
-                api_key=ai_api_key,
-                base_url=ai_base_url
+                api_key=config.api_key,
+                base_url=config.base_url
             )
             self.enabled = True
-            logger.info(f"AI Service initialized with {'Replit' if 'AI_INTEGRATIONS' in os.environ.get('AI_INTEGRATIONS_OPENAI_API_KEY', '') else 'OpenAI'} credentials")
-        else:
+            env_type = "Replit" if is_replit() else "Production"
+            logger.info(f"AI Service initialized with {env_type} OpenAI credentials")
+            logger.info(f"  Base URL: {config.base_url}")
+            logger.info(f"  Model: {config.model}")
+        except ValueError as e:
             self.client = None
             self.enabled = False
-            logger.warning("AI Service not initialized - missing API credentials (checked AI_INTEGRATIONS_OPENAI_API_KEY and OPENAI_API_KEY)")
+            logger.warning(f"AI Service not initialized: {e}")
+        except Exception as e:
+            self.client = None
+            self.enabled = False
+            logger.error(f"Failed to initialize AI Service: {e}")
         
         # Initialize Ollama support
         try:

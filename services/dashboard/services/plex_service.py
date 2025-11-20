@@ -7,6 +7,7 @@ import requests
 from typing import Dict, Optional, Tuple, List
 from datetime import datetime, timedelta
 from config import Config
+from config.environment import get_plex_config
 from services.upload_service import upload_service
 from services.db_service import db_service
 from models.plex import PlexImportJob, PlexImportItem
@@ -30,8 +31,16 @@ class PlexService:
     
     def __init__(self):
         """Initialize Plex service"""
-        self.plex_url = Config.PLEX_URL
-        self.plex_token = Config.PLEX_TOKEN
+        try:
+            plex_config = get_plex_config()
+            self.plex_url = plex_config["url"]
+            self.plex_token = plex_config["token"]
+            logger.info(f"Plex service initialized with URL: {self.plex_url}")
+        except ValueError as e:
+            logger.warning(f"Plex service not fully configured: {e}")
+            self.plex_url = Config.PLEX_URL if hasattr(Config, 'PLEX_URL') else None
+            self.plex_token = Config.PLEX_TOKEN if hasattr(Config, 'PLEX_TOKEN') else None
+        
         self.movies_path = Config.PLEX_MOVIES_PATH
         self.tv_path = Config.PLEX_TV_PATH
         self.music_path = Config.PLEX_MUSIC_PATH

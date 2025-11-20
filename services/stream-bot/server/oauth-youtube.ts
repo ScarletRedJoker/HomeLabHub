@@ -4,6 +4,7 @@ import querystring from "querystring";
 import { requireAuth } from "./auth/middleware";
 import { storage } from "./storage";
 import { getEnv } from "./env";
+import { getYouTubeConfig, isReplit } from "../src/config/environment";
 import { 
   generateState, 
   generateCodeVerifier, 
@@ -76,24 +77,22 @@ function validateTokenResponse(data: any): void {
  */
 router.get('/youtube', requireAuth, async (req, res) => {
   try {
-    const clientId = getEnv('YOUTUBE_CLIENT_ID');
-    const redirectUri = getEnv('YOUTUBE_REDIRECT_URI');
-
-    if (!clientId) {
-      console.error('[YouTube OAuth] YOUTUBE_CLIENT_ID not configured');
+    // Get YouTube OAuth configuration
+    let youtubeConfig;
+    try {
+      youtubeConfig = getYouTubeConfig();
+      const envType = isReplit() ? "Replit (dev)" : "Ubuntu (production)";
+      console.log(`[YouTube OAuth] Environment: ${envType}`);
+    } catch (error) {
+      console.error('[YouTube OAuth] Configuration error:', error);
       return res.status(500).json({ 
         error: 'YouTube OAuth not configured',
-        message: 'Please set YOUTUBE_CLIENT_ID environment variable. Contact administrator for setup instructions.'
+        message: error instanceof Error ? error.message : 'Please contact administrator for setup instructions.'
       });
     }
 
-    if (!redirectUri) {
-      console.error('[YouTube OAuth] YOUTUBE_REDIRECT_URI not configured');
-      return res.status(500).json({ 
-        error: 'YouTube OAuth not configured',
-        message: 'Please set YOUTUBE_REDIRECT_URI environment variable. Contact administrator for setup instructions.'
-      });
-    }
+    const clientId = youtubeConfig.clientId;
+    const redirectUri = youtubeConfig.redirectUri;
 
     const state = generateState();
     const codeVerifier = generateCodeVerifier();
@@ -174,24 +173,18 @@ router.get('/youtube/callback', async (req, res) => {
       return res.redirect('/settings?error=youtube_invalid_state&details=state_expired_or_invalid');
     }
 
-    const clientId = getEnv('YOUTUBE_CLIENT_ID');
-    const clientSecret = getEnv('YOUTUBE_CLIENT_SECRET');
-    const redirectUri = getEnv('YOUTUBE_REDIRECT_URI');
-
-    if (!clientId) {
-      console.error('[YouTube OAuth] YOUTUBE_CLIENT_ID not configured');
-      return res.redirect('/settings?error=youtube_config_error&details=missing_client_id');
+    // Use environment-aware YouTube configuration
+    let youtubeConfig;
+    try {
+      youtubeConfig = getYouTubeConfig();
+    } catch (error) {
+      console.error('[YouTube OAuth] Configuration error in callback:', error);
+      return res.redirect('/settings?error=youtube_config_error&details=configuration_missing');
     }
 
-    if (!clientSecret) {
-      console.error('[YouTube OAuth] YOUTUBE_CLIENT_SECRET not configured');
-      return res.redirect('/settings?error=youtube_config_error&details=missing_client_secret');
-    }
-
-    if (!redirectUri) {
-      console.error('[YouTube OAuth] YOUTUBE_REDIRECT_URI not configured');
-      return res.redirect('/settings?error=youtube_config_error&details=missing_redirect_uri');
-    }
+    const clientId = youtubeConfig.clientId;
+    const clientSecret = youtubeConfig.clientSecret;
+    const redirectUri = youtubeConfig.redirectUri;
 
     let tokenResponse;
     try {

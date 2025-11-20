@@ -4,6 +4,10 @@
 .env.*.local
 *.env
 
+# Environment-specific files (dual-environment setup)
+.env.replit
+.env.production
+
 # Logs
 logs/
 *.log
