@@ -34,13 +34,26 @@ def upgrade():
             if 'uuid' not in id_type:
                 logger.warning(f"⚠️  agents.id is {id_type}, expected UUID - dropping for recreation")
                 logger.info("🔧 Auto-repair: Dropping legacy tables...")
+                
+                # Drop migration 007's tables first (they have INTEGER FK to old agents table)
+                op.execute("DROP TABLE IF EXISTS agent_conversations CASCADE")
+                op.execute("DROP TABLE IF EXISTS agent_tasks CASCADE")
+                
+                # Drop migration 014's tables
                 op.execute("DROP TABLE IF EXISTS agent_messages CASCADE")
                 op.execute("DROP TABLE IF EXISTS chat_history CASCADE")
+                
+                # Finally drop the agents table itself
                 op.execute("DROP TABLE IF EXISTS agents CASCADE")
-                logger.info("✓ Legacy tables dropped, will recreate with correct UUID types")
+                
+                logger.info("✓ All legacy agent tables dropped, will recreate with correct UUID types")
                 # Reset existing_tables so tables get recreated below
                 existing_tables = []
+                
+                #  Also refresh inspector to see current state
+                inspector = sa.inspect(conn)
     
+    # CREATE or VERIFY agents table
     if 'agents' not in existing_tables:
         op.create_table(
             'agents',
@@ -109,6 +122,113 @@ def upgrade():
             sa.Column('created_at', sa.DateTime(timezone=True), nullable=False, server_default=sa.text('NOW()'))
         )
         op.create_index('idx_chat_history_session', 'chat_history', ['session_id', 'created_at'])
+    
+    # CREATE OR REPAIR agent_tasks (from migration 007)
+    # Refresh existing_tables to see current state (especially after auto-repair)
+    existing_tables = inspector.get_table_names()
+    
+    if 'agent_tasks' not in existing_tables:
+        # Recreate agent_tasks with UUID FKs (migration 007 should have created this)
+        op.create_table(
+            'agent_tasks',
+            sa.Column('id', sa.Integer(), nullable=False, autoincrement=True),
+            sa.Column('task_type', sa.String(50), nullable=False, server_default='diagnose'),
+            sa.Column('description', sa.Text(), nullable=False),
+            sa.Column('priority', sa.Integer(), nullable=False, server_default='5'),
+            sa.Column('status', sa.String(50), nullable=False, server_default='pending'),
+            sa.Column('assigned_agent_id', UUID(as_uuid=True), nullable=True),
+            sa.Column('parent_task_id', sa.Integer(), nullable=True),
+            sa.Column('context', JSONB, nullable=True),
+            sa.Column('result', JSONB, nullable=True),
+            sa.Column('execution_log', JSONB, nullable=True),
+            sa.Column('requires_collaboration', sa.Boolean(), nullable=False, server_default='false'),
+            sa.Column('collaborating_agents', JSONB, nullable=True),
+            sa.Column('requires_approval', sa.Boolean(), nullable=False, server_default='true'),
+            sa.Column('approved', sa.Boolean(), nullable=False, server_default='false'),
+            sa.Column('approved_by', sa.String(100), nullable=True),
+            sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.text('NOW()')),
+            sa.Column('started_at', sa.DateTime(), nullable=True),
+            sa.Column('completed_at', sa.DateTime(), nullable=True),
+            sa.PrimaryKeyConstraint('id'),
+            sa.ForeignKeyConstraint(['assigned_agent_id'], ['agents.id'], ondelete='SET NULL'),
+            sa.ForeignKeyConstraint(['parent_task_id'], ['agent_tasks.id'], ondelete='SET NULL')
+        )
+        op.create_index('idx_agent_tasks_status', 'agent_tasks', ['status'])
+        op.create_index('idx_agent_tasks_agent', 'agent_tasks', ['assigned_agent_id'])
+        op.create_index('idx_agent_tasks_created', 'agent_tasks', ['created_at'])
+        op.create_index('idx_agent_tasks_priority', 'agent_tasks', ['priority'])
+    elif 'agent_tasks' in existing_tables:
+        op.execute("""
+            DO $$ BEGIN
+                -- Add FK from agent_tasks to agents if missing
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.table_constraints 
+                    WHERE constraint_name = 'agent_tasks_assigned_agent_id_fkey'
+                ) THEN
+                    ALTER TABLE agent_tasks
+                    ADD CONSTRAINT agent_tasks_assigned_agent_id_fkey
+                    FOREIGN KEY (assigned_agent_id) REFERENCES agents(id) ON DELETE SET NULL;
+                END IF;
+            END $$;
+        """)
+    
+    # CREATE OR REPAIR agent_conversations (from migration 007)
+    if 'agent_conversations' not in existing_tables:
+        # Recreate agent_conversations with UUID FKs (migration 007 should have created this)
+        op.create_table(
+            'agent_conversations',
+            sa.Column('id', sa.Integer(), nullable=False, autoincrement=True),
+            sa.Column('task_id', sa.Integer(), nullable=False),
+            sa.Column('from_agent_id', UUID(as_uuid=True), nullable=False),
+            sa.Column('to_agent_id', UUID(as_uuid=True), nullable=False),
+            sa.Column('message', sa.Text(), nullable=False),
+            sa.Column('message_type', sa.String(50), nullable=False, server_default='consultation'),
+            sa.Column('timestamp', sa.DateTime(), nullable=False, server_default=sa.text('NOW()')),
+            sa.PrimaryKeyConstraint('id'),
+            sa.ForeignKeyConstraint(['task_id'], ['agent_tasks.id'], ondelete='CASCADE'),
+            sa.ForeignKeyConstraint(['from_agent_id'], ['agents.id'], ondelete='CASCADE'),
+            sa.ForeignKeyConstraint(['to_agent_id'], ['agents.id'], ondelete='CASCADE')
+        )
+        op.create_index('idx_agent_conversations_task', 'agent_conversations', ['task_id'])
+        op.create_index('idx_agent_conversations_timestamp', 'agent_conversations', ['timestamp'])
+    elif 'agent_conversations' in existing_tables:
+        op.execute("""
+            DO $$ BEGIN
+                -- Add FKs from agent_conversations to agents if missing
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.table_constraints 
+                    WHERE constraint_name = 'agent_conversations_from_agent_id_fkey'
+                ) THEN
+                    ALTER TABLE agent_conversations
+                    ADD CONSTRAINT agent_conversations_from_agent_id_fkey
+                    FOREIGN KEY (from_agent_id) REFERENCES agents(id) ON DELETE CASCADE;
+                END IF;
+                
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.table_constraints 
+                    WHERE constraint_name = 'agent_conversations_to_agent_id_fkey'
+                ) THEN
+                    ALTER TABLE agent_conversations
+                    ADD CONSTRAINT agent_conversations_to_agent_id_fkey
+                    FOREIGN KEY (to_agent_id) REFERENCES agents(id) ON DELETE CASCADE;
+                END IF;
+            END $$;
+        """)
+    
+    # Add FK from agents.current_task_id to agent_tasks (if both exist)
+    if 'agents' in existing_tables and 'agent_tasks' in existing_tables:
+        op.execute("""
+            DO $$ BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.table_constraints 
+                    WHERE constraint_name = 'fk_agents_current_task'
+                ) THEN
+                    ALTER TABLE agents
+                    ADD CONSTRAINT fk_agents_current_task
+                    FOREIGN KEY (current_task_id) REFERENCES agent_tasks(id) ON DELETE SET NULL;
+                END IF;
+            END $$;
+        """)
     
     op.execute("""
         INSERT INTO agents (name, agent_type, description, capabilities, config)
