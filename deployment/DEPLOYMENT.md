@@ -43,7 +43,7 @@ The system automatically detects its environment by checking for:
 | Feature | Replit | Production (Ubuntu) |
 |---------|--------|---------------------|
 | OpenAI API | AI Integrations (automatic) | Self-managed API key |
-| YouTube OAuth | Replit Connector | Manual OAuth credentials |
+| YouTube OAuth | Manual OAuth credentials | Manual OAuth credentials |
 | Google Services | Replit Connectors | Optional manual setup |
 | Database URLs | `${VAR}` expansion allowed | Fully resolved (no `${VAR}`) |
 | Domain | `*.replit.dev` | Custom domains |
@@ -77,10 +77,10 @@ The system automatically detects its environment by checking for:
    ```
    This automatically provides `AI_INTEGRATIONS_OPENAI_API_KEY` and `AI_INTEGRATIONS_OPENAI_BASE_URL`
 
-2. **YouTube Connector** (Optional for YouTube OAuth):
-   ```
-   Click "Tools" → "Connectors" → "YouTube" → "Setup"
-   ```
+2. **YouTube OAuth** (Required for user YouTube connections):
+   - Get OAuth credentials from [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+   - Note: YouTube Connector is for DEVELOPER API access, not for app USERS to connect their accounts
+   - Set `YOUTUBE_CLIENT_ID` and `YOUTUBE_CLIENT_SECRET` in `.env.replit`
 
 3. **Google Services Connectors** (Optional):
    - Google Calendar
@@ -106,8 +106,10 @@ WEB_PASSWORD=your_dashboard_password_here
 AI_INTEGRATIONS_OPENAI_API_KEY=  # Leave empty, auto-filled
 AI_INTEGRATIONS_OPENAI_BASE_URL=  # Leave empty, auto-filled
 
-# YouTube (handled by Replit Connector)
-YOUTUBE_SIGNIN_CALLBACK_URL=https://${REPLIT_DEV_DOMAIN}/api/auth/youtube/callback
+# YouTube OAuth (required for user connections)
+YOUTUBE_CLIENT_ID=your_youtube_client_id
+YOUTUBE_CLIENT_SECRET=your_youtube_client_secret
+YOUTUBE_REDIRECT_URI=https://${REPLIT_DEV_DOMAIN}/api/auth/youtube/callback
 ```
 
 ### Step 3: Start Workflows
@@ -333,11 +335,19 @@ docker-compose logs --tail=100
    ```
    YOUTUBE_CLIENT_ID=your-client-id.apps.googleusercontent.com
    YOUTUBE_CLIENT_SECRET=your-client-secret
-   YOUTUBE_SIGNIN_CALLBACK_URL=https://stream.yourdomain.com/api/auth/youtube/callback
+   YOUTUBE_REDIRECT_URI=https://stream.yourdomain.com/api/auth/youtube/callback
    ```
 
 **For Replit**:
-- Automatically handled via YouTube Connector (no manual setup needed)
+1. Follow same steps as production above
+2. Set redirect URI to: `https://your-replit-domain.replit.dev/api/auth/youtube/callback`
+3. Add to `.env.replit`:
+   ```
+   YOUTUBE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+   YOUTUBE_CLIENT_SECRET=your-client-secret
+   YOUTUBE_REDIRECT_URI=https://${REPLIT_DEV_DOMAIN}/api/auth/youtube/callback
+   ```
+Note: YouTube Connector is for DEVELOPER API access, not for user OAuth
 
 ### Plex Token
 
@@ -448,8 +458,9 @@ This validates:
 **Symptoms**: "YouTube not configured" or OAuth redirect fails
 
 **Replit**:
-- Ensure YouTube Connector is set up via Replit UI
-- Redirect URL should use `${REPLIT_DEV_DOMAIN}`
+- Set `YOUTUBE_CLIENT_ID` and `YOUTUBE_CLIENT_SECRET` in `.env.replit`
+- Ensure `YOUTUBE_REDIRECT_URI` uses `${REPLIT_DEV_DOMAIN}` (automatically set in workflow)
+- Note: YouTube Connector is for DEVELOPER API access, not for user OAuth
 
 **Production**:
 - Verify `YOUTUBE_CLIENT_ID` and `YOUTUBE_CLIENT_SECRET` are set

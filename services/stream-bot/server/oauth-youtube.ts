@@ -94,6 +94,18 @@ router.get('/youtube', requireAuth, async (req, res) => {
     const clientId = youtubeConfig.clientId;
     const redirectUri = youtubeConfig.redirectUri;
 
+    // Log redirect URI for verification
+    console.log(`[YouTube OAuth] Redirect URI: ${redirectUri}`);
+    
+    // Validate redirect URI matches current environment
+    const appUrl = process.env.APP_URL || process.env.REPLIT_DEV_DOMAIN;
+    if (appUrl && !redirectUri.includes(appUrl)) {
+      console.warn(
+        `[YouTube OAuth] Warning: Redirect URI (${redirectUri}) doesn't match APP_URL (${appUrl}). ` +
+        `This may cause OAuth failures in production.`
+      );
+    }
+
     const state = generateState();
     const codeVerifier = generateCodeVerifier();
     const codeChallenge = generateCodeChallenge(codeVerifier);
@@ -185,6 +197,9 @@ router.get('/youtube/callback', async (req, res) => {
     const clientId = youtubeConfig.clientId;
     const clientSecret = youtubeConfig.clientSecret;
     const redirectUri = youtubeConfig.redirectUri;
+
+    // Log callback configuration for debugging
+    console.log(`[YouTube OAuth Callback] Using redirect URI: ${redirectUri}`);
 
     let tokenResponse;
     try {

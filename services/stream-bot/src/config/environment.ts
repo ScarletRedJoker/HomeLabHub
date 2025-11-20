@@ -80,12 +80,20 @@ export function getOpenAIConfig(): OpenAIConfig {
 export function getYouTubeConfig(): YouTubeConfig {
   const clientId = process.env.YOUTUBE_CLIENT_ID || "";
   const clientSecret = process.env.YOUTUBE_CLIENT_SECRET || "";
-  const redirectUri = process.env.YOUTUBE_SIGNIN_CALLBACK_URL || "";
+  // Support both YOUTUBE_REDIRECT_URI (workflow) and YOUTUBE_SIGNIN_CALLBACK_URL (legacy)
+  const redirectUri = process.env.YOUTUBE_REDIRECT_URI || process.env.YOUTUBE_SIGNIN_CALLBACK_URL || "";
 
   if (!clientId || !clientSecret) {
     throw new Error(
       "YouTube OAuth not configured. YOUTUBE_CLIENT_ID and YOUTUBE_CLIENT_SECRET are required. " +
       "Get credentials from: https://console.cloud.google.com/apis/credentials"
+    );
+  }
+
+  if (!redirectUri) {
+    throw new Error(
+      "YouTube OAuth redirect URI not configured. " +
+      "YOUTUBE_REDIRECT_URI or YOUTUBE_SIGNIN_CALLBACK_URL is required."
     );
   }
 
