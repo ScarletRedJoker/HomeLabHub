@@ -39,6 +39,7 @@ show_menu() {
     echo -e "    ${GREEN}1)${NC} 🚀 Auto-Deploy (Smart deployment with auto-healing)"
     echo -e "    ${GREEN}1a)${NC} 📦 Full Deploy (build and start all services)"
     echo -e "    ${GREEN}1b)${NC} ☢️  Nuclear Reset (WIPE database and fresh start)"
+    echo -e "    ${GREEN}1c)${NC} 🔧 Fix Everything (PostgreSQL + VNC + All Services)"
     echo -e "    ${GREEN}2)${NC} 🔄 Quick Restart (restart without rebuilding)"
     echo -e "    ${GREEN}3)${NC} ⚡ Rebuild & Deploy (force rebuild + restart)"
     echo -e "    ${GREEN}3a)${NC} 🛑 Graceful Shutdown & Cleanup"
@@ -176,6 +177,27 @@ nuclear_reset() {
     
     chmod +x ./deployment/nuclear-reset.sh
     ./deployment/nuclear-reset.sh
+    
+    pause
+}
+
+# Fix Everything (Complete Fix)
+fix_everything() {
+    echo ""
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}${GREEN}  🔧 FIX EVERYTHING (COMPLETE)${NC}"
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    
+    if [ ! -f "./deployment/fix-everything.sh" ]; then
+        echo -e "${RED}✗ Error: fix-everything.sh not found${NC}"
+        echo -e "${YELLOW}Expected location: ./deployment/fix-everything.sh${NC}"
+        pause
+        return
+    fi
+    
+    chmod +x ./deployment/fix-everything.sh
+    ./deployment/fix-everything.sh
     
     pause
 }
@@ -2161,6 +2183,7 @@ main() {
             1) auto_deploy ;;
             1a) full_deploy ;;
             1b) nuclear_reset ;;
+            1c) fix_everything ;;
             2) quick_restart ;;
             3) rebuild_deploy ;;
             3a) graceful_shutdown ;;
