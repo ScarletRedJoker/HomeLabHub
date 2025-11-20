@@ -36,7 +36,8 @@ show_menu() {
     echo -e "${BOLD}${BLUE}━━━ What would you like to do? ━━━${NC}"
     echo ""
     echo -e "  ${BOLD}Deployment:${NC}"
-    echo -e "    ${GREEN}1)${NC} 🚀 Full Deploy (build and start all services)"
+    echo -e "    ${GREEN}1)${NC} 🚀 Auto-Deploy (Smart deployment with auto-healing)"
+    echo -e "    ${GREEN}1a)${NC} 📦 Full Deploy (build and start all services)"
     echo -e "    ${GREEN}2)${NC} 🔄 Quick Restart (restart without rebuilding)"
     echo -e "    ${GREEN}3)${NC} ⚡ Rebuild & Deploy (force rebuild + restart)"
     echo -e "    ${GREEN}3a)${NC} 🛑 Graceful Shutdown & Cleanup"
@@ -107,11 +108,32 @@ check_status_brief() {
     fi
 }
 
+# Auto-Deploy (Smart deployment with auto-healing)
+auto_deploy() {
+    echo ""
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}${BLUE}  🚀 AUTO-DEPLOY (SMART)${NC}"
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    
+    if [ ! -f "./deployment/auto-deploy.sh" ]; then
+        echo -e "${RED}✗ Error: auto-deploy.sh not found${NC}"
+        echo -e "${YELLOW}Expected location: ./deployment/auto-deploy.sh${NC}"
+        pause
+        return
+    fi
+    
+    chmod +x ./deployment/auto-deploy.sh
+    ./deployment/auto-deploy.sh
+    
+    pause
+}
+
 # Full Deploy
 full_deploy() {
     echo ""
     echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${BOLD}${BLUE}  🚀 FULL DEPLOYMENT${NC}"
+    echo -e "${BOLD}${BLUE}  📦 FULL DEPLOYMENT${NC}"
     echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     
@@ -2114,7 +2136,8 @@ main() {
         read choice
         
         case $choice in
-            1) full_deploy ;;
+            1) auto_deploy ;;
+            1a) full_deploy ;;
             2) quick_restart ;;
             3) rebuild_deploy ;;
             3a) graceful_shutdown ;;
