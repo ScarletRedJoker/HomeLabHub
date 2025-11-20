@@ -5,7 +5,7 @@ integrations = ["python_openai_ai_integrations:1.0.0", "spotify:1.0.0", "google-
 
 [nix]
 channel = "stable-25_05"
-packages = ["cacert", "cargo", "iana-etc", "libiconv", "libxcrypt", "libyaml", "openssl", "pkg-config", "rustc", "unzip", "xcodebuild", "zlib"]
+packages = ["cacert", "cargo", "iana-etc", "libiconv", "libxcrypt", "libyaml", "openssl", "pkg-config", "rustc", "unzip", "xcodebuild", "zlib", "sshpass"]
 
 [workflows]
 runButton = "Project"
