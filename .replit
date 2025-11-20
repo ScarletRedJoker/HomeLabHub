@@ -32,7 +32,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd services/stream-bot && APP_URL=\"https://${REPLIT_DEV_DOMAIN}\" TWITCH_SIGNIN_CALLBACK_URL=\"https://${REPLIT_DEV_DOMAIN}/api/auth/twitch/callback\" YOUTUBE_SIGNIN_CALLBACK_URL=\"https://${REPLIT_DEV_DOMAIN}/api/auth/youtube/callback\" KICK_SIGNIN_CALLBACK_URL=\"https://${REPLIT_DEV_DOMAIN}/api/auth/kick/callback\" SPOTIFY_REDIRECT_URI=\"https://${REPLIT_DEV_DOMAIN}/api/auth/spotify/callback\" PORT=5000 npm run dev"
+args = "cd services/stream-bot && APP_URL=\"https://${REPLIT_DEV_DOMAIN}\" TWITCH_REDIRECT_URI=\"https://${REPLIT_DEV_DOMAIN}/api/auth/twitch/callback\" YOUTUBE_REDIRECT_URI=\"https://${REPLIT_DEV_DOMAIN}/api/auth/youtube/callback\" SPOTIFY_REDIRECT_URI=\"https://${REPLIT_DEV_DOMAIN}/api/auth/spotify/callback\" PORT=5000 npm run dev"
 waitForPort = 5000
 
 [[workflows.workflow]]
@@ -57,6 +57,10 @@ externalPort = 3001
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 39841
+externalPort = 5000
 
 [[ports]]
 localPort = 40971
