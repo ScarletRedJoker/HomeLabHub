@@ -126,6 +126,16 @@ export class OAuthStorageDB {
   }
 
   /**
+   * Consume OAuth session (alias for get() for backward compatibility)
+   * 
+   * @param state - OAuth state parameter
+   * @returns Session data or null if not found/expired/used
+   */
+  async consume(state: string): Promise<OAuthSessionData | null> {
+    return this.get(state);
+  }
+
+  /**
    * Check if OAuth session exists
    */
   async has(state: string): Promise<boolean> {
