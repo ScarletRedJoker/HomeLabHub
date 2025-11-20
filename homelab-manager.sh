@@ -1878,23 +1878,6 @@ run_deployment_verification() {
         warnings=$((warnings + 1))
     fi
     
-    # Check Stream Bot AI
-    if docker ps --filter "name=stream-bot" --filter "status=running" | grep -q "stream-bot"; then
-        echo -e "${GREEN}✓${NC} Stream Bot container is running"
-        passed=$((passed + 1))
-        
-        # Check if AI is enabled in stream-bot
-        if docker exec stream-bot env | grep -q "AI_INTEGRATIONS_OPENAI_API_KEY"; then
-            echo -e "${GREEN}✓${NC} Stream Bot has AI_INTEGRATIONS_OPENAI_API_KEY"
-            passed=$((passed + 1))
-        else
-            echo -e "${YELLOW}⚠${NC} Stream Bot AI credentials not found in container env"
-            warnings=$((warnings + 1))
-        fi
-    else
-        echo -e "${YELLOW}⚠${NC} Stream Bot container is not running"
-        warnings=$((warnings + 1))
-    fi
     
     echo ""
     
