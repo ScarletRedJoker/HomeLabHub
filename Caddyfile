@@ -20,7 +20,7 @@ bot.rig-city.com {
 # Stream Bot (SnappleBotAI)
 # ============================================
 stream.rig-city.com {
-    reverse_proxy stream-bot:5000 {
+    reverse_proxy stream-bot:3000 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
     }
