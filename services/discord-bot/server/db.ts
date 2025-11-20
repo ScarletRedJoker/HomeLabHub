@@ -6,11 +6,14 @@ import ws from 'ws';
 import * as schema from '@shared/schema';
 
 // Database configuration
-const databaseUrl = process.env.DATABASE_URL;
+// Prefer DISCORD_DATABASE_URL, fallback to DATABASE_URL
+const databaseUrl = process.env.DISCORD_DATABASE_URL || process.env.DATABASE_URL;
 
 if (!databaseUrl) {
-  throw new Error('DATABASE_URL environment variable is not set');
+  throw new Error('DATABASE_URL or DISCORD_DATABASE_URL environment variable is not set');
 }
+
+console.log('[Discord Bot DB] Using database:', databaseUrl.replace(/:[^:@]+@/, ':***@'));
 
 /**
  * Auto-detect database type and use appropriate driver

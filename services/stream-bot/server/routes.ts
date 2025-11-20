@@ -226,6 +226,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Feature Flags - Expose enabled features to frontend
+  // Note: This endpoint is public to allow frontend to adapt UI based on available features
+  app.get("/api/features", async (req, res) => {
+    try {
+      const { getFeatureFlags } = await import('./env');
+      const features = getFeatureFlags();
+      res.json(features);
+    } catch (error: any) {
+      res.status(500).json({ 
+        error: "Failed to get feature flags",
+        message: error.message 
+      });
+    }
+  });
+
   // Enhanced Health Check - Detailed bot health for homelabhub integration
   // Returns bot status, platform connections, and user counts
   app.get("/api/health", async (req, res) => {

@@ -13,6 +13,11 @@ import {
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Link, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+
+interface FeatureFlags {
+  obs: boolean;
+}
 
 const botControlItems = [
   {
@@ -135,6 +140,21 @@ const platformItems = [
 export function AppSidebar() {
   const [location] = useLocation();
 
+  // Check if OBS feature is enabled
+  const { data: features } = useQuery<FeatureFlags>({
+    queryKey: ["/api/features"],
+    retry: false,
+  });
+
+  // Filter feature items based on enabled features
+  const visibleFeatureItems = featureItems.filter((item) => {
+    // Hide OBS Control if OBS feature is not enabled
+    if (item.url === "/obs-control" && features && !features.obs) {
+      return false;
+    }
+    return true;
+  });
+
   return (
     <Sidebar data-testid="sidebar-main" className="border-r">
       <SidebarContent className="gap-0">
@@ -170,7 +190,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {featureItems.map((item) => (
+              {visibleFeatureItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild

@@ -45,8 +45,10 @@ import {
   Edit,
   Coffee,
   Zap,
+  AlertCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface OBSStatus {
   connected: boolean;
@@ -84,8 +86,18 @@ interface OBSAutomation {
   updatedAt: string;
 }
 
+interface FeatureFlags {
+  obs: boolean;
+}
+
 export default function OBSControl() {
   const { toast } = useToast();
+
+  // Check if OBS feature is enabled
+  const { data: features, isLoading: featuresLoading } = useQuery<FeatureFlags>({
+    queryKey: ["/api/features"],
+    retry: false,
+  });
   const [selectedScene, setSelectedScene] = useState<string>("");
   const [currentScene, setCurrentScene] = useState<string>("");
   const [connectionDialogOpen, setConnectionDialogOpen] = useState(false);
@@ -374,13 +386,60 @@ export default function OBSControl() {
     setAutomationForm({ ...automationForm, actions: newActions });
   };
 
-  if (statusLoading) {
+  // Loading state
+  if (featuresLoading || statusLoading) {
     return (
       <div className="p-6 space-y-6">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-muted rounded w-48" />
           <div className="h-64 bg-muted rounded" />
         </div>
+      </div>
+    );
+  }
+
+  // Feature not available state
+  if (features && !features.obs) {
+    return (
+      <div className="p-6 space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">OBS Control</h1>
+          <p className="text-muted-foreground">
+            Control OBS Studio scenes, sources, and streaming
+          </p>
+        </div>
+        
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Feature Not Available</AlertTitle>
+          <AlertDescription>
+            OBS WebSocket integration is not configured for this deployment. 
+            This is a multi-tenant platform and OBS control is an optional feature.
+            If you need OBS integration, please contact your administrator or configure 
+            the OBS_WEBSOCKET_HOST environment variable.
+          </AlertDescription>
+        </Alert>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>What is OBS Control?</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">
+              OBS Control allows you to remotely manage OBS Studio from your stream dashboard, including:
+            </p>
+            <ul className="list-disc list-inside mt-4 space-y-2 text-muted-foreground">
+              <li>Switch between scenes automatically based on chat commands or events</li>
+              <li>Start and stop streaming or recording</li>
+              <li>Control source visibility and settings</li>
+              <li>Update text overlays in real-time</li>
+              <li>Create automation rules for chat interactions</li>
+            </ul>
+            <p className="text-muted-foreground mt-4">
+              This feature requires OBS Studio with WebSocket server enabled on the same network.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }

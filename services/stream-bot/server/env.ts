@@ -40,3 +40,24 @@ export function requireEnv(key: string, errorMessage?: string): string {
   }
   return value;
 }
+
+/**
+ * Feature Flags
+ * These flags determine which optional features are enabled based on environment configuration
+ */
+
+/**
+ * OBS WebSocket integration feature flag
+ * OBS features are enabled only when OBS_WEBSOCKET_HOST is configured
+ * This allows stream-bot to run in multi-tenant environments where not all users have OBS
+ */
+export const OBS_ENABLED = !!getEnv('OBS_WEBSOCKET_HOST');
+
+/**
+ * Get all feature flags for API exposure
+ */
+export function getFeatureFlags() {
+  return {
+    obs: OBS_ENABLED,
+  };
+}

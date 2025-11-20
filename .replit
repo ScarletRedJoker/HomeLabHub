@@ -28,12 +28,12 @@ name = "stream-bot"
 author = "agent"
 
 [workflows.workflow.metadata]
-outputType = "console"
+outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd services/stream-bot && APP_URL=\"https://${REPLIT_DEV_DOMAIN}\" TWITCH_SIGNIN_CALLBACK_URL=\"https://${REPLIT_DEV_DOMAIN}/api/auth/twitch/callback\" YOUTUBE_SIGNIN_CALLBACK_URL=\"https://${REPLIT_DEV_DOMAIN}/api/auth/youtube/callback\" KICK_SIGNIN_CALLBACK_URL=\"https://${REPLIT_DEV_DOMAIN}/api/auth/kick/callback\" PORT=3000 npm run dev"
-waitForPort = 3000
+args = "cd services/stream-bot && APP_URL=\"https://${REPLIT_DEV_DOMAIN}\" TWITCH_SIGNIN_CALLBACK_URL=\"https://${REPLIT_DEV_DOMAIN}/api/auth/twitch/callback\" YOUTUBE_SIGNIN_CALLBACK_URL=\"https://${REPLIT_DEV_DOMAIN}/api/auth/youtube/callback\" KICK_SIGNIN_CALLBACK_URL=\"https://${REPLIT_DEV_DOMAIN}/api/auth/kick/callback\" PORT=5000 npm run dev"
+waitForPort = 5000
 
 [[workflows.workflow]]
 name = "discord-bot"
@@ -56,8 +56,8 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 36179
-externalPort = 3003
+localPort = 36993
+externalPort = 3001
 
 [[ports]]
 localPort = 40971

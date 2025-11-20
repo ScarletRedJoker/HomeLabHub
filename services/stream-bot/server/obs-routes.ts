@@ -1,4 +1,4 @@
-import { Router, type Request, type Response } from 'express';
+import { Router, type Request, type Response, type NextFunction } from 'express';
 import { obsService } from './obs-service';
 import { db } from './db';
 import { obsConnections, obsAutomations } from '@shared/schema';
@@ -6,8 +6,28 @@ import { eq, and } from 'drizzle-orm';
 import { requireAuth } from './auth/middleware';
 import { insertOBSConnectionSchema, insertOBSAutomationSchema, updateOBSConnectionSchema, updateOBSAutomationSchema } from '@shared/schema';
 import crypto from 'crypto';
+import { OBS_ENABLED } from './env';
 
 const router = Router();
+
+/**
+ * Middleware to check if OBS feature is enabled
+ * Returns 501 Not Implemented if OBS_WEBSOCKET_HOST is not configured
+ */
+function requireOBSEnabled(req: Request, res: Response, next: NextFunction) {
+  if (!OBS_ENABLED) {
+    return res.status(501).json({
+      error: 'OBS integration not available',
+      message: 'OBS WebSocket integration is not configured for this deployment. This feature is optional and not all instances have OBS Studio available.',
+      feature: 'obs',
+      enabled: false,
+    });
+  }
+  next();
+}
+
+// Apply OBS feature check to all routes in this router
+router.use(requireOBSEnabled);
 
 const ENCRYPTION_KEY = process.env.OBS_ENCRYPTION_KEY || 'default-encryption-key-change-in-production';
 const ENCRYPTION_ALGORITHM = 'aes-256-cbc';
