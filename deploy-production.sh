@@ -218,10 +218,13 @@ fi
 # ============================================
 log_step "5/10 - Checking PostgreSQL availability"
 
+PROJECT_DIR="/home/evin/contain/HomeLabHub"
+ENV_FILE="$PROJECT_DIR/.env"
+
 # Start PostgreSQL if not running
 if ! docker ps | grep -q homelab-postgres; then
     log_info "Starting PostgreSQL container..."
-    docker-compose up -d homelab-postgres
+    docker compose --project-directory "$PROJECT_DIR" --env-file "$ENV_FILE" up -d homelab-postgres
     sleep 5
 fi
 
@@ -372,10 +375,14 @@ echo ""
 # ============================================
 log_step "10/10 - Deploying all services"
 
-log_info "Starting all services with docker-compose..."
-docker-compose up -d --force-recreate
+PROJECT_DIR="/home/evin/contain/HomeLabHub"
+ENV_FILE="$PROJECT_DIR/.env"
 
-log_pass "All services started"
+log_info "Starting all services with correct environment file..."
+log_info "Using: $ENV_FILE"
+docker compose --project-directory "$PROJECT_DIR" --env-file "$ENV_FILE" up -d --force-recreate
+
+log_pass "All services started with environment loaded"
 
 # Wait for services to stabilize
 log_info "Waiting 15 seconds for services to stabilize..."
@@ -390,8 +397,8 @@ echo "  DEPLOYMENT STATUS"
 echo "============================================"
 
 # Show service status
-RUNNING=$(docker-compose ps --services --filter "status=running" | wc -l)
-TOTAL=$(docker-compose ps --services | wc -l)
+RUNNING=$(docker compose --project-directory "$PROJECT_DIR" --env-file "$ENV_FILE" ps --services --filter "status=running" | wc -l)
+TOTAL=$(docker compose --project-directory "$PROJECT_DIR" --env-file "$ENV_FILE" ps --services | wc -l)
 
 if [ "$RUNNING" -eq "$TOTAL" ]; then
     echo -e "${GREEN}✓ All services running: $RUNNING/$TOTAL${NC}"
@@ -401,7 +408,7 @@ fi
 
 echo ""
 echo "Service health check:"
-docker-compose ps
+docker compose --project-directory "$PROJECT_DIR" --env-file "$ENV_FILE" ps
 
 echo ""
 echo "============================================"
