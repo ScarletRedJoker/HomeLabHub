@@ -20,6 +20,42 @@ TESTS_FAILED=0
 TESTS_TOTAL=0
 
 # ============================================
+# Load Environment Variables
+# ============================================
+# Detect environment and load appropriate .env file
+if [ -n "$REPL_ID" ] || [ -n "$REPLIT_CONNECTORS_HOSTNAME" ]; then
+    # Replit environment
+    if [ -f ".env.replit" ]; then
+        echo "Loading .env.replit..."
+        set -a
+        source .env.replit
+        set +a
+    elif [ -f ".env" ]; then
+        echo "Loading .env..."
+        set -a
+        source .env
+        set +a
+    fi
+else
+    # Production environment - try multiple file names
+    if [ -f ".env" ]; then
+        echo "Loading .env..."
+        set -a
+        source .env
+        set +a
+    elif [ -f ".env.production" ]; then
+        echo "Loading .env.production..."
+        set -a
+        source .env.production
+        set +a
+    else
+        echo -e "${RED}WARNING: No .env file found!${NC}"
+        echo "Please create .env file with required configuration."
+    fi
+fi
+echo ""
+
+# ============================================
 # Helper Functions
 # ============================================
 log_test() {
