@@ -67,7 +67,7 @@ echo -e "\n${CYAN}[3/7] Starting Infrastructure (PostgreSQL, Redis, MinIO)${NC}"
 
 docker compose --project-directory "$PROJECT_ROOT" \
     --env-file "$PROJECT_ROOT/.env" \
-    up -d homelab-postgres homelab-redis homelab-minio
+    up -d homelab-postgres redis minio
 
 # Wait for PostgreSQL to be ready
 echo "  Waiting for PostgreSQL..."
