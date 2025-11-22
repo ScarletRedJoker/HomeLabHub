@@ -241,32 +241,39 @@ app.use((req, res, next) => {
   log('OAuth session cleanup job started');
 
   // Start Snapple Fact generation service
-  const { generateSnappleFact, isOpenAIEnabled } = await import('./openai');
-  if (isOpenAIEnabled) {
-    setInterval(async () => {
-      try {
-        const fact = await generateSnappleFact();
-        if (fact) {
-          // POST fact to dashboard
-          const dashboardUrl = getEnv('DASHBOARD_URL') || 'http://homelab-dashboard:5000';
-          const response = await fetch(`${dashboardUrl}/api/stream/facts`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fact, source: 'stream-bot' })
-          });
-          if (response.ok) {
-            log('[Facts] Posted fact to dashboard');
-          } else {
-            log(`[Facts] Failed to post fact: ${response.status}`);
+  try {
+    const openaiModule = await import('./openai');
+    const { generateSnappleFact, isOpenAIEnabled } = openaiModule;
+    
+    if (isOpenAIEnabled) {
+      // Run fact generation every hour
+      setInterval(async () => {
+        try {
+          const fact = await generateSnappleFact();
+          if (fact) {
+            const dashboardUrl = 'http://homelab-dashboard:5000';
+            const response = await fetch(`${dashboardUrl}/api/stream/facts`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ fact, source: 'stream-bot' })
+            });
+            if (response.ok) {
+              log('[Facts] ✓ Posted fact to dashboard');
+            } else {
+              log(`[Facts] ✗ HTTP ${response.status} posting fact to dashboard`);
+            }
           }
+        } catch (error) {
+          log(`[Facts] ✗ ${error instanceof Error ? error.message : String(error)}`);
         }
-      } catch (error) {
-        log(`[Facts] Error generating/posting fact: ${error instanceof Error ? error.message : String(error)}`);
-      }
-    }, 3600000); // Every hour
-    log('[Facts] Snapple Fact generation service started (hourly)');
-  } else {
-    log('[Facts] OpenAI not enabled, skipping fact generation');
+      }, 3600000); // Every hour (3600000ms)
+      
+      log('[Facts] ✓ Snapple Fact generation service started (1 fact/hour)');
+    } else {
+      log('[Facts] ⚠ OpenAI not configured - fact generation disabled');
+    }
+  } catch (error) {
+    log(`[Facts] ✗ Failed to initialize fact generation: ${error instanceof Error ? error.message : String(error)}`);
   }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
