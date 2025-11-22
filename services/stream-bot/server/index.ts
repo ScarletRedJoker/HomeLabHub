@@ -263,8 +263,8 @@ app.use((req, res, next) => {
       } catch (error) {
         log(`[Facts] Error generating/posting fact: ${error instanceof Error ? error.message : String(error)}`);
       }
-    }, 60000); // Every 60 seconds
-    log('[Facts] Snapple Fact generation service started');
+    }, 3600000); // Every hour
+    log('[Facts] Snapple Fact generation service started (hourly)');
   } else {
     log('[Facts] OpenAI not enabled, skipping fact generation');
   }
