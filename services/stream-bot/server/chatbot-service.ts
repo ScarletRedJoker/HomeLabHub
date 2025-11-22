@@ -118,9 +118,9 @@ export class ChatbotService {
     });
 
     try {
-      // Call OpenAI API - the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+      // Call OpenAI API
       const response = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-3.5-turbo",
         messages,
         max_completion_tokens: 150,
       });
