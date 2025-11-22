@@ -63,42 +63,45 @@ def upgrade() -> None:
     if not index_exists('storage_alerts', 'ix_storage_alerts_updated_at'):
         op.create_index('ix_storage_alerts_updated_at', 'storage_alerts', ['updated_at'])
     
-    # Agent indexes (check for both idx_ and ix_ prefixes)
-    if not index_exists('agents', 'ix_agents_status') and not index_exists('agents', 'idx_agents_status'):
-        op.create_index('ix_agents_status', 'agents', ['status'])
-    if not index_exists('agents', 'ix_agents_created_at'):
-        op.create_index('ix_agents_created_at', 'agents', ['created_at'])
-    if not index_exists('agents', 'ix_agents_last_active'):
-        op.create_index('ix_agents_last_active', 'agents', ['last_active'])
-    if not index_exists('agents', 'ix_agents_current_task_id'):
-        op.create_index('ix_agents_current_task_id', 'agents', ['current_task_id'])
+    # Agent indexes (check if table exists first - created in migration 014)
+    if table_exists('agents'):
+        if not index_exists('agents', 'ix_agents_status') and not index_exists('agents', 'idx_agents_status'):
+            op.create_index('ix_agents_status', 'agents', ['status'])
+        if not index_exists('agents', 'ix_agents_created_at'):
+            op.create_index('ix_agents_created_at', 'agents', ['created_at'])
+        if not index_exists('agents', 'ix_agents_last_active'):
+            op.create_index('ix_agents_last_active', 'agents', ['last_active'])
+        if not index_exists('agents', 'ix_agents_current_task_id'):
+            op.create_index('ix_agents_current_task_id', 'agents', ['current_task_id'])
     
-    # Agent tasks indexes (check for both idx_ and ix_ prefixes from migration 007)
-    for idx_name, columns in [
-        ('ix_agent_tasks_status', ['status']),
-        ('ix_agent_tasks_priority', ['priority']),
-        ('ix_agent_tasks_created_at', ['created_at']),
-        ('ix_agent_tasks_started_at', ['started_at']),
-        ('ix_agent_tasks_completed_at', ['completed_at']),
-        ('ix_agent_tasks_assigned_agent_id', ['assigned_agent_id']),
-        ('ix_agent_tasks_parent_task_id', ['parent_task_id']),
-        ('ix_agent_tasks_status_priority', ['status', 'priority']),
-        ('ix_agent_tasks_status_created_at', ['status', 'created_at'])
-    ]:
-        alt_name = idx_name.replace('ix_', 'idx_')
-        if not index_exists('agent_tasks', idx_name) and not index_exists('agent_tasks', alt_name):
-            op.create_index(idx_name, 'agent_tasks', columns)
+    # Agent tasks indexes (check if table exists first - created in migration 007)
+    if table_exists('agent_tasks'):
+        for idx_name, columns in [
+            ('ix_agent_tasks_status', ['status']),
+            ('ix_agent_tasks_priority', ['priority']),
+            ('ix_agent_tasks_created_at', ['created_at']),
+            ('ix_agent_tasks_started_at', ['started_at']),
+            ('ix_agent_tasks_completed_at', ['completed_at']),
+            ('ix_agent_tasks_assigned_agent_id', ['assigned_agent_id']),
+            ('ix_agent_tasks_parent_task_id', ['parent_task_id']),
+            ('ix_agent_tasks_status_priority', ['status', 'priority']),
+            ('ix_agent_tasks_status_created_at', ['status', 'created_at'])
+        ]:
+            alt_name = idx_name.replace('ix_', 'idx_')
+            if not index_exists('agent_tasks', idx_name) and not index_exists('agent_tasks', alt_name):
+                op.create_index(idx_name, 'agent_tasks', columns)
     
-    # Agent conversation indexes (check for both idx_ and ix_ prefixes from migration 007)
-    for idx_name, columns in [
-        ('ix_agent_conversations_task_id', ['task_id']),
-        ('ix_agent_conversations_from_agent_id', ['from_agent_id']),
-        ('ix_agent_conversations_to_agent_id', ['to_agent_id']),
-        ('ix_agent_conversations_timestamp', ['timestamp'])
-    ]:
-        alt_name = idx_name.replace('ix_', 'idx_')
-        if not index_exists('agent_conversations', idx_name) and not index_exists('agent_conversations', alt_name):
-            op.create_index(idx_name, 'agent_conversations', columns)
+    # Agent conversation indexes (check if table exists first - created in migration 007)
+    if table_exists('agent_conversations'):
+        for idx_name, columns in [
+            ('ix_agent_conversations_task_id', ['task_id']),
+            ('ix_agent_conversations_from_agent_id', ['from_agent_id']),
+            ('ix_agent_conversations_to_agent_id', ['to_agent_id']),
+            ('ix_agent_conversations_timestamp', ['timestamp'])
+        ]:
+            alt_name = idx_name.replace('ix_', 'idx_')
+            if not index_exists('agent_conversations', idx_name) and not index_exists('agent_conversations', alt_name):
+                op.create_index(idx_name, 'agent_conversations', columns)
     
     # Google service status indexes
     safe_create_index('ix_google_service_status_status', 'google_service_status', ['status'])
