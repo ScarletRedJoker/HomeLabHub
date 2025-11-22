@@ -100,6 +100,10 @@ Each service connects with individual user credentials but all to the same Postg
    - Solution: Updated `./homelab fix` to rebuild bots with `--no-cache` before recreating
    - All database passwords now standardized to: `qS4R8Wrl-Spz7-YEmyllIA`
 
+1.5. **Background Cleanup Task Fixes (Nov 22, 2025)** ✅ RESOLVED
+   - Discord bot: Added missing `interaction_locks` table to prevent duplicate ticket creation
+   - Stream bot: Fixed OAuth stats display error (proper query result handling)
+
 2. **Environment Loading Issue (Nov 2025)**
    - Problem: Services crashed with "Missing environment variables" despite .env having all values
    - Root cause: Docker Compose using relative paths, couldn't find .env
