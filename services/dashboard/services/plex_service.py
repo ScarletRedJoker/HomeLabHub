@@ -7,7 +7,7 @@ import requests
 from typing import Dict, Optional, Tuple, List
 from datetime import datetime, timedelta
 from config import Config
-from config.environment import get_plex_config
+from env_config.environment import get_plex_config
 from services.upload_service import upload_service
 from services.db_service import db_service
 from models.plex import PlexImportJob, PlexImportItem

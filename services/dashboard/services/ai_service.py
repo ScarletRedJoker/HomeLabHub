@@ -2,7 +2,15 @@ from openai import OpenAI
 from typing import List, Dict, Generator, Optional, Any, cast
 import logging
 import json
+<<<<<<< HEAD
 import os
+=======
+<<<<<<< HEAD
+from env_config.environment import get_openai_config, is_replit
+=======
+from services.env_config.environment import get_openai_config, is_replit
+>>>>>>> f5386ca4e80d2b786c733e492a26ce216b324824
+>>>>>>> f231e9d85b0c4a80e21f74eb4764ad253e3d9605
 
 logger = logging.getLogger(__name__)
 

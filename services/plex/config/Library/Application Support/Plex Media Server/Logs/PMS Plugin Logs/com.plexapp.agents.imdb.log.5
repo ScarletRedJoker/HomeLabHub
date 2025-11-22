@@ -1,23 +1,23 @@
-2025-11-11 23:05:12,875 (7236d82e8808) :  INFO (core:349) - Starting framework core - Version: 2.6.3, Build: f737b82 (Thu Sep 18 14:18:49 UTC 2025)
-2025-11-11 23:05:12,876 (7236d82e8808) :  DEBUG (core:361) - Using the elevated policy
-2025-11-11 23:05:12,876 (7236d82e8808) :  DEBUG (core:450) - Starting runtime component.
-2025-11-11 23:05:12,877 (7236d82e8808) :  DEBUG (core:450) - Starting caching component.
-2025-11-11 23:05:12,877 (7236d82e8808) :  DEBUG (core:450) - Starting data component.
-2025-11-11 23:05:12,877 (7236d82e8808) :  DEBUG (core:450) - Starting networking component.
-2025-11-11 23:05:12,877 (7236d82e8808) :  DEBUG (networking:262) - Loaded HTTP cookies
-2025-11-11 23:05:12,877 (7236d82e8808) :  DEBUG (networking:434) - Setting the default network timeout to 20.0
-2025-11-11 23:05:12,878 (7236d82e8808) :  DEBUG (core:450) - Starting localization component.
-2025-11-11 23:05:12,878 (7236d82e8808) :  INFO (localization:409) - Setting the default locale to en-us
-2025-11-11 23:05:12,878 (7236d82e8808) :  DEBUG (core:450) - Starting messaging component.
-2025-11-11 23:05:12,878 (7236d82e8808) :  DEBUG (core:450) - Starting debugging component.
-2025-11-11 23:05:12,878 (7236d4ecdb38) :  DEBUG (networking:144) - Requesting 'http://127.0.0.1:32400/system/messaging/clear_events/com.plexapp.agents.imdb'
-2025-11-11 23:05:12,878 (7236d82e8808) :  DEBUG (core:450) - Starting services component.
-2025-11-11 23:05:12,879 (7236d82e8808) :  DEBUG (core:450) - Starting myplex component.
-2025-11-11 23:05:12,879 (7236d82e8808) :  DEBUG (core:450) - Starting notifications component.
-2025-11-11 23:05:12,937 (7236d82e8808) :  DEBUG (accessor:68) - Creating a new model access point for provider com.plexapp.agents.imdb in namespace 'metadata'
-2025-11-11 23:05:12,939 (7236d82e8808) :  DEBUG (networking:144) - Requesting 'http://127.0.0.1:32400/:/plugins/com.plexapp.system/resourceHashes'
-2025-11-11 23:05:13,395 (7236d82e8808) :  ERROR (networking:197) - Error opening URL 'http://127.0.0.1:32400/:/plugins/com.plexapp.system/resourceHashes'
-2025-11-11 23:05:13,396 (7236d82e8808) :  CRITICAL (runtime:1299) - Exception getting hosted resource hashes (most recent call last):
+2025-11-21 06:01:13,693 (7973827e1808) :  INFO (core:349) - Starting framework core - Version: 2.6.3, Build: f737b82 (Thu Sep 18 14:18:49 UTC 2025)
+2025-11-21 06:01:13,694 (7973827e1808) :  DEBUG (core:361) - Using the elevated policy
+2025-11-21 06:01:13,694 (7973827e1808) :  DEBUG (core:450) - Starting runtime component.
+2025-11-21 06:01:13,695 (7973827e1808) :  DEBUG (core:450) - Starting caching component.
+2025-11-21 06:01:13,695 (7973827e1808) :  DEBUG (core:450) - Starting data component.
+2025-11-21 06:01:13,695 (7973827e1808) :  DEBUG (core:450) - Starting networking component.
+2025-11-21 06:01:13,695 (7973827e1808) :  DEBUG (networking:262) - Loaded HTTP cookies
+2025-11-21 06:01:13,696 (7973827e1808) :  DEBUG (networking:434) - Setting the default network timeout to 20.0
+2025-11-21 06:01:13,696 (7973827e1808) :  DEBUG (core:450) - Starting localization component.
+2025-11-21 06:01:13,696 (7973827e1808) :  INFO (localization:409) - Setting the default locale to en-us
+2025-11-21 06:01:13,696 (7973827e1808) :  DEBUG (core:450) - Starting messaging component.
+2025-11-21 06:01:13,696 (7973827e1808) :  DEBUG (core:450) - Starting debugging component.
+2025-11-21 06:01:13,696 (7973827e1808) :  DEBUG (core:450) - Starting services component.
+2025-11-21 06:01:13,697 (7973827e1808) :  DEBUG (core:450) - Starting myplex component.
+2025-11-21 06:01:13,697 (7973827e1808) :  DEBUG (core:450) - Starting notifications component.
+2025-11-21 06:01:13,697 (79737f3b8b38) :  DEBUG (networking:144) - Requesting 'http://127.0.0.1:32400/system/messaging/clear_events/com.plexapp.agents.imdb'
+2025-11-21 06:01:13,773 (7973827e1808) :  DEBUG (accessor:68) - Creating a new model access point for provider com.plexapp.agents.imdb in namespace 'metadata'
+2025-11-21 06:01:13,775 (7973827e1808) :  DEBUG (networking:144) - Requesting 'http://127.0.0.1:32400/:/plugins/com.plexapp.system/resourceHashes'
+2025-11-21 06:01:14,168 (7973827e1808) :  ERROR (networking:197) - Error opening URL 'http://127.0.0.1:32400/:/plugins/com.plexapp.system/resourceHashes'
+2025-11-21 06:01:14,170 (7973827e1808) :  CRITICAL (runtime:1299) - Exception getting hosted resource hashes (most recent call last):
   File "/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/runtime.py", line 1293, in get_resource_hashes
     json = self._core.networking.http_request("http://127.0.0.1:32400/:/plugins/com.plexapp.system/resourceHashes", timeout=10).content
   File "/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/networking.py", line 243, in content
@@ -38,32 +38,32 @@
     raise HTTPError(req.get_full_url(), code, msg, hdrs, fp)
 HTTPError: HTTP Error 404: Not Found
 
-2025-11-11 23:05:13,403 (7236d4c93b38) :  DEBUG (services:265) - Plug-in is not daemonized - loading services from system
-2025-11-11 23:05:13,403 (7236d82e8808) :  DEBUG (runtime:1117) - Created a thread named 'load_all_services'
-2025-11-11 23:05:13,404 (7236d4c93b38) :  DEBUG (networking:144) - Requesting 'http://127.0.0.1:32400/:/plugins/com.plexapp.system/messaging/function/X0J1bmRsZVNlcnZpY2U6QWxsU2VydmljZXM_/Y2VyZWFsMQoxCmxpc3QKMApyMAo_/Y2VyZWFsMQoxCmRpY3QKMApyMAo_'
-2025-11-11 23:05:13,404 (7236d82e8808) :  DEBUG (runtime:1117) - Created a thread named 'get_server_info'
-2025-11-11 23:05:13,404 (7236d82e8808) :  DEBUG (core:150) - Finished starting framework core
-2025-11-11 23:05:13,404 (7236d4c4db38) :  DEBUG (networking:144) - Requesting 'http://127.0.0.1:32400'
-2025-11-11 23:05:13,405 (7236d82e8808) :  DEBUG (core:560) - Loading plug-in code
-2025-11-11 23:05:13,430 (7236d4c93b38) :  DEBUG (services:362) - Loaded services
-2025-11-11 23:05:13,435 (7236d4c4db38) :  DEBUG (core:538) - Machine identifier is 691a598f8c6a16eccb4d8ebfae9ef3568f2b38af
-2025-11-11 23:05:13,436 (7236d4c4db38) :  DEBUG (core:539) - Server version is 1.42.2.10156-f737b826c
-2025-11-11 23:05:13,439 (7236d4c70b38) :  DEBUG (services:438) - No shared code to load
-2025-11-11 23:05:13,668 (7236d82e8808) :  DEBUG (core:566) - Finished loading plug-in code
-2025-11-11 23:05:13,752 (7236d82e8808) :  DEBUG (agentkit:1132) - Creating new agent class called PlexMovieAgent
-2025-11-11 23:05:13,753 (7236d82e8808) :  DEBUG (agentkit:937) - Updating agent information: [{'media_types': ['Movie'], 'accepts_from': ['com.plexapp.agents.localmedia'], 'fallback_agent': None, 'contributes_to': ['com.plexapp.agents.themoviedb'], 'languages': ['en', 'sv', 'fr', 'es', 'nl', 'de', 'it', 'da', 'ar', 'ca', 'zh', 'cs', 'et', 'fi', 'el', 'he', 'hi', 'hu', 'id', 'ja', 'ko', 'lv', 'no', 'fa', 'pl', 'pt', 'ro', 'ru', 'sk', 'th', 'tr', 'uk', 'vi'], 'persist_stored_files': True, 'version': 0, 'primary_provider': True, 'prefs': True, 'name': 'Plex Movie (Legacy)'}]
-2025-11-11 23:05:13,754 (7236d82e8808) :  DEBUG (networking:144) - Requesting 'http://127.0.0.1:32400/:/plugins/com.plexapp.system/messaging/function/X0FnZW50U2VydmljZTpVcGRhdGVJbmZv/Y2VyZWFsMQoxCmxpc3QKMApyMAo_/Y2VyZWFsMQo3CmRpY3QKbGlzdApkaWN0Cmxpc3QKbGlzdApsaXN0Cmxpc3QKMgpzMjMKY29tLnBsZXhhcHAuYWdlbnRzLmltZGJzMTAKaWRlbnRpZmllcnIxCnMxMAphZ2VudF9pbmZvMQpyMgoxMApyMwpzMTEKbWVkaWFfdHlwZXNyNApzMTIKYWNjZXB0c19mcm9tbnMxNApmYWxsYmFja19hZ2VudHI1CnMxNApjb250cmlidXRlc190b3I2CnM5Cmxhbmd1YWdlc2IxczIwCnBlcnNpc3Rfc3RvcmVkX2ZpbGVzaTAKczcKdmVyc2lvbmIxczE2CnByaW1hcnlfcHJvdmlkZXJiMXM1CnByZWZzczE5ClBsZXggTW92aWUgKExlZ2FjeSlzNApuYW1lMQpzNQpNb3ZpZTEKczI5CmNvbS5wbGV4YXBwLmFnZW50cy5sb2NhbG1lZGlhMQpzMjkKY29tLnBsZXhhcHAuYWdlbnRzLnRoZW1vdmllZGIzMwpzMgplbnMyCnN2czIKZnJzMgplc3MyCm5sczIKZGVzMgppdHMyCmRhczIKYXJzMgpjYXMyCnpoczIKY3NzMgpldHMyCmZpczIKZWxzMgpoZXMyCmhpczIKaHVzMgppZHMyCmphczIKa29zMgpsdnMyCm5vczIKZmFzMgpwbHMyCnB0czIKcm9zMgpydXMyCnNrczIKdGhzMgp0cnMyCnVrczIKdmlyMAo_'
-2025-11-11 23:05:13,759 (7236d82e8808) :  INFO (core:611) - Started plug-in
-2025-11-11 23:05:13,759 (7236d82e8808) :  DEBUG (socketinterface:160) - Starting socket server
-2025-11-11 23:05:13,760 (7236d82e8808) :  DEBUG (runtime:1117) - Created a thread named 'start'
-2025-11-11 23:05:13,760 (7236d82e8808) :  INFO (socketinterface:184) - Socket server started on port 34453
-2025-11-11 23:05:13,760 (7236d82e8808) :  INFO (pipeinterface:25) - Entering run loop
-2025-11-11 23:05:13,760 (7236d82e8808) :  DEBUG (runtime:717) - Handling request GET /:/prefixes
-2025-11-11 23:05:13,761 (7236d82e8808) :  DEBUG (runtime:814) - Found route matching /:/prefixes
-2025-11-11 23:05:13,761 (7236d82e8808) :  DEBUG (runtime:924) - Response: [200] MediaContainer, 148 bytes
-2025-11-11 23:05:13,762 (7236d4bbbb38) :  DEBUG (runtime:717) - Handling request GET /:/plugins/com.plexapp.agents.imdb/prefs
-2025-11-11 23:05:13,768 (7236d4bbbb38) :  DEBUG (runtime:814) - Found route matching /:/plugins/com.plexapp.agents.imdb/prefs
-2025-11-11 23:05:13,768 (7236d4bbbb38) :  DEBUG (preferences:258) - Loaded preferences from DefaultPrefs.json
-2025-11-11 23:05:13,768 (7236d4bbbb38) :  DEBUG (preferences:178) - Loaded the user preferences for com.plexapp.agents.imdb
-2025-11-11 23:05:13,771 (7236d4bbbb38) :  DEBUG (runtime:88) - Sending packed state data (104 bytes)
-2025-11-11 23:05:13,771 (7236d4bbbb38) :  DEBUG (runtime:924) - Response: [200] MediaContainer, 2224 bytes
+2025-11-21 06:01:14,174 (79737f192b38) :  DEBUG (services:265) - Plug-in is not daemonized - loading services from system
+2025-11-21 06:01:14,174 (7973827e1808) :  DEBUG (runtime:1117) - Created a thread named 'load_all_services'
+2025-11-21 06:01:14,175 (7973827e1808) :  DEBUG (runtime:1117) - Created a thread named 'get_server_info'
+2025-11-21 06:01:14,175 (79737f192b38) :  DEBUG (networking:144) - Requesting 'http://127.0.0.1:32400/:/plugins/com.plexapp.system/messaging/function/X0J1bmRsZVNlcnZpY2U6QWxsU2VydmljZXM_/Y2VyZWFsMQoxCmxpc3QKMApyMAo_/Y2VyZWFsMQoxCmRpY3QKMApyMAo_'
+2025-11-21 06:01:14,175 (7973827e1808) :  DEBUG (core:150) - Finished starting framework core
+2025-11-21 06:01:14,175 (79737f14cb38) :  DEBUG (networking:144) - Requesting 'http://127.0.0.1:32400'
+2025-11-21 06:01:14,176 (7973827e1808) :  DEBUG (core:560) - Loading plug-in code
+2025-11-21 06:01:14,209 (79737f14cb38) :  DEBUG (core:538) - Machine identifier is 691a598f8c6a16eccb4d8ebfae9ef3568f2b38af
+2025-11-21 06:01:14,210 (79737f14cb38) :  DEBUG (core:539) - Server version is 1.42.2.10156-f737b826c
+2025-11-21 06:01:14,210 (79737f192b38) :  DEBUG (services:362) - Loaded services
+2025-11-21 06:01:14,214 (79737f16fb38) :  DEBUG (services:438) - No shared code to load
+2025-11-21 06:01:14,445 (7973827e1808) :  DEBUG (core:566) - Finished loading plug-in code
+2025-11-21 06:01:14,535 (7973827e1808) :  DEBUG (agentkit:1132) - Creating new agent class called PlexMovieAgent
+2025-11-21 06:01:14,536 (7973827e1808) :  DEBUG (agentkit:937) - Updating agent information: [{'media_types': ['Movie'], 'accepts_from': ['com.plexapp.agents.localmedia'], 'fallback_agent': None, 'contributes_to': ['com.plexapp.agents.themoviedb'], 'languages': ['en', 'sv', 'fr', 'es', 'nl', 'de', 'it', 'da', 'ar', 'ca', 'zh', 'cs', 'et', 'fi', 'el', 'he', 'hi', 'hu', 'id', 'ja', 'ko', 'lv', 'no', 'fa', 'pl', 'pt', 'ro', 'ru', 'sk', 'th', 'tr', 'uk', 'vi'], 'persist_stored_files': True, 'version': 0, 'primary_provider': True, 'prefs': True, 'name': 'Plex Movie (Legacy)'}]
+2025-11-21 06:01:14,536 (7973827e1808) :  DEBUG (networking:144) - Requesting 'http://127.0.0.1:32400/:/plugins/com.plexapp.system/messaging/function/X0FnZW50U2VydmljZTpVcGRhdGVJbmZv/Y2VyZWFsMQoxCmxpc3QKMApyMAo_/Y2VyZWFsMQo3CmRpY3QKbGlzdApkaWN0Cmxpc3QKbGlzdApsaXN0Cmxpc3QKMgpzMjMKY29tLnBsZXhhcHAuYWdlbnRzLmltZGJzMTAKaWRlbnRpZmllcnIxCnMxMAphZ2VudF9pbmZvMQpyMgoxMApyMwpzMTEKbWVkaWFfdHlwZXNyNApzMTIKYWNjZXB0c19mcm9tbnMxNApmYWxsYmFja19hZ2VudHI1CnMxNApjb250cmlidXRlc190b3I2CnM5Cmxhbmd1YWdlc2IxczIwCnBlcnNpc3Rfc3RvcmVkX2ZpbGVzaTAKczcKdmVyc2lvbmIxczE2CnByaW1hcnlfcHJvdmlkZXJiMXM1CnByZWZzczE5ClBsZXggTW92aWUgKExlZ2FjeSlzNApuYW1lMQpzNQpNb3ZpZTEKczI5CmNvbS5wbGV4YXBwLmFnZW50cy5sb2NhbG1lZGlhMQpzMjkKY29tLnBsZXhhcHAuYWdlbnRzLnRoZW1vdmllZGIzMwpzMgplbnMyCnN2czIKZnJzMgplc3MyCm5sczIKZGVzMgppdHMyCmRhczIKYXJzMgpjYXMyCnpoczIKY3NzMgpldHMyCmZpczIKZWxzMgpoZXMyCmhpczIKaHVzMgppZHMyCmphczIKa29zMgpsdnMyCm5vczIKZmFzMgpwbHMyCnB0czIKcm9zMgpydXMyCnNrczIKdGhzMgp0cnMyCnVrczIKdmlyMAo_'
+2025-11-21 06:01:14,541 (7973827e1808) :  INFO (core:611) - Started plug-in
+2025-11-21 06:01:14,541 (7973827e1808) :  DEBUG (socketinterface:160) - Starting socket server
+2025-11-21 06:01:14,542 (7973827e1808) :  DEBUG (runtime:1117) - Created a thread named 'start'
+2025-11-21 06:01:14,542 (7973827e1808) :  INFO (socketinterface:184) - Socket server started on port 35937
+2025-11-21 06:01:14,542 (7973827e1808) :  INFO (pipeinterface:25) - Entering run loop
+2025-11-21 06:01:14,542 (7973827e1808) :  DEBUG (runtime:717) - Handling request GET /:/prefixes
+2025-11-21 06:01:14,543 (7973827e1808) :  DEBUG (runtime:814) - Found route matching /:/prefixes
+2025-11-21 06:01:14,543 (7973827e1808) :  DEBUG (runtime:924) - Response: [200] MediaContainer, 148 bytes
+2025-11-21 06:01:14,544 (79737f0ddb38) :  DEBUG (runtime:717) - Handling request GET /:/plugins/com.plexapp.agents.imdb/prefs
+2025-11-21 06:01:14,549 (79737f0ddb38) :  DEBUG (runtime:814) - Found route matching /:/plugins/com.plexapp.agents.imdb/prefs
+2025-11-21 06:01:14,550 (79737f0ddb38) :  DEBUG (preferences:258) - Loaded preferences from DefaultPrefs.json
+2025-11-21 06:01:14,550 (79737f0ddb38) :  DEBUG (preferences:178) - Loaded the user preferences for com.plexapp.agents.imdb
+2025-11-21 06:01:14,553 (79737f0ddb38) :  DEBUG (runtime:88) - Sending packed state data (104 bytes)
+2025-11-21 06:01:14,553 (79737f0ddb38) :  DEBUG (runtime:924) - Response: [200] MediaContainer, 2224 bytes
