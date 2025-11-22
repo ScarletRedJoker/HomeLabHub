@@ -81,15 +81,19 @@ fix() {
     echo "Env File: $ENV_FILE"
     echo ""
     
+    # Rebuild bots with --no-cache to pick up password changes
+    echo -e "${CYAN}[1/4] Rebuilding bots without cache (ensures password changes are applied)...${NC}"
+    compose build --no-cache discord-bot stream-bot
+    
     # Force recreate ALL containers with correct environment
-    echo -e "${CYAN}[1/3] Force recreating all services with environment...${NC}"
+    echo -e "${CYAN}[2/4] Force recreating all services with environment...${NC}"
     compose up -d --force-recreate
     
-    echo -e "${CYAN}[2/3] Waiting for stability...${NC}"
+    echo -e "${CYAN}[3/4] Waiting for stability...${NC}"
     sleep 10
     
     # Create databases if PostgreSQL is ready
-    echo -e "${CYAN}[3/3] Setting up databases...${NC}"
+    echo -e "${CYAN}[4/4] Setting up databases...${NC}"
     if docker exec homelab-postgres pg_isready -U postgres &>/dev/null; then
         for db in ticketbot streambot homelab_jarvis; do
             if ! docker exec homelab-postgres psql -U postgres -lqt 2>/dev/null | cut -d \| -f 1 | grep -qw "$db"; then

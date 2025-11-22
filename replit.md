@@ -94,15 +94,21 @@ Each service connects with individual user credentials but all to the same Postg
 
 ## Recent Major Fixes
 
-1. **Environment Loading Issue (Nov 2025)**
+1. **Database Password Caching Issue (Nov 22, 2025)** ✅ RESOLVED
+   - Problem: Running `./homelab fix` caused password authentication failures
+   - Root cause: Docker cached image layers with old passwords, `--force-recreate` only recreates containers, doesn't rebuild images
+   - Solution: Updated `./homelab fix` to rebuild bots with `--no-cache` before recreating
+   - All database passwords now standardized to: `qS4R8Wrl-Spz7-YEmyllIA`
+
+2. **Environment Loading Issue (Nov 2025)**
    - Problem: Services crashed with "Missing environment variables" despite .env having all values
    - Root cause: Docker Compose using relative paths, couldn't find .env
    - Solution: Use absolute paths with `--project-directory` and `--env-file` flags
 
-2. **Jarvis AI Model Error**
+3. **Jarvis AI Model Error**
    - Fixed deprecated `gpt-5` → `gpt-3.5-turbo`
 
-3. **Script Consolidation**
+4. **Script Consolidation**
    - Removed 84+ duplicate scripts
    - Single `homelab` script handles all operations
 
