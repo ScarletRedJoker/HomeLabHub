@@ -55,7 +55,7 @@ Examples of good facts:
 
 Generate one completely unique and fascinating fact now:`;
 
-export async function generateSnappleFact(customPrompt?: string, model: string = "gpt-4.1-mini"): Promise<string> {
+export async function generateSnappleFact(customPrompt?: string, model: string = "gpt-4-mini"): Promise<string> {
   if (!isOpenAIEnabled || !openai) {
     throw new Error("AI features are not available. Please configure AI_INTEGRATIONS_OPENAI_API_KEY and AI_INTEGRATIONS_OPENAI_BASE_URL.");
   }
@@ -65,9 +65,8 @@ export async function generateSnappleFact(customPrompt?: string, model: string =
   console.log("[OpenAI] Generating fact with model:", model);
   console.log("[OpenAI] Using prompt:", prompt.substring(0, 100) + "...");
 
-  // Use gpt-4.1-mini as primary model (gpt-5-mini has been unreliable with empty responses)
-  // Keep gpt-5-mini as fallback for future compatibility
-  const modelsToTry = model === "gpt-4.1-mini" ? ["gpt-4.1-mini", "gpt-5-mini"] : [model, "gpt-4.1-mini"];
+  // Use gpt-4-mini as primary (fast/cheap), fallback to gpt-3.5-turbo for reliability
+  const modelsToTry = model === "gpt-4-mini" ? ["gpt-4-mini", "gpt-3.5-turbo"] : [model, "gpt-4-mini"];
 
   for (const currentModel of modelsToTry) {
     try {
