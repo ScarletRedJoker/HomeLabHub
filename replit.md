@@ -94,20 +94,27 @@ Each service connects with individual user credentials but all to the same Postg
 
 ## Recent Major Fixes
 
-1. **Code Quality Cleanup (Nov 22, 2025)** ✅ RESOLVED
+1. **Docker Compose Mount Fix (Nov 22, 2025)** ✅ RESOLVED
+   - Problem: After cleanup, services failed with mount error for deleted `docker-compose.unified.yml`
+   - Root cause: docker-compose.yml referenced unified.yml in 3 volume mounts
+   - Solution: Updated all references to `docker-compose.yml` instead
+   - Additional: Dashboard/Celery worker needed `--no-cache` rebuild to fix Config import and password auth
+   - Fix script: `fix-ubuntu-services.sh` automates full rebuild process
+
+2. **Code Quality Cleanup (Nov 22, 2025)** ✅ RESOLVED
    - Fixed 6 LSP typing errors in AI service (proper Optional typing, imports)
    - Relaxed Discord bot token validation (was rejecting valid v2 tokens)
    - Removed 40+ duplicate documentation files and legacy scripts
    - Created comprehensive .env.example template for deployments
    - **Security**: Verified .env was never committed to git (secrets safe!)
 
-2. **Database Password Caching Issue (Nov 22, 2025)** ✅ RESOLVED
+3. **Database Password Caching Issue (Nov 22, 2025)** ✅ RESOLVED
    - Problem: Running `./homelab fix` caused password authentication failures
    - Root cause: Docker cached image layers with old passwords, `--force-recreate` only recreates containers, doesn't rebuild images
    - Solution: Updated `./homelab fix` to rebuild bots with `--no-cache` before recreating
    - All database passwords now standardized to: `qS4R8Wrl-Spz7-YEmyllIA`
 
-3. **Background Cleanup Task Fixes (Nov 22, 2025)** ✅ RESOLVED
+4. **Background Cleanup Task Fixes (Nov 22, 2025)** ✅ RESOLVED
    - Discord bot: Added missing `interaction_locks` table to prevent duplicate ticket creation
    - Stream bot: Fixed OAuth stats display error (proper query result handling)
 
