@@ -12,25 +12,32 @@ The Nebula Command Dashboard is a web-based interface for managing a Ubuntu 25.1
 - Main password: `Brs=2729` (used for most services)
 - Managed domains: rig-city.com, evindrake.net, scarletredjoker.com
 
-## 🎯 SIMPLIFIED MANAGEMENT (Current Approach)
+## 🎯 DEPLOYMENT (Current Approach)
 
-### One Script Controls Everything: `./homelab`
+### Fresh Installation - One Command
 
 ```bash
-./homelab fix       # Fix all issues and start all 15 services
-./homelab status    # Show what's running
-./homelab logs      # View logs (saves to logs/ directory)
-./homelab debug     # Show environment and container status  
-./homelab restart   # Restart services
-./homelab stop      # Stop everything
+./bootstrap-homelab.sh
 ```
 
-**Key Fix:** Uses absolute paths to ensure Docker finds .env file:
+This comprehensive, idempotent script:
+- ✅ Validates environment (.env file, required variables)
+- ✅ Builds all Docker images without cache
+- ✅ Starts infrastructure (PostgreSQL, Redis, MinIO)
+- ✅ Creates databases & users with proper permissions
+- ✅ Runs dashboard migrations (fixes "relation agents does not exist")
+- ✅ Starts all 15 services
+- ✅ Validates everything actually works (not just runs)
+
+**Time:** 10-15 minutes | **Idempotent:** Safe to run multiple times
+
+### Day-to-Day Management: `./homelab`
+
 ```bash
-docker compose \
-    --project-directory /home/evin/contain/HomeLabHub \
-    --env-file /home/evin/contain/HomeLabHub/.env \
-    up -d --force-recreate
+./homelab status    # Show which services are running
+./homelab logs      # View logs (saves to logs/ directory)
+./homelab restart   # Restart services
+./homelab stop      # Stop everything
 ```
 
 ## Services (15 Total)
@@ -159,19 +166,23 @@ Each service connects with individual user credentials but all to the same Postg
    ```bash
    cd /home/evin/contain/HomeLabHub
    git pull origin main
-   ./homelab fix
+   ./bootstrap-homelab.sh  # Complete setup
+   # OR
+   ./homelab restart       # Quick restart (if no DB changes)
    ```
 
 ## Troubleshooting
 
-**Services not starting?**
+**Services not working properly?**
 ```bash
-./homelab debug     # Shows environment status
-./homelab logs      # View error logs
-./homelab fix       # Fix and restart
+./bootstrap-homelab.sh  # Comprehensive fix (idempotent)
+./homelab logs          # View error logs
+./diagnose-services.sh  # Detailed diagnostics
 ```
 
-**Expected status:** All 15/15 services running
+**Expected status:** All 15/15 services running with proper database tables
+
+**See SETUP.md for complete troubleshooting guide**
 
 ## Future Growth
 
