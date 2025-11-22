@@ -273,6 +273,7 @@ services:
       SPOTIFY_REDIRECT_URI: ${SPOTIFY_REDIRECT_URI:-https://stream.rig-city.com/api/auth/spotify/callback}
       KICK_CLIENT_ID: ${KICK_CLIENT_ID:-}
       KICK_CLIENT_SECRET: ${KICK_CLIENT_SECRET:-}
+      KICK_REDIRECT_URI: ${KICK_REDIRECT_URI:-https://stream.rig-city.com/api/auth/kick/callback}
       KICK_SIGNIN_CALLBACK_URL: https://stream.rig-city.com/api/auth/kick/callback
     volumes:
       - ./services/stream-bot/logs:/app/logs
