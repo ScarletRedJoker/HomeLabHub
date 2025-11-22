@@ -24,7 +24,18 @@ class AgentOrchestrator:
             self._ensure_agents_exist()
     
     def _ensure_agents_exist(self):
-        """Initialize default agents if they don't exist"""
+        """Initialize default agents if they don't exist - gracefully skip if table doesn't exist yet"""
+        try:
+            from sqlalchemy import inspect as sqlalchemy_inspect
+            with db_service.get_session() as session:
+                inspector = sqlalchemy_inspect(session.bind)
+                if 'agents' not in inspector.get_table_names():
+                    logger.warning("⚠ Agents table not yet created (migrations still running) - skipping agent initialization")
+                    return
+        except Exception:
+            logger.warning("⚠ Could not check agents table existence - skipping agent initialization")
+            return
+        
         default_agents = [
             {
                 'agent_type': AgentType.ORCHESTRATOR.value,
@@ -156,23 +167,19 @@ When analyzing security:
         
         try:
             with db_service.get_session() as session:
-                try:
-                    for agent_data in default_agents:
-                        existing = session.execute(
-                            select(Agent).where(Agent.agent_type == agent_data['agent_type'])
-                        ).scalars().first()
-                        
-                        if not existing:
-                            agent = Agent(**agent_data)
-                            session.add(agent)
+                for agent_data in default_agents:
+                    existing = session.execute(
+                        select(Agent).where(Agent.agent_type == agent_data['agent_type'])
+                    ).scalars().first()
                     
-                    session.commit()
-                    logger.info("Agent swarm initialized successfully")
-                except UndefinedTable:
-                    logger.warning("⚠ Agents table not yet created (migrations still running) - agent initialization deferred")
-                    return
+                    if not existing:
+                        agent = Agent(**agent_data)
+                        session.add(agent)
+                
+                session.commit()
+                logger.info("✓ Agent swarm initialized successfully")
         except Exception as e:
-            logger.error(f"Failed to initialize agents: {e}")
+            logger.warning(f"⚠ Agent initialization deferred (database not ready yet): {type(e).__name__}")
     
     def create_task(self, description: str, task_type: str = 'diagnose', 
                    priority: int = 5, context: Optional[Dict] = None) -> Optional[AgentTask]:
