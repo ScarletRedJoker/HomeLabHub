@@ -203,7 +203,7 @@ export class OAuthStorageDB {
     active: number;
   }> {
     try {
-      const [stats] = await db.execute(sql`
+      const result = await db.execute(sql`
         SELECT 
           COUNT(*)::int AS total,
           COUNT(*) FILTER (WHERE expires_at < NOW())::int AS expired,
@@ -211,6 +211,8 @@ export class OAuthStorageDB {
           COUNT(*) FILTER (WHERE expires_at > NOW() AND used_at IS NULL)::int AS active
         FROM ${oauthSessions}
       `);
+
+      const stats = result.rows?.[0] || { total: 0, expired: 0, used: 0, active: 0 };
 
       return {
         total: stats.total || 0,
