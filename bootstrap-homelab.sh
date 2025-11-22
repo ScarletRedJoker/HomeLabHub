@@ -152,16 +152,8 @@ docker exec homelab-dashboard bash -c "
     cd /app
     # Try Alembic first
     if [ -f alembic.ini ]; then
-        alembic upgrade head 2>/dev/null || true
+        alembic upgrade head 2>&1 | grep -E '(Running upgrade|successfully|ERROR)' || true
     fi
-    
-    # Fallback: Create tables directly
-    python3 <<-PYEOF
-from app import app, db
-with app.app_context():
-    db.create_all()
-    print('✓ Database tables initialized')
-PYEOF
 "
 
 # Verify tables exist
