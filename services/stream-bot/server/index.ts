@@ -240,6 +240,35 @@ app.use((req, res, next) => {
   startOAuthCleanupJob();
   log('OAuth session cleanup job started');
 
+  // Start Snapple Fact generation service
+  const { generateSnappleFact, isOpenAIEnabled } = await import('./openai');
+  if (isOpenAIEnabled) {
+    setInterval(async () => {
+      try {
+        const fact = await generateSnappleFact();
+        if (fact) {
+          // POST fact to dashboard
+          const dashboardUrl = getEnv('DASHBOARD_URL') || 'http://homelab-dashboard:5000';
+          const response = await fetch(`${dashboardUrl}/api/stream/facts`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fact, source: 'stream-bot' })
+          });
+          if (response.ok) {
+            log('[Facts] Posted fact to dashboard');
+          } else {
+            log(`[Facts] Failed to post fact: ${response.status}`);
+          }
+        }
+      } catch (error) {
+        log(`[Facts] Error generating/posting fact: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }, 60000); // Every 60 seconds
+    log('[Facts] Snapple Fact generation service started');
+  } else {
+    log('[Facts] OpenAI not enabled, skipping fact generation');
+  }
+
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
