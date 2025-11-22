@@ -246,6 +246,8 @@ services:
     dns:
       - 8.8.8.8
       - 8.8.4.4
+    env_file:
+      - .env
     environment:
       DATABASE_URL: postgresql://streambot:${STREAMBOT_DB_PASSWORD}@homelab-postgres:5432/streambot
       SESSION_SECRET: ${STREAMBOT_SESSION_SECRET}
@@ -258,14 +260,17 @@ services:
       APP_URL: https://stream.rig-city.com
       TWITCH_CLIENT_ID: ${TWITCH_CLIENT_ID}
       TWITCH_CLIENT_SECRET: ${TWITCH_CLIENT_SECRET}
+      TWITCH_REDIRECT_URI: ${TWITCH_REDIRECT_URI:-https://stream.rig-city.com/api/auth/twitch/callback}
       TWITCH_SIGNIN_CALLBACK_URL: https://stream.rig-city.com/api/auth/twitch/callback
       YOUTUBE_CLIENT_ID: ${YOUTUBE_CLIENT_ID:-}
       YOUTUBE_CLIENT_SECRET: ${YOUTUBE_CLIENT_SECRET:-}
       YOUTUBE_REFRESH_TOKEN: ${YOUTUBE_REFRESH_TOKEN:-}
+      YOUTUBE_REDIRECT_URI: ${YOUTUBE_REDIRECT_URI:-https://stream.rig-city.com/api/auth/youtube/callback}
       YOUTUBE_SIGNIN_CALLBACK_URL: https://stream.rig-city.com/api/auth/youtube/callback
       SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}
       SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:-}
       SPOTIFY_REFRESH_TOKEN: ${SPOTIFY_REFRESH_TOKEN:-}
+      SPOTIFY_REDIRECT_URI: ${SPOTIFY_REDIRECT_URI:-https://stream.rig-city.com/api/auth/spotify/callback}
       KICK_CLIENT_ID: ${KICK_CLIENT_ID:-}
       KICK_CLIENT_SECRET: ${KICK_CLIENT_SECRET:-}
       KICK_SIGNIN_CALLBACK_URL: https://stream.rig-city.com/api/auth/kick/callback
