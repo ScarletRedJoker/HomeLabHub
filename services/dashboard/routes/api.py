@@ -4,6 +4,7 @@ from services.system_service import SystemService
 from services.ai_service import AIService
 from services.ssh_service import SSHService
 from services.database_service import DatabaseService
+from services.db_service import db_service
 from services.network_service import NetworkService
 from services.domain_service import DomainService
 from services.security_monitor import security_monitor
@@ -1223,8 +1224,7 @@ def receive_stream_facts():
     Request body:
         {
             "fact": str,
-            "source": str (optional, default: "stream-bot"),
-            "timestamp": str (optional)
+            "source": str (optional, default: "stream-bot")
         }
     
     Returns:
@@ -1247,7 +1247,7 @@ def receive_stream_facts():
         # Store in artifacts table as fact type
         try:
             from models.artifact import Artifact
-            with database_service.get_session() as session:
+            with db_service.get_session() as session:
                 artifact = Artifact(
                     name=f"Fact: {fact[:50]}",
                     content=fact,
