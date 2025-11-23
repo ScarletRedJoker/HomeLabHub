@@ -1,0 +1,357 @@
+# ============================================
+# HOMELAB SERVICE CATALOG
+# Phase 2: Modular Service Architecture
+# ============================================
+
+metadata:
+  version: "1.0.0"
+  generated: "2025-11-23"
+  description: "Service catalog for modular HomeLabHub deployment"
+
+# Service Groups
+groups:
+  core:
+    description: "Core infrastructure services (database, cache, storage, proxy)"
+    services: [postgres, redis, minio, caddy]
+  
+  bots:
+    description: "Discord and streaming automation bots"
+    services: [discord-bot, stream-bot]
+  
+  web:
+    description: "Web applications and media services"
+    services: [dashboard, n8n, homeassistant, plex, scarletredjoker-web, rig-city-site]
+  
+  automation:
+    description: "Background workers and automation"
+    services: [celery-worker]
+  
+  development:
+    description: "Development and remote access tools"
+    services: [vnc-desktop, code-server]
+
+# Service Definitions
+services:
+  # ============================================
+  # CORE INFRASTRUCTURE
+  # ============================================
+  
+  postgres:
+    name: homelab-postgres
+    description: "PostgreSQL 16 database server with multi-tenant support"
+    container_name: homelab-postgres
+    group: core
+    dependencies: []
+    env_files: [.env]
+    interfaces:
+      - port: 5432
+        protocol: tcp
+        internal: true
+    placement: local_only
+    health_endpoint: "pg_isready -U postgres"
+    health_check_type: command
+    startup_order: 1
+    required_for: [dashboard, discord-bot, stream-bot, celery-worker]
+    
+  redis:
+    name: redis
+    description: "Redis cache and message broker"
+    container_name: homelab-redis
+    group: core
+    dependencies: []
+    env_files: []
+    interfaces:
+      - port: 6379
+        protocol: tcp
+        internal: true
+    placement: local_only
+    health_endpoint: "redis-cli ping"
+    health_check_type: command
+    startup_order: 1
+    required_for: [dashboard, celery-worker]
+    
+  minio:
+    name: minio
+    description: "S3-compatible object storage for uploads and backups"
+    container_name: homelab-minio
+    group: core
+    dependencies: []
+    env_files: [.env]
+    interfaces:
+      - port: 9000
+        protocol: http
+        endpoint: /minio/health/live
+      - port: 9001
+        protocol: http
+        endpoint: /
+        description: "MinIO Console"
+    placement: local_only
+    health_endpoint: http://localhost:9000/minio/health/live
+    health_check_type: http
+    startup_order: 1
+    required_for: [dashboard]
+    
+  caddy:
+    name: caddy
+    description: "Reverse proxy with automatic SSL/TLS via Let's Encrypt"
+    container_name: caddy
+    group: core
+    dependencies: []
+    env_files: []
+    interfaces:
+      - port: 80
+        protocol: http
+        public: true
+      - port: 443
+        protocol: https
+        public: true
+    placement: local_only
+    health_endpoint: http://localhost:80
+    health_check_type: http
+    startup_order: 2
+    
+  # ============================================
+  # BOTS
+  # ============================================
+  
+  discord-bot:
+    name: discord-bot
+    description: "Discord ticket management bot for Rig City community"
+    container_name: discord-bot
+    group: bots
+    dependencies: [postgres]
+    env_files: [.env]
+    interfaces:
+      - port: 4000
+        protocol: http
+        endpoint: /health
+    domains:
+      - bot.rig-city.com
+    placement: local_or_remote
+    health_endpoint: http://localhost:4000/health
+    health_check_type: http
+    startup_order: 3
+    
+  stream-bot:
+    name: stream-bot
+    description: "Twitch/YouTube streaming bot with AI-powered Snapple facts"
+    container_name: stream-bot
+    group: bots
+    dependencies: [postgres]
+    env_files: [.env]
+    interfaces:
+      - port: 5000
+        protocol: http
+        endpoint: /health
+    domains:
+      - stream.rig-city.com
+    placement: local_or_remote
+    health_endpoint: http://localhost:5000/health
+    health_check_type: http
+    startup_order: 3
+    
+  # ============================================
+  # WEB APPLICATIONS
+  # ============================================
+  
+  dashboard:
+    name: homelab-dashboard
+    description: "Flask homelab management dashboard with Jarvis AI assistant"
+    container_name: homelab-dashboard
+    group: web
+    dependencies: [postgres, redis, minio]
+    env_files: [.env]
+    interfaces:
+      - port: 8080
+        protocol: http
+        endpoint: /
+    domains:
+      - evindrake.net
+      - dashboard.evindrake.net
+    placement: local_or_remote
+    health_endpoint: http://localhost:8080/
+    health_check_type: http
+    startup_order: 3
+    volumes:
+      - /var/run/docker.sock (required for container management)
+      - /var/www (web serving)
+    
+  n8n:
+    name: n8n
+    description: "Workflow automation platform for integrations"
+    container_name: n8n
+    group: web
+    dependencies: []
+    env_files: []
+    interfaces:
+      - port: 5678
+        protocol: http
+        endpoint: /
+    domains:
+      - n8n.evindrake.net
+    placement: local_or_remote
+    health_endpoint: http://localhost:5678/
+    health_check_type: http
+    startup_order: 3
+    
+  homeassistant:
+    name: homeassistant
+    description: "Smart home automation hub"
+    container_name: homeassistant
+    group: web
+    dependencies: []
+    env_files: [.env]
+    interfaces:
+      - port: 8123
+        protocol: http
+        endpoint: /
+    domains:
+      - ha.evindrake.net
+    placement: local_only
+    health_endpoint: http://localhost:8123/
+    health_check_type: http
+    startup_order: 3
+    privileged: true
+    
+  plex:
+    name: plex-server
+    description: "Plex media server (disabled by default - using host installation)"
+    container_name: plex-server
+    group: web
+    dependencies: []
+    env_files: [.env]
+    interfaces:
+      - port: 32400
+        protocol: http
+        endpoint: /web
+    domains:
+      - plex.evindrake.net
+    placement: local_only
+    health_endpoint: http://localhost:32400/web
+    health_check_type: http
+    startup_order: 3
+    enabled: false
+    note: "Currently using host Plex installation"
+    
+  scarletredjoker-web:
+    name: scarletredjoker-web
+    description: "Static website for scarletredjoker.com"
+    container_name: scarletredjoker-web
+    group: web
+    dependencies: []
+    env_files: []
+    interfaces:
+      - port: 80
+        protocol: http
+        internal: true
+    domains:
+      - scarletredjoker.com
+    placement: local_or_remote
+    health_endpoint: http://localhost:80/
+    health_check_type: http
+    startup_order: 3
+    
+  rig-city-site:
+    name: rig-city-site
+    description: "Static website for Rig City community"
+    container_name: rig-city-site
+    group: web
+    dependencies: []
+    env_files: []
+    interfaces:
+      - port: 80
+        protocol: http
+        internal: true
+    domains:
+      - rig-city.com
+    placement: local_or_remote
+    health_endpoint: http://localhost:80/
+    health_check_type: http
+    startup_order: 3
+    
+  # ============================================
+  # AUTOMATION
+  # ============================================
+  
+  celery-worker:
+    name: homelab-celery-worker
+    description: "Background task processor for dashboard automation"
+    container_name: homelab-celery-worker
+    group: automation
+    dependencies: [postgres, redis]
+    env_files: [.env]
+    interfaces: []
+    placement: local_or_remote
+    health_endpoint: null
+    health_check_type: process
+    startup_order: 4
+    
+  # ============================================
+  # DEVELOPMENT TOOLS
+  # ============================================
+  
+  vnc-desktop:
+    name: vnc-desktop
+    description: "Remote Ubuntu desktop via VNC/noVNC"
+    container_name: vnc-desktop
+    group: development
+    dependencies: []
+    env_files: [.env]
+    interfaces:
+      - port: 5900
+        protocol: vnc
+        description: "VNC Server"
+      - port: 6079
+        protocol: http
+        endpoint: /
+        description: "noVNC Web Client"
+    domains:
+      - vnc.evindrake.net
+    placement: local_only
+    health_endpoint: http://localhost:6079/
+    health_check_type: http
+    startup_order: 3
+    
+  code-server:
+    name: code-server
+    description: "VS Code in the browser for remote development"
+    container_name: code-server
+    group: development
+    dependencies: []
+    env_files: [.env]
+    interfaces:
+      - port: 8443
+        protocol: https
+        endpoint: /healthz
+    domains:
+      - code.evindrake.net
+    placement: local_only
+    health_endpoint: https://localhost:8443/healthz
+    health_check_type: http
+    startup_order: 3
+
+# Deployment Patterns
+deployment_patterns:
+  minimal:
+    description: "Minimal infrastructure only"
+    services: [postgres, redis, minio, caddy]
+    
+  bots_only:
+    description: "Just the bots with required infrastructure"
+    services: [postgres, caddy, discord-bot, stream-bot]
+    
+  dashboard_stack:
+    description: "Dashboard with full automation"
+    services: [postgres, redis, minio, caddy, dashboard, celery-worker]
+    
+  full_web:
+    description: "All web services"
+    services: [postgres, redis, minio, caddy, dashboard, celery-worker, n8n, homeassistant, scarletredjoker-web, rig-city-site]
+    
+  development:
+    description: "Development environment with remote access"
+    services: [postgres, redis, minio, caddy, dashboard, vnc-desktop, code-server]
+    
+  production:
+    description: "Full production stack (all services)"
+    groups: [core, bots, web, automation, development]

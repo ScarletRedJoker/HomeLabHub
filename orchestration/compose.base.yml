@@ -1,0 +1,109 @@
+# ============================================
+# BASE INFRASTRUCTURE
+# Shared services required by all deployments
+# ============================================
+
+name: homelab
+
+networks:
+  homelab:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  caddy_data:
+  caddy_config:
+
+services:
+  # ============================================
+  # PostgreSQL Database Server
+  # ============================================
+  homelab-postgres:
+    image: postgres:16-alpine
+    container_name: homelab-postgres
+    restart: unless-stopped
+    networks:
+      homelab:
+        aliases:
+          - postgres
+    env_file:
+      - ${DEPLOYMENT_PATH}/.env
+      - ${DEPLOYMENT_PATH}/.env.postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+      DISCORD_DB_PASSWORD: ${DISCORD_DB_PASSWORD}
+      STREAMBOT_DB_PASSWORD: ${STREAMBOT_DB_PASSWORD}
+      JARVIS_DB_PASSWORD: ${JARVIS_DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../config/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ============================================
+  # Redis - Message Broker & Cache
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: homelab-redis
+    restart: unless-stopped
+    networks:
+      - homelab
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # MinIO - S3-Compatible Object Storage
+  # ============================================
+  minio:
+    image: minio/minio:latest
+    container_name: homelab-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    networks:
+      - homelab
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-admin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minio_admin_password}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # ============================================
+  # Caddy - Reverse Proxy with Auto SSL
+  # ============================================
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    restart: unless-stopped
+    networks:
+      - homelab
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ../Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config

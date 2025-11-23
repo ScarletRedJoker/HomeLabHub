@@ -1,0 +1,59 @@
+# ============================================
+# DASHBOARD SERVICE BUNDLE
+# Homelab management dashboard with Jarvis AI
+# ============================================
+
+name: homelab
+
+networks:
+  homelab:
+
+services:
+  # ============================================
+  # Homelab Dashboard
+  # ============================================
+  homelab-dashboard:
+    build:
+      context: ../services/dashboard
+      dockerfile: Dockerfile
+    container_name: homelab-dashboard
+    restart: unless-stopped
+    depends_on:
+      homelab-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - homelab
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ../services/dashboard/logs:/app/logs
+      - /home/${SERVICE_USER:-evin}/contain:/home/${SERVICE_USER:-evin}/contain:ro
+      - /var/www:/var/www
+      - ../docker-compose.yml:/app/docker-compose.yml:ro
+      - ../Caddyfile:/app/Caddyfile:ro
+      - ../.env:/app/.env:ro
+    env_file: 
+      - ${DEPLOYMENT_PATH}/.env
+      - ${DEPLOYMENT_PATH}/.env.dashboard
+    environment:
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+      - SKIP_MIGRATION_WAIT=true
+      - COMPOSE_PROJECT_DIR=/home/${SERVICE_USER:-evin}/contain/HomeLabHub
+      - JARVIS_DATABASE_URL=postgresql://jarvis:${JARVIS_DB_PASSWORD}@homelab-postgres:5432/homelab_jarvis
+      - REDIS_URL=redis://redis:6379/0
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-admin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minio_admin_password}
+      - HOME_ASSISTANT_URL=${HOME_ASSISTANT_URL:-http://homeassistant:8123}
+      - HOME_ASSISTANT_TOKEN=${HOME_ASSISTANT_TOKEN:-}
+      - HOME_ASSISTANT_VERIFY_SSL=${HOME_ASSISTANT_VERIFY_SSL:-False}
+      - AI_PROVIDER=openai
+      - AI_MODEL=gpt-4o-mini
+      - SERVICE_AUTH_TOKEN=${SERVICE_AUTH_TOKEN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - WEB_USERNAME=${WEB_USERNAME}
+      - WEB_PASSWORD=${WEB_PASSWORD}

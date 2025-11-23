@@ -1,0 +1,15 @@
+# ============================================
+# COMPLETE HOMELAB STACK
+# Backward compatibility - deploys everything
+# ============================================
+# Usage: docker compose -f orchestration/compose.all.yml up -d
+# This replaces the monolithic docker-compose.yml
+# ============================================
+
+include:
+  - compose.base.yml
+  - compose.dashboard.yml
+  - compose.discord.yml
+  - compose.stream.yml
+  - compose.automation.yml
+  - compose.web.yml

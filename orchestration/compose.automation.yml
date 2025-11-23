@@ -1,0 +1,51 @@
+# ============================================
+# AUTOMATION SERVICE BUNDLE
+# Background workers and scheduled tasks
+# ============================================
+
+name: homelab
+
+networks:
+  homelab:
+
+services:
+  # ============================================
+  # Celery Worker - Background Task Processing
+  # ============================================
+  homelab-celery-worker:
+    build:
+      context: ../services/dashboard
+      dockerfile: Dockerfile
+    container_name: homelab-celery-worker
+    restart: unless-stopped
+    command: celery -A celery_app.celery_app worker --loglevel=info --concurrency=4
+    networks:
+      - homelab
+    depends_on:
+      redis:
+        condition: service_healthy
+      homelab-postgres:
+        condition: service_healthy
+    environment:
+      - RUN_MIGRATIONS=false
+      - REDIS_URL=redis://redis:6379/0
+      - JARVIS_DATABASE_URL=postgresql://jarvis:${JARVIS_DB_PASSWORD}@homelab-postgres:5432/homelab_jarvis
+      - PYTHONUNBUFFERED=1
+      - HOME_ASSISTANT_URL=${HOME_ASSISTANT_URL:-http://homeassistant:8123}
+      - HOME_ASSISTANT_TOKEN=${HOME_ASSISTANT_TOKEN:-}
+      - HOME_ASSISTANT_VERIFY_SSL=${HOME_ASSISTANT_VERIFY_SSL:-False}
+      - COMPOSE_FILE=/docker-compose.yml
+      - CADDYFILE_PATH=/Caddyfile
+      - ENV_FILE=/.env
+      - AI_PROVIDER=openai
+      - AI_MODEL=gpt-4o-mini
+    env_file:
+      - ${DEPLOYMENT_PATH}/.env
+      - ${DEPLOYMENT_PATH}/.env.celery-worker
+    volumes:
+      - ../services/dashboard:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ../services/dashboard/logs:/app/logs
+      - ../docker-compose.yml:/docker-compose.yml:ro
+      - ../Caddyfile:/Caddyfile:ro
+      - ../.env:/.env:ro

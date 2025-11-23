@@ -1,0 +1,146 @@
+# ============================================
+# WEB SERVICES BUNDLE
+# Web applications and media services
+# ============================================
+
+name: homelab
+
+networks:
+  homelab:
+
+volumes:
+  n8n_data:
+  homeassistant_config:
+  vnc_home:
+  code_server_data:
+
+services:
+  # ============================================
+  # n8n Automation
+  # ============================================
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    networks:
+      - homelab
+    environment:
+      - N8N_HOST=n8n.evindrake.net
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - NODE_ENV=production
+      - WEBHOOK_URL=https://n8n.evindrake.net/
+      - GENERIC_TIMEZONE=America/New_York
+      - TZ=America/New_York
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      - N8N_RUNNERS_ENABLED=true
+      - DB_SQLITE_POOL_SIZE=10
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - N8N_GIT_NODE_DISABLE_BARE_REPOS=true
+      - N8N_METRICS=true
+      - N8N_DIAGNOSTICS_ENABLED=false
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+  # ============================================
+  # Static Website (Scarlet Red Joker)
+  # ============================================
+  scarletredjoker-web:
+    image: nginx:alpine
+    container_name: scarletredjoker-web
+    restart: unless-stopped
+    networks:
+      - homelab
+    volumes:
+      - ../services/static-site:/usr/share/nginx/html:ro
+
+  # ============================================
+  # Rig City Community Website
+  # ============================================
+  rig-city-site:
+    image: nginx:alpine
+    container_name: rig-city-site
+    restart: unless-stopped
+    networks:
+      - homelab
+    volumes:
+      - ../services/rig-city-site:/usr/share/nginx/html:ro
+
+  # ============================================
+  # VNC Remote Desktop (Enhanced Ubuntu Desktop)
+  # ============================================
+  vnc-desktop:
+    build:
+      context: ../services/vnc-desktop
+      dockerfile: Dockerfile
+    container_name: vnc-desktop
+    restart: unless-stopped
+    networks:
+      - homelab
+    env_file:
+      - ${DEPLOYMENT_PATH}/.env
+    environment:
+      - VNC_PASSWORD=${VNC_PASSWORD}
+      - VNC_USER=evin
+      - USER_UID=1000
+      - USER_GID=1000
+      - RESOLUTION=1920x1080
+      - TZ=America/New_York
+      - NOVNC_ENABLE=true
+      - ENABLE_WEB_CLIENT=true
+    volumes:
+      - vnc_home:/home/evin
+      - /home/${SERVICE_USER:-evin}/contain:/home/evin/host-projects:ro
+      - /home/${SERVICE_USER:-evin}/Downloads:/home/evin/host-downloads
+    shm_size: '2gb'
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:6079 || curl -f http://localhost:6079 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================
+  # Code-Server (VS Code in Browser)
+  # ============================================
+  code-server:
+    image: lscr.io/linuxserver/code-server:latest
+    container_name: code-server
+    restart: unless-stopped
+    networks:
+      - homelab
+    env_file:
+      - ${DEPLOYMENT_PATH}/.env
+    environment:
+      - PASSWORD=${CODE_SERVER_PASSWORD}
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+    volumes:
+      - code_server_data:/config
+      - /home/${SERVICE_USER:-evin}/contain:/config/workspace
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-k", "https://localhost:8443/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================
+  # Home Assistant - Smart Home Automation Hub
+  # ============================================
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    restart: unless-stopped
+    privileged: true
+    networks:
+      - homelab
+    env_file:
+      - ${DEPLOYMENT_PATH}/.env
+    environment:
+      - TZ=America/New_York
+    volumes:
+      - homeassistant_config:/config
+      - /etc/localtime:/etc/localtime:ro
+    network_mode: host

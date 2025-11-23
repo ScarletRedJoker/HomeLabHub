@@ -40,6 +40,33 @@ The core system relies on Docker Compose for orchestrating 15 services. A `boots
 
 ## Recent Changes (November 2025)
 
+### Complete Homelab Transformation (8-Phase Roadmap - In Progress)
+**Goal:** Transform system into truly modular, portable, production-grade "end all be all" homelab
+
+**Phase 1: Configuration Foundation - ✅ COMPLETE**
+- Implemented SOPS + age encryption for secrets management
+- Created config generator with Jinja2 templates
+- Per-service environment files (.env, .env.dashboard, .env.discord-bot, etc.)
+- Multi-environment support (dev/staging/prod)
+- Command: `./homelab config generate prod evindrake.net`
+
+**Phase 2: Modular Service Packaging - 🚧 IN PROGRESS**
+- Created orchestration/ directory with service catalog
+- Split docker-compose.yml into modular bundles
+- Service catalog with 15 services across 5 groups
+- Commands: `./homelab deploy <service|group>`
+- **Known Issues:** Env file integration needs refinement, some compose bundles missing service-specific env files
+
+**Phase 3-8: PENDING**
+- Phase 3: Service Discovery & Networking (Traefik/Consul)
+- Phase 4: Database Platform Upgrade (backups, pooling)
+- Phase 5: Observability & Auto-Recovery (Prometheus, Grafana)
+- Phase 6: Deployment & Rollback Automation (CI/CD)
+- Phase 7: API Gateway & Auth
+- Phase 8: DNS Automation
+
+## Recent Changes (November 2025)
+
 ### Navigation Expansion
 - Added 5 missing features to sidebar navigation: NAS Management, Storage Monitor, Database Admin, File Manager, and App Marketplace
 - All features were fully implemented but not previously exposed in UI
