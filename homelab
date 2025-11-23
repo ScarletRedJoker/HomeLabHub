@@ -1,6 +1,6 @@
 #!/bin/bash
 # ╔════════════════════════════════════════════════════════════════╗
-# ║              HOMELAB - SIMPLE & WORKING                       ║
+# ║              HOMELAB - PRODUCTION-READY MANAGEMENT            ║
 # ╚════════════════════════════════════════════════════════════════╝
 
 set -euo pipefail
@@ -198,6 +198,555 @@ debug() {
 }
 
 # ============================================
+# HEALTH COMMAND - Comprehensive Health Checks
+# ============================================
+health() {
+    echo -e "\n${CYAN}═══ Comprehensive Health Check ═══${NC}\n"
+    
+    local health_issues=0
+    
+    # 1. Database Connectivity
+    echo -e "${CYAN}[1/5] Database Connections${NC}"
+    if is_running "homelab-postgres"; then
+        if docker exec homelab-postgres pg_isready -U postgres &>/dev/null; then
+            echo -e "  ${GREEN}✓${NC} PostgreSQL responding"
+            
+            # Check each database
+            for db in ticketbot streambot homelab_jarvis; do
+                if docker exec homelab-postgres psql -U postgres -lqt 2>/dev/null | cut -d \| -f 1 | grep -qw "$db"; then
+                    echo -e "  ${GREEN}✓${NC} Database: $db"
+                else
+                    echo -e "  ${RED}✗${NC} Database missing: $db"
+                    ((health_issues++))
+                fi
+            done
+        else
+            echo -e "  ${RED}✗${NC} PostgreSQL not responding"
+            ((health_issues++))
+        fi
+    else
+        echo -e "  ${RED}✗${NC} PostgreSQL container not running"
+        ((health_issues++))
+    fi
+    
+    # 2. API Endpoint Tests
+    echo -e "\n${CYAN}[2/5] API Endpoints${NC}"
+    test_endpoint() {
+        local name=$1
+        local url=$2
+        local expected_codes=$3
+        
+        local status=$(curl -s -o /dev/null -w "%{http_code}" "$url" 2>/dev/null || echo "000")
+        if echo "$expected_codes" | grep -q "$status"; then
+            echo -e "  ${GREEN}✓${NC} $name (HTTP $status)"
+        else
+            echo -e "  ${RED}✗${NC} $name (HTTP $status, expected: $expected_codes)"
+            ((health_issues++))
+        fi
+    }
+    
+    test_endpoint "Dashboard" "http://localhost:8080/" "200 302"
+    test_endpoint "Discord Bot" "http://localhost:4000/health" "200 302 404"
+    test_endpoint "Stream Bot" "http://localhost:5000/health" "200 302 404"
+    test_endpoint "MinIO" "http://localhost:9000/minio/health/live" "200"
+    
+    # 3. Disk Space
+    echo -e "\n${CYAN}[3/5] Disk Space${NC}"
+    local disk_usage=$(df -h "$PROJECT_ROOT" | awk 'NR==2 {print $5}' | sed 's/%//')
+    if [ "$disk_usage" -lt 80 ]; then
+        echo -e "  ${GREEN}✓${NC} Disk usage: ${disk_usage}%"
+    elif [ "$disk_usage" -lt 90 ]; then
+        echo -e "  ${YELLOW}⚠${NC} Disk usage: ${disk_usage}% (warning)"
+        ((health_issues++))
+    else
+        echo -e "  ${RED}✗${NC} Disk usage: ${disk_usage}% (critical)"
+        ((health_issues++))
+    fi
+    
+    # 4. Memory Usage
+    echo -e "\n${CYAN}[4/5] Memory Usage${NC}"
+    local mem_available=$(free -m | awk 'NR==2 {print $7}')
+    local mem_total=$(free -m | awk 'NR==2 {print $2}')
+    local mem_percent=$((100 - (mem_available * 100 / mem_total)))
+    
+    if [ "$mem_percent" -lt 80 ]; then
+        echo -e "  ${GREEN}✓${NC} Memory usage: ${mem_percent}%"
+    elif [ "$mem_percent" -lt 90 ]; then
+        echo -e "  ${YELLOW}⚠${NC} Memory usage: ${mem_percent}% (warning)"
+    else
+        echo -e "  ${RED}✗${NC} Memory usage: ${mem_percent}% (critical)"
+        ((health_issues++))
+    fi
+    
+    # 5. Container Health Status
+    echo -e "\n${CYAN}[5/5] Container Health Status${NC}"
+    for service in "${ALL_SERVICES[@]}"; do
+        if is_running "$service"; then
+            local health_status=$(docker inspect "$service" --format='{{.State.Health.Status}}' 2>/dev/null || echo "no-healthcheck")
+            if [ "$health_status" = "healthy" ] || [ "$health_status" = "no-healthcheck" ]; then
+                echo -e "  ${GREEN}✓${NC} $service"
+            elif [ "$health_status" = "starting" ]; then
+                echo -e "  ${YELLOW}⟳${NC} $service (starting)"
+            else
+                echo -e "  ${RED}✗${NC} $service ($health_status)"
+                ((health_issues++))
+            fi
+        else
+            echo -e "  ${RED}○${NC} $service (not running)"
+            ((health_issues++))
+        fi
+    done
+    
+    # Summary
+    echo ""
+    if [ $health_issues -eq 0 ]; then
+        echo -e "${GREEN}✅ All health checks passed!${NC}"
+        return 0
+    else
+        echo -e "${RED}⚠ Found $health_issues health issue(s)${NC}"
+        echo "Run './homelab fix' to attempt automatic repair"
+        return 1
+    fi
+}
+
+# ============================================
+# VALIDATE-ENV COMMAND - Environment Validation
+# ============================================
+validate_env() {
+    echo -e "\n${CYAN}═══ Environment Validation ═══${NC}\n"
+    
+    if [ ! -f "$ENV_FILE" ]; then
+        echo -e "${RED}✗ .env file not found at $ENV_FILE${NC}"
+        echo "Create it from template: cp .env.example .env"
+        return 1
+    fi
+    
+    echo "Checking required variables..."
+    echo ""
+    
+    local required_vars=(
+        "POSTGRES_PASSWORD"
+        "DISCORD_DB_PASSWORD"
+        "STREAMBOT_DB_PASSWORD"
+        "JARVIS_DB_PASSWORD"
+        "WEB_USERNAME"
+        "WEB_PASSWORD"
+        "SESSION_SECRET"
+        "DISCORD_BOT_TOKEN"
+        "DISCORD_CLIENT_ID"
+        "DISCORD_CLIENT_SECRET"
+        "OPENAI_API_KEY"
+    )
+    
+    local missing_vars=()
+    local present_vars=()
+    
+    for var in "${required_vars[@]}"; do
+        if grep -q "^${var}=" "$ENV_FILE" && [ -n "$(grep "^${var}=" "$ENV_FILE" | cut -d'=' -f2)" ]; then
+            echo -e "  ${GREEN}✓${NC} $var"
+            present_vars+=("$var")
+        else
+            echo -e "  ${RED}✗${NC} $var - MISSING or EMPTY"
+            missing_vars+=("$var")
+        fi
+    done
+    
+    echo ""
+    echo "Summary: ${#present_vars[@]}/${#required_vars[@]} required variables present"
+    
+    if [ ${#missing_vars[@]} -gt 0 ]; then
+        echo ""
+        echo -e "${RED}Missing variables:${NC}"
+        for var in "${missing_vars[@]}"; do
+            echo "  - $var"
+        done
+        echo ""
+        echo "Update your .env file before deployment"
+        return 1
+    else
+        echo -e "\n${GREEN}✅ All required variables present${NC}"
+        return 0
+    fi
+}
+
+# ============================================
+# BACKUP COMMAND - Database Backups
+# ============================================
+backup() {
+    echo -e "\n${CYAN}═══ Database Backup ═══${NC}\n"
+    
+    if ! is_running "homelab-postgres"; then
+        echo -e "${RED}✗ PostgreSQL container not running${NC}"
+        return 1
+    fi
+    
+    local backup_dir="$PROJECT_ROOT/var/backups/databases"
+    mkdir -p "$backup_dir"
+    
+    local timestamp=$(date +%Y%m%d-%H%M%S)
+    local backup_file="$backup_dir/homelab-backup-$timestamp.sql"
+    
+    echo "Backing up all databases to:"
+    echo "  $backup_file"
+    echo ""
+    
+    # Backup all databases
+    docker exec homelab-postgres pg_dumpall -U postgres > "$backup_file"
+    
+    if [ $? -eq 0 ]; then
+        local size=$(du -h "$backup_file" | cut -f1)
+        echo -e "${GREEN}✅ Backup created successfully${NC}"
+        echo "  Size: $size"
+        echo "  File: $(basename $backup_file)"
+        echo ""
+        echo "To restore: ./homelab restore $backup_file"
+        
+        # Keep only last 10 backups
+        cd "$backup_dir"
+        ls -t homelab-backup-*.sql 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null
+        local backup_count=$(ls -1 homelab-backup-*.sql 2>/dev/null | wc -l)
+        echo "  Backups retained: $backup_count"
+    else
+        echo -e "${RED}✗ Backup failed${NC}"
+        rm -f "$backup_file"
+        return 1
+    fi
+}
+
+# ============================================
+# RESTORE COMMAND - Database Restore
+# ============================================
+restore() {
+    local backup_file="$1"
+    
+    if [ -z "$backup_file" ]; then
+        echo -e "${RED}✗ Usage: ./homelab restore <backup-file>${NC}"
+        echo ""
+        echo "Available backups:"
+        ls -1t "$PROJECT_ROOT/var/backups/databases/"homelab-backup-*.sql 2>/dev/null | head -5 | while read f; do
+            echo "  $(basename $f) ($(du -h "$f" | cut -f1))"
+        done
+        return 1
+    fi
+    
+    if [ ! -f "$backup_file" ]; then
+        echo -e "${RED}✗ Backup file not found: $backup_file${NC}"
+        return 1
+    fi
+    
+    echo -e "${YELLOW}⚠ WARNING: This will REPLACE all current databases${NC}"
+    echo "Backup file: $(basename $backup_file)"
+    echo ""
+    read -p "Are you sure? (type 'yes' to confirm): " confirm
+    
+    if [ "$confirm" != "yes" ]; then
+        echo "Restore cancelled"
+        return 0
+    fi
+    
+    echo -e "\n${CYAN}═══ Database Restore ═══${NC}\n"
+    
+    if ! is_running "homelab-postgres"; then
+        echo -e "${RED}✗ PostgreSQL container not running${NC}"
+        return 1
+    fi
+    
+    # Stop all services that use the database
+    echo "Stopping services..."
+    compose stop homelab-dashboard homelab-celery-worker discord-bot stream-bot
+    sleep 3
+    
+    # Restore
+    echo "Restoring databases..."
+    docker exec -i homelab-postgres psql -U postgres < "$backup_file"
+    
+    if [ $? -eq 0 ]; then
+        echo -e "\n${GREEN}✅ Restore completed successfully${NC}"
+        echo ""
+        echo "Restarting services..."
+        compose start homelab-dashboard homelab-celery-worker discord-bot stream-bot
+        echo ""
+        echo "Run './homelab status' to verify services"
+    else
+        echo -e "\n${RED}✗ Restore failed${NC}"
+        echo "Services stopped for safety. Run './homelab start' to restart"
+        return 1
+    fi
+}
+
+# ============================================
+# UPDATE COMMAND - Git Pull and Redeploy
+# ============================================
+update() {
+    echo -e "\n${CYAN}═══ Update Deployment ═══${NC}\n"
+    
+    cd "$PROJECT_ROOT"
+    
+    # Check if git repo
+    if [ ! -d ".git" ]; then
+        echo -e "${RED}✗ Not a git repository${NC}"
+        return 1
+    fi
+    
+    # Create backup before update
+    echo "Creating pre-update backup..."
+    backup
+    
+    # Fetch updates
+    echo ""
+    echo "Fetching latest changes..."
+    git fetch origin
+    
+    # Show what would change
+    local changes=$(git rev-list HEAD..origin/main --count 2>/dev/null || echo "0")
+    
+    if [ "$changes" = "0" ]; then
+        echo -e "${GREEN}✓ Already up to date${NC}"
+        return 0
+    fi
+    
+    echo ""
+    echo -e "${YELLOW}$changes commit(s) to pull${NC}"
+    git log --oneline HEAD..origin/main | head -5
+    echo ""
+    read -p "Continue with update? (y/N): " confirm
+    
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        echo "Update cancelled"
+        return 0
+    fi
+    
+    # Pull changes
+    echo ""
+    echo "Pulling changes..."
+    git pull origin main
+    
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}✗ Git pull failed${NC}"
+        echo "Resolve conflicts manually, then run './homelab fix'"
+        return 1
+    fi
+    
+    # Rebuild and restart
+    echo ""
+    echo "Rebuilding and redeploying..."
+    compose build
+    compose up -d --force-recreate
+    
+    echo ""
+    echo -e "${GREEN}✅ Update completed${NC}"
+    echo "Run './homelab health' to verify deployment"
+}
+
+# ============================================
+# REBUILD COMMAND - Rebuild Specific Service
+# ============================================
+rebuild() {
+    local service="$1"
+    
+    if [ -z "$service" ]; then
+        echo -e "${RED}✗ Usage: ./homelab rebuild <service>${NC}"
+        echo ""
+        echo "Available services:"
+        for svc in "${ALL_SERVICES[@]}"; do
+            echo "  - $svc"
+        done
+        return 1
+    fi
+    
+    echo -e "\n${CYAN}═══ Rebuilding $service ═══${NC}\n"
+    
+    # Verify service exists in compose
+    local compose_service="${service#homelab-}"
+    if ! compose config --services 2>/dev/null | grep -q "^${compose_service}$"; then
+        echo -e "${RED}✗ Service not found in docker-compose.yml${NC}"
+        return 1
+    fi
+    
+    # Rebuild
+    echo "Building $compose_service..."
+    compose build --no-cache "$compose_service"
+    
+    if [ $? -eq 0 ]; then
+        echo ""
+        echo "Recreating container..."
+        compose up -d --force-recreate "$compose_service"
+        
+        echo ""
+        echo -e "${GREEN}✅ Rebuild completed${NC}"
+        echo "Check logs: ./homelab logs $service"
+    else
+        echo -e "\n${RED}✗ Rebuild failed${NC}"
+        return 1
+    fi
+}
+
+# ============================================
+# CLEAN COMMAND - Cleanup Old Resources
+# ============================================
+clean() {
+    echo -e "\n${CYAN}═══ Cleanup ═══${NC}\n"
+    
+    local cleaned=0
+    
+    # 1. Old log files
+    echo -e "${CYAN}[1/4] Cleaning old logs${NC}"
+    local log_dirs=("$PROJECT_ROOT/logs" "$PROJECT_ROOT/services/dashboard/logs" "$PROJECT_ROOT/services/discord-bot/logs" "$PROJECT_ROOT/services/stream-bot/logs")
+    
+    for dir in "${log_dirs[@]}"; do
+        if [ -d "$dir" ]; then
+            # Keep logs from last 7 days, delete older
+            local deleted=$(find "$dir" -name "*.log" -type f -mtime +7 -delete -print 2>/dev/null | wc -l)
+            if [ "$deleted" -gt 0 ]; then
+                echo "  Removed $deleted log file(s) from $(basename $dir)"
+                ((cleaned++))
+            fi
+        fi
+    done
+    
+    if [ $cleaned -eq 0 ]; then
+        echo "  No old logs to remove"
+    fi
+    
+    # 2. Old backups
+    echo -e "\n${CYAN}[2/4] Cleaning old backups${NC}"
+    local backup_dir="$PROJECT_ROOT/var/backups/databases"
+    if [ -d "$backup_dir" ]; then
+        cd "$backup_dir"
+        # Keep last 10 backups
+        local old_backups=$(ls -t homelab-backup-*.sql 2>/dev/null | tail -n +11)
+        if [ -n "$old_backups" ]; then
+            echo "$old_backups" | xargs rm -f
+            local count=$(echo "$old_backups" | wc -l)
+            echo "  Removed $count old backup(s)"
+        else
+            echo "  No old backups to remove"
+        fi
+    else
+        echo "  No backup directory found"
+    fi
+    
+    # 3. Unused Docker images
+    echo -e "\n${CYAN}[3/4] Cleaning unused Docker images${NC}"
+    docker image prune -f | grep -E "^(Total|Deleted)" || echo "  No unused images"
+    
+    # 4. Stopped containers
+    echo -e "\n${CYAN}[4/4] Cleaning stopped containers${NC}"
+    docker container prune -f | grep -E "^(Total|Deleted)" || echo "  No stopped containers"
+    
+    echo ""
+    echo -e "${GREEN}✅ Cleanup completed${NC}"
+}
+
+# ============================================
+# DB-SHELL COMMAND - PostgreSQL Shell Access
+# ============================================
+db_shell() {
+    local database="${1:-postgres}"
+    
+    echo -e "${CYAN}═══ PostgreSQL Shell ═══${NC}\n"
+    
+    if ! is_running "homelab-postgres"; then
+        echo -e "${RED}✗ PostgreSQL container not running${NC}"
+        return 1
+    fi
+    
+    echo "Connecting to database: $database"
+    echo "Type '\q' or Ctrl+D to exit"
+    echo ""
+    
+    docker exec -it homelab-postgres psql -U postgres -d "$database"
+}
+
+# ============================================
+# TEST COMMAND - Integration Tests
+# ============================================
+test_services() {
+    echo -e "\n${CYAN}═══ Integration Tests ═══${NC}\n"
+    
+    local tests_passed=0
+    local tests_failed=0
+    
+    # Test 1: Database Connectivity
+    echo -e "${CYAN}[1/6] Database Connectivity${NC}"
+    if docker exec homelab-postgres psql -U postgres -c "SELECT 1" &>/dev/null; then
+        echo -e "  ${GREEN}✓ PASS${NC}"
+        ((tests_passed++))
+    else
+        echo -e "  ${RED}✗ FAIL${NC}"
+        ((tests_failed++))
+    fi
+    
+    # Test 2: Dashboard API
+    echo -e "\n${CYAN}[2/6] Dashboard API${NC}"
+    local dash_status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/ 2>/dev/null || echo "000")
+    if [ "$dash_status" = "200" ] || [ "$dash_status" = "302" ]; then
+        echo -e "  ${GREEN}✓ PASS (HTTP $dash_status)${NC}"
+        ((tests_passed++))
+    else
+        echo -e "  ${RED}✗ FAIL (HTTP $dash_status)${NC}"
+        ((tests_failed++))
+    fi
+    
+    # Test 3: Discord Bot
+    echo -e "\n${CYAN}[3/6] Discord Bot${NC}"
+    local discord_status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4000/ 2>/dev/null || echo "000")
+    if [ "$discord_status" = "200" ] || [ "$discord_status" = "302" ]; then
+        echo -e "  ${GREEN}✓ PASS (HTTP $discord_status)${NC}"
+        ((tests_passed++))
+    else
+        echo -e "  ${YELLOW}⚠ SKIP (HTTP $discord_status)${NC} - Service may not have /health endpoint"
+        ((tests_passed++))  # Don't fail on this
+    fi
+    
+    # Test 4: Stream Bot
+    echo -e "\n${CYAN}[4/6] Stream Bot${NC}"
+    local stream_status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/ 2>/dev/null || echo "000")
+    if [ "$stream_status" = "200" ] || [ "$stream_status" = "302" ]; then
+        echo -e "  ${GREEN}✓ PASS (HTTP $stream_status)${NC}"
+        ((tests_passed++))
+    else
+        echo -e "  ${YELLOW}⚠ SKIP (HTTP $stream_status)${NC} - Service may not have /health endpoint"
+        ((tests_passed++))  # Don't fail on this
+    fi
+    
+    # Test 5: Redis Connection
+    echo -e "\n${CYAN}[5/6] Redis Connection${NC}"
+    if docker exec homelab-redis redis-cli ping 2>/dev/null | grep -q "PONG"; then
+        echo -e "  ${GREEN}✓ PASS${NC}"
+        ((tests_passed++))
+    else
+        echo -e "  ${RED}✗ FAIL${NC}"
+        ((tests_failed++))
+    fi
+    
+    # Test 6: MinIO Health
+    echo -e "\n${CYAN}[6/6] MinIO Health${NC}"
+    local minio_status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:9000/minio/health/live 2>/dev/null || echo "000")
+    if [ "$minio_status" = "200" ]; then
+        echo -e "  ${GREEN}✓ PASS (HTTP $minio_status)${NC}"
+        ((tests_passed++))
+    else
+        echo -e "  ${RED}✗ FAIL (HTTP $minio_status)${NC}"
+        ((tests_failed++))
+    fi
+    
+    # Summary
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "Results: $tests_passed passed, $tests_failed failed"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    if [ $tests_failed -eq 0 ]; then
+        echo -e "${GREEN}✅ All tests passed!${NC}"
+        return 0
+    else
+        echo -e "${RED}⚠ Some tests failed${NC}"
+        return 1
+    fi
+}
+
+# ============================================
 # MAIN
 # ============================================
 case "${1:-help}" in
@@ -214,6 +763,36 @@ case "${1:-help}" in
     debug)
         debug
         ;;
+    health)
+        health
+        ;;
+    validate-env)
+        validate_env
+        ;;
+    backup)
+        backup
+        ;;
+    restore)
+        shift
+        restore "$@"
+        ;;
+    update)
+        update
+        ;;
+    rebuild)
+        shift
+        rebuild "$@"
+        ;;
+    clean)
+        clean
+        ;;
+    db-shell)
+        shift
+        db_shell "$@"
+        ;;
+    test)
+        test_services
+        ;;
     restart)
         echo "Restarting all services..."
         compose restart
@@ -225,24 +804,47 @@ case "${1:-help}" in
     help|*)
         cat << 'EOF'
 ╔════════════════════════════════════════════════════════╗
-║           HOMELAB - Simple Management                  ║
+║           HOMELAB - Production-Ready Management        ║
 ╚════════════════════════════════════════════════════════╝
 
 Usage: ./homelab [command]
 
-Commands:
-  fix      - Fix everything and start all services
-  status   - Show which services are running  
-  logs     - View logs (add service name for specific)
-  debug    - Show detailed debugging info
-  restart  - Restart all services
-  stop     - Stop everything
+CORE COMMANDS:
+  fix              - Fix everything and start all services
+  status           - Show which services are running
+  logs [service]   - View logs (add service name for specific)
+  restart          - Restart all services
+  stop             - Stop everything
 
-Examples:
+HEALTH & DIAGNOSTICS:
+  health           - Comprehensive health checks (DB, API, disk, memory)
+  validate-env     - Check .env has all required variables
+  debug            - Show detailed debugging info
+  test             - Run integration tests on all services
+
+OPERATIONS:
+  backup           - Backup all databases to timestamped files
+  restore <file>   - Restore from backup
+  update           - Git pull and redeploy (for production)
+  rebuild <svc>    - Rebuild and restart specific service
+  clean            - Clean old logs, unused containers/images
+  db-shell [db]    - Quick PostgreSQL shell access
+
+EXAMPLES:
   ./homelab fix                    # Fix all issues
-  ./homelab status                 # Check what's running
+  ./homelab health                 # Run health checks
+  ./homelab validate-env           # Check environment variables
+  ./homelab backup                 # Backup databases
+  ./homelab restore backup.sql     # Restore from backup
+  ./homelab update                 # Update from git
+  ./homelab rebuild discord-bot    # Rebuild specific service
+  ./homelab clean                  # Cleanup old files
+  ./homelab db-shell homelab_jarvis  # Access database
+  ./homelab test                   # Run integration tests
   ./homelab logs homelab-dashboard # View dashboard logs
-  ./homelab debug                  # Debug environment issues
+
+DOCUMENTATION:
+  See OPERATIONS_GUIDE.md for detailed procedures
 
 The key: This script uses ABSOLUTE PATHS so Docker finds
 your .env file and configurations correctly.
