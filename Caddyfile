@@ -40,8 +40,14 @@ www.rig-city.com {
 # ============================================
 # Plex Media Server
 # ============================================
+# OPTION A: Docker Plex (default - requires stopping host Plex)
+# plex.evindrake.net {
+#     reverse_proxy plex-server:32400
+# }
+
+# OPTION B: Host Plex (active - using existing Plex installation)
 plex.evindrake.net {
-    reverse_proxy plex-server:32400
+    reverse_proxy 172.17.0.1:32400
 }
 
 # ============================================
