@@ -693,9 +693,49 @@ Response:
 
 ---
 
+## Known Limitations (MVP)
+
+### Automatic DNS Synchronization
+
+**Status**: ⚠️ Manual Sync Required in MVP
+
+While the DNS Manager service can read `services.yaml` and create DNS records, **automatic synchronization on service deployment is not yet fully automated**.
+
+**Current Workflow:**
+
+1. **Define DNS in services.yaml**:
+   ```yaml
+   services:
+     myservice:
+       dns:
+         - type: A
+           name: myservice
+           zone: evindrake.net
+   ```
+
+2. **Manual Sync Required**:
+   ```bash
+   ./homelab dns sync
+   ```
+
+3. **Traefik Integration**: Works but requires manual trigger - DNS Manager doesn't auto-watch Traefik route changes yet
+
+**Workarounds:**
+- Run `./homelab dns sync` after deploying new services
+- Schedule periodic DNS sync via cron (every 5 minutes)
+- Manually create DNS records in Cloudflare dashboard for critical services
+
+**Future Enhancement**:
+- Watch Traefik routes via Consul and auto-create DNS
+- Event-driven DNS updates (no manual sync needed)
+- Automatic DNS record validation and health checks
+
+This limitation means DNS records require a manual sync step rather than being fully zero-touch.
+
 ## Future Enhancements
 
 **Deferred to Later Phases**:
+- [ ] Automatic DNS sync on service deployment (watch Traefik/Consul)
 - [ ] Support for Route53, DigitalOcean DNS
 - [ ] Geographic DNS (geo-routing)
 - [ ] Failover and health-based routing

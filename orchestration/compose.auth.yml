@@ -9,7 +9,7 @@
 
 networks:
   homelab:
-    external: true
+    name: homelab
 
 services:
   # ============================================
@@ -25,6 +25,9 @@ services:
       - homelab
     ports:
       - "8000:8000"
+    env_file:
+      - ${DEPLOYMENT_PATH:-.}/.env
+      - ${DEPLOYMENT_PATH:-.}/.env.auth-service
     
     environment:
       # JWT Configuration

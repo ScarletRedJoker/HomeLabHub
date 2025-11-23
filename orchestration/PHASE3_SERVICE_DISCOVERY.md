@@ -587,6 +587,36 @@ Best practices:
 3. Use tagged devices for service isolation
 4. Monitor access logs
 
+## Known Limitations (MVP)
+
+### Service Catalog Metadata Injection
+
+**Status**: ⚠️ Not Implemented in MVP
+
+The `services.yaml` file contains rich metadata for services (DNS records, Traefik labels, auth flags, rate limits). However, **automatic metadata injection into Docker Compose files is not yet implemented**.
+
+**Current Workarounds:**
+
+1. **Traefik Labels**: Manually add labels to service definitions in compose files
+   ```yaml
+   services:
+     myservice:
+       labels:
+         - "traefik.enable=true"
+         - "traefik.http.routers.myservice.rule=Host(`myservice.evindrake.net`)"
+   ```
+
+2. **DNS Records**: Use `./homelab dns sync` command to manually sync DNS records from `services.yaml`
+
+3. **Service Discovery**: Still works via Traefik Docker provider watching container labels
+
+**Future Enhancement:**
+- Automatic label injection from `services.yaml` metadata
+- Template-based compose file generation
+- Dynamic configuration updates without container restarts
+
+This limitation does not prevent Phase 3 from functioning - it just requires manual label configuration for now.
+
 ## Next Steps
 
 With Phase 3 complete, you now have:

@@ -496,8 +496,31 @@ Phase 7 is backward compatible with Phase 3. No changes required to existing ser
    - Add to .env files
    - Update service code to include tokens in requests
 
+## Known Limitations (MVP)
+
+### Service Catalog Metadata Injection
+
+**Status**: ⚠️ Not Implemented in MVP
+
+The `services.yaml` file defines authentication requirements, rate limits, and middleware configurations. However, **automatic metadata injection is not yet implemented**.
+
+**Current Workarounds:**
+
+1. **Authentication Middleware**: Manually add to Traefik labels
+   ```yaml
+   labels:
+     - "traefik.http.routers.myservice.middlewares=auth-jwt,rate-limit"
+   ```
+
+2. **Rate Limits**: Manually configure per-service rate limiting in compose files
+
+3. **CORS Settings**: Manually add CORS middleware to services that need it
+
+**Impact**: Services require manual middleware configuration rather than automatic inheritance from `services.yaml`.
+
 ## Future Enhancements (Post-MVP)
 
+- **Metadata injection**: Automatic middleware configuration from `services.yaml`
 - **OAuth2 integration**: Replace simple JWT with OAuth2 provider
 - **Circuit breaker**: Automatic failure handling and retry logic
 - **Request tracing**: Distributed tracing with Jaeger/Zipkin

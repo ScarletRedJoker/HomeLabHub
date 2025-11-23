@@ -10,6 +10,10 @@
 
 name: homelab
 
+networks:
+  homelab:
+    name: homelab
+
 volumes:
   postgres_data:
   postgres_wal:
@@ -28,8 +32,8 @@ services:
         aliases:
           - postgres
     env_file:
-      - ${DEPLOYMENT_PATH}/.env
-      - ${DEPLOYMENT_PATH}/.env.postgres
+      - ${DEPLOYMENT_PATH:-.}/.env
+      - ${DEPLOYMENT_PATH:-.}/.env.postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -78,8 +82,8 @@ services:
       homelab-postgres:
         condition: service_healthy
     env_file:
-      - ${DEPLOYMENT_PATH}/.env
-      - ${DEPLOYMENT_PATH}/.env.pgbouncer
+      - ${DEPLOYMENT_PATH:-.}/.env
+      - ${DEPLOYMENT_PATH:-.}/.env.pgbouncer
     environment:
       # Database connections
       DATABASE_URL: "postgresql://postgres:${POSTGRES_PASSWORD}@homelab-postgres:5432/postgres"
@@ -134,8 +138,8 @@ services:
       minio:
         condition: service_healthy
     env_file:
-      - ${DEPLOYMENT_PATH}/.env
-      - ${DEPLOYMENT_PATH}/.env.pgbackrest
+      - ${DEPLOYMENT_PATH:-.}/.env
+      - ${DEPLOYMENT_PATH:-.}/.env.pgbackrest
     environment:
       # PostgreSQL connection
       PGBACKREST_REPO1_S3_ENDPOINT: minio:9000

@@ -7,7 +7,7 @@
 
 networks:
   homelab:
-    external: true
+    name: homelab
 
 volumes:
   dns_manager_data:
@@ -26,6 +26,9 @@ services:
       - homelab
     ports:
       - "8001:8001"  # API endpoint
+    env_file:
+      - ${DEPLOYMENT_PATH:-.}/.env
+      - ${DEPLOYMENT_PATH:-.}/.env.dns-manager
     
     environment:
       # Cloudflare API Configuration

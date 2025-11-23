@@ -7,7 +7,7 @@
 
 networks:
   homelab:
-    external: true
+    name: homelab
 
 volumes:
   consul_data:
@@ -28,6 +28,9 @@ services:
       - "8500:8500"   # HTTP API & Web UI
       - "8600:8600"   # DNS
       - "8600:8600/udp"
+    env_file:
+      - ${DEPLOYMENT_PATH:-.}/.env
+      - ${DEPLOYMENT_PATH:-.}/.env.consul
     command: >
       agent -server
       -ui
@@ -62,6 +65,9 @@ services:
     restart: unless-stopped
     networks:
       - homelab
+    env_file:
+      - ${DEPLOYMENT_PATH:-.}/.env
+      - ${DEPLOYMENT_PATH:-.}/.env.consul
     command: >
       agent
       -node=consul-agent-1

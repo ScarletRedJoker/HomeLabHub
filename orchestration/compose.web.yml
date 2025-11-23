@@ -78,7 +78,7 @@ services:
     networks:
       - homelab
     env_file:
-      - ${DEPLOYMENT_PATH}/.env
+      - ${DEPLOYMENT_PATH:-.}/.env
     environment:
       - VNC_PASSWORD=${VNC_PASSWORD}
       - VNC_USER=evin
@@ -110,7 +110,7 @@ services:
     networks:
       - homelab
     env_file:
-      - ${DEPLOYMENT_PATH}/.env
+      - ${DEPLOYMENT_PATH:-.}/.env
     environment:
       - PASSWORD=${CODE_SERVER_PASSWORD}
       - PUID=1000
@@ -137,7 +137,7 @@ services:
     networks:
       - homelab
     env_file:
-      - ${DEPLOYMENT_PATH}/.env
+      - ${DEPLOYMENT_PATH:-.}/.env
     environment:
       - TZ=America/New_York
     volumes:

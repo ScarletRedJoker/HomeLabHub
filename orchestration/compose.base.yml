@@ -29,8 +29,8 @@ services:
         aliases:
           - postgres
     env_file:
-      - ${DEPLOYMENT_PATH}/.env
-      - ${DEPLOYMENT_PATH}/.env.postgres
+      - ${DEPLOYMENT_PATH:-.}/.env
+      - ${DEPLOYMENT_PATH:-.}/.env.postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -76,6 +76,8 @@ services:
     command: server /data --console-address ":9001"
     networks:
       - homelab
+    env_file:
+      - ${DEPLOYMENT_PATH:-.}/.env
     environment:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER:-admin}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minio_admin_password}

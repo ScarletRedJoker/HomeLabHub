@@ -27,8 +27,8 @@ services:
       - 8.8.8.8
       - 8.8.4.4
     env_file:
-      - ${DEPLOYMENT_PATH}/.env
-      - ${DEPLOYMENT_PATH}/.env.stream-bot
+      - ${DEPLOYMENT_PATH:-.}/.env
+      - ${DEPLOYMENT_PATH:-.}/.env.stream-bot
     environment:
       DATABASE_URL: postgresql://streambot:${STREAMBOT_DB_PASSWORD}@homelab-postgres:5432/streambot
       SESSION_SECRET: ${STREAMBOT_SESSION_SECRET}

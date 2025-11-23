@@ -27,8 +27,8 @@ services:
       - 8.8.8.8
       - 8.8.4.4
     env_file:
-      - ${DEPLOYMENT_PATH}/.env
-      - ${DEPLOYMENT_PATH}/.env.discord-bot
+      - ${DEPLOYMENT_PATH:-.}/.env
+      - ${DEPLOYMENT_PATH:-.}/.env.discord-bot
     environment:
       DATABASE_URL: "postgresql://ticketbot:${DISCORD_DB_PASSWORD}@homelab-postgres:5432/ticketbot"
       DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}

@@ -15,7 +15,7 @@
 
 networks:
   homelab:
-    external: true
+    name: homelab
 
 volumes:
   traefik_data:
@@ -34,6 +34,9 @@ services:
       - "80:80"       # HTTP
       - "443:443"     # HTTPS
       - "8080:8080"   # Dashboard (should be secured)
+    env_file:
+      - ${DEPLOYMENT_PATH:-.}/.env
+      - ${DEPLOYMENT_PATH:-.}/.env.traefik
     command:
       # Global configuration
       - "--global.checkNewVersion=true"
@@ -170,6 +173,8 @@ services:
     restart: unless-stopped
     networks:
       - homelab
+    env_file:
+      - ${DEPLOYMENT_PATH:-.}/.env
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.whoami.rule=Host(`whoami.evindrake.net`)"

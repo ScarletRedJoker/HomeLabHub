@@ -5,6 +5,10 @@
 
 name: homelab
 
+networks:
+  homelab:
+    name: homelab
+
 volumes:
   prometheus_data:
   grafana_data:
@@ -29,6 +33,9 @@ services:
       - homelab
     ports:
       - "9090:9090"
+    env_file:
+      - ${DEPLOYMENT_PATH:-.}/.env
+      - ${DEPLOYMENT_PATH:-.}/.env.prometheus
     volumes:
       - prometheus_data:/prometheus
       - ../config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
@@ -54,8 +61,8 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - ${DEPLOYMENT_PATH}/.env
-      - ${DEPLOYMENT_PATH}/.env.grafana
+      - ${DEPLOYMENT_PATH:-.}/.env
+      - ${DEPLOYMENT_PATH:-.}/.env.grafana
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
@@ -88,7 +95,7 @@ services:
     ports:
       - "3100:3100"
     env_file:
-      - ${DEPLOYMENT_PATH}/.env
+      - ${DEPLOYMENT_PATH:-.}/.env
     volumes:
       - loki_data:/loki
       - ../config/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
@@ -109,6 +116,8 @@ services:
     command: -config.file=/etc/promtail/promtail-config.yml
     networks:
       - homelab
+    env_file:
+      - ${DEPLOYMENT_PATH:-.}/.env
     volumes:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -177,6 +186,8 @@ services:
       - homelab
     ports:
       - "9187:9187"
+    env_file:
+      - ${DEPLOYMENT_PATH:-.}/.env
     environment:
       - DATA_SOURCE_NAME=postgresql://postgres:${POSTGRES_PASSWORD}@homelab-postgres:5432/postgres?sslmode=disable
     depends_on:
@@ -219,6 +230,8 @@ services:
       - homelab
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    env_file:
+      - ${DEPLOYMENT_PATH:-.}/.env
     environment:
       - WATCHTOWER_CLEANUP=true
       - WATCHTOWER_POLL_INTERVAL=300

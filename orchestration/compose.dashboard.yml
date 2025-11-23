@@ -36,8 +36,8 @@ services:
       - ../Caddyfile:/app/Caddyfile:ro
       - ../.env:/app/.env:ro
     env_file: 
-      - ${DEPLOYMENT_PATH}/.env
-      - ${DEPLOYMENT_PATH}/.env.dashboard
+      - ${DEPLOYMENT_PATH:-.}/.env
+      - ${DEPLOYMENT_PATH:-.}/.env.dashboard
     environment:
       - FLASK_ENV=production
       - PYTHONUNBUFFERED=1
