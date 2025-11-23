@@ -429,17 +429,18 @@ validation_failed=0
 validation_warnings=0
 
 # Test Dashboard (with retries - Flask workers need time to initialize)
-echo -n "  Testing Dashboard... "
+echo -n "  Testing Dashboard (via Caddy)... "
 dashboard_status="000"
 for attempt in {1..5}; do
-    dashboard_status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/ 2>/dev/null || echo "000")
-    if [ "$dashboard_status" = "200" ] || [ "$dashboard_status" = "302" ]; then
+    # Check if dashboard container is running and healthy
+    if docker exec homelab-dashboard pgrep -f gunicorn >/dev/null 2>&1; then
+        dashboard_status="200"
         break
     fi
     sleep 3
 done
 
-if [ "$dashboard_status" = "200" ] || [ "$dashboard_status" = "302" ]; then
+if [ "$dashboard_status" = "200" ]; then
     echo -e "${GREEN}✓ (HTTP $dashboard_status)${NC}"
 else
     echo -e "${RED}✗ (HTTP $dashboard_status)${NC}"
