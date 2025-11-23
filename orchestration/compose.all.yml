@@ -9,8 +9,12 @@
 include:
   - compose.base.yml
   - compose.database.yml
+  - compose.traefik.yml
+  - compose.auth.yml
   - compose.dashboard.yml
   - compose.discord.yml
   - compose.stream.yml
   - compose.automation.yml
   - compose.web.yml
+  - compose.dns.yml
+  - compose.observability.yml

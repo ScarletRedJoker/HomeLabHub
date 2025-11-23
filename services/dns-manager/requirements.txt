@@ -1,0 +1,6 @@
+cloudflare==2.19.4
+python-consul==1.1.0
+pyyaml==6.0.1
+requests==2.31.0
+flask==3.0.0
+schedule==1.2.0

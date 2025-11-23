@@ -1,0 +1,80 @@
+# ============================================
+# DNS AUTOMATION SERVICE
+# Phase 8: Automated DNS Management
+# ============================================
+# Monitors services and automatically creates/updates DNS records
+# in Cloudflare for new deployments and Traefik routes
+
+networks:
+  homelab:
+    external: true
+
+volumes:
+  dns_manager_data:
+
+services:
+  # ============================================
+  # DNS Manager - Automated DNS Record Management
+  # ============================================
+  dns-manager:
+    build:
+      context: ../services/dns-manager
+      dockerfile: Dockerfile
+    container_name: dns-manager
+    restart: unless-stopped
+    networks:
+      - homelab
+    ports:
+      - "8001:8001"  # API endpoint
+    
+    environment:
+      # Cloudflare API Configuration
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+      
+      # Service Catalog Path
+      - SERVICE_CATALOG_PATH=/config/services.yaml
+      
+      # Consul Integration (for Traefik route watching)
+      - CONSUL_HOST=consul-server
+      
+      # Target IP for DNS records
+      - TARGET_IP=${DNS_TARGET_IP:-0.0.0.0}
+      
+      # Sync interval (seconds)
+      - SYNC_INTERVAL=300
+      
+      # Logging
+      - LOG_LEVEL=INFO
+    
+    volumes:
+      # Mount services.yaml for reading DNS config
+      - ../orchestration/services.yaml:/config/services.yaml:ro
+      
+      # Persistent data
+      - dns_manager_data:/data
+    
+    labels:
+      # Traefik integration
+      - "traefik.enable=true"
+      - "traefik.http.routers.dns-manager.rule=Host(`dns.evindrake.net`)"
+      - "traefik.http.routers.dns-manager.entrypoints=websecure"
+      - "traefik.http.routers.dns-manager.tls=true"
+      - "traefik.http.routers.dns-manager.tls.certresolver=cloudflare"
+      - "traefik.http.services.dns-manager.loadbalancer.server.port=8001"
+      
+      # Security - require authentication
+      - "traefik.http.routers.dns-manager.middlewares=auth-jwt,rate-limit"
+      
+      # Consul service discovery
+      - "consul.service=dns-manager"
+      - "consul.tags=dns,automation,api"
+    
+    depends_on:
+      - consul-server
+    
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8001/health').raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s

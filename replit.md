@@ -64,14 +64,42 @@ The core system relies on Docker Compose for orchestrating 15 services. A `boots
 - CLI commands: services discover, routes list, network status
 - Tailscale integration documented
 
-**Integration Status:** Phases 1-3 implemented. Known integration gaps (network config, env file wiring) to be resolved during final integration testing.
+**Phase 4: Database Platform Upgrade - ✅ IMPLEMENTED**
+- pgBouncer connection pooling (transaction mode, 1000 clients → 100 backend)
+- pgBackRest automated backups to MinIO (daily full, hourly incremental)
+- WAL archiving for point-in-time recovery
+- CLI commands: `./homelab db backup/restore/migrate/status/list-backups`
 
-**Phase 4-8: IN PROGRESS**
-- Phase 4: Database Platform Upgrade (backups, pooling) - STARTING
-- Phase 5: Observability & Auto-Recovery (Prometheus, Grafana) - PENDING
-- Phase 6: Deployment & Rollback Automation (CI/CD) - PENDING
-- Phase 7: API Gateway & Auth - PENDING
-- Phase 8: DNS Automation - PENDING
+**Phase 5: Observability & Auto-Recovery - ✅ IMPLEMENTED**
+- Prometheus metrics collection (8+ scrape targets)
+- Grafana dashboards (Homelab Overview, Database Dashboard)
+- Loki log aggregation with Promtail
+- Watchtower auto-restart for failed containers
+- CLI commands: `./homelab metrics/alerts`
+
+**Phase 6: Deployment & Rollback Automation - ✅ IMPLEMENTED**
+- GitHub Actions CI/CD pipeline
+- Automated deployments with health checks
+- Deployment history tracking (last 10)
+- Rollback system with backup restoration
+- CLI commands: `./homelab deploy-prod/rollback/deployment`
+
+**Phase 7: API Gateway & Auth - ✅ IMPLEMENTED**
+- Traefik as unified API gateway
+- JWT authentication service
+- Service-to-service token auth
+- Rate limiting middleware (100 req/min default)
+- CORS, security headers
+- CLI commands: `./homelab gateway status/tokens/generate-token`
+
+**Phase 8: DNS Automation - ✅ IMPLEMENTED**
+- Cloudflare API integration
+- Automatic DNS record creation from services.yaml
+- Multi-zone support (evindrake.net, rig-city.com, scarletredjoker.com)
+- Traefik route watching and auto-DNS
+- CLI commands: `./homelab dns list/sync/status`
+
+**Integration Status:** All 8 phases implemented. Known integration gaps (network config, env file wiring between phases) to be resolved during final integration testing
 
 ## Recent Changes (November 2025)
 

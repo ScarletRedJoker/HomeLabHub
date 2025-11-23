@@ -1,0 +1,100 @@
+# ============================================
+# PROMTAIL CONFIGURATION
+# Ships Docker container logs to Loki
+# ============================================
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: info
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://homelab-loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # Docker container logs
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: label
+            values: ["com.docker.compose.project=homelab"]
+    
+    relabel_configs:
+      # Container name
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      
+      # Container ID
+      - source_labels: ['__meta_docker_container_id']
+        target_label: 'container_id'
+      
+      # Docker compose service
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: 'service'
+      
+      # Docker compose project
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_project']
+        target_label: 'project'
+      
+      # Service group (from label)
+      - source_labels: ['__meta_docker_container_label_homelab_group']
+        target_label: 'group'
+        replacement: 'unknown'
+      
+      # Log path
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: 'stream'
+
+    pipeline_stages:
+      # Parse JSON logs from Docker
+      - json:
+          expressions:
+            output: log
+            stream: stream
+            timestamp: time
+      
+      # Extract timestamp
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+      
+      # Set log level from message
+      - regex:
+          expression: '(?P<level>(ERROR|WARN|INFO|DEBUG))'
+      
+      # Add labels
+      - labels:
+          level:
+          stream:
+      
+      # Output formatting
+      - output:
+          source: output
+
+  # System logs (optional - if needed)
+  - job_name: system
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: system
+          __path__: /var/log/syslog
+    
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<timestamp>\S+\s+\S+\s+\S+) (?P<hostname>\S+) (?P<service>\S+)(\[(?P<pid>\d+)\])?: (?P<message>.*)$'
+      
+      - timestamp:
+          source: timestamp
+          format: 'Jan 02 15:04:05'
+      
+      - labels:
+          hostname:
+          service:
+          pid:

@@ -814,6 +814,89 @@ db_shell() {
 }
 
 # ============================================
+# DEPLOYMENT COMMAND - Deployment Management (Phase 6)
+# ============================================
+deployment_cmd() {
+    local subcmd="${1:-help}"
+    shift || true
+    
+    case "$subcmd" in
+        history)
+            deployment_history
+            ;;
+        status)
+            deployment_status
+            ;;
+        *)
+            echo "Usage: ./homelab deployment <subcommand>"
+            echo ""
+            echo "Subcommands:"
+            echo "  history   - Show deployment history"
+            echo "  status    - Show current deployment status"
+            ;;
+    esac
+}
+
+deployment_history() {
+    echo -e "${CYAN}═══ Deployment History ═══${NC}\n"
+    
+    local history_file="$PROJECT_ROOT/.deployments/history.json"
+    
+    if [ ! -f "$history_file" ]; then
+        echo -e "${YELLOW}No deployment history found${NC}"
+        return 0
+    fi
+    
+    if ! command -v jq &> /dev/null; then
+        echo -e "${YELLOW}jq not installed - showing raw JSON${NC}"
+        cat "$history_file"
+        return 0
+    fi
+    
+    # Show last 10 deployments
+    echo "Last 10 deployments:"
+    echo ""
+    
+    jq -r '.deployments[-10:] | reverse | .[] | 
+        "[\(.timestamp)] \(.action | ascii_upcase) - \(.service) - Status: \(.status)"' \
+        "$history_file" 2>/dev/null || cat "$history_file"
+    
+    echo ""
+    echo "Full history: $history_file"
+}
+
+deployment_status() {
+    echo -e "${CYAN}═══ Deployment Status ═══${NC}\n"
+    
+    local history_file="$PROJECT_ROOT/.deployments/history.json"
+    
+    if [ ! -f "$history_file" ]; then
+        echo -e "${YELLOW}No deployment information available${NC}"
+        return 0
+    fi
+    
+    if ! command -v jq &> /dev/null; then
+        echo -e "${YELLOW}jq not installed - install for better display${NC}"
+        return 0
+    fi
+    
+    # Show last deployment
+    echo "Last deployment:"
+    jq -r '.last_deployment | 
+        if . != null then
+            "  Service: \(.service)\n  Action: \(.action)\n  Status: \(.status)\n  Time: \(.timestamp)\n  Backup: \(.backup // "none")"
+        else
+            "  No deployments yet"
+        end' "$history_file"
+    
+    echo ""
+    
+    # Show currently deployed services with their status
+    echo "Currently running services:"
+    docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Image}}" | grep -E "homelab-|discord-bot|stream-bot" || echo "  None running"
+}
+
+# ============================================
 # TEST COMMAND - Integration Tests
 # ============================================
 test_services() {
@@ -1639,6 +1722,111 @@ network_cmd() {
     esac
 }
 
+# ============================================
+# METRICS COMMAND - Open Grafana Dashboards
+# ============================================
+metrics() {
+    echo -e "\n${CYAN}═══ Grafana Dashboards ═══${NC}\n"
+    
+    if ! is_running "homelab-grafana"; then
+        echo -e "${RED}✗ Grafana is not running${NC}"
+        echo "Start with: ./homelab deploy observability"
+        return 1
+    fi
+    
+    echo -e "${GREEN}✓${NC} Grafana is running"
+    echo ""
+    echo "Dashboard URLs:"
+    echo "  Main: http://localhost:3000"
+    echo "  Homelab Overview: http://localhost:3000/d/homelab-overview"
+    echo "  Database: http://localhost:3000/d/homelab-database"
+    echo ""
+    echo "Login: admin / (see GRAFANA_ADMIN_PASSWORD in .env)"
+    echo ""
+    
+    # Check if Prometheus is collecting metrics
+    if is_running "homelab-prometheus"; then
+        echo -e "${GREEN}✓${NC} Prometheus is collecting metrics"
+        echo "  Prometheus UI: http://localhost:9090"
+        echo "  Metrics endpoint: http://localhost:9090/metrics"
+        echo ""
+        
+        # Show active targets
+        echo "Active scrape targets:"
+        curl -s http://localhost:9090/api/v1/targets 2>/dev/null | \
+            grep -o '"job":"[^"]*"' | cut -d'"' -f4 | sort -u | \
+            while read -r job; do
+                echo "  - $job"
+            done
+    else
+        echo -e "${YELLOW}⚠${NC} Prometheus is not running"
+        echo "Start with: ./homelab deploy observability"
+    fi
+    
+    echo ""
+    echo "Opening Grafana in browser..."
+    if command -v xdg-open &> /dev/null; then
+        xdg-open "http://localhost:3000" &>/dev/null &
+    elif command -v open &> /dev/null; then
+        open "http://localhost:3000" &>/dev/null &
+    else
+        echo "Visit: http://localhost:3000"
+    fi
+}
+
+# ============================================
+# ALERTS COMMAND - Show Prometheus Alerts
+# ============================================
+alerts() {
+    echo -e "\n${CYAN}═══ Active Prometheus Alerts ═══${NC}\n"
+    
+    if ! is_running "homelab-prometheus"; then
+        echo -e "${RED}✗ Prometheus is not running${NC}"
+        echo "Start with: ./homelab deploy observability"
+        return 1
+    fi
+    
+    # Fetch active alerts from Prometheus API
+    local alerts_json=$(curl -s http://localhost:9090/api/v1/alerts 2>/dev/null)
+    
+    if [ -z "$alerts_json" ]; then
+        echo -e "${RED}✗ Could not fetch alerts from Prometheus${NC}"
+        return 1
+    fi
+    
+    # Parse and display alerts
+    local firing_count=$(echo "$alerts_json" | grep -o '"state":"firing"' | wc -l)
+    local pending_count=$(echo "$alerts_json" | grep -o '"state":"pending"' | wc -l)
+    
+    if [ "$firing_count" -eq 0 ] && [ "$pending_count" -eq 0 ]; then
+        echo -e "${GREEN}✅ No active alerts${NC}"
+        echo ""
+        echo "All systems nominal!"
+    else
+        if [ "$firing_count" -gt 0 ]; then
+            echo -e "${RED}🔥 FIRING ALERTS: $firing_count${NC}"
+            echo ""
+        fi
+        
+        if [ "$pending_count" -gt 0 ]; then
+            echo -e "${YELLOW}⏳ PENDING ALERTS: $pending_count${NC}"
+            echo ""
+        fi
+        
+        # Show detailed alert info
+        echo "Alert Details:"
+        curl -s http://localhost:9090/api/v1/alerts 2>/dev/null | \
+            grep -o '"alertname":"[^"]*"' | cut -d'"' -f4 | sort -u | \
+            while read -r alert; do
+                echo "  - $alert"
+            done
+    fi
+    
+    echo ""
+    echo "View all alerts: http://localhost:9090/alerts"
+    echo "Alertmanager: http://localhost:9093 (if enabled)"
+}
+
 config_help() {
     cat << 'EOF'
 ╔════════════════════════════════════════════════════════╗
@@ -1675,6 +1863,355 @@ EOF
 }
 
 # ============================================
+
+# ============================================
+# GATEWAY COMMAND - API Gateway Management (Phase 7)
+# ============================================
+gateway_cmd() {
+    local subcmd="${1:-status}"
+    
+    case "$subcmd" in
+        status)
+            echo -e "\n${CYAN}═══ API Gateway Status ═══${NC}\n"
+            
+            # Check Traefik
+            if is_running "traefik"; then
+                echo -e "${GREEN}✓${NC} Traefik API Gateway is running"
+                echo ""
+                
+                # Get router count
+                local routers=$(docker exec traefik wget -qO- http://localhost:8080/api/http/routers 2>/dev/null | grep -o '"name":"[^"]*"' | wc -l)
+                local middlewares=$(docker exec traefik wget -qO- http://localhost:8080/api/http/middlewares 2>/dev/null | grep -o '"name":"[^"]*"' | wc -l)
+                
+                echo "Active Routes: $routers"
+                echo "Middlewares: $middlewares"
+                echo ""
+                
+                # Check auth service
+                if is_running "homelab-auth-service"; then
+                    echo -e "${GREEN}✓${NC} Auth Service is running"
+                    
+                    # Test auth service health
+                    if curl -sf http://localhost:8000/health >/dev/null 2>&1; then
+                        echo -e "${GREEN}✓${NC} Auth Service is healthy"
+                    else
+                        echo -e "${YELLOW}⚠${NC} Auth Service is not responding to health checks"
+                    fi
+                else
+                    echo -e "${RED}✗${NC} Auth Service is not running"
+                    echo "Start with: docker compose up -d homelab-auth-service"
+                fi
+                
+                echo ""
+                echo "Dashboard URLs:"
+                echo "  Traefik Dashboard: https://traefik.evindrake.net"
+                echo "  Auth Service: https://auth.evindrake.net"
+                echo ""
+                echo "Access Logs: docker exec traefik tail -f /data/access.log"
+            else
+                echo -e "${RED}✗${NC} Traefik is not running"
+                echo "Start with: ./homelab deploy core"
+                return 1
+            fi
+            ;;
+        
+        tokens)
+            echo -e "\n${CYAN}═══ Service Authentication Tokens ═══${NC}\n"
+            
+            if ! is_running "homelab-auth-service"; then
+                echo -e "${RED}✗${NC} Auth Service is not running"
+                echo "Start with: docker compose up -d homelab-auth-service"
+                return 1
+            fi
+            
+            # Try to fetch tokens (requires a service token)
+            # For demo purposes, we'll list from env vars
+            echo "Registered service tokens (from environment):"
+            echo ""
+            
+            local has_tokens=false
+            for var in SERVICE_TOKEN_DASHBOARD SERVICE_TOKEN_DISCORD_BOT SERVICE_TOKEN_STREAM_BOT SERVICE_TOKEN_CELERY_WORKER; do
+                if grep -q "^$var=" "$ENV_FILE" 2>/dev/null; then
+                    local service_name=$(echo "$var" | sed 's/SERVICE_TOKEN_//' | tr '[:upper:]' '[:lower:]' | tr '_' '-')
+                    echo -e "  ${GREEN}✓${NC} $service_name"
+                    has_tokens=true
+                fi
+            done
+            
+            if [ "$has_tokens" = false ]; then
+                echo -e "  ${YELLOW}⚠${NC} No service tokens configured"
+                echo ""
+                echo "Generate tokens with: ./homelab gateway generate-token <service-name>"
+            fi
+            
+            echo ""
+            echo "To list all tokens via API (requires admin service token):"
+            echo "  curl http://localhost:8000/api/v1/auth/tokens \\"
+            echo "    -H 'Authorization: Bearer <admin-token>'"
+            ;;
+        
+        generate-token)
+            shift
+            local service_name="${1:-}"
+            
+            if [ -z "$service_name" ]; then
+                echo -e "${RED}Error: Service name required${NC}"
+                echo "Usage: ./homelab gateway generate-token <service-name>"
+                echo ""
+                echo "Examples:"
+                echo "  ./homelab gateway generate-token discord-bot"
+                echo "  ./homelab gateway generate-token dashboard"
+                return 1
+            fi
+            
+            echo -e "\n${CYAN}═══ Generating Service Token ═══${NC}\n"
+            
+            if ! is_running "homelab-auth-service"; then
+                echo -e "${RED}✗${NC} Auth Service is not running"
+                echo "Start with: docker compose up -d homelab-auth-service"
+                return 1
+            fi
+            
+            # Generate a secure random token
+            local token=$(openssl rand -base64 32 | tr -d '=' | tr '+/' '-_')
+            local env_var="SERVICE_TOKEN_$(echo "$service_name" | tr '[:lower:]' '[:upper:]' | tr '-' '_')"
+            
+            echo -e "${GREEN}✓${NC} Service Token Generated"
+            echo ""
+            echo "Service: $service_name"
+            echo "Token: $token"
+            echo ""
+            echo "Add to your .env file:"
+            echo ""
+            echo "  $env_var=$token"
+            echo ""
+            echo "Then restart services:"
+            echo "  ./homelab restart"
+            ;;
+        
+        logs)
+            shift
+            local follow_mode=false
+            
+            if [ "${1:-}" = "--follow" ] || [ "${1:-}" = "-f" ]; then
+                follow_mode=true
+            fi
+            
+            echo -e "\n${CYAN}═══ API Gateway Access Logs ═══${NC}\n"
+            
+            if ! is_running "traefik"; then
+                echo -e "${RED}✗${NC} Traefik is not running"
+                return 1
+            fi
+            
+            if [ "$follow_mode" = true ]; then
+                echo "Following access logs (Ctrl+C to exit)..."
+                echo ""
+                docker exec traefik tail -f /data/access.log 2>/dev/null | \
+                    while IFS= read -r line; do
+                        # Parse JSON log and format nicely
+                        if command -v jq &> /dev/null; then
+                            echo "$line" | jq -r '"\(.time) \(.RouterName) \(.RequestMethod) \(.RequestPath) \(.OriginStatus) \(.Duration)"' 2>/dev/null || echo "$line"
+                        else
+                            echo "$line"
+                        fi
+                    done
+            else
+                echo "Last 50 access log entries:"
+                echo ""
+                docker exec traefik tail -50 /data/access.log 2>/dev/null | \
+                    while IFS= read -r line; do
+                        if command -v jq &> /dev/null; then
+                            echo "$line" | jq -r '"\(.time) \(.RouterName) \(.RequestMethod) \(.RequestPath) \(.OriginStatus) \(.Duration)"' 2>/dev/null || echo "$line"
+                        else
+                            echo "$line"
+                        fi
+                    done
+                
+                echo ""
+                echo "For live logs, use: ./homelab gateway logs --follow"
+            fi
+            ;;
+        
+        *)
+            echo -e "${RED}Unknown subcommand: $subcmd${NC}"
+            echo "Usage: ./homelab gateway [status|tokens|generate-token|logs]"
+            echo ""
+            echo "Commands:"
+            echo "  status               - Show gateway health and routes"
+            echo "  tokens               - List registered service tokens"
+            echo "  generate-token <svc> - Generate new service token"
+            echo "  logs [--follow]      - View gateway access logs"
+            return 1
+            ;;
+    esac
+}
+
+# ============================================
+# DNS COMMAND - Phase 8 DNS Automation
+# ============================================
+dns_cmd() {
+    local subcmd="${1:-status}"
+    
+    case "$subcmd" in
+        status)
+            echo -e "\n${CYAN}═══ DNS Manager Status ═══${NC}\n"
+            
+            if ! is_running "dns-manager"; then
+                echo -e "${RED}✗${NC} DNS Manager is not running"
+                echo "Start with: docker compose -f orchestration/compose.dns.yml up -d"
+                return 1
+            fi
+            
+            echo -e "${GREEN}✓${NC} DNS Manager is running"
+            
+            # Get DNS manager health
+            if command -v curl &> /dev/null; then
+                echo ""
+                echo -e "${CYAN}Health Check:${NC}"
+                curl -s http://localhost:8001/health | jq '.' 2>/dev/null || echo "  Health check unavailable"
+                
+                echo ""
+                echo -e "${CYAN}Managed Zones:${NC}"
+                curl -s http://localhost:8001/api/dns/zones | jq -r '.zones[]' 2>/dev/null | while read zone; do
+                    echo "  - $zone"
+                done || echo "  No zones configured"
+            fi
+            ;;
+        
+        list)
+            shift
+            local zone="${1:-}"
+            
+            if [ -z "$zone" ]; then
+                echo -e "${RED}Error: Zone name required${NC}"
+                echo "Usage: ./homelab dns list <zone>"
+                echo ""
+                echo "Available zones:"
+                echo "  - evindrake.net"
+                echo "  - rig-city.com"
+                echo "  - scarletredjoker.com"
+                return 1
+            fi
+            
+            echo -e "\n${CYAN}═══ DNS Records for $zone ═══${NC}\n"
+            
+            if ! is_running "dns-manager"; then
+                echo -e "${RED}✗${NC} DNS Manager is not running"
+                echo "Start with: docker compose -f orchestration/compose.dns.yml up -d"
+                return 1
+            fi
+            
+            if command -v curl &> /dev/null && command -v jq &> /dev/null; then
+                curl -s "http://localhost:8001/api/dns/records/$zone" | \
+                    jq -r '.records[] | "\(.type)\t\(.name)\t\(.content)\tTTL: \(.ttl)\tProxied: \(.proxied)"' | \
+                    column -t -s $'\t'
+            else
+                echo "Install curl and jq for formatted output: sudo apt install curl jq"
+                curl -s "http://localhost:8001/api/dns/records/$zone"
+            fi
+            ;;
+        
+        sync)
+            echo -e "\n${CYAN}═══ Syncing DNS Records from services.yaml ═══${NC}\n"
+            
+            if ! is_running "dns-manager"; then
+                echo -e "${RED}✗${NC} DNS Manager is not running"
+                echo "Start with: docker compose -f orchestration/compose.dns.yml up -d"
+                return 1
+            fi
+            
+            if command -v curl &> /dev/null; then
+                echo "Triggering DNS sync..."
+                local result=$(curl -s -X POST http://localhost:8001/api/dns/sync)
+                
+                if command -v jq &> /dev/null; then
+                    echo ""
+                    echo -e "${GREEN}✓${NC} Sync complete!"
+                    echo ""
+                    echo "Results:"
+                    echo "$result" | jq -r '.stats | "  Created/Updated: \(.success)\n  Failed: \(.failed)\n  Skipped: \(.skipped)"'
+                else
+                    echo "$result"
+                fi
+            else
+                echo "Install curl: sudo apt install curl"
+            fi
+            ;;
+        
+        create)
+            shift
+            local name="${1:-}"
+            local target="${2:-}"
+            
+            if [ -z "$name" ] || [ -z "$target" ]; then
+                echo -e "${RED}Error: Name and target required${NC}"
+                echo "Usage: ./homelab dns create <name> <target>"
+                echo ""
+                echo "Examples:"
+                echo "  ./homelab dns create test.evindrake.net 192.168.1.100"
+                echo "  ./homelab dns create api.rig-city.com evindrake.net"
+                return 1
+            fi
+            
+            echo -e "\n${CYAN}═══ Creating DNS Record ═══${NC}\n"
+            echo "Name: $name"
+            echo "Target: $target"
+            echo ""
+            echo -e "${YELLOW}⚠${NC} This feature requires manual API access to DNS manager"
+            echo ""
+            echo "To create manually, add to services.yaml:"
+            echo "  dns:"
+            echo "    records:"
+            echo "      - type: A"
+            echo "        name: $name"
+            echo "        content: $target"
+            echo "        ttl: 300"
+            echo "        proxied: true"
+            echo ""
+            echo "Then run: ./homelab dns sync"
+            ;;
+        
+        delete)
+            shift
+            local name="${1:-}"
+            
+            if [ -z "$name" ]; then
+                echo -e "${RED}Error: Record name required${NC}"
+                echo "Usage: ./homelab dns delete <name>"
+                echo ""
+                echo "Example:"
+                echo "  ./homelab dns delete test.evindrake.net"
+                return 1
+            fi
+            
+            echo -e "\n${CYAN}═══ Deleting DNS Record ═══${NC}\n"
+            echo "Name: $name"
+            echo ""
+            echo -e "${YELLOW}⚠${NC} This feature requires manual API access to DNS manager"
+            echo ""
+            echo "To delete, remove the record from services.yaml and run:"
+            echo "  ./homelab dns sync"
+            echo ""
+            echo "Or manage directly via Cloudflare dashboard:"
+            echo "  https://dash.cloudflare.com/"
+            ;;
+        
+        *)
+            echo -e "${RED}Unknown subcommand: $subcmd${NC}"
+            echo "Usage: ./homelab dns [status|list|sync|create|delete]"
+            echo ""
+            echo "Commands:"
+            echo "  status           - Show DNS manager health and status"
+            echo "  list <zone>      - List all DNS records for a zone"
+            echo "  sync             - Sync DNS records from services.yaml to Cloudflare"
+            echo "  create <n> <t>   - Create DNS record (name, target)"
+            echo "  delete <name>    - Delete DNS record"
+            return 1
+            ;;
+    esac
+}
+
 # MAIN
 # ============================================
 case "${1:-help}" in
@@ -1764,6 +2301,32 @@ case "${1:-help}" in
                 ;;
         esac
         ;;
+    deploy-prod)
+        shift
+        "$PROJECT_ROOT/scripts/deploy.sh" "$@"
+        ;;
+    rollback)
+        shift
+        "$PROJECT_ROOT/scripts/rollback.sh" "$@"
+        ;;
+    deployment)
+        shift
+        deployment_cmd "$@"
+        ;;
+    metrics)
+        metrics
+        ;;
+    alerts)
+        alerts
+        ;;
+    gateway)
+        shift
+        gateway_cmd "$@"
+        ;;
+    dns)
+        shift
+        dns_cmd "$@"
+        ;;
     restart)
         echo "Restarting all services..."
         compose restart
@@ -1808,11 +2371,35 @@ DATABASE MANAGEMENT (Phase 4):
   db list-backups       - List all available backups
   db migrate <service>  - Run migrations for specific service
 
+OBSERVABILITY & MONITORING (Phase 5):
+  metrics          - Open Grafana dashboards and show metrics status
+  alerts           - Show active Prometheus alerts
+  logs [service]   - Stream logs via Loki (Ctrl+C to exit)
+
+API GATEWAY & AUTH (Phase 7):
+  gateway status                 - Show gateway health and active routes
+  gateway tokens                 - List registered service tokens
+  gateway generate-token <svc>   - Generate new service authentication token
+  gateway logs [--follow]        - View gateway access logs
+
+DNS AUTOMATION (Phase 8):
+  dns status           - Show DNS manager health and zones
+  dns list <zone>      - List all DNS records for a zone
+  dns sync             - Sync DNS records from services.yaml to Cloudflare
+  dns create <n> <t>   - Create DNS record (name, target)
+  dns delete <name>    - Delete DNS record
+
 HEALTH & DIAGNOSTICS:
   health           - Comprehensive health checks (DB, API, disk, memory)
   validate-env     - Check .env has all required variables
   debug            - Show detailed debugging info
   test             - Run integration tests on all services
+
+DEPLOYMENT & CI/CD (Phase 6):
+  deploy-prod <service>       - Deploy service to production with health checks
+  rollback <service> [backup] - Rollback service to previous version
+  deployment history          - Show deployment history (last 10)
+  deployment status           - Show current deployment status
 
 OPERATIONS:
   backup           - Backup all databases to timestamped files
@@ -1849,11 +2436,12 @@ EXAMPLES:
 
 MODULAR ARCHITECTURE:
   Services are now modular - deploy only what you need!
-  - core: postgres, redis, minio, caddy
+  - core: postgres, redis, minio, caddy, traefik, auth-service
   - bots: discord-bot, stream-bot
   - web: n8n, homeassistant, static sites
   - automation: celery-worker
   - development: vnc-desktop, code-server
+  - observability: prometheus, grafana, loki, watchtower (Phase 5)
 
   See orchestration/README.md for architecture details
 

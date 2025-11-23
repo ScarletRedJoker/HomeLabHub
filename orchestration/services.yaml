@@ -12,7 +12,7 @@ metadata:
 groups:
   core:
     description: "Core infrastructure services (database, cache, storage, proxy)"
-    services: [postgres, redis, minio, caddy]
+    services: [postgres, redis, minio, caddy, auth-service, traefik]
   
   bots:
     description: "Discord and streaming automation bots"
@@ -24,11 +24,15 @@ groups:
   
   automation:
     description: "Background workers and automation"
-    services: [celery-worker]
+    services: [celery-worker, dns-manager]
   
   development:
     description: "Development and remote access tools"
     services: [vnc-desktop, code-server]
+  
+  observability:
+    description: "Monitoring, logging, and auto-recovery (Phase 5)"
+    services: [prometheus, grafana, loki, promtail, watchtower, node-exporter, cadvisor, postgres-exporter, redis-exporter]
 
 # Service Definitions
 services:
@@ -167,6 +171,84 @@ services:
     health_endpoint: http://localhost:80
     health_check_type: http
     startup_order: 2
+  
+  # ============================================
+  # API GATEWAY & AUTH (Phase 7)
+  # ============================================
+  
+  traefik:
+    name: traefik
+    description: "API gateway and reverse proxy with service discovery"
+    container_name: traefik
+    group: core
+    dependencies: [consul-server]
+    env_files: [.env]
+    interfaces:
+      - port: 80
+        protocol: http
+        public: true
+      - port: 443
+        protocol: https
+        public: true
+      - port: 8080
+        protocol: http
+        endpoint: /dashboard/
+        description: "Traefik Dashboard"
+    domains:
+      - traefik.evindrake.net
+    placement: local_or_remote
+    health_endpoint: http://localhost:8080/ping
+    health_check_type: http
+    startup_order: 2
+    api_gateway:
+      expose_publicly: true
+      require_auth: true
+      rate_limit: "50/minute"
+      allowed_origins: ["*"]
+      service_token_required: false
+      middlewares: ["dashboard-auth", "rate-limit"]
+    # Phase 8: DNS Automation
+    dns:
+      records:
+        - type: A
+          name: traefik.evindrake.net
+          content: ${DNS_TARGET_IP}
+          ttl: 300
+          proxied: true
+  
+  auth-service:
+    name: homelab-auth-service
+    description: "JWT authentication and service-to-service token management"
+    container_name: homelab-auth-service
+    group: core
+    dependencies: []
+    env_files: [.env]
+    interfaces:
+      - port: 8000
+        protocol: http
+        endpoint: /health
+    domains:
+      - auth.evindrake.net
+    placement: local_or_remote
+    health_endpoint: http://localhost:8000/health
+    health_check_type: http
+    startup_order: 2
+    required_for: [dashboard, discord-bot, stream-bot]
+    api_gateway:
+      expose_publicly: true
+      require_auth: false
+      rate_limit: "100/minute"
+      allowed_origins: ["*"]
+      service_token_required: false
+      middlewares: ["rate-limit", "cors", "security-headers"]
+    # Phase 8: DNS Automation
+    dns:
+      records:
+        - type: A
+          name: auth.evindrake.net
+          content: ${DNS_TARGET_IP}
+          ttl: 300
+          proxied: true
     
   # ============================================
   # BOTS
@@ -205,6 +287,31 @@ services:
         http: "http://localhost:4000/health"
         interval: "30s"
         timeout: "10s"
+    # Phase 6: CI/CD Deployment Metadata
+    deployment:
+      build_context: ./services/discord-bot
+      dockerfile: server/docker/Dockerfile
+      health_check_path: /health
+      requires_migration: true
+      migration_command: "npm run migrate"
+      rollback_strategy: immediate
+      health_check_timeout: 60
+    # Phase 7: API Gateway Metadata
+    api_gateway:
+      expose_publicly: true
+      require_auth: false
+      rate_limit: "100/minute"
+      allowed_origins: ["*"]
+      service_token_required: false
+      middlewares: ["rate-limit", "cors", "security-headers"]
+    # Phase 8: DNS Automation
+    dns:
+      records:
+        - type: A
+          name: bot.rig-city.com
+          content: ${DNS_TARGET_IP}
+          ttl: 300
+          proxied: true
     
   stream-bot:
     name: stream-bot
@@ -240,6 +347,31 @@ services:
         http: "http://localhost:5000/health"
         interval: "30s"
         timeout: "10s"
+    # Phase 6: CI/CD Deployment Metadata
+    deployment:
+      build_context: ./services/stream-bot
+      dockerfile: Dockerfile
+      health_check_path: /health
+      requires_migration: true
+      migration_command: "npm run migrate"
+      rollback_strategy: immediate
+      health_check_timeout: 60
+    # Phase 7: API Gateway Metadata
+    api_gateway:
+      expose_publicly: true
+      require_auth: false
+      rate_limit: "100/minute"
+      allowed_origins: ["*"]
+      service_token_required: false
+      middlewares: ["rate-limit", "cors", "security-headers"]
+    # Phase 8: DNS Automation
+    dns:
+      records:
+        - type: A
+          name: stream.rig-city.com
+          content: ${DNS_TARGET_IP}
+          ttl: 300
+          proxied: true
     
   # ============================================
   # WEB APPLICATIONS
@@ -285,6 +417,42 @@ services:
         http: "http://localhost:8080/"
         interval: "30s"
         timeout: "10s"
+    # Phase 6: CI/CD Deployment Metadata
+    deployment:
+      build_context: ./services/dashboard
+      dockerfile: Dockerfile
+      health_check_path: /
+      requires_migration: true
+      migration_command: "flask db upgrade"
+      rollback_strategy: manual
+      health_check_timeout: 90
+      critical_service: true
+    # Phase 7: API Gateway Metadata
+    api_gateway:
+      expose_publicly: true
+      require_auth: true
+      rate_limit: "100/minute"
+      allowed_origins: ["*"]
+      service_token_required: false
+      middlewares: ["auth-jwt", "rate-limit", "cors", "security-headers", "dashboard-nocache"]
+    # Phase 8: DNS Automation
+    dns:
+      records:
+        - type: A
+          name: evindrake.net
+          content: ${DNS_TARGET_IP}
+          ttl: 300
+          proxied: true
+        - type: CNAME
+          name: dashboard.evindrake.net
+          content: evindrake.net
+          ttl: 300
+          proxied: true
+        - type: CNAME
+          name: host.evindrake.net
+          content: evindrake.net
+          ttl: 300
+          proxied: true
     
   n8n:
     name: n8n
@@ -319,6 +487,22 @@ services:
         http: "http://localhost:5678/"
         interval: "30s"
         timeout: "10s"
+    # Phase 7: API Gateway Metadata
+    api_gateway:
+      expose_publicly: true
+      require_auth: true
+      rate_limit: "50/minute"
+      allowed_origins: ["*"]
+      service_token_required: false
+      middlewares: ["auth-jwt", "rate-limit", "cors", "security-headers"]
+    # Phase 8: DNS Automation
+    dns:
+      records:
+        - type: A
+          name: n8n.evindrake.net
+          content: ${DNS_TARGET_IP}
+          ttl: 300
+          proxied: true
     
   homeassistant:
     name: homeassistant
@@ -411,6 +595,56 @@ services:
     health_endpoint: null
     health_check_type: process
     startup_order: 4
+  
+  dns-manager:
+    name: dns-manager
+    description: "Automated DNS record management via Cloudflare API"
+    container_name: dns-manager
+    group: automation
+    dependencies: [consul-server]
+    env_files: [.env]
+    interfaces:
+      - port: 8001
+        protocol: http
+        endpoint: /health
+    domains:
+      - dns.evindrake.net
+    placement: local_or_remote
+    health_endpoint: http://localhost:8001/health
+    health_check_type: http
+    startup_order: 4
+    discovery:
+      traefik_labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.dns-manager.rule=Host(`dns.evindrake.net`)"
+        - "traefik.http.routers.dns-manager.entrypoints=websecure"
+        - "traefik.http.routers.dns-manager.tls=true"
+        - "traefik.http.routers.dns-manager.tls.certresolver=cloudflare"
+        - "traefik.http.services.dns-manager.loadbalancer.server.port=8001"
+      consul_tags:
+        - "dns"
+        - "automation"
+        - "api"
+      health_check:
+        http: "http://localhost:8001/health"
+        interval: "30s"
+        timeout: "10s"
+    # Phase 7: API Gateway Metadata
+    api_gateway:
+      expose_publicly: true
+      require_auth: true
+      rate_limit: "50/minute"
+      allowed_origins: ["*"]
+      service_token_required: false
+      middlewares: ["auth-jwt", "rate-limit", "cors", "security-headers"]
+    # Phase 8: DNS Automation
+    dns:
+      records:
+        - type: A
+          name: dns.evindrake.net
+          content: ${DNS_TARGET_IP}
+          ttl: 300
+          proxied: true
     
   # ============================================
   # DEVELOPMENT TOOLS
@@ -489,6 +723,207 @@ services:
         interval: "30s"
         timeout: "10s"
 
+  # ============================================
+  # OBSERVABILITY & AUTO-RECOVERY (Phase 5)
+  # ============================================
+  
+  prometheus:
+    name: prometheus
+    description: "Prometheus metrics collection and alerting"
+    container_name: homelab-prometheus
+    group: observability
+    dependencies: []
+    env_files: [.env, .env.prometheus]
+    interfaces:
+      - port: 9090
+        protocol: http
+        endpoint: /-/healthy
+    placement: local_or_remote
+    health_endpoint: http://localhost:9090/-/healthy
+    health_check_type: http
+    startup_order: 2
+    observability:
+      metrics_port: 9090
+      metrics_path: /metrics
+      scrape_targets:
+        - prometheus
+        - node-exporter
+        - cadvisor
+        - postgres-exporter
+        - redis-exporter
+        - dashboard
+        - discord-bot
+        - stream-bot
+      alert_rules_path: /etc/prometheus/alerts
+      retention: 15d
+  
+  grafana:
+    name: grafana
+    description: "Grafana visualization dashboards"
+    container_name: homelab-grafana
+    group: observability
+    dependencies: [prometheus, loki]
+    env_files: [.env, .env.grafana]
+    interfaces:
+      - port: 3000
+        protocol: http
+        endpoint: /api/health
+    domains:
+      - grafana.evindrake.net
+    placement: local_or_remote
+    health_endpoint: http://localhost:3000/api/health
+    health_check_type: http
+    startup_order: 3
+    observability:
+      dashboards:
+        - homelab-overview
+        - database-dashboard
+        - bot-dashboard
+        - infrastructure-dashboard
+      datasources:
+        - prometheus
+        - loki
+      provisioning_enabled: true
+  
+  loki:
+    name: loki
+    description: "Loki log aggregation"
+    container_name: homelab-loki
+    group: observability
+    dependencies: []
+    env_files: [.env, .env.loki]
+    interfaces:
+      - port: 3100
+        protocol: http
+        endpoint: /ready
+    placement: local_or_remote
+    health_endpoint: http://localhost:3100/ready
+    health_check_type: http
+    startup_order: 2
+    observability:
+      retention: 168h
+      storage_type: filesystem
+      max_entries_limit: 5000
+  
+  promtail:
+    name: promtail
+    description: "Promtail log shipper for Loki"
+    container_name: homelab-promtail
+    group: observability
+    dependencies: [loki]
+    env_files: []
+    interfaces: []
+    placement: local_or_remote
+    health_endpoint: null
+    health_check_type: process
+    startup_order: 3
+    observability:
+      log_source: docker
+      targets:
+        - /var/lib/docker/containers
+  
+  watchtower:
+    name: watchtower
+    description: "Watchtower auto-update and recovery"
+    container_name: homelab-watchtower
+    group: observability
+    dependencies: []
+    env_files: []
+    interfaces: []
+    placement: local_only
+    health_endpoint: null
+    health_check_type: process
+    startup_order: 4
+    observability:
+      poll_interval: 300
+      cleanup: true
+      monitor_only: false
+  
+  node-exporter:
+    name: node-exporter
+    description: "Prometheus node exporter for host metrics"
+    container_name: homelab-node-exporter
+    group: observability
+    dependencies: []
+    env_files: []
+    interfaces:
+      - port: 9100
+        protocol: http
+        endpoint: /metrics
+    placement: local_only
+    health_endpoint: http://localhost:9100/metrics
+    health_check_type: http
+    startup_order: 2
+    observability:
+      metrics_port: 9100
+      metrics_path: /metrics
+      collectors:
+        - cpu
+        - memory
+        - disk
+        - network
+  
+  cadvisor:
+    name: cadvisor
+    description: "cAdvisor container metrics"
+    container_name: homelab-cadvisor
+    group: observability
+    dependencies: []
+    env_files: []
+    interfaces:
+      - port: 8081
+        protocol: http
+        endpoint: /healthz
+    placement: local_only
+    health_endpoint: http://localhost:8081/healthz
+    health_check_type: http
+    startup_order: 2
+    privileged: true
+    observability:
+      metrics_port: 8081
+      metrics_path: /metrics
+      storage_duration: 2m
+  
+  postgres-exporter:
+    name: postgres-exporter
+    description: "Prometheus PostgreSQL exporter"
+    container_name: homelab-postgres-exporter
+    group: observability
+    dependencies: [postgres]
+    env_files: [.env]
+    interfaces:
+      - port: 9187
+        protocol: http
+        endpoint: /metrics
+    placement: local_or_remote
+    health_endpoint: http://localhost:9187/metrics
+    health_check_type: http
+    startup_order: 3
+    observability:
+      metrics_port: 9187
+      metrics_path: /metrics
+      target_database: postgres
+  
+  redis-exporter:
+    name: redis-exporter
+    description: "Prometheus Redis exporter"
+    container_name: homelab-redis-exporter
+    group: observability
+    dependencies: [redis]
+    env_files: []
+    interfaces:
+      - port: 9121
+        protocol: http
+        endpoint: /metrics
+    placement: local_or_remote
+    health_endpoint: http://localhost:9121/metrics
+    health_check_type: http
+    startup_order: 3
+    observability:
+      metrics_port: 9121
+      metrics_path: /metrics
+      target_redis: redis:6379
+
 # Deployment Patterns
 deployment_patterns:
   minimal:
@@ -513,4 +948,8 @@ deployment_patterns:
     
   production:
     description: "Full production stack (all services)"
-    groups: [core, bots, web, automation, development]
+    groups: [core, bots, web, automation, development, observability]
+  
+  observability_stack:
+    description: "Observability platform with core infrastructure"
+    services: [postgres, redis, minio, caddy, prometheus, grafana, loki, promtail, watchtower, node-exporter, cadvisor, postgres-exporter, redis-exporter]

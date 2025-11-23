@@ -1,0 +1,267 @@
+# ============================================
+# HOMELAB PROMETHEUS ALERT RULES
+# Critical alerts for service health
+# ============================================
+
+groups:
+  # ============================================
+  # Service Health Alerts
+  # ============================================
+  - name: service_health
+    interval: 1m
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "{{ $labels.job }} has been down for more than 5 minutes."
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          category: errors
+        annotations:
+          summary: "High error rate on {{ $labels.service }}"
+          description: "{{ $labels.service }} is experiencing {{ $value }} errors/sec"
+
+  # ============================================
+  # Database Alerts
+  # ============================================
+  - name: database
+    interval: 1m
+    rules:
+      - alert: PostgresDown
+        expr: pg_up == 0
+        for: 2m
+        labels:
+          severity: critical
+          category: database
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL database has been down for more than 2 minutes."
+
+      - alert: HighDatabaseConnections
+        expr: (pg_stat_database_numbackends / pg_settings_max_connections) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "PostgreSQL connection pool is nearly full"
+          description: "Database is using {{ $value | humanizePercentage }} of max connections."
+
+      - alert: DatabaseSlowQueries
+        expr: rate(pg_stat_statements_mean_time_seconds[5m]) > 1
+        for: 10m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "Slow database queries detected"
+          description: "Average query time is {{ $value }}s over the last 5 minutes."
+
+      - alert: DatabaseReplicationLag
+        expr: pg_replication_lag > 10
+        for: 5m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "Database replication lag is high"
+          description: "Replication lag is {{ $value }} seconds."
+
+  # ============================================
+  # Redis Alerts
+  # ============================================
+  - name: redis
+    interval: 1m
+    rules:
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 2m
+        labels:
+          severity: critical
+          category: cache
+        annotations:
+          summary: "Redis is down"
+          description: "Redis cache has been down for more than 2 minutes."
+
+      - alert: RedisMemoryHigh
+        expr: (redis_memory_used_bytes / redis_memory_max_bytes) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          category: cache
+        annotations:
+          summary: "Redis memory usage is high"
+          description: "Redis is using {{ $value | humanizePercentage }} of allocated memory."
+
+      - alert: RedisRejectedConnections
+        expr: rate(redis_rejected_connections_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+          category: cache
+        annotations:
+          summary: "Redis is rejecting connections"
+          description: "Redis rejected {{ $value }} connections in the last 5 minutes."
+
+  # ============================================
+  # System Resource Alerts
+  # ============================================
+  - name: system_resources
+    interval: 1m
+    rules:
+      - alert: HighCPUUsage
+        expr: (100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 80
+        for: 10m
+        labels:
+          severity: warning
+          category: resources
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value | humanize }}% on {{ $labels.instance }}"
+
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.9
+        for: 5m
+        labels:
+          severity: critical
+          category: resources
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.1
+        for: 5m
+        labels:
+          severity: critical
+          category: resources
+        annotations:
+          summary: "Low disk space"
+          description: "Only {{ $value | humanizePercentage }} disk space remaining on {{ $labels.instance }}"
+
+      - alert: DiskSpaceFilling
+        expr: predict_linear(node_filesystem_avail_bytes{mountpoint="/"}[1h], 4 * 3600) < 0
+        for: 5m
+        labels:
+          severity: warning
+          category: resources
+        annotations:
+          summary: "Disk will be full soon"
+          description: "Disk on {{ $labels.instance }} is predicted to fill within 4 hours."
+
+      - alert: HighDiskIOWait
+        expr: rate(node_cpu_seconds_total{mode="iowait"}[5m]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          category: resources
+        annotations:
+          summary: "High disk I/O wait"
+          description: "Disk I/O wait is {{ $value | humanize }}% on {{ $labels.instance }}"
+
+  # ============================================
+  # Container Alerts
+  # ============================================
+  - name: containers
+    interval: 1m
+    rules:
+      - alert: ContainerKilled
+        expr: time() - container_last_seen > 60
+        for: 2m
+        labels:
+          severity: warning
+          category: containers
+        annotations:
+          summary: "Container {{ $labels.name }} was killed"
+          description: "Container {{ $labels.name }} has disappeared."
+
+      - alert: ContainerHighMemory
+        expr: (container_memory_usage_bytes / container_spec_memory_limit_bytes) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          category: containers
+        annotations:
+          summary: "Container {{ $labels.name }} high memory usage"
+          description: "Container {{ $labels.name }} is using {{ $value | humanizePercentage }} of its memory limit."
+
+      - alert: ContainerHighCPU
+        expr: (rate(container_cpu_usage_seconds_total[5m]) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+          category: containers
+        annotations:
+          summary: "Container {{ $labels.name }} high CPU usage"
+          description: "Container {{ $labels.name }} is using {{ $value | humanize }}% CPU."
+
+      - alert: ContainerRestarting
+        expr: rate(container_restart_count[15m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          category: containers
+        annotations:
+          summary: "Container {{ $labels.name }} is restarting"
+          description: "Container {{ $labels.name }} has restarted {{ $value }} times in the last 15 minutes."
+
+  # ============================================
+  # Backup Alerts
+  # ============================================
+  - name: backups
+    interval: 1h
+    rules:
+      - alert: BackupFailed
+        expr: time() - backup_last_success_timestamp > 86400
+        for: 1h
+        labels:
+          severity: critical
+          category: backup
+        annotations:
+          summary: "Backup has not succeeded in 24 hours"
+          description: "Last successful backup was {{ $value | humanizeDuration }} ago."
+
+      - alert: BackupOld
+        expr: time() - backup_last_success_timestamp > 172800
+        for: 1h
+        labels:
+          severity: critical
+          category: backup
+        annotations:
+          summary: "Backup is more than 48 hours old"
+          description: "Last successful backup was {{ $value | humanizeDuration }} ago."
+
+  # ============================================
+  # SSL Certificate Alerts
+  # ============================================
+  - name: ssl_certificates
+    interval: 6h
+    rules:
+      - alert: SSLCertificateExpirySoon
+        expr: (ssl_certificate_expiry_seconds - time()) / 86400 < 7
+        for: 1h
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "SSL certificate expiring soon"
+          description: "SSL certificate for {{ $labels.domain }} expires in {{ $value }} days."
+
+      - alert: SSLCertificateExpired
+        expr: ssl_certificate_expiry_seconds - time() < 0
+        for: 1h
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: "SSL certificate has expired"
+          description: "SSL certificate for {{ $labels.domain }} has expired."

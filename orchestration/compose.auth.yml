@@ -1,0 +1,76 @@
+# ============================================
+# AUTH SERVICE BUNDLE
+# Phase 7: API Gateway & Authentication
+# ============================================
+# Central authentication service for API gateway
+# - JWT token generation and validation
+# - Service-to-service authentication
+# - Integration with Traefik ForwardAuth middleware
+
+networks:
+  homelab:
+    external: true
+
+services:
+  # ============================================
+  # Auth Service - JWT Authentication
+  # ============================================
+  auth-service:
+    build:
+      context: ../services/auth-service
+      dockerfile: Dockerfile
+    container_name: homelab-auth-service
+    restart: unless-stopped
+    networks:
+      - homelab
+    ports:
+      - "8000:8000"
+    
+    environment:
+      # JWT Configuration
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ALGORITHM=HS256
+      - JWT_EXPIRY_HOURS=${JWT_EXPIRY_HOURS:-24}
+      
+      # User Authentication (from dashboard)
+      - WEB_USERNAME=${WEB_USERNAME}
+      - WEB_PASSWORD=${WEB_PASSWORD}
+      
+      # Service Tokens (loaded from environment)
+      - SERVICE_TOKEN_DASHBOARD=${SERVICE_TOKEN_DASHBOARD:-}
+      - SERVICE_TOKEN_DISCORD_BOT=${SERVICE_TOKEN_DISCORD_BOT:-}
+      - SERVICE_TOKEN_STREAM_BOT=${SERVICE_TOKEN_STREAM_BOT:-}
+      - SERVICE_TOKEN_CELERY_WORKER=${SERVICE_TOKEN_CELERY_WORKER:-}
+      
+      # Application Settings
+      - PORT=8000
+      - DEBUG=false
+    
+    labels:
+      # Enable Traefik for auth service
+      - "traefik.enable=true"
+      
+      # Auth API routes
+      - "traefik.http.routers.auth-api.rule=Host(`auth.evindrake.net`) || PathPrefix(`/api/v1/auth`)"
+      - "traefik.http.routers.auth-api.entrypoints=websecure"
+      - "traefik.http.routers.auth-api.tls=true"
+      - "traefik.http.routers.auth-api.tls.certresolver=cloudflare"
+      - "traefik.http.services.auth-api.loadbalancer.server.port=8000"
+      
+      # Health endpoint (no auth required)
+      - "traefik.http.routers.auth-health.rule=Host(`auth.evindrake.net`) && Path(`/health`)"
+      - "traefik.http.routers.auth-health.entrypoints=websecure"
+      - "traefik.http.routers.auth-health.tls=true"
+      - "traefik.http.routers.auth-health.tls.certresolver=cloudflare"
+      
+      # Metadata
+      - "homelab.service=auth-service"
+      - "homelab.group=core"
+      - "homelab.description=JWT authentication and service-to-service auth"
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
