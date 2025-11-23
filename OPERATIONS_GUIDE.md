@@ -448,6 +448,41 @@ docker compose start homelab-dashboard
 
 ### Port Conflicts
 
+#### Plex Port 1900 Conflict
+
+If bootstrap fails with "port 1900 already in use":
+
+1. **Identify what's using port 1900:**
+   ```bash
+   sudo lsof -i :1900
+   # or
+   sudo netstat -tlnp | grep :1900
+   ```
+
+2. **Common culprits:**
+   - Avahi daemon (mDNS/Bonjour)
+   - Another DLNA/UPnP service
+   - Windows network discovery
+
+3. **Solution:**
+   
+   Plex discovery ports have been **removed by default** to prevent conflicts.
+   
+   Bootstrap should now work without issues. If you need Plex discovery features:
+   
+   ```yaml
+   # Manually add to docker-compose.yml plex service ports section:
+   - "1900:1900/udp"
+   - "32410:32410/udp"
+   - "32412:32412/udp"
+   - "32413:32413/udp"
+   - "32414:32414/udp"
+   ```
+   
+   **Note:** Most Plex features work fine without discovery ports.
+
+#### General Port Conflicts
+
 1. **Check what's using ports:**
    ```bash
    sudo netstat -tlnp | grep -E ":(80|443|5000|4000|8080)"

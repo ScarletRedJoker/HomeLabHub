@@ -95,16 +95,21 @@ class HomeAssistantService:
             logger.info(f"║ Health Check Interval: {self.health_check_interval}s{' ' * 35} ║")
             logger.info("╚══════════════════════════════════════════════════════════════╝")
             
-            initial_check = self._test_connection()
-            if initial_check:
-                logger.info("✓ Initial connection test: SUCCESS")
-                self.connection_state = ConnectionState.CONNECTED
-                self._start_health_check_thread()
-            else:
-                logger.error("✗ Initial connection test: FAILED")
-                logger.error(f"  Error: {self.last_error}")
-                self.connection_state = ConnectionState.FAILED
-                self._suggest_troubleshooting()
+            try:
+                initial_check = self._test_connection()
+                if initial_check:
+                    logger.info("✓ Initial connection test: SUCCESS")
+                    self.connection_state = ConnectionState.CONNECTED
+                    self._start_health_check_thread()
+                else:
+                    logger.warning("⚠ Home Assistant not configured yet or unreachable")
+                    logger.info(f"  Error: {self.last_error}")
+                    logger.info("  This is OK - configure Home Assistant later in dashboard settings")
+                    self.connection_state = ConnectionState.DISCONNECTED
+            except Exception as e:
+                logger.warning(f"⚠ Home Assistant connection test failed: {e}")
+                logger.info("  This is OK - configure Home Assistant later in dashboard settings")
+                self.connection_state = ConnectionState.DISCONNECTED
     
     def _suggest_troubleshooting(self):
         """Provide troubleshooting suggestions"""

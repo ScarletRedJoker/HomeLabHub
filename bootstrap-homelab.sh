@@ -232,6 +232,19 @@ fi
 progress 4 4 "Environment validated"
 echo -e "${GREEN}✓ Environment validated${NC}"
 
+# Auto-generate SERVICE_AUTH_TOKEN if missing
+echo ""
+echo -n "Checking SERVICE_AUTH_TOKEN... "
+if ! grep -q "^SERVICE_AUTH_TOKEN=" .env || [ -z "$(grep "^SERVICE_AUTH_TOKEN=" .env | cut -d'=' -f2)" ]; then
+    echo ""
+    echo "  Generating SERVICE_AUTH_TOKEN..."
+    TOKEN=$(openssl rand -hex 32)
+    echo "SERVICE_AUTH_TOKEN=$TOKEN" >> .env
+    echo -e "  ${GREEN}✓ SERVICE_AUTH_TOKEN added to .env${NC}"
+else
+    echo -e "${GREEN}✓ Already configured${NC}"
+fi
+
 # ============================================================================
 # STEP 2: Create Pre-Bootstrap Backup
 # ============================================================================
