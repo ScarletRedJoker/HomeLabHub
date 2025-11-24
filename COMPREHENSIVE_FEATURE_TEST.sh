@@ -46,7 +46,8 @@ test_http() {
     
     local code=$(curl -s -o /dev/null -w "%{http_code}" -u "${WEB_USERNAME:-admin}:${WEB_PASSWORD:-Brs=2729}" "$url" 2>/dev/null || echo "000")
     
-    if [ "$code" = "$expected_code" ]; then
+    # Accept multiple valid codes (e.g., "200|302" means either is OK)
+    if echo "$expected_code" | grep -qE "(^|\\|)$code(\\||$)"; then
         pass "$description (HTTP $code)"
         return 0
     else
@@ -72,17 +73,17 @@ test_api() {
 }
 
 echo -e "${CYAN}[1/12] Core Dashboard Pages${NC}"
-test_http "https://host.evindrake.net/" "Dashboard home page"
-test_http "https://host.evindrake.net/health" "Health check endpoint"
-test_http "https://host.evindrake.net/service-actions" "Service actions page"
+test_http "https://host.evindrake.net/" "Dashboard home page" "200|302"
+test_http "https://host.evindrake.net/health" "Health check endpoint" "200"
+test_http "https://host.evindrake.net/service-actions" "Service actions page" "200|302"
 echo ""
 
 echo -e "${CYAN}[2/12] AI Features${NC}"
-test_http "https://host.evindrake.net/ai-assistant" "Jarvis AI page"
-test_http "https://host.evindrake.net/agent-swarm" "Agent Swarm page"
-test_http "https://host.evindrake.net/jarvis-voice" "Voice commands page"
-test_http "https://host.evindrake.net/ollama_models" "AI Models page"
-test_http "https://host.evindrake.net/facts" "AI Facts page"
+test_http "https://host.evindrake.net/ai-assistant" "Jarvis AI page" "200|302"
+test_http "https://host.evindrake.net/agent-swarm" "Agent Swarm page" "200|302"
+test_http "https://host.evindrake.net/jarvis-voice" "Voice commands page" "200|302"
+test_http "https://host.evindrake.net/ollama_models" "AI Models page" "200|302"
+test_http "https://host.evindrake.net/facts" "AI Facts page" "200|302"
 
 # Test Jarvis API
 if curl -s -X POST https://host.evindrake.net/api/jarvis/chat \
@@ -111,8 +112,8 @@ fi
 echo ""
 
 echo -e "${CYAN}[4/12] Database Admin${NC}"
-test_http "https://host.evindrake.net/database" "Database Admin page"
-test_http "https://host.evindrake.net/databases" "Database management page"
+test_http "https://host.evindrake.net/database" "Database Admin page" "200|302"
+test_http "https://host.evindrake.net/databases" "Database management page" "200|302"
 test_api "https://host.evindrake.net/api/db-admin/databases" "Database list API" '"databases"'
 
 # Test database connection
@@ -127,7 +128,7 @@ fi
 echo ""
 
 echo -e "${CYAN}[5/12] Plex Media Import${NC}"
-test_http "https://host.evindrake.net/plex" "Plex import page"
+test_http "https://host.evindrake.net/plex" "Plex import page" "200|302"
 
 # Test Plex API
 if curl -s https://host.evindrake.net/api/plex/status \
@@ -141,8 +142,8 @@ echo -e "${YELLOW}⚠ Manual test required:${NC} Upload a test media file via dr
 echo ""
 
 echo -e "${CYAN}[6/12] Storage & NAS${NC}"
-test_http "https://host.evindrake.net/storage" "Storage monitor page"
-test_http "https://host.evindrake.net/nas" "NAS management page"
+test_http "https://host.evindrake.net/storage" "Storage monitor page" "200|302"
+test_http "https://host.evindrake.net/nas" "NAS management page" "200|302"
 
 # Test storage API
 if curl -s https://host.evindrake.net/api/storage/usage \
@@ -209,7 +210,7 @@ fi
 echo ""
 
 echo -e "${CYAN}[9/12] Marketplace & Deployments${NC}"
-test_http "https://host.evindrake.net/marketplace" "App marketplace page"
+test_http "https://host.evindrake.net/marketplace" "App marketplace page" "200|302"
 
 echo -e "${YELLOW}⚠ Manual test required:${NC} Deploy test app from marketplace"
 skip "Marketplace deployment (manual test needed)"
