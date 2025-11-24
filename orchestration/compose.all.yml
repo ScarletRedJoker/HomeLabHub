@@ -9,6 +9,7 @@
 include:
   - orchestration/compose.base.yml
   - orchestration/compose.database.yml
+  - orchestration/compose.consul.yml
   - orchestration/compose.traefik.yml
   - orchestration/compose.auth.yml
   - orchestration/compose.dashboard.yml

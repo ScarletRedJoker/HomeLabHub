@@ -178,7 +178,7 @@ async function sendMessageStream(message, model) {
             },
             body: JSON.stringify({
                 message: message,
-                history: conversationHistory,
+                conversation_history: conversationHistory,
                 model: model
             })
         });
@@ -287,7 +287,7 @@ async function sendMessageNonStream(message, model) {
             },
             body: JSON.stringify({
                 message: message,
-                history: conversationHistory,
+                conversation_history: conversationHistory,
                 model: model
             })
         });
