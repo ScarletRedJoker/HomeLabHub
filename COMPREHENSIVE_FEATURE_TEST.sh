@@ -72,20 +72,20 @@ test_api() {
 }
 
 echo -e "${CYAN}[1/12] Core Dashboard Pages${NC}"
-test_http "https://dashboard.evindrake.net/" "Dashboard home page"
-test_http "https://dashboard.evindrake.net/health" "Health check endpoint"
-test_http "https://dashboard.evindrake.net/service-actions" "Service actions page"
+test_http "https://host.evindrake.net/" "Dashboard home page"
+test_http "https://host.evindrake.net/health" "Health check endpoint"
+test_http "https://host.evindrake.net/service-actions" "Service actions page"
 echo ""
 
 echo -e "${CYAN}[2/12] AI Features${NC}"
-test_http "https://dashboard.evindrake.net/ai-assistant" "Jarvis AI page"
-test_http "https://dashboard.evindrake.net/agent-swarm" "Agent Swarm page"
-test_http "https://dashboard.evindrake.net/jarvis-voice" "Voice commands page"
-test_http "https://dashboard.evindrake.net/ollama_models" "AI Models page"
-test_http "https://dashboard.evindrake.net/facts" "AI Facts page"
+test_http "https://host.evindrake.net/ai-assistant" "Jarvis AI page"
+test_http "https://host.evindrake.net/agent-swarm" "Agent Swarm page"
+test_http "https://host.evindrake.net/jarvis-voice" "Voice commands page"
+test_http "https://host.evindrake.net/ollama_models" "AI Models page"
+test_http "https://host.evindrake.net/facts" "AI Facts page"
 
 # Test Jarvis API
-if curl -s -X POST https://dashboard.evindrake.net/api/jarvis/chat \
+if curl -s -X POST https://host.evindrake.net/api/jarvis/chat \
     -u "${WEB_USERNAME:-admin}:${WEB_PASSWORD:-Brs=2729}" \
     -H "Content-Type: application/json" \
     -d '{"message":"Hello","conversation_history":[]}' 2>/dev/null | grep -q "response"; then
@@ -96,11 +96,11 @@ fi
 echo ""
 
 echo -e "${CYAN}[3/12] Facts System${NC}"
-test_api "https://dashboard.evindrake.net/api/facts/latest?limit=5" "Facts API endpoint" '"success"'
+test_api "https://host.evindrake.net/api/facts/latest?limit=5" "Facts API endpoint" '"success"'
 
 # Check if facts exist in database
 FACT_COUNT=$(curl -s -u "${WEB_USERNAME:-admin}:${WEB_PASSWORD:-Brs=2729}" \
-    "https://dashboard.evindrake.net/api/facts/latest?limit=1" 2>/dev/null | \
+    "https://host.evindrake.net/api/facts/latest?limit=1" 2>/dev/null | \
     grep -o '"count":[0-9]*' | grep -o '[0-9]*' || echo "0")
 
 if [ "$FACT_COUNT" -gt "0" ]; then
@@ -111,12 +111,12 @@ fi
 echo ""
 
 echo -e "${CYAN}[4/12] Database Admin${NC}"
-test_http "https://dashboard.evindrake.net/database" "Database Admin page"
-test_http "https://dashboard.evindrake.net/databases" "Database management page"
-test_api "https://dashboard.evindrake.net/api/db-admin/databases" "Database list API" '"databases"'
+test_http "https://host.evindrake.net/database" "Database Admin page"
+test_http "https://host.evindrake.net/databases" "Database management page"
+test_api "https://host.evindrake.net/api/db-admin/databases" "Database list API" '"databases"'
 
 # Test database connection
-if curl -s -X POST https://dashboard.evindrake.net/api/db-admin/test-connection \
+if curl -s -X POST https://host.evindrake.net/api/db-admin/test-connection \
     -u "${WEB_USERNAME:-admin}:${WEB_PASSWORD:-Brs=2729}" \
     -H "Content-Type: application/json" \
     -d '{"database":"homelab"}' 2>/dev/null | grep -q '"success":true'; then
@@ -127,10 +127,10 @@ fi
 echo ""
 
 echo -e "${CYAN}[5/12] Plex Media Import${NC}"
-test_http "https://dashboard.evindrake.net/plex" "Plex import page"
+test_http "https://host.evindrake.net/plex" "Plex import page"
 
 # Test Plex API
-if curl -s https://dashboard.evindrake.net/api/plex/status \
+if curl -s https://host.evindrake.net/api/plex/status \
     -u "${WEB_USERNAME:-admin}:${WEB_PASSWORD:-Brs=2729}" 2>/dev/null | grep -q "status"; then
     pass "Plex API endpoint"
 else
@@ -141,11 +141,11 @@ echo -e "${YELLOW}⚠ Manual test required:${NC} Upload a test media file via dr
 echo ""
 
 echo -e "${CYAN}[6/12] Storage & NAS${NC}"
-test_http "https://dashboard.evindrake.net/storage" "Storage monitor page"
-test_http "https://dashboard.evindrake.net/nas" "NAS management page"
+test_http "https://host.evindrake.net/storage" "Storage monitor page"
+test_http "https://host.evindrake.net/nas" "NAS management page"
 
 # Test storage API
-if curl -s https://dashboard.evindrake.net/api/storage/usage \
+if curl -s https://host.evindrake.net/api/storage/usage \
     -u "${WEB_USERNAME:-admin}:${WEB_PASSWORD:-Brs=2729}" 2>/dev/null | grep -q "disk"; then
     pass "Storage usage API"
 else
@@ -209,14 +209,14 @@ fi
 echo ""
 
 echo -e "${CYAN}[9/12] Marketplace & Deployments${NC}"
-test_http "https://dashboard.evindrake.net/marketplace" "App marketplace page"
+test_http "https://host.evindrake.net/marketplace" "App marketplace page"
 
 echo -e "${YELLOW}⚠ Manual test required:${NC} Deploy test app from marketplace"
 skip "Marketplace deployment (manual test needed)"
 echo ""
 
 echo -e "${CYAN}[10/12] File Operations${NC}"
-test_http "https://dashboard.evindrake.net/files" "File manager page" "200\|404"
+test_http "https://host.evindrake.net/files" "File manager page" "200\|404"
 
 echo -e "${YELLOW}⚠ Manual test required:${NC} Upload/download files via file manager"
 skip "File manager operations (manual test needed)"
@@ -243,21 +243,21 @@ echo ""
 
 echo -e "${CYAN}[12/12] Authentication & Security${NC}"
 # Test login page
-if curl -s "https://dashboard.evindrake.net/login" | grep -q "login\|username\|password"; then
+if curl -s "https://host.evindrake.net/login" | grep -q "login\|username\|password"; then
     pass "Login page accessible"
 else
     fail "Login page accessible"
 fi
 
 # Test unauthenticated access is blocked
-if curl -s -o /dev/null -w "%{http_code}" "https://dashboard.evindrake.net/ai-assistant" 2>/dev/null | grep -q "401\|302"; then
+if curl -s -o /dev/null -w "%{http_code}" "https://host.evindrake.net/ai-assistant" 2>/dev/null | grep -q "401\|302"; then
     pass "Authentication required for protected pages"
 else
     fail "Authentication not enforcing (security risk!)"
 fi
 
 # Test HTTPS
-if curl -s -I "https://dashboard.evindrake.net" | grep -q "HTTP.*200\|302"; then
+if curl -s -I "https://host.evindrake.net" | grep -q "HTTP.*200\|302"; then
     pass "HTTPS working (Caddy SSL)"
 else
     fail "HTTPS not working"

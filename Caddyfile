@@ -80,7 +80,7 @@ n8n.evindrake.net {
 # ============================================
 # Homelab Dashboard (Main Control Panel) - ADMIN SERVICE
 # ============================================
-host.evindrake.net {
+host.evindrake.net, dashboard.evindrake.net {
     # NOTE: Rate limiting requires Caddy plugin (github.com/mholt/caddy-ratelimit)
     # To enable, rebuild Caddy with: xcaddy build --with github.com/mholt/caddy-ratelimit
     # Then uncomment the following:
