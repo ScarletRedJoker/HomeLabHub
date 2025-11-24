@@ -331,9 +331,9 @@ Format your responses using Markdown for better readability:
         """
         models = [
             {
-                "id": "gpt-4o-mini",
-                "name": "GPT-4o Mini (OpenAI)",
-                "description": "Latest OpenAI model (August 2025) - Best for complex reasoning",
+                "id": "gpt-4o",
+                "name": "GPT-4o (OpenAI)",
+                "description": "Latest OpenAI model - Best for complex reasoning",
                 "provider": "openai"
             },
             {
