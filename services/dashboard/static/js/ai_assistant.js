@@ -447,22 +447,6 @@ Try the quick actions below or ask me anything!`;
     addAIMessage(welcome, false);
 }
 
-// Configure marked.js options
-marked.setOptions({
-    highlight: function(code, lang) {
-        if (lang && hljs.getLanguage(lang)) {
-            try {
-                return hljs.highlight(code, { language: lang }).value;
-            } catch (e) {
-                console.error('Highlight error:', e);
-            }
-        }
-        return hljs.highlightAuto(code).value;
-    },
-    breaks: true,
-    gfm: true
-});
-
 // ==================== MODEL MANAGEMENT ====================
 
 async function loadAvailableModels() {
@@ -481,13 +465,44 @@ async function loadAvailableModels() {
     }
 }
 
-// Load saved conversation and settings
-loadSettings();
+// ==================== INITIALIZATION ====================
 
-// Load available models dynamically
-loadAvailableModels();
+function initializeApp() {
+    // Configure marked.js options (if loaded)
+    if (typeof marked !== 'undefined') {
+        marked.setOptions({
+            highlight: function(code, lang) {
+                if (lang && hljs.getLanguage(lang)) {
+                    try {
+                        return hljs.highlight(code, { language: lang }).value;
+                    } catch (e) {
+                        console.error('Highlight error:', e);
+                    }
+                }
+                return hljs.highlightAuto(code).value;
+            },
+            breaks: true,
+            gfm: true
+        });
+    } else {
+        console.warn('marked.js not loaded, markdown rendering may not work');
+    }
 
-// Show welcome message if no history
-if (conversationHistory.length === 0) {
-    showWelcomeMessage();
+    // Load saved conversation and settings
+    loadSettings();
+
+    // Load available models dynamically
+    loadAvailableModels();
+
+    // Show welcome message if no history
+    if (conversationHistory.length === 0) {
+        showWelcomeMessage();
+    }
+}
+
+// Initialize when DOM and scripts are ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+    initializeApp();
 }
