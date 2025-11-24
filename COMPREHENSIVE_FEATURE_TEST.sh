@@ -44,7 +44,7 @@ test_http() {
     local description="$2"
     local expected_code="${3:-200}"
     
-    local code=$(curl -s -o /dev/null -w "%{http_code}" -u "${WEB_USERNAME:-admin}:${WEB_PASSWORD:-Brs=2729}" "$url" 2>/dev/null || echo "000")
+    local code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 -u "${WEB_USERNAME:-admin}:${WEB_PASSWORD:-Brs=2729}" "$url" 2>/dev/null || echo "000")
     
     # Accept multiple valid codes (e.g., "200|302" means either is OK)
     if echo "$expected_code" | grep -qE "(^|\\|)$code(\\||$)"; then
