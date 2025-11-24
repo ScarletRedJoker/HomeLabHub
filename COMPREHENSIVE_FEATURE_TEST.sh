@@ -61,7 +61,7 @@ test_api() {
     local description="$2"
     local search_term="$3"
     
-    local response=$(curl -s -u "${WEB_USERNAME:-admin}:${WEB_PASSWORD:-Brs=2729}" "$url" 2>/dev/null)
+    local response=$(curl -s --max-time 5 -u "${WEB_USERNAME:-admin}:${WEB_PASSWORD:-Brs=2729}" "$url" 2>/dev/null)
     
     if echo "$response" | grep -q "$search_term"; then
         pass "$description"
