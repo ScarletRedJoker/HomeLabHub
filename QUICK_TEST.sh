@@ -42,13 +42,13 @@ test "https://host.evindrake.net/facts" "Facts Display"
 echo ""
 
 echo "Media & Storage:"
-test "https://host.evindrake.net/plex" "Plex Import"
-test "https://host.evindrake.net/storage" "Storage Monitor"
-test "https://host.evindrake.net/nas" "NAS Management"
+test "https://host.evindrake.net/plex" "Plex Import (session auth required)"
+test "https://host.evindrake.net/storage" "Storage Monitor (session auth required)"
+test "https://host.evindrake.net/nas" "NAS Management (session auth required)"
 echo ""
 
 echo "Database & Admin:"
-test "https://host.evindrake.net/database" "DB Admin"
+test "https://host.evindrake.net/databases" "DB Admin"
 test "https://host.evindrake.net/marketplace" "App Marketplace"
 echo ""
 
