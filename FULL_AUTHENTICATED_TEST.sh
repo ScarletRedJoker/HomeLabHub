@@ -97,14 +97,29 @@ section() {
     echo -e "${BLUE}━━━ $1 ━━━${NC}"
 }
 
-# Step 1: Login and get session
+# Step 1: Get CSRF token from login page
 section "Authentication"
+echo "Fetching login page to get CSRF token..."
+
+login_page=$(curl -s -c "$COOKIE_JAR" "https://$DOMAIN/login" 2>/dev/null)
+csrf_token=$(echo "$login_page" | grep -oP 'name="csrf_token" value="\K[^"]+' | head -n1)
+
+if [ -z "$csrf_token" ]; then
+    echo -e "${RED}✗${NC} Could not extract CSRF token from login page"
+    ((FAILED++))
+    exit 1
+else
+    echo -e "${GREEN}✓${NC} CSRF token obtained: ${csrf_token:0:20}..."
+    ((PASSED++))
+fi
+
+# Step 2: Login with CSRF token
 echo "Logging in as: $USERNAME"
 
 login_response=$(curl -X POST -s -w "\n%{http_code}" \
-    -c "$COOKIE_JAR" \
+    -b "$COOKIE_JAR" -c "$COOKIE_JAR" \
     -H "Content-Type: application/x-www-form-urlencoded" \
-    -d "username=$USERNAME&password=$PASSWORD" \
+    -d "username=$USERNAME&password=$PASSWORD&csrf_token=$csrf_token" \
     "https://$DOMAIN/login" 2>/dev/null)
 
 login_code=$(echo "$login_response" | tail -n1)

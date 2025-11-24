@@ -30,10 +30,22 @@ section() {
 
 # Login first
 section "Authentication & Session Management"
+
+# Get CSRF token
+login_page=$(curl -s -c "$COOKIE_JAR" "https://$DOMAIN/login" 2>/dev/null)
+csrf_token=$(echo "$login_page" | grep -oP 'name="csrf_token" value="\K[^"]+' | head -n1)
+
+if [ -z "$csrf_token" ]; then
+    echo -e "${RED}✗${NC} Could not extract CSRF token"
+    ((FAILED++))
+    exit 1
+fi
+
+# Login with CSRF token
 login_response=$(curl -X POST -s -w "\n%{http_code}" \
-    -c "$COOKIE_JAR" \
+    -b "$COOKIE_JAR" -c "$COOKIE_JAR" \
     -H "Content-Type: application/x-www-form-urlencoded" \
-    -d "username=$USERNAME&password=$PASSWORD" \
+    -d "username=$USERNAME&password=$PASSWORD&csrf_token=$csrf_token" \
     "https://$DOMAIN/login" 2>/dev/null)
 
 login_code=$(echo "$login_response" | tail -n1)
