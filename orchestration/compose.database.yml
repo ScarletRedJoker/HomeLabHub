@@ -20,53 +20,9 @@ volumes:
   pgbackrest_repo:
 
 services:
-  # ============================================
-  # PostgreSQL Database Server (Enhanced)
-  # ============================================
-  homelab-postgres:
-    image: postgres:16-alpine
-    container_name: homelab-postgres
-    restart: unless-stopped
-    networks:
-      homelab:
-        aliases:
-          - postgres
-    env_file:
-      - ${DEPLOYMENT_PATH:-.}/.env
-      - ${DEPLOYMENT_PATH:-.}/.env.postgres
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: postgres
-      DISCORD_DB_PASSWORD: ${DISCORD_DB_PASSWORD}
-      STREAMBOT_DB_PASSWORD: ${STREAMBOT_DB_PASSWORD}
-      JARVIS_DB_PASSWORD: ${JARVIS_DB_PASSWORD}
-      # WAL archiving configuration
-      POSTGRES_INITDB_ARGS: "-c wal_level=replica -c archive_mode=on -c archive_command='pgbackrest --stanza=homelab archive-push %p'"
-      # Performance tuning for connection pooling
-      POSTGRES_MAX_CONNECTIONS: "200"
-      POSTGRES_SHARED_BUFFERS: "256MB"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - postgres_wal:/var/lib/postgresql/wal
-      - ../config/postgres-init:/docker-entrypoint-initdb.d:ro
-      - pgbackrest_repo:/var/lib/pgbackrest
-    command: >
-      postgres
-      -c wal_level=replica
-      -c archive_mode=on
-      -c archive_command='test ! -f /var/lib/pgbackrest/archive/%f && cp %p /var/lib/pgbackrest/archive/%f'
-      -c max_wal_senders=3
-      -c wal_keep_size=128MB
-      -c shared_buffers=256MB
-      -c max_connections=200
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-
+  # NOTE: homelab-postgres is defined in compose.base.yml
+  # This bundle extends it with connection pooling and backups
+  
   # ============================================
   # pgBouncer - Connection Pooler
   # ============================================
