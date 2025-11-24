@@ -1,0 +1,31 @@
+name: Portainer
+description: Docker and Kubernetes management UI
+category: infrastructure
+icon: portainer
+version: latest
+author: Portainer.io
+requires:
+  - docker_socket
+  - persistent_storage
+
+services:
+  portainer:
+    image: portainer/portainer-ce:latest
+    command: -H unix:///var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer-data:/data
+    networks:
+      - homelab
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.rule=Host(`portainer.${DOMAIN}`)"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+    restart: unless-stopped
+
+volumes:
+  portainer-data:
+
+networks:
+  homelab:
+    external: true

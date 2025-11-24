@@ -1,0 +1,50 @@
+name: WordPress
+description: Popular open-source CMS for websites and blogs
+category: web
+icon: wordpress
+version: latest
+author: WordPress Foundation
+requires:
+  - mysql
+  - persistent_storage
+
+services:
+  wordpress-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${WORDPRESS_DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+    volumes:
+      - wordpress-db-data:/var/lib/mysql
+    networks:
+      - homelab
+    restart: unless-stopped
+
+  wordpress:
+    image: wordpress:latest
+    depends_on:
+      - wordpress-db
+    environment:
+      WORDPRESS_DB_HOST: wordpress-db:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+      WORDPRESS_DB_NAME: wordpress
+    volumes:
+      - wordpress-data:/var/www/html
+    networks:
+      - homelab
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wordpress.rule=Host(`blog.${DOMAIN}`)"
+      - "traefik.http.services.wordpress.loadbalancer.server.port=80"
+    restart: unless-stopped
+
+volumes:
+  wordpress-db-data:
+  wordpress-data:
+
+networks:
+  homelab:
+    external: true

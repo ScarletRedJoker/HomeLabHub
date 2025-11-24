@@ -1,0 +1,59 @@
+name: Nextcloud
+description: Self-hosted cloud storage and collaboration platform
+category: productivity
+icon: nextcloud
+version: latest
+author: Nextcloud GmbH
+requires:
+  - postgresql
+  - redis
+  - persistent_storage
+
+services:
+  nextcloud-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      POSTGRES_PASSWORD: ${NEXTCLOUD_DB_PASSWORD}
+    volumes:
+      - nextcloud-db:/var/lib/postgresql/data
+    networks:
+      - homelab
+    restart: unless-stopped
+
+  nextcloud-redis:
+    image: redis:alpine
+    networks:
+      - homelab
+    restart: unless-stopped
+
+  nextcloud:
+    image: nextcloud:latest
+    depends_on:
+      - nextcloud-db
+      - nextcloud-redis
+    environment:
+      POSTGRES_HOST: nextcloud-db
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      POSTGRES_PASSWORD: ${NEXTCLOUD_DB_PASSWORD}
+      REDIS_HOST: nextcloud-redis
+      NEXTCLOUD_TRUSTED_DOMAINS: cloud.${DOMAIN}
+    volumes:
+      - nextcloud-data:/var/www/html
+    networks:
+      - homelab
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nextcloud.rule=Host(`cloud.${DOMAIN}`)"
+      - "traefik.http.services.nextcloud.loadbalancer.server.port=80"
+    restart: unless-stopped
+
+volumes:
+  nextcloud-db:
+  nextcloud-data:
+
+networks:
+  homelab:
+    external: true

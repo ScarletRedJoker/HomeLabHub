@@ -1,0 +1,152 @@
+groups:
+  - name: homelab_critical_alerts
+    interval: 30s
+    rules:
+      - alert: ServiceDown
+        expr: up{job=~"homelab-.*"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "{{ $labels.job }} has been down for more than 2 minutes."
+          
+      - alert: HighCPUUsage
+        expr: rate(process_cpu_seconds_total[5m]) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is above 80% for 5 minutes on {{ $labels.instance }}"
+          
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is above 85% for 5 minutes"
+          
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.15
+        for: 5m
+        labels:
+          severity: warning
+          category: storage
+        annotations:
+          summary: "Disk space running low"
+          description: "Less than 15% disk space remaining on root partition"
+          
+      - alert: DatabaseConnectionPoolExhausted
+        expr: pgbouncer_pools_sv_active{database!=""} / pgbouncer_pools_sv_maxwait{database!=""} > 0.9
+        for: 2m
+        labels:
+          severity: critical
+          category: database
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "PgBouncer connection pool for {{ $labels.database }} is over 90% utilized"
+
+  - name: homelab_service_health
+    interval: 60s
+    rules:
+      - alert: PostgreSQLDown
+        expr: up{job="homelab-postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: database
+        annotations:
+          summary: "PostgreSQL database is down"
+          description: "Main PostgreSQL database has been unreachable for 1 minute"
+          
+      - alert: RedisDown
+        expr: up{job="homelab-redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: cache
+        annotations:
+          summary: "Redis cache is down"
+          description: "Redis cache has been unreachable for 1 minute"
+          
+      - alert: DashboardDown
+        expr: up{job="homelab-dashboard"} == 0
+        for: 3m
+        labels:
+          severity: warning
+          category: application
+        annotations:
+          summary: "Dashboard application is down"
+          description: "Main dashboard has been down for 3 minutes"
+          
+      - alert: DiscordBotDown
+        expr: up{job="discord-bot"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          category: bot
+        annotations:
+          summary: "Discord bot is offline"
+          description: "Discord ticket bot has been offline for 5 minutes"
+          
+      - alert: StreamBotDown
+        expr: up{job="stream-bot"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          category: bot
+        annotations:
+          summary: "Stream bot is offline"
+          description: "Multi-platform stream bot has been offline for 5 minutes"
+
+  - name: homelab_backup_alerts
+    interval: 6h
+    rules:
+      - alert: BackupFailed
+        expr: time() - pgbackrest_last_backup_timestamp > 86400
+        for: 1h
+        labels:
+          severity: critical
+          category: backup
+        annotations:
+          summary: "Database backup is overdue"
+          description: "No successful database backup in the last 24 hours"
+          
+      - alert: BackupStorageLow
+        expr: (minio_bucket_usage_total_bytes / minio_bucket_quota_bytes) > 0.85
+        for: 30m
+        labels:
+          severity: warning
+          category: backup
+        annotations:
+          summary: "Backup storage running low"
+          description: "MinIO backup storage is over 85% full"
+
+  - name: homelab_security_alerts
+    interval: 5m
+    rules:
+      - alert: TooManyFailedLogins
+        expr: rate(flask_http_request_total{endpoint="/login",status="401"}[5m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "High rate of failed login attempts"
+          description: "More than 5 failed login attempts per minute detected"
+          
+      - alert: SSLCertificateExpiring
+        expr: (probe_ssl_earliest_cert_expiry - time()) / 86400 < 30
+        for: 1h
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "SSL certificate expiring soon"
+          description: "SSL certificate for {{ $labels.instance }} expires in less than 30 days"

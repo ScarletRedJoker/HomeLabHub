@@ -1,0 +1,56 @@
+name: Gitea
+description: Lightweight self-hosted Git service
+category: development
+icon: gitea
+version: latest
+author: Gitea
+requires:
+  - postgresql
+  - persistent_storage
+
+services:
+  gitea-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: gitea
+      POSTGRES_PASSWORD: ${GITEA_DB_PASSWORD}
+      POSTGRES_DB: gitea
+    volumes:
+      - gitea-db:/var/lib/postgresql/data
+    networks:
+      - homelab
+    restart: unless-stopped
+
+  gitea:
+    image: gitea/gitea:latest
+    depends_on:
+      - gitea-db
+    environment:
+      USER_UID: 1000
+      USER_GID: 1000
+      GITEA__database__DB_TYPE: postgres
+      GITEA__database__HOST: gitea-db:5432
+      GITEA__database__NAME: gitea
+      GITEA__database__USER: gitea
+      GITEA__database__PASSWD: ${GITEA_DB_PASSWORD}
+      GITEA__server__DOMAIN: git.${DOMAIN}
+      GITEA__server__ROOT_URL: https://git.${DOMAIN}
+    volumes:
+      - gitea-data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - homelab
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gitea.rule=Host(`git.${DOMAIN}`)"
+      - "traefik.http.services.gitea.loadbalancer.server.port=3000"
+    restart: unless-stopped
+
+volumes:
+  gitea-db:
+  gitea-data:
+
+networks:
+  homelab:
+    external: true

@@ -1,0 +1,253 @@
+{% extends "layout.html" %}
+
+{% block title %}API Tokens - Homelab Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1><i class="bi bi-key-fill"></i> API Token Management</h1>
+            <p class="text-muted">Generate and manage JWT tokens for service-to-service authentication</p>
+        </div>
+    </div>
+
+    <!-- Generate New Token -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Generate New Token</h5>
+                </div>
+                <div class="card-body">
+                    <form id="generate-token-form">
+                        <div class="mb-3">
+                            <label for="token-name" class="form-label">Token Name</label>
+                            <input type="text" class="form-control" id="token-name" placeholder="e.g., Discord Bot API Access" required>
+                            <small class="form-text text-muted">A descriptive name to identify this token</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="token-service" class="form-label">Service</label>
+                            <select class="form-select" id="token-service" required>
+                                <option value="">Select service...</option>
+                                <option value="discord-bot">Discord Bot</option>
+                                <option value="stream-bot">Stream Bot</option>
+                                <option value="dashboard">Dashboard API</option>
+                                <option value="external">External Application</option>
+                                <option value="custom">Custom Service</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="token-permissions" class="form-label">Permissions</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="read" id="perm-read" checked>
+                                <label class="form-check-label" for="perm-read">Read Access</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="write" id="perm-write">
+                                <label class="form-check-label" for="perm-write">Write Access</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="admin" id="perm-admin">
+                                <label class="form-check-label" for="perm-admin">Admin Access</label>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="token-expiry" class="form-label">Expiration</label>
+                            <select class="form-select" id="token-expiry">
+                                <option value="3600">1 Hour</option>
+                                <option value="86400">24 Hours</option>
+                                <option value="604800" selected>7 Days</option>
+                                <option value="2592000">30 Days</option>
+                                <option value="7776000">90 Days</option>
+                                <option value="31536000">1 Year</option>
+                                <option value="0">Never (Not Recommended)</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-key"></i> Generate Token
+                        </button>
+                    </form>
+
+                    <!-- Generated Token Display -->
+                    <div id="generated-token" class="alert alert-success mt-3 d-none">
+                        <h6>Token Generated Successfully!</h6>
+                        <p class="mb-2">Copy this token now - it won't be shown again:</p>
+                        <div class="input-group">
+                            <input type="text" class="form-control font-monospace" id="token-value" readonly>
+                            <button class="btn btn-outline-secondary" type="button" id="copy-token">
+                                <i class="bi bi-clipboard"></i> Copy
+                            </button>
+                        </div>
+                        <small class="text-muted">Expires: <span id="token-expiry-date"></span></small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h6><i class="bi bi-info-circle"></i> Usage Example</h6>
+                    <pre class="bg-dark text-light p-2 rounded"><code>curl -H "Authorization: Bearer YOUR_TOKEN" \
+  https://dashboard.evindrake.net/api/services/status</code></pre>
+                    
+                    <h6 class="mt-3"><i class="bi bi-shield-check"></i> Security Tips</h6>
+                    <ul class="small">
+                        <li>Never share tokens publicly</li>
+                        <li>Use shortest expiry possible</li>
+                        <li>Rotate tokens regularly</li>
+                        <li>Revoke unused tokens</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Tokens List -->
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-list-check"></i> Active Tokens</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Service</th>
+                                <th>Permissions</th>
+                                <th>Created</th>
+                                <th>Expires</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tokens-list">
+                            <tr>
+                                <td colspan="7" class="text-center text-muted">
+                                    <i class="bi bi-hourglass-split"></i> Loading tokens...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const generateForm = document.getElementById('generate-token-form');
+    const generatedTokenDiv = document.getElementById('generated-token');
+    const tokenValueInput = document.getElementById('token-value');
+    const copyButton = document.getElementById('copy-token');
+    
+    // Generate token
+    generateForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const permissions = [];
+        if (document.getElementById('perm-read').checked) permissions.push('read');
+        if (document.getElementById('perm-write').checked) permissions.push('write');
+        if (document.getElementById('perm-admin').checked) permissions.push('admin');
+        
+        const data = {
+            name: document.getElementById('token-name').value,
+            service: document.getElementById('token-service').value,
+            permissions: permissions,
+            expiry: parseInt(document.getElementById('token-expiry').value)
+        };
+        
+        try {
+            const response = await fetch('/api/tokens/generate', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                tokenValueInput.value = result.token;
+                document.getElementById('token-expiry-date').textContent = 
+                    new Date(result.expires_at).toLocaleString();
+                generatedTokenDiv.classList.remove('d-none');
+                generateForm.reset();
+                loadTokens();
+            } else {
+                alert('Error: ' + result.error);
+            }
+        } catch (error) {
+            alert('Failed to generate token: ' + error.message);
+        }
+    });
+    
+    // Copy token
+    copyButton.addEventListener('click', function() {
+        tokenValueInput.select();
+        document.execCommand('copy');
+        copyButton.innerHTML = '<i class="bi bi-check"></i> Copied!';
+        setTimeout(() => {
+            copyButton.innerHTML = '<i class="bi bi-clipboard"></i> Copy';
+        }, 2000);
+    });
+    
+    // Load tokens list
+    async function loadTokens() {
+        try {
+            const response = await fetch('/api/tokens/list');
+            const tokens = await response.json();
+            
+            const tbody = document.getElementById('tokens-list');
+            tbody.innerHTML = '';
+            
+            if (tokens.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No active tokens</td></tr>';
+                return;
+            }
+            
+            tokens.forEach(token => {
+                const tr = document.createElement('tr');
+                const isExpired = new Date(token.expires_at) < new Date();
+                
+                tr.innerHTML = `
+                    <td>${token.name}</td>
+                    <td><span class="badge bg-secondary">${token.service}</span></td>
+                    <td>${token.permissions.join(', ')}</td>
+                    <td>${new Date(token.created_at).toLocaleDateString()}</td>
+                    <td>${token.expires_at ? new Date(token.expires_at).toLocaleDateString() : 'Never'}</td>
+                    <td>${isExpired ? '<span class="badge bg-danger">Expired</span>' : '<span class="badge bg-success">Active</span>'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-danger revoke-token" data-id="${token.id}">
+                            <i class="bi bi-trash"></i> Revoke
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            // Add revoke handlers
+            document.querySelectorAll('.revoke-token').forEach(btn => {
+                btn.addEventListener('click', async function() {
+                    if (confirm('Are you sure you want to revoke this token?')) {
+                        const tokenId = this.dataset.id;
+                        await fetch(`/api/tokens/${tokenId}`, {method: 'DELETE'});
+                        loadTokens();
+                    }
+                });
+            });
+        } catch (error) {
+            console.error('Failed to load tokens:', error);
+        }
+    }
+    
+    loadTokens();
+});
+</script>
+{% endblock %}

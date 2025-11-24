@@ -1,0 +1,326 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Homelab Dashboard API",
+    "description": "Complete API documentation for the Homelab management dashboard",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Evin Drake",
+      "email": "scarletredjoker@gmail.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://dashboard.evindrake.net",
+      "description": "Production server"
+    },
+    {
+      "url": "http://localhost:8080",
+      "description": "Development server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "SessionAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "session"
+      }
+    },
+    "schemas": {
+      "SystemStats": {
+        "type": "object",
+        "properties": {
+          "cpu_percent": {"type": "number"},
+          "memory_percent": {"type": "number"},
+          "disk_percent": {"type": "number"},
+          "uptime_seconds": {"type": "integer"}
+        }
+      },
+      "ServiceStatus": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "status": {"type": "string", "enum": ["running", "stopped", "error"]},
+          "uptime": {"type": "string"}
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/system/stats": {
+      "get": {
+        "summary": "Get system statistics",
+        "description": "Returns real-time CPU, memory, and disk usage",
+        "tags": ["System"],
+        "security": [{"SessionAuth": []}],
+        "responses": {
+          "200": {
+            "description": "System statistics",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/SystemStats"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/docker/stats": {
+      "get": {
+        "summary": "Get Docker container statistics",
+        "description": "Returns stats for all running Docker containers",
+        "tags": ["Docker"],
+        "security": [{"SessionAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Container statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {"type": "string"},
+                      "cpu_percent": {"type": "number"},
+                      "memory_usage": {"type": "string"},
+                      "network_io": {"type": "string"}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/status": {
+      "get": {
+        "summary": "Get all services status",
+        "description": "Returns the status of all homelab services",
+        "tags": ["Services"],
+        "security": [{"SessionAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Services status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {"$ref": "#/components/schemas/ServiceStatus"}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jarvis/chat": {
+      "post": {
+        "summary": "Chat with Jarvis AI",
+        "description": "Send a message to Jarvis AI assistant",
+        "tags": ["AI"],
+        "security": [{"SessionAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {"type": "string"},
+                  "session_id": {"type": "string"}
+                },
+                "required": ["message"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "AI response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {"type": "string"},
+                    "session_id": {"type": "string"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tokens/generate": {
+      "post": {
+        "summary": "Generate JWT token",
+        "description": "Generate a new API authentication token",
+        "tags": ["Authentication"],
+        "security": [{"SessionAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {"type": "string"},
+                  "service": {"type": "string"},
+                  "permissions": {"type": "array", "items": {"type": "string"}},
+                  "expiry": {"type": "integer"}
+                },
+                "required": ["name", "service"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {"type": "boolean"},
+                    "token": {"type": "string"},
+                    "expires_at": {"type": "string"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/database/status": {
+      "get": {
+        "summary": "Get database status",
+        "description": "Check database connection and health",
+        "tags": ["Database"],
+        "security": [{"SessionAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Database status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "connected": {"type": "boolean"},
+                    "databases": {"type": "array", "items": {"type": "string"}},
+                    "active_connections": {"type": "integer"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plex/import": {
+      "post": {
+        "summary": "Import media to Plex",
+        "description": "Import media files to Plex library",
+        "tags": ["Media"],
+        "security": [{"SessionAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {"type": "string", "format": "binary"},
+                  "category": {"type": "string", "enum": ["movies", "tv", "music"]}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Import successful"
+          }
+        }
+      }
+    },
+    "/api/marketplace/apps": {
+      "get": {
+        "summary": "List marketplace apps",
+        "description": "Get all available apps in the marketplace",
+        "tags": ["Marketplace"],
+        "security": [{"SessionAuth": []}],
+        "responses": {
+          "200": {
+            "description": "List of apps",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {"type": "string"},
+                      "name": {"type": "string"},
+                      "description": {"type": "string"},
+                      "category": {"type": "string"},
+                      "installed": {"type": "boolean"}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/marketplace/deploy": {
+      "post": {
+        "summary": "Deploy marketplace app",
+        "description": "Deploy an app from the marketplace",
+        "tags": ["Marketplace"],
+        "security": [{"SessionAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "app_id": {"type": "string"},
+                  "env_vars": {"type": "object"}
+                },
+                "required": ["app_id"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "App deployed successfully"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {"name": "System", "description": "System monitoring and stats"},
+    {"name": "Docker", "description": "Docker container management"},
+    {"name": "Services", "description": "Service status and management"},
+    {"name": "AI", "description": "Jarvis AI assistant"},
+    {"name": "Authentication", "description": "API token management"},
+    {"name": "Database", "description": "Database operations"},
+    {"name": "Media", "description": "Plex media management"},
+    {"name": "Marketplace", "description": "App deployment marketplace"}
+  ]
+}
