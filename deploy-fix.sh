@@ -15,6 +15,24 @@ fi
 echo "✓ Running from project root"
 echo ""
 
+# Start services if not running
+echo "=========================================="
+echo " Starting Services"
+echo "=========================================="
+echo ""
+
+if ! docker-compose ps | grep -q "homelab-postgres.*Up"; then
+    echo "PostgreSQL not running, starting all services..."
+    docker-compose up -d
+    echo ""
+    echo "Waiting 30 seconds for PostgreSQL to be ready..."
+    sleep 30
+else
+    echo "✓ Services already running"
+fi
+
+echo ""
+
 # Step 1: Fix Stream-Bot AI Model in Database
 echo "=========================================="
 echo " Step 1: Fix Stream-Bot AI Model"
