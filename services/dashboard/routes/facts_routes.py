@@ -1,10 +1,12 @@
 """Stream-Bot Facts Display Routes"""
 import logging
-from flask import Blueprint, render_template, jsonify
+import os
+from flask import Blueprint, render_template, jsonify, request
 from utils.auth import require_web_auth
 from services.db_service import db_service
 from models.artifact import Artifact
 from sqlalchemy import desc
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +115,88 @@ def get_random_fact():
             
     except Exception as e:
         logger.error(f"Error fetching random fact: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@facts_bp.route('/api/stream/facts', methods=['POST'])
+def create_fact():
+    """Accept fact from stream-bot service and save to database
+    
+    Expects JSON: { "fact": "...", "source": "stream-bot", "tags"?: [...] }
+    
+    Returns:
+        JSON with success status and fact ID
+    """
+    try:
+        # Authenticate using SERVICE_AUTH_TOKEN
+        auth_header = request.headers.get('X-API-Key') or request.headers.get('Authorization')
+        expected_token = os.environ.get('SERVICE_AUTH_TOKEN', '')
+        
+        if not expected_token:
+            logger.warning("SERVICE_AUTH_TOKEN not configured - accepting unauthenticated request")
+        elif not auth_header or auth_header.replace('Bearer ', '') != expected_token:
+            logger.warning(f"Unauthorized fact POST attempt from {request.remote_addr}")
+            return jsonify({
+                'success': False,
+                'error': 'Unauthorized'
+            }), 401
+        
+        if not db_service.is_available:
+            return jsonify({
+                'success': False,
+                'error': 'Database not available'
+            }), 503
+        
+        data = request.get_json()
+        if not data or 'fact' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Missing "fact" in request body'
+            }), 400
+        
+        fact_content = data['fact']
+        source = data.get('source', 'stream-bot')
+        tags = data.get('tags', [])
+        
+        with db_service.get_session() as session:
+            # Import FileType enum for facts
+            from models.artifact import FileType
+            
+            # Create new Artifact with artifact_type='fact'
+            # Provide dummy values for required file fields (facts aren't files)
+            artifact = Artifact(
+                artifact_type='fact',
+                content=fact_content,
+                source=source,
+                tags=tags,
+                data={'fact': fact_content},
+                created_at=datetime.utcnow(),
+                # Required file fields (use placeholder values for facts)
+                filename='fact.txt',
+                original_filename='fact.txt',
+                file_type=FileType.single_file,
+                storage_path='/facts',
+                file_size=len(fact_content),
+                checksum_sha256='0' * 64,  # Placeholder SHA256
+                uploaded_by='stream-bot'
+            )
+            
+            session.add(artifact)
+            session.commit()
+            
+            logger.info(f"Saved fact from {source}: {fact_content[:50]}...")
+            
+            return jsonify({
+                'success': True,
+                'id': str(artifact.id),
+                'message': 'Fact saved successfully'
+            })
+            
+    except Exception as e:
+        logger.error(f"Error saving fact: {e}", exc_info=True)
         return jsonify({
             'success': False,
             'error': str(e)
