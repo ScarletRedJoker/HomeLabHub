@@ -117,7 +117,7 @@ services:
       - HOME_ASSISTANT_TOKEN=${HOME_ASSISTANT_TOKEN:-}
       - HOME_ASSISTANT_VERIFY_SSL=${HOME_ASSISTANT_VERIFY_SSL:-False}
       - AI_PROVIDER=openai
-      - AI_MODEL=gpt-4o-mini
+      - AI_MODEL=gpt-4o
       - SERVICE_AUTH_TOKEN=${SERVICE_AUTH_TOKEN}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - WEB_USERNAME=${WEB_USERNAME}
@@ -152,7 +152,7 @@ services:
       - CADDYFILE_PATH=/Caddyfile
       - ENV_FILE=/.env
       - AI_PROVIDER=openai
-      - AI_MODEL=gpt-4o-mini
+      - AI_MODEL=gpt-4o
     env_file:
       - .env
     volumes:

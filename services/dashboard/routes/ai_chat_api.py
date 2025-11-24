@@ -51,7 +51,7 @@ def chat():
         
         message = data.get('message', '').strip()
         conversation_history = data.get('conversation_history', [])
-        model = data.get('model', 'gpt-4o-mini')
+        model = data.get('model', 'gpt-4o')
         session_id = data.get('session_id')
         
         if not message:
@@ -129,7 +129,7 @@ def chat_stream():
         
         message = data.get('message', '').strip()
         conversation_history = data.get('conversation_history', [])
-        model = data.get('model', 'gpt-4o-mini')
+        model = data.get('model', 'gpt-4o')
         session_id = data.get('session_id')
         
         if not message:

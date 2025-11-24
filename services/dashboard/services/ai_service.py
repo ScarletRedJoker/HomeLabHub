@@ -64,9 +64,9 @@ Logs:
 
 Provide a clear, actionable response."""
             
-            # Using gpt-4o-mini (replacement for deprecated gpt-3.5-turbo)
+            # Using gpt-4o
             response = self.client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-4o",
                 messages=[
                     {"role": "system", "content": "You are an expert DevOps engineer helping troubleshoot server and container issues."},
                     {"role": "user", "content": prompt}
@@ -90,9 +90,9 @@ Issue: {issue_description}
 
 Provide specific troubleshooting steps and potential solutions."""
             
-            # Using gpt-4o-mini (replacement for deprecated gpt-3.5-turbo)
+            # Using gpt-4o
             response = self.client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-4o",
                 messages=[
                     {"role": "system", "content": "You are an expert homelab administrator helping with Docker, networking, and server management."},
                     {"role": "user", "content": prompt}
@@ -105,10 +105,10 @@ Provide specific troubleshooting steps and potential solutions."""
             logger.error(f"Error getting troubleshooting advice: {e}")
             return f"Error: {str(e)}"
     
-    def chat(self, message: str, conversation_history: Optional[List[Dict[str, Any]]] = None, model: str = "gpt-4o-mini") -> str:
+    def chat(self, message: str, conversation_history: Optional[List[Dict[str, Any]]] = None, model: str = "gpt-4o") -> str:
         # Validate and default model parameter
         if not model or not isinstance(model, str):
-            model = "gpt-4o-mini"
+            model = "gpt-4o"
         
         # Check if using Ollama model
         if model.startswith("ollama/"):
