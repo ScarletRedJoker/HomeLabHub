@@ -1,46 +1,62 @@
-# Deploy Facts API Fix 🚀
+# Facts Architecture Fix - Deployment Guide
 
-## What Was Fixed
-Stream-bot was generating facts every hour but getting 404 errors trying to save them.
+## What Was Fixed (CRITICAL SERVICE SEPARATION)
 
-**Root Cause:** Dashboard had no POST endpoint for facts.
+**Problem:** Facts were incorrectly implemented with stream-bot data stored in dashboard service.
 
-**Solution:** Added `/api/stream/facts` endpoint with proper authentication.
+**Solution:** Complete architectural refactor - stream-bot now owns facts end-to-end.
+
+### Before (WRONG):
+- ❌ Stream-bot POSTed facts to dashboard
+- ❌ Dashboard stored facts in its Artifact table (service mixing)
+
+### After (CORRECT):
+- ✅ Stream-bot generates AND stores facts in its own database
+- ✅ Stream-bot has its own `facts` table
+- ✅ Stream-bot serves facts via its own API
 
 ## Deploy to Production
 
+### Step 1: Pull latest code
 ```bash
 cd /home/evin/contain/HomeLabHub
 git pull origin main
-docker-compose restart homelab-dashboard stream-bot
+```
+
+### Step 2: Apply database migration (CRITICAL)
+```bash
+# Create facts table in stream-bot database
+docker exec -i homelab-postgres psql -U streambot -d streambot < services/stream-bot/migrations/0006_add_facts_table.sql
+```
+
+### Step 3: Restart stream-bot
+```bash
+docker-compose restart stream-bot
 ```
 
 ## Verify It Works
 
-**Option 1: Wait 1 hour, then check logs:**
 ```bash
-docker-compose logs stream-bot | grep Facts
-# Should see: [Facts] ✓ Posted fact to dashboard
+# Check logs - should see fact generation service started
+docker-compose logs stream-bot | grep -i facts
+
+# Expected output:
+# [Facts] ✓ Snapple Fact generation service started (1 fact/hour)
+# [Facts] ✓ Generated and stored fact in stream-bot database
 ```
 
-**Option 2: Manual test (immediate):**
+**Test API (after 1 hour or restart):**
 ```bash
-# Test from within stream-bot container
-docker-compose exec stream-bot sh -c 'curl -X POST http://homelab-dashboard:5000/api/stream/facts \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: $SERVICE_AUTH_TOKEN" \
-  -d "{\"fact\":\"Test fact from manual curl\",\"source\":\"manual-test\"}"'
+curl http://localhost:5000/api/facts/latest
+curl http://localhost:5000/api/facts/random
 ```
-
-**Option 3: Check facts page:**
-Visit https://host.evindrake.net/facts after deployment
 
 ## Files Changed
-- `services/dashboard/routes/facts_routes.py` - Added POST endpoint
-- `services/stream-bot/server/index.ts` - Added auth header
-- `replit.md` - Documented the fix
+- `services/stream-bot/shared/schema.ts` - Added facts table
+- `services/stream-bot/migrations/0006_add_facts_table.sql` - Migration
+- `services/stream-bot/server/routes.ts` - Added facts API
+- `services/stream-bot/server/index.ts` - Posts to localhost
+- `services/dashboard/routes/facts_routes.py` - Reverted to proxy only
 
-## Status
-✅ All tasks completed
-✅ Architect approved
-✅ Production ready
+## Service Separation Principle
+Each service owns its own data, UI, and API completely. Stream-bot facts belong to stream-bot, not dashboard.

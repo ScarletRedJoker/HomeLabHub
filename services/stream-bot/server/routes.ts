@@ -276,30 +276,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/facts/latest - Get the most recent fact
+  // GET /api/facts/latest - Get most recent facts (supports limit query param)
   app.get("/api/facts/latest", async (req, res) => {
     try {
       const { db } = await import('./db');
       const { facts } = await import('@shared/schema');
       const { desc } = await import('drizzle-orm');
       
-      const [latestFact] = await db
+      const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+      
+      const latestFacts = await db
         .select()
         .from(facts)
         .orderBy(desc(facts.createdAt))
-        .limit(1);
+        .limit(limit);
       
-      if (!latestFact) {
-        return res.status(404).json({ 
-          error: "No facts found" 
-        });
-      }
-      
-      res.json(latestFact);
+      // Return wrapped response matching dashboard expectations
+      res.json({
+        success: true,
+        count: latestFacts.length,
+        facts: latestFacts.map(f => ({
+          id: f.id,
+          content: f.fact,
+          source: f.source,
+          created_at: f.createdAt,
+          tags: f.tags || []
+        }))
+      });
     } catch (error: any) {
-      console.error('[Facts API] Error fetching latest fact:', error);
+      console.error('[Facts API] Error fetching latest facts:', error);
       res.status(500).json({ 
-        error: "Failed to fetch latest fact",
+        success: false,
+        error: "Failed to fetch latest facts",
         message: error.message 
       });
     }
@@ -320,15 +328,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .limit(1);
       
       if (!randomFact) {
-        return res.status(404).json({ 
-          error: "No facts found" 
+        return res.json({
+          success: true,
+          fact: null,
+          message: "No facts available yet"
         });
       }
       
-      res.json(randomFact);
+      // Return wrapped response matching dashboard expectations
+      res.json({
+        success: true,
+        fact: {
+          id: randomFact.id,
+          content: randomFact.fact,
+          source: randomFact.source,
+          created_at: randomFact.createdAt,
+          tags: randomFact.tags || []
+        }
+      });
     } catch (error: any) {
       console.error('[Facts API] Error fetching random fact:', error);
       res.status(500).json({ 
+        success: false,
         error: "Failed to fetch random fact",
         message: error.message 
       });

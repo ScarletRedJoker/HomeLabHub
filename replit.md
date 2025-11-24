@@ -42,12 +42,21 @@ The core system relies on Docker Compose for orchestrating 15 services. A `boots
 
 ## Recent Changes (November 2025)
 
-### Facts API Integration Fix (November 24, 2025)
-- **Problem**: Stream-bot generating facts with OpenAI but couldn't save to dashboard (404 errors)
-- **Solution**: Added POST /api/stream/facts endpoint with SERVICE_AUTH_TOKEN authentication
-- **Result**: Stream-bot now successfully stores generated facts as Artifact records
-- **Access**: Facts visible at /facts page and via /api/facts/latest, /api/facts/random APIs
-- **Files**: services/dashboard/routes/facts_routes.py, services/stream-bot/server/index.ts
+### Facts Feature Architecture Fix (November 24, 2025) - CRITICAL
+- **Problem**: Facts were incorrectly implemented in dashboard service (service mixing violation)
+- **Root Cause**: AI assistant initially stored stream-bot facts in dashboard's Artifact table
+- **Solution**: Complete architectural refactor - stream-bot now owns facts end-to-end
+- **Implementation**:
+  - Added `facts` table to stream-bot database schema (shared/schema.ts)
+  - Created migration 0006_add_facts_table.sql in stream-bot
+  - Added POST /api/facts endpoint to stream-bot Express API
+  - Added GET /api/facts/latest and GET /api/facts/random endpoints
+  - Stream-bot generates facts hourly and stores in its own database
+  - Stream-bot POSTs to itself (localhost:5000), not to dashboard
+- **Dashboard Changes**: Reverted to read-only proxy pattern (dashboard/routes/facts_routes.py)
+- **Service Separation**: Each service (stream-bot, dashboard, discord-bot) owns its own data, UI, and API completely
+- **Deployment**: Migration 0006 must be applied to stream-bot database on production
+- **Files**: services/stream-bot/shared/schema.ts, migrations/0006_add_facts_table.sql, server/routes.ts, server/index.ts
 
 ### Complete Homelab Transformation (8-Phase Roadmap - In Progress)
 **Goal:** Transform system into truly modular, portable, production-grade "end all be all" homelab
