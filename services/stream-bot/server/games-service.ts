@@ -23,7 +23,7 @@ export class GamesService {
   async play8Ball(question: string): Promise<GameResult> {
     try {
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         messages: [
           {
             role: "system",
@@ -85,7 +85,7 @@ Generate a unique Magic 8-Ball response to this question.`
       };
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         messages: [
           {
             role: "system",

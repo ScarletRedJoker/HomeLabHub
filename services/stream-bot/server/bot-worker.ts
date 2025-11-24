@@ -1422,7 +1422,7 @@ export class BotWorker {
 
   async generateFact(): Promise<string> {
     const config = await this.storage.getBotConfig();
-    const model = config?.aiModel || "gpt-4o-mini";
+    const model = config?.aiModel || "gpt-4o";
     const customPrompt = config?.aiPromptTemplate || undefined;
 
     return await generateSnappleFact(customPrompt, model);

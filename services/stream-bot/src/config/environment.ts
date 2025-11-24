@@ -57,7 +57,7 @@ export function getOpenAIConfig(): OpenAIConfig {
       process.env.OPENAI_BASE_URL ||
       process.env.STREAMBOT_OPENAI_BASE_URL ||
       "https://api.openai.com/v1";
-    const model = process.env.STREAMBOT_FACT_MODEL || "gpt-4o-mini";
+    const model = process.env.STREAMBOT_FACT_MODEL || "gpt-4o";
 
     if (!apiKey) {
       throw new Error(

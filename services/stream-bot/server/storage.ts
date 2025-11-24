@@ -395,7 +395,7 @@ export class DatabaseStorage implements IStorage {
       existing = await this.createBotConfig(userId, {
         userId,
         intervalMode: "manual",
-        aiModel: "gpt-4o-mini",
+        aiModel: "gpt-4o",
         enableChatTriggers: true,
         chatKeywords: ["!snapple", "!fact"],
         activePlatforms: [],

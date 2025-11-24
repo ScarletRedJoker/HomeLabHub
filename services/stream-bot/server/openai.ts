@@ -64,8 +64,8 @@ export async function generateSnappleFact(customPrompt?: string, model?: string)
   console.log("[OpenAI] Generating fact with model:", primaryModel);
   console.log("[OpenAI] Using prompt:", prompt.substring(0, 100) + "...");
 
-  // Use configured model as primary, fallback to gpt-4o-mini for production compatibility
-  const modelsToTry = [primaryModel, "gpt-4o-mini"].filter((m, i, arr) => arr.indexOf(m) === i);
+  // Use configured model as primary, fallback to gpt-4o for production compatibility
+  const modelsToTry = [primaryModel, "gpt-4o"].filter((m, i, arr) => arr.indexOf(m) === i);
 
   for (const currentModel of modelsToTry) {
     try {

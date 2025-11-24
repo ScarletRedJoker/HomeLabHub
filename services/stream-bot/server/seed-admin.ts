@@ -89,7 +89,7 @@ async function seedAdminUser() {
         fixedIntervalMinutes: 30,
         randomMinMinutes: 15,
         randomMaxMinutes: 60,
-        aiModel: "gpt-4o-mini",
+        aiModel: "gpt-4o",
         aiPromptTemplate:
           "Generate a fun, mind-blowing fact about life, the universe, science, history, nature, or weird phenomena. Topics: space, animals, physics, human body, ancient civilizations, food science, geography, inventions, unusual traditions, or bizarre natural phenomena. Keep it under 200 characters.",
         aiTemperature: 1,

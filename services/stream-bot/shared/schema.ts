@@ -70,7 +70,7 @@ export const botConfigs = pgTable("bot_configs", {
   randomMaxMinutes: integer("random_max_minutes"), // For random mode
   
   // AI settings
-  aiModel: text("ai_model").default("gpt-4o-mini").notNull(),
+  aiModel: text("ai_model").default("gpt-4o").notNull(),
   aiPromptTemplate: text("ai_prompt_template"),
   aiTemperature: integer("ai_temperature").default(1), // Stored as integer, divided by 10 in app
   

@@ -64,7 +64,7 @@ export default function Settings() {
       fixedIntervalMinutes: 15,
       randomMinMinutes: 5,
       randomMaxMinutes: 30,
-      aiModel: "gpt-5-mini",
+      aiModel: "gpt-4o",
       aiPromptTemplate: "",
       enableChatTriggers: true,
       chatKeywords: ["!snapple", "!fact"],
@@ -315,9 +315,9 @@ export default function Settings() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="gpt-5-mini">GPT-5 Mini (Fast & Cheap)</SelectItem>
-                        <SelectItem value="gpt-5">GPT-5 (Best Quality)</SelectItem>
-                        <SelectItem value="gpt-4.1-mini">GPT-4.1 Mini</SelectItem>
+                        <SelectItem value="gpt-4o">GPT-4o (Recommended)</SelectItem>
+                        <SelectItem value="gpt-4o-mini">GPT-4o Mini (Faster & Cheaper)</SelectItem>
+                        <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormDescription>
