@@ -86,7 +86,7 @@ export function SpotifyCardMultiUser() {
   // Disconnect mutation
   const disconnect = useMutation({
     mutationFn: async () => {
-      await apiRequest('/auth/spotify/disconnect', { method: 'DELETE' });
+      await apiRequest('DELETE', '/auth/spotify/disconnect');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/platforms"] });
