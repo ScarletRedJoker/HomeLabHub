@@ -14,7 +14,7 @@ celery_app = Celery(
     'jarvis_workflow_engine',
     broker=Config.CELERY_BROKER_URL,
     backend=Config.CELERY_RESULT_BACKEND,
-    include=['workers.workflow_worker', 'workers.analysis_worker', 'workers.google_tasks', 'workers.plex_worker', 'workers.service_ops_worker', 'workers.storage_worker', 'workers.gaming_worker', 'workers.db_admin_worker', 'workers.nas_worker', 'workers.celery_tasks']
+    include=['workers.workflow_worker', 'workers.analysis_worker', 'workers.google_tasks', 'workers.plex_worker', 'workers.service_ops_worker', 'workers.storage_worker', 'workers.gaming_worker', 'workers.db_admin_worker', 'workers.nas_worker', 'workers.celery_tasks', 'workers.marketplace_tasks']
 )
 
 def check_redis_health():

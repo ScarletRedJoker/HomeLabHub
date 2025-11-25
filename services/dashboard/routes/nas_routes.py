@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, jsonify, request
 from services.nas_service import NASService
 from services.db_service import db_service
 from models.nas import NASMount, NASBackupJob
+from utils.auth import require_auth
 from datetime import datetime
 import logging
 
@@ -11,12 +12,14 @@ nas_bp = Blueprint('nas', __name__, url_prefix='/nas')
 
 
 @nas_bp.route('/')
+@require_auth
 def nas_management():
     """Render NAS management page"""
     return render_template('nas_management.html')
 
 
 @nas_bp.route('/api/discover', methods=['POST'])
+@require_auth
 def discover_nas():
     """Discover NAS on local network"""
     try:
@@ -43,6 +46,7 @@ def discover_nas():
 
 
 @nas_bp.route('/api/test-connection', methods=['POST'])
+@require_auth
 def test_connection():
     """Test connection to NAS"""
     try:
@@ -60,6 +64,7 @@ def test_connection():
 
 
 @nas_bp.route('/api/mounts', methods=['GET'])
+@require_auth
 def list_mounts():
     """List all NAS mounts
     
@@ -129,6 +134,7 @@ def list_mounts():
 
 
 @nas_bp.route('/api/mount', methods=['POST'])
+@require_auth
 def mount_share():
     """Mount NAS share"""
     try:
@@ -183,6 +189,7 @@ def mount_share():
 
 
 @nas_bp.route('/api/unmount', methods=['POST'])
+@require_auth
 def unmount_share():
     """Unmount NAS share"""
     try:
@@ -215,6 +222,7 @@ def unmount_share():
 
 
 @nas_bp.route('/api/storage/<path:mount_point>', methods=['GET'])
+@require_auth
 def get_storage_info(mount_point):
     """Get storage information for mount point"""
     try:
@@ -241,6 +249,7 @@ def get_storage_info(mount_point):
 
 
 @nas_bp.route('/api/backup', methods=['POST'])
+@require_auth
 def create_backup():
     """Create backup to NAS"""
     try:
@@ -284,6 +293,7 @@ def create_backup():
 
 
 @nas_bp.route('/api/backups', methods=['GET'])
+@require_auth
 def list_backups():
     """List all backup jobs"""
     try:
