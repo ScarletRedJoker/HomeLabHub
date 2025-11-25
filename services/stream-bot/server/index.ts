@@ -240,52 +240,18 @@ app.use((req, res, next) => {
   startOAuthCleanupJob();
   log('OAuth session cleanup job started');
 
-  // Prepare Snapple Fact generation service (will start after server is listening)
-  let factGenerationFunction: (() => Promise<void>) | null = null;
-  
+  // Check OpenAI availability for fact generation (manual triggers and scheduled intervals)
   try {
     const openaiModule = await import('./openai');
-    const { generateSnappleFact, isOpenAIEnabled } = openaiModule;
+    const { isOpenAIEnabled } = openaiModule;
     
     if (isOpenAIEnabled) {
-      // Function to generate and store a fact
-      factGenerationFunction = async () => {
-        try {
-          log('[Facts] Generating fact...');
-          const fact = await generateSnappleFact();
-          if (fact) {
-            // Post to stream-bot's own database via localhost
-            const response = await fetch('http://localhost:5000/api/facts', {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({ fact, source: 'stream-bot' })
-            });
-            
-            if (response.ok) {
-              log('[Facts] ✓ Stored fact in stream-bot database');
-            } else {
-              const errorText = await response.text().catch(() => 'Unknown error');
-              log(`[Facts] ✗ HTTP ${response.status} storing fact: ${errorText}`);
-            }
-          } else {
-            log('[Facts] ✗ No fact generated (empty response from OpenAI)');
-          }
-        } catch (error) {
-          log(`[Facts] ✗ ${error instanceof Error ? error.message : String(error)}`);
-        }
-      };
-      
-      // Schedule hourly generation
-      setInterval(factGenerationFunction, 3600000); // Every hour (3600000ms)
-      
-      log('[Facts] ✓ Snapple Fact generation service configured (immediate + 1 fact/hour)');
+      log('[Facts] ✓ OpenAI configured - facts available via dashboard, !fact command, or scheduled intervals');
     } else {
       log('[Facts] ⚠ OpenAI not configured - fact generation disabled');
     }
   } catch (error) {
-    log(`[Facts] ✗ Failed to initialize fact generation: ${error instanceof Error ? error.message : String(error)}`);
+    log(`[Facts] ✗ Failed to check OpenAI availability: ${error instanceof Error ? error.message : String(error)}`);
   }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -317,13 +283,6 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
-    
-    // Now that server is listening, run first fact generation immediately
-    if (factGenerationFunction) {
-      setTimeout(() => {
-        factGenerationFunction!();
-      }, 2000); // Wait 2 seconds for server to be fully ready
-    }
   });
 
   // Graceful shutdown handlers

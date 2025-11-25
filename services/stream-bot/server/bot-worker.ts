@@ -1432,7 +1432,73 @@ export class BotWorker {
       return;
     }
 
+    // Only post scheduled facts if user is actually live on at least one platform
+    const isLive = await this.checkIfUserIsLive();
+    if (!isLive) {
+      console.log(`[BotWorker] Skipping scheduled fact - user ${this.userId} is not live`);
+      return;
+    }
+
     await this.generateAndPostFact(config.activePlatforms, "scheduled");
+  }
+
+  private async checkIfUserIsLive(): Promise<boolean> {
+    // Check each connected platform to see if user is live
+    for (const platform of Array.from(this.activePlatforms)) {
+      try {
+        switch (platform) {
+          case "twitch":
+            const twitchViewers = await this.fetchTwitchViewerCount();
+            // If we can get viewer count, user is live (even if 0 viewers)
+            if (twitchViewers >= 0) {
+              const connection = await this.storage.getPlatformConnectionByPlatform("twitch");
+              if (connection?.platformUsername) {
+                // Check if stream is actually live via Twitch API
+                const isLive = await this.checkTwitchLiveStatus(connection.platformUsername);
+                if (isLive) return true;
+              }
+            }
+            break;
+          case "youtube":
+            // If we have an active live chat ID, user is live on YouTube
+            if (this.youtubeActiveLiveChatId) return true;
+            break;
+          case "kick":
+            // For Kick, check if we're connected and receiving messages
+            if (this.kickClient && this.kickClientReady) {
+              // Could add more sophisticated check here
+              return true;
+            }
+            break;
+        }
+      } catch (error) {
+        // If we can't check, assume not live for this platform
+        console.log(`[BotWorker] Error checking live status for ${platform}:`, error);
+      }
+    }
+    return false;
+  }
+
+  private async checkTwitchLiveStatus(username: string): Promise<boolean> {
+    try {
+      const connection = await this.storage.getPlatformConnectionByPlatform("twitch");
+      if (!connection?.accessToken) return false;
+
+      const response = await fetch(`https://api.twitch.tv/helix/streams?user_login=${username}`, {
+        headers: {
+          'Authorization': `Bearer ${connection.accessToken}`,
+          'Client-Id': process.env.TWITCH_CLIENT_ID || ''
+        }
+      });
+
+      if (!response.ok) return false;
+      
+      const data = await response.json();
+      return data.data && data.data.length > 0;
+    } catch (error) {
+      console.error(`[BotWorker] Error checking Twitch live status:`, error);
+      return false;
+    }
   }
 
   async postManualFact(platforms: string[]): Promise<string | null> {
