@@ -1616,7 +1616,9 @@ export class BotWorker {
   async generateFact(): Promise<string> {
     const config = await this.storage.getBotConfig();
     const model = config?.aiModel || "gpt-4o";
-    const customPrompt = config?.aiPromptTemplate || undefined;
+    
+    // ALWAYS use topic rotation for variety - ignore stored prompts
+    // Pass undefined for customPrompt to trigger topic rotation in openai.ts
 
     // Get recent facts to avoid duplicates
     let recentFacts: string[] = [];
@@ -1630,7 +1632,8 @@ export class BotWorker {
       // If we can't get recent facts, proceed without dedup
     }
 
-    return await generateSnappleFact(customPrompt, model, recentFacts);
+    // Pass undefined for customPrompt to use topic rotation
+    return await generateSnappleFact(undefined, model, recentFacts);
   }
 
   private async generateAndPostFact(

@@ -185,9 +185,9 @@ export class BotService {
   async generateFact(): Promise<string> {
     const settings = await storage.getBotSettings();
     const model = settings?.aiModel || "gpt-4o";
-    const customPrompt = settings?.aiPromptTemplate || undefined;
 
-    return await generateSnappleFact(customPrompt, model);
+    // ALWAYS use topic rotation for variety - ignore stored prompts
+    return await generateSnappleFact(undefined, model);
   }
 
   private async generateAndPostFact(
