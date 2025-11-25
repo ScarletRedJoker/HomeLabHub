@@ -168,6 +168,7 @@ export class BotWorker {
 
       // Connect Twitch client for posting
       let twitchConnection = await this.storage.getPlatformConnectionByPlatform("twitch");
+      console.log(`[BotWorker] Twitch connection status: ${twitchConnection ? `id=${twitchConnection.id}, isConnected=${twitchConnection.isConnected}, hasToken=${!!twitchConnection.accessToken}` : 'NOT FOUND'}`);
       if (twitchConnection?.isConnected) {
         console.log(`[BotWorker] Connecting Twitch for manual posting...`);
         try {
@@ -192,6 +193,7 @@ export class BotWorker {
 
       // Connect YouTube client for posting
       const youtubeConnection = await this.storage.getPlatformConnectionByPlatform("youtube");
+      console.log(`[BotWorker] YouTube connection status: ${youtubeConnection ? `id=${youtubeConnection.id}, isConnected=${youtubeConnection.isConnected}, hasToken=${!!youtubeConnection.accessToken}` : 'NOT FOUND'}`);
       if (youtubeConnection?.isConnected) {
         try {
           await this.startYouTubeClient(youtubeConnection, []);
@@ -204,6 +206,7 @@ export class BotWorker {
 
       // Connect Kick client for posting
       const kickConnection = await this.storage.getPlatformConnectionByPlatform("kick");
+      console.log(`[BotWorker] Kick connection status: ${kickConnection ? `id=${kickConnection.id}, isConnected=${kickConnection.isConnected}, hasToken=${!!kickConnection.accessToken}` : 'NOT FOUND'}`);
       if (kickConnection?.isConnected) {
         try {
           await this.startKickClient(kickConnection, []);
