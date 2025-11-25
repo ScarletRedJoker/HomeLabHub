@@ -477,6 +477,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Token Health Check - Check if tokens need re-authentication
+  app.get("/api/platforms/token-health", requireAuth, async (req, res) => {
+    try {
+      const platforms = await storage.getPlatformConnections(req.user!.id);
+      
+      const tokenHealth = platforms.map(p => {
+        const hasRefreshToken = !!p.refreshToken;
+        const tokenExpired = p.tokenExpiresAt ? new Date(p.tokenExpiresAt) < new Date() : false;
+        const tokenExpiringSoon = p.tokenExpiresAt 
+          ? new Date(p.tokenExpiresAt) < new Date(Date.now() + 24 * 60 * 60 * 1000) 
+          : false;
+        
+        let status: 'healthy' | 'needs_reauth' | 'expiring_soon' | 'expired' = 'healthy';
+        let message = 'Token is valid';
+        
+        if (!hasRefreshToken) {
+          status = 'needs_reauth';
+          message = 'No refresh token - please disconnect and reconnect to fix';
+        } else if (tokenExpired) {
+          status = 'expired';
+          message = 'Token has expired - will auto-refresh on next use';
+        } else if (tokenExpiringSoon) {
+          status = 'expiring_soon';
+          message = 'Token expires within 24 hours - will auto-refresh';
+        }
+        
+        return {
+          platform: p.platform,
+          platformUsername: p.platformUsername,
+          isConnected: p.isConnected,
+          hasRefreshToken,
+          tokenExpired,
+          tokenExpiringSoon,
+          tokenExpiresAt: p.tokenExpiresAt,
+          status,
+          message,
+          needsReauth: !hasRefreshToken,
+        };
+      });
+      
+      res.json({
+        success: true,
+        platforms: tokenHealth,
+        anyNeedsReauth: tokenHealth.some(t => t.needsReauth),
+      });
+    } catch (error: any) {
+      console.error('[Token Health] Error:', error.message);
+      res.status(500).json({ error: "Failed to check token health" });
+    }
+  });
+
   app.get("/api/platforms/:id", requireAuth, async (req, res) => {
     try {
       const platform = await storage.getPlatformConnection(req.user!.id, req.params.id);

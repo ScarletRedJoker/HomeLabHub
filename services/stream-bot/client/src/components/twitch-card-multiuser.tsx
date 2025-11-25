@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Twitch, CheckCircle2, XCircle } from "lucide-react";
+import { Twitch, CheckCircle2, XCircle, AlertTriangle, RefreshCw } from "lucide-react";
 import { useEffect } from "react";
 
 interface PlatformConnection {
@@ -14,6 +14,22 @@ interface PlatformConnection {
   platformUsername?: string;
   isConnected: boolean;
   lastConnectedAt?: string;
+}
+
+interface TokenHealthResponse {
+  success: boolean;
+  platforms: Array<{
+    platform: string;
+    platformUsername?: string;
+    isConnected: boolean;
+    hasRefreshToken: boolean;
+    tokenExpired: boolean;
+    tokenExpiringSoon: boolean;
+    status: 'healthy' | 'needs_reauth' | 'expiring_soon' | 'expired';
+    message: string;
+    needsReauth: boolean;
+  }>;
+  anyNeedsReauth: boolean;
 }
 
 export function TwitchCardMultiUser() {
@@ -42,11 +58,19 @@ export function TwitchCardMultiUser() {
   // Fetch all platform connections
   const { data: platforms, isLoading } = useQuery<PlatformConnection[]>({
     queryKey: ["/api/platforms"],
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 30000,
   });
 
-  // Find Twitch connection
+  // Fetch token health
+  const { data: tokenHealth } = useQuery<TokenHealthResponse>({
+    queryKey: ["/api/platforms/token-health"],
+    refetchInterval: 60000,
+  });
+
+  // Find Twitch connection and health
   const twitchConnection = platforms?.find(p => p.platform === 'twitch');
+  const twitchHealth = tokenHealth?.platforms?.find(p => p.platform === 'twitch');
+  const needsReauth = twitchHealth?.needsReauth || false;
 
   // Disconnect mutation
   const disconnect = useMutation({
@@ -55,6 +79,7 @@ export function TwitchCardMultiUser() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/platforms"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/platforms/token-health"] });
       toast({
         title: "Twitch Disconnected",
         description: "Your Twitch account has been disconnected.",
@@ -151,8 +176,35 @@ export function TwitchCardMultiUser() {
           </div>
         </div>
 
+        {/* Re-Authentication Warning */}
+        {twitchConnection?.isConnected && needsReauth && (
+          <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg space-y-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Re-authentication Required</p>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Your Twitch connection is missing a refresh token. This prevents the bot from maintaining your connection long-term.
+            </p>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => disconnect.mutate()}
+                disabled={disconnect.isPending}
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Disconnect & Reconnect
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Click "Disconnect & Reconnect", then click "Connect Twitch" to get a fresh connection with proper tokens.
+            </p>
+          </div>
+        )}
+
         {/* Connected Instructions */}
-        {twitchConnection?.isConnected && (
+        {twitchConnection?.isConnected && !needsReauth && (
           <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg space-y-2">
             <p className="text-sm font-medium">✅ Twitch Connected!</p>
             <p className="text-sm text-muted-foreground">

@@ -4,6 +4,9 @@
 The Nebula Command Dashboard is a web-based interface for managing a Ubuntu 25.10 server hosting 15 Docker-based services. These services are accessible via custom subdomains and include homelab management, Discord/Twitch bots, media streaming, remote desktop access, and home automation. The project aims to provide a centralized, robust, and secure platform for managing a comprehensive homelab environment, integrating various functionalities for personal and community use.
 
 ## Recent Changes (November 2024)
+- **Jarvis Control Plane API:** Created `/api/jarvis/control/*` endpoints for code-server AI integration - enables Jarvis to manage all homelab services via Continue.dev
+- **Code-Server AI Integration:** Updated Continue.dev config with GPT-4o, custom homelab commands (/homelab-fix, /homelab-review, /homelab-deploy), and Jarvis persona
+- **Docker Compose Mounts:** Added Continue config mount at `/config/.continue/config.json` for code-server
 - **Database Orchestration Engine:** Implemented proper database startup sequencing with wait-for-schema utilities, migration locking, and health checks
 - **PostgreSQL Init Scripts Consolidated:** Unified to single `00-init-all-databases.sh` that creates all 3 databases (streambot, homelab_jarvis, ticketbot)
 - **YouTube OAuth Fixed:** Resolved "missing code verifier" PKCE issue by removing conflicting passport routes

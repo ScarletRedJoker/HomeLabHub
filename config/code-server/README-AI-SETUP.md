@@ -1,6 +1,30 @@
-# Code-Server AI Extensions Setup Guide
+# Jarvis AI Setup for Code-Server
 
-This guide explains how to set up AI coding assistants in your code-server instance.
+This guide explains how to set up and use Jarvis AI in code-server at code.evindrake.net for managing the Nebula Command homelab.
+
+## Overview
+
+Code-server is configured with AI-powered coding assistance that acts as "Jarvis" for your homelab, helping you:
+- Fix issues in homelab services automatically
+- Review code for security and best practices
+- Generate deployment instructions
+- Manage all 15+ Docker services from VS Code
+
+## Quick Start with Jarvis
+
+1. **Open code-server** at https://code.evindrake.net
+2. **Press `Ctrl+L`** to open the AI chat
+3. **Ask Jarvis** anything about your homelab!
+
+### Jarvis Custom Commands
+
+| Command | What It Does |
+|---------|--------------|
+| `/homelab-fix` | Analyze and fix issues in service code |
+| `/homelab-review` | Review code for security & best practices |
+| `/homelab-deploy` | Generate deployment commands for a service |
+
+---
 
 ## Recommended AI Extensions
 

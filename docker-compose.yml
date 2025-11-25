@@ -398,7 +398,7 @@ services:
   #   ... (container disabled)
 
   # ============================================
-  # Code-Server (VS Code in Browser)
+  # Code-Server (VS Code in Browser) with Jarvis AI
   # ============================================
   code-server:
     image: lscr.io/linuxserver/code-server:latest
@@ -411,9 +411,14 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=America/New_York
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - JARVIS_API_URL=http://homelab-dashboard:5000/api/jarvis
+      - SERVICE_AUTH_TOKEN=${SERVICE_AUTH_TOKEN}
+      - HOMELAB_PROJECT_PATH=/config/workspace/HomeLabHub
     volumes:
       - code_server_data:/config
       - /home/${SERVICE_USER:-evin}/contain:/config/workspace
+      - ./config/code-server/continue-config.json:/config/.continue/config.json:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "-k", "https://localhost:8443/healthz"]
       interval: 30s
