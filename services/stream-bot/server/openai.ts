@@ -35,27 +35,68 @@ function isRateLimitError(error: any): boolean {
   );
 }
 
-const DEFAULT_PROMPT = `Generate a fun, interesting, and mind-blowing fact about life, the universe, science, history, nature, or weird phenomena. These should be surprising Snapple-style facts that make people say "wow, I didn't know that!" 
+// Topic categories for variety - rotates each call to avoid repetition
+const FACT_TOPICS = [
+  "space and astronomy (planets, stars, black holes, galaxies, astronauts)",
+  "ocean life and marine biology (deep sea creatures, coral reefs, whales, sharks)",
+  "ancient history and civilizations (Egypt, Rome, Mayans, Vikings, medieval times)",
+  "the human body and biology (organs, cells, brain, evolution, genetics)",
+  "food science and culinary facts (ingredients, cooking, nutrition, unusual foods)",
+  "world geography and natural wonders (mountains, deserts, islands, weather)",
+  "inventions and technology breakthroughs (who invented what, tech history)",
+  "music and art history (famous artists, instruments, paintings, sculptures)",
+  "mathematics and numbers (weird math facts, famous mathematicians, patterns)",
+  "weird laws and unusual traditions around the world",
+  "insects and small creatures (ants, bees, spiders, butterflies)",
+  "plants and trees (flowers, forests, carnivorous plants, weird botany)",
+  "birds and flight (exotic birds, migration, feathers, nests)",
+  "weather and natural disasters (tornadoes, lightning, volcanoes, earthquakes)",
+  "sports and Olympic history (records, unusual sports, athletes)",
+  "movies and entertainment industry (Hollywood, animation, special effects)",
+  "psychology and the human mind (dreams, emotions, perception, memory)",
+  "architecture and famous buildings (skyscrapers, bridges, ancient structures)",
+  "language and linguistics (word origins, alphabets, rare languages)",
+  "dinosaurs and prehistoric life (fossils, extinction, giant creatures)",
+];
 
-Topics to explore: space, animals, physics, human body, ancient civilizations, food science, geography, inventions, music, art, mathematics, weird laws, unusual traditions, or bizarre natural phenomena.
+// Track last used topic index to rotate
+let lastTopicIndex = -1;
 
-Keep it under 200 characters so it fits in a chat message. Just return the fact itself, no quotes or extra text.
+function getRotatingTopic(): string {
+  lastTopicIndex = (lastTopicIndex + 1) % FACT_TOPICS.length;
+  return FACT_TOPICS[lastTopicIndex];
+}
 
-Examples of good facts:
-- The first oranges weren't orange - they were green
-- A group of flamingos is called a "flamboyance"
-- Honey never spoils - 3000-year-old honey is still edible
-- Bananas are berries, but strawberries aren't
-- There are more stars in space than grains of sand on Earth
+function buildFactPrompt(recentFacts?: string[]): string {
+  const topic = getRotatingTopic();
+  
+  let avoidSection = "";
+  if (recentFacts && recentFacts.length > 0) {
+    avoidSection = `\n\nIMPORTANT: Do NOT generate facts similar to these recent ones:\n${recentFacts.slice(0, 5).map(f => `- ${f}`).join('\n')}\n`;
+  }
+  
+  return `Generate a surprising, mind-blowing fact specifically about: ${topic}
 
-Generate one completely unique and fascinating fact now:`;
+This should be a Snapple-style fact that makes people say "wow, I didn't know that!"
 
-export async function generateSnappleFact(customPrompt?: string, model?: string): Promise<string> {
+Rules:
+- Keep it under 200 characters
+- Just return the fact itself, no quotes or extra text
+- Make it genuinely surprising and memorable
+- Be specific and concrete (use numbers, names, or specific details)
+${avoidSection}
+Generate one unique and fascinating fact now:`;
+}
+
+const DEFAULT_PROMPT = buildFactPrompt();
+
+export async function generateSnappleFact(customPrompt?: string, model?: string, recentFacts?: string[]): Promise<string> {
   if (!isOpenAIEnabled || !openai) {
     throw new Error("AI features are not available. Please configure AI_INTEGRATIONS_OPENAI_API_KEY and AI_INTEGRATIONS_OPENAI_BASE_URL.");
   }
 
-  const prompt = customPrompt || DEFAULT_PROMPT;
+  // Use custom prompt if provided, otherwise build a rotating topic prompt
+  const prompt = customPrompt || buildFactPrompt(recentFacts);
 
   // Use configured model from environment
   const config = getOpenAIConfig();
@@ -73,7 +114,8 @@ export async function generateSnappleFact(customPrompt?: string, model?: string)
       const response = await openai.chat.completions.create({
         model: currentModel,
         messages: [{ role: "user", content: prompt }],
-        max_completion_tokens: 200, // Newer models require max_completion_tokens instead of max_tokens
+        max_completion_tokens: 200,
+        temperature: 1.1, // Slightly higher temperature for more variety
       });
       
       console.log("[OpenAI] Response received, choices:", response.choices?.length || 0);

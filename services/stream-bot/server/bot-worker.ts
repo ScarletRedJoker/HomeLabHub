@@ -1425,7 +1425,19 @@ export class BotWorker {
     const model = config?.aiModel || "gpt-4o";
     const customPrompt = config?.aiPromptTemplate || undefined;
 
-    return await generateSnappleFact(customPrompt, model);
+    // Get recent facts to avoid duplicates
+    let recentFacts: string[] = [];
+    try {
+      const messages = await this.storage.getRecentMessages(10);
+      recentFacts = messages
+        .filter(m => m.factContent)
+        .map(m => m.factContent as string)
+        .slice(0, 5);
+    } catch (e) {
+      // If we can't get recent facts, proceed without dedup
+    }
+
+    return await generateSnappleFact(customPrompt, model, recentFacts);
   }
 
   private async generateAndPostFact(
