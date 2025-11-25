@@ -132,8 +132,32 @@ export async function generateSnappleFact(customPrompt?: string, model?: string,
       }
       
       // Remove quotes if the AI wrapped the fact in them
-      const cleanedFact = fact.replace(/^["']|["']$/g, "");
-      console.log("[OpenAI] Final cleaned fact:", cleanedFact.substring(0, 100));
+      let cleanedFact = fact.replace(/^["']|["']$/g, "").trim();
+      
+      // HARD ENFORCEMENT: Truncate to 90 characters if too long
+      // Try to truncate at a sentence boundary if possible
+      if (cleanedFact.length > 90) {
+        console.log(`[OpenAI] Fact too long (${cleanedFact.length} chars), truncating to 90`);
+        
+        // Try to find a natural break point (period, exclamation, or question mark) within 90 chars
+        const truncated = cleanedFact.substring(0, 90);
+        const lastSentenceEnd = Math.max(
+          truncated.lastIndexOf('.'),
+          truncated.lastIndexOf('!'),
+          truncated.lastIndexOf('?')
+        );
+        
+        if (lastSentenceEnd > 50) {
+          // Found a good sentence boundary
+          cleanedFact = truncated.substring(0, lastSentenceEnd + 1);
+        } else {
+          // No good boundary, truncate at word boundary and add ellipsis
+          const lastSpace = truncated.substring(0, 87).lastIndexOf(' ');
+          cleanedFact = lastSpace > 50 ? truncated.substring(0, lastSpace) + '...' : truncated.substring(0, 87) + '...';
+        }
+      }
+      
+      console.log(`[OpenAI] Final fact (${cleanedFact.length} chars): ${cleanedFact}`);
       
       return cleanedFact;
     } catch (error: any) {
