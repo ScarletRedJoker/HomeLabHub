@@ -2,6 +2,7 @@
 import os
 import logging
 import tempfile
+import hashlib
 from uuid import uuid4
 from flask import Blueprint, request, jsonify, session, render_template
 from werkzeug.utils import secure_filename
@@ -14,6 +15,8 @@ from workers.plex_worker import process_import_job, cleanup_old_imports
 logger = logging.getLogger(__name__)
 
 plex_bp = Blueprint('plex', __name__)
+
+CHUNKED_UPLOADS = {}
 
 
 def login_required(f):
@@ -128,6 +131,302 @@ def import_media():
     except Exception as e:
         logger.error(f"Import error: {e}", exc_info=True)
         return jsonify({'error': f'Import failed: {str(e)}'}), 500
+
+
+@plex_bp.route('/api/plex/upload/config', methods=['GET'])
+@login_required
+def get_upload_config():
+    """
+    Get upload configuration for the frontend
+    
+    Returns:
+        JSON with upload limits and allowed extensions
+    """
+    return jsonify({
+        'success': True,
+        'max_file_size': Config.PLEX_MAX_UPLOAD_SIZE,
+        'max_file_size_gb': Config.PLEX_MAX_UPLOAD_SIZE / (1024 * 1024 * 1024),
+        'chunk_size': Config.PLEX_CHUNK_SIZE,
+        'allowed_extensions': list(Config.PLEX_ALLOWED_EXTENSIONS)
+    }), 200
+
+
+@plex_bp.route('/api/plex/upload/init', methods=['POST'])
+@login_required
+def init_chunked_upload():
+    """
+    Initialize a chunked upload session
+    
+    JSON body:
+        filename: Original filename
+        file_size: Total file size in bytes
+        media_type: Optional media type override
+    
+    Returns:
+        JSON with upload_id and job_id
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'JSON body required'}), 400
+        
+        filename = data.get('filename')
+        file_size = data.get('file_size')
+        media_type = data.get('media_type')
+        
+        if not filename:
+            return jsonify({'error': 'filename is required'}), 400
+        
+        if not file_size or file_size <= 0:
+            return jsonify({'error': 'valid file_size is required'}), 400
+        
+        # Validate the file
+        is_valid, error = plex_service.validate_media_file(filename, file_size)
+        if not is_valid:
+            return jsonify({'error': error}), 400
+        
+        user_id = session.get('username', 'unknown')
+        
+        # Create import job
+        job_type = media_type or plex_service.detect_media_type(filename)
+        job = plex_service.create_import_job(
+            user_id=user_id,
+            job_type=job_type,
+            metadata={'chunked_upload': True, 'manual_type': media_type}
+        )
+        
+        job_id = str(job.id)
+        upload_id = str(uuid4())
+        
+        # Calculate expected chunks
+        chunk_size = Config.PLEX_CHUNK_SIZE
+        total_chunks = (file_size + chunk_size - 1) // chunk_size
+        
+        # Create temp file for assembling chunks
+        os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
+        temp_path = os.path.join(Config.UPLOAD_FOLDER, f"chunked_{upload_id}")
+        
+        # Store upload session info
+        CHUNKED_UPLOADS[upload_id] = {
+            'job_id': job_id,
+            'filename': filename,
+            'file_size': file_size,
+            'media_type': media_type,
+            'temp_path': temp_path,
+            'chunk_size': chunk_size,
+            'total_chunks': total_chunks,
+            'received_chunks': set(),
+            'user_id': user_id
+        }
+        
+        logger.info(f"Initialized chunked upload {upload_id} for {filename} ({file_size} bytes, {total_chunks} chunks)")
+        
+        return jsonify({
+            'success': True,
+            'upload_id': upload_id,
+            'job_id': job_id,
+            'chunk_size': chunk_size,
+            'total_chunks': total_chunks
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error initializing chunked upload: {e}", exc_info=True)
+        return jsonify({'error': f'Failed to initialize upload: {str(e)}'}), 500
+
+
+@plex_bp.route('/api/plex/upload/chunk', methods=['POST'])
+@login_required
+def upload_chunk():
+    """
+    Upload a single chunk
+    
+    Form data:
+        upload_id: Upload session ID
+        chunk_index: Chunk index (0-based)
+        chunk: The chunk data
+    
+    Returns:
+        JSON with chunk upload status
+    """
+    try:
+        upload_id = request.form.get('upload_id')
+        chunk_index = request.form.get('chunk_index')
+        
+        if not upload_id or upload_id not in CHUNKED_UPLOADS:
+            return jsonify({'error': 'Invalid or expired upload_id'}), 400
+        
+        if chunk_index is None:
+            return jsonify({'error': 'chunk_index is required'}), 400
+        
+        chunk_index = int(chunk_index)
+        
+        if 'chunk' not in request.files:
+            return jsonify({'error': 'No chunk data provided'}), 400
+        
+        upload_info = CHUNKED_UPLOADS[upload_id]
+        
+        # Verify chunk index is valid
+        if chunk_index < 0 or chunk_index >= upload_info['total_chunks']:
+            return jsonify({'error': f'Invalid chunk index: {chunk_index}'}), 400
+        
+        # Skip if chunk already received
+        if chunk_index in upload_info['received_chunks']:
+            return jsonify({
+                'success': True,
+                'message': 'Chunk already received',
+                'chunk_index': chunk_index,
+                'received_chunks': len(upload_info['received_chunks']),
+                'total_chunks': upload_info['total_chunks']
+            }), 200
+        
+        chunk_file = request.files['chunk']
+        chunk_data = chunk_file.read()
+        
+        # Write chunk to temp file at correct offset
+        with open(upload_info['temp_path'], 'ab' if chunk_index > 0 and os.path.exists(upload_info['temp_path']) else 'wb') as f:
+            offset = chunk_index * upload_info['chunk_size']
+            f.seek(offset)
+            f.write(chunk_data)
+        
+        upload_info['received_chunks'].add(chunk_index)
+        
+        progress = len(upload_info['received_chunks']) / upload_info['total_chunks'] * 100
+        
+        logger.debug(f"Received chunk {chunk_index + 1}/{upload_info['total_chunks']} for upload {upload_id}")
+        
+        return jsonify({
+            'success': True,
+            'chunk_index': chunk_index,
+            'received_chunks': len(upload_info['received_chunks']),
+            'total_chunks': upload_info['total_chunks'],
+            'progress': progress
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error uploading chunk: {e}", exc_info=True)
+        return jsonify({'error': f'Chunk upload failed: {str(e)}'}), 500
+
+
+@plex_bp.route('/api/plex/upload/complete', methods=['POST'])
+@login_required
+def complete_chunked_upload():
+    """
+    Complete a chunked upload and trigger processing
+    
+    JSON body:
+        upload_id: Upload session ID
+    
+    Returns:
+        JSON with completion status
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'JSON body required'}), 400
+        
+        upload_id = data.get('upload_id')
+        
+        if not upload_id or upload_id not in CHUNKED_UPLOADS:
+            return jsonify({'error': 'Invalid or expired upload_id'}), 400
+        
+        upload_info = CHUNKED_UPLOADS[upload_id]
+        
+        # Verify all chunks received
+        missing_chunks = set(range(upload_info['total_chunks'])) - upload_info['received_chunks']
+        if missing_chunks:
+            return jsonify({
+                'error': 'Not all chunks received',
+                'missing_chunks': list(missing_chunks)
+            }), 400
+        
+        # Verify file size
+        if os.path.exists(upload_info['temp_path']):
+            actual_size = os.path.getsize(upload_info['temp_path'])
+            if actual_size != upload_info['file_size']:
+                logger.warning(f"File size mismatch: expected {upload_info['file_size']}, got {actual_size}")
+        
+        try:
+            # Upload the assembled file to MinIO
+            upload_result = plex_service.upload_media_file(
+                upload_info['temp_path'],
+                upload_info['filename'],
+                upload_info['job_id'],
+                media_type=upload_info['media_type']
+            )
+            
+            # Trigger async processing
+            process_import_job.delay(upload_info['job_id'])
+            
+            logger.info(f"Completed chunked upload {upload_id}, job {upload_info['job_id']}")
+            
+            return jsonify({
+                'success': True,
+                'message': 'Upload completed and processing started',
+                'job_id': upload_info['job_id'],
+                'item_id': upload_result['item_id'],
+                'metadata': upload_result['metadata']
+            }), 200
+            
+        finally:
+            # Cleanup temp file
+            if os.path.exists(upload_info['temp_path']):
+                os.remove(upload_info['temp_path'])
+            
+            # Remove upload session
+            del CHUNKED_UPLOADS[upload_id]
+        
+    except Exception as e:
+        logger.error(f"Error completing chunked upload: {e}", exc_info=True)
+        return jsonify({'error': f'Failed to complete upload: {str(e)}'}), 500
+
+
+@plex_bp.route('/api/plex/upload/cancel', methods=['POST'])
+@login_required
+def cancel_chunked_upload():
+    """
+    Cancel a chunked upload session
+    
+    JSON body:
+        upload_id: Upload session ID
+    
+    Returns:
+        JSON with cancellation status
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'JSON body required'}), 400
+        
+        upload_id = data.get('upload_id')
+        
+        if not upload_id or upload_id not in CHUNKED_UPLOADS:
+            return jsonify({'error': 'Invalid or expired upload_id'}), 400
+        
+        upload_info = CHUNKED_UPLOADS[upload_id]
+        
+        # Cleanup temp file
+        if os.path.exists(upload_info['temp_path']):
+            os.remove(upload_info['temp_path'])
+        
+        # Delete the import job if created
+        try:
+            plex_service.delete_import_job(upload_info['job_id'])
+        except Exception as e:
+            logger.warning(f"Failed to delete import job {upload_info['job_id']}: {e}")
+        
+        # Remove upload session
+        del CHUNKED_UPLOADS[upload_id]
+        
+        logger.info(f"Cancelled chunked upload {upload_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Upload cancelled'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error cancelling chunked upload: {e}", exc_info=True)
+        return jsonify({'error': f'Failed to cancel upload: {str(e)}'}), 500
 
 
 @plex_bp.route('/api/plex/jobs', methods=['GET'])

@@ -104,6 +104,18 @@ class Config:
     # Upload limits
     MAX_UPLOAD_SIZE = int(os.environ.get('MAX_UPLOAD_SIZE', 500 * 1024 * 1024))  # 500MB default
     ALLOWED_EXTENSIONS = os.environ.get('ALLOWED_EXTENSIONS', 'zip,tar,gz,html,css,js,py,php,java,go,rs,dockerfile,sh,bash').split(',')
+    
+    # Plex media upload limits (larger than standard uploads)
+    PLEX_MAX_UPLOAD_SIZE = int(os.environ.get('PLEX_MAX_UPLOAD_SIZE', 10 * 1024 * 1024 * 1024))  # 10GB default
+    PLEX_ALLOWED_EXTENSIONS = {
+        # Video formats
+        'mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm', 'm4v', 'mpg', 'mpeg', 'ts', 'm2ts',
+        # Audio formats
+        'mp3', 'flac', 'm4a', 'wav', 'aac', 'ogg', 'wma', 'aiff', 'ape',
+        # Subtitle formats
+        'srt', 'ass', 'ssa', 'sub', 'vtt'
+    }
+    PLEX_CHUNK_SIZE = int(os.environ.get('PLEX_CHUNK_SIZE', 10 * 1024 * 1024))  # 10MB chunks
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', '/tmp/jarvis_uploads')
     
     # Favicon settings

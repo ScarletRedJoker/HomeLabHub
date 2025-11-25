@@ -227,19 +227,58 @@
 
 <script>
 let selectedFiles = [];
+let uploadConfig = null;
+let currentUpload = null;
 
-// Initialize
+const CHUNKED_UPLOAD_THRESHOLD = 50 * 1024 * 1024;
+
+async function loadUploadConfig() {
+    try {
+        const response = await fetch('/api/plex/upload/config');
+        const data = await response.json();
+        if (data.success) {
+            uploadConfig = data;
+            console.log('Upload config loaded:', uploadConfig);
+        }
+    } catch (error) {
+        console.error('Failed to load upload config:', error);
+        uploadConfig = {
+            max_file_size: 10 * 1024 * 1024 * 1024,
+            chunk_size: 10 * 1024 * 1024,
+            allowed_extensions: ['mp4', 'mkv', 'avi', 'mov', 'mp3', 'flac']
+        };
+    }
+}
+
+function validateFile(file) {
+    if (!uploadConfig) {
+        return { valid: true, error: null };
+    }
+    
+    if (file.size > uploadConfig.max_file_size) {
+        const sizeGB = (file.size / (1024 * 1024 * 1024)).toFixed(2);
+        const maxGB = (uploadConfig.max_file_size / (1024 * 1024 * 1024)).toFixed(2);
+        return { valid: false, error: `File "${file.name}" is too large (${sizeGB}GB). Maximum size is ${maxGB}GB.` };
+    }
+    
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!uploadConfig.allowed_extensions.includes(ext)) {
+        return { valid: false, error: `File type ".${ext}" is not allowed. Allowed types: ${uploadConfig.allowed_extensions.join(', ')}` };
+    }
+    
+    return { valid: true, error: null };
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    loadUploadConfig();
     setupDropZone();
     setupFileInput();
     loadJobs();
     loadLibraries();
     
-    // Auto-refresh jobs every 10 seconds
     setInterval(refreshJobs, 10000);
 });
 
-// Drag and drop
 function setupDropZone() {
     const dropZone = document.getElementById('dropZone');
     
@@ -283,7 +322,23 @@ function setupFileInput() {
 }
 
 function handleFiles(files) {
-    selectedFiles = Array.from(files);
+    const validFiles = [];
+    const errors = [];
+    
+    Array.from(files).forEach(file => {
+        const validation = validateFile(file);
+        if (validation.valid) {
+            validFiles.push(file);
+        } else {
+            errors.push(validation.error);
+        }
+    });
+    
+    if (errors.length > 0) {
+        showToast('error', errors.join('\n'));
+    }
+    
+    selectedFiles = validFiles;
     displaySelectedFiles();
     document.getElementById('uploadBtn').disabled = selectedFiles.length === 0;
 }
@@ -303,11 +358,13 @@ function displaySelectedFiles() {
     selectedFiles.forEach((file, index) => {
         const item = document.createElement('div');
         item.className = 'list-group-item d-flex justify-content-between align-items-center';
+        const needsChunked = file.size > CHUNKED_UPLOAD_THRESHOLD;
         item.innerHTML = `
             <div>
                 <i class="bi bi-file-earmark-film me-2"></i>
                 <strong>${file.name}</strong>
                 <small class="text-muted ms-2">(${formatFileSize(file.size)})</small>
+                ${needsChunked ? '<span class="badge bg-info ms-2">Chunked</span>' : ''}
             </div>
             <button class="btn btn-sm btn-outline-danger" onclick="removeFile(${index})">
                 <i class="bi bi-x"></i>
@@ -323,52 +380,180 @@ function removeFile(index) {
     document.getElementById('uploadBtn').disabled = selectedFiles.length === 0;
 }
 
-// Upload
-document.getElementById('uploadBtn').addEventListener('click', function() {
-    if (selectedFiles.length === 0) return;
+async function uploadFileChunked(file, mediaType) {
+    const chunkSize = uploadConfig?.chunk_size || 10 * 1024 * 1024;
+    const totalChunks = Math.ceil(file.size / chunkSize);
     
+    const initResponse = await fetch('/api/plex/upload/init', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            filename: file.name,
+            file_size: file.size,
+            media_type: mediaType || null
+        })
+    });
+    
+    const initData = await initResponse.json();
+    if (!initData.success) {
+        throw new Error(initData.error || 'Failed to initialize upload');
+    }
+    
+    const uploadId = initData.upload_id;
+    currentUpload = { uploadId, cancelled: false };
+    
+    for (let i = 0; i < totalChunks; i++) {
+        if (currentUpload?.cancelled) {
+            await fetch('/api/plex/upload/cancel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ upload_id: uploadId })
+            });
+            throw new Error('Upload cancelled by user');
+        }
+        
+        const start = i * chunkSize;
+        const end = Math.min(start + chunkSize, file.size);
+        const chunk = file.slice(start, end);
+        
+        const formData = new FormData();
+        formData.append('upload_id', uploadId);
+        formData.append('chunk_index', i);
+        formData.append('chunk', chunk);
+        
+        const chunkResponse = await fetch('/api/plex/upload/chunk', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const chunkData = await chunkResponse.json();
+        if (!chunkData.success) {
+            throw new Error(chunkData.error || 'Chunk upload failed');
+        }
+        
+        const progress = ((i + 1) / totalChunks) * 100;
+        updateProgress(progress, `Uploading ${file.name}: ${i + 1}/${totalChunks} chunks`);
+    }
+    
+    const completeResponse = await fetch('/api/plex/upload/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ upload_id: uploadId })
+    });
+    
+    const completeData = await completeResponse.json();
+    if (!completeData.success) {
+        throw new Error(completeData.error || 'Failed to complete upload');
+    }
+    
+    currentUpload = null;
+    return completeData;
+}
+
+async function uploadFileStandard(file, mediaType) {
     const formData = new FormData();
-    selectedFiles.forEach(file => formData.append('files', file));
-    
-    const mediaType = document.getElementById('mediaTypeSelect').value;
+    formData.append('files', file);
     if (mediaType) {
         formData.append('media_type', mediaType);
     }
     
-    showProgress();
-    
-    fetch('/api/plex/import', {
+    const response = await fetch('/api/plex/import', {
         method: 'POST',
         body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
+    });
+    
+    return await response.json();
+}
+
+document.getElementById('uploadBtn').addEventListener('click', async function() {
+    if (selectedFiles.length === 0) return;
+    
+    const mediaType = document.getElementById('mediaTypeSelect').value;
+    showProgress();
+    
+    try {
+        const largeFiles = selectedFiles.filter(f => f.size > CHUNKED_UPLOAD_THRESHOLD);
+        const smallFiles = selectedFiles.filter(f => f.size <= CHUNKED_UPLOAD_THRESHOLD);
+        
+        let successCount = 0;
+        let errorCount = 0;
+        
+        for (const file of largeFiles) {
+            try {
+                updateProgress(0, `Starting upload: ${file.name}`);
+                await uploadFileChunked(file, mediaType);
+                successCount++;
+            } catch (error) {
+                console.error(`Failed to upload ${file.name}:`, error);
+                errorCount++;
+            }
+        }
+        
+        if (smallFiles.length > 0) {
+            updateProgress(50, `Uploading ${smallFiles.length} smaller files...`);
+            
+            const formData = new FormData();
+            smallFiles.forEach(file => formData.append('files', file));
+            if (mediaType) {
+                formData.append('media_type', mediaType);
+            }
+            
+            const response = await fetch('/api/plex/import', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                successCount += data.uploaded_files.filter(f => !f.error).length;
+                errorCount += data.uploaded_files.filter(f => f.error).length;
+            } else {
+                errorCount += smallFiles.length;
+            }
+        }
+        
         hideProgress();
         
-        if (data.success) {
-            showToast('success', `Import job created! Processing ${data.uploaded_files.length} files.`);
-            selectedFiles = [];
-            displaySelectedFiles();
-            document.getElementById('uploadBtn').disabled = true;
-            loadJobs();
-        } else {
-            showToast('error', data.error || 'Upload failed');
+        if (successCount > 0) {
+            showToast('success', `Successfully uploaded ${successCount} file(s)!`);
         }
-    })
-    .catch(error => {
+        if (errorCount > 0) {
+            showToast('error', `Failed to upload ${errorCount} file(s)`);
+        }
+        
+        selectedFiles = [];
+        displaySelectedFiles();
+        document.getElementById('uploadBtn').disabled = true;
+        loadJobs();
+        
+    } catch (error) {
         hideProgress();
         showToast('error', 'Upload failed: ' + error.message);
-    });
+    }
 });
+
+function updateProgress(percent, statusText) {
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const uploadStatus = document.getElementById('uploadStatus');
+    
+    progressBar.style.width = `${percent}%`;
+    progressText.textContent = `${Math.round(percent)}%`;
+    if (statusText) {
+        uploadStatus.textContent = statusText;
+    }
+}
 
 function showProgress() {
     document.getElementById('uploadProgress').style.display = 'block';
     document.getElementById('uploadBtn').disabled = true;
+    updateProgress(0, 'Preparing upload...');
 }
 
 function hideProgress() {
     document.getElementById('uploadProgress').style.display = 'none';
     document.getElementById('uploadBtn').disabled = selectedFiles.length === 0;
+    currentUpload = null;
 }
 
 // Load jobs

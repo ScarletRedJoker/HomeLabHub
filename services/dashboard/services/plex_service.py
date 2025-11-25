@@ -263,6 +263,35 @@ class PlexService:
             
             return item
     
+    def validate_media_file(self, filename: str, file_size: int) -> Tuple[bool, str]:
+        """
+        Validate media file for Plex import
+        
+        Args:
+            filename: Original filename
+            file_size: File size in bytes
+            
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        # Check extension
+        if '.' not in filename:
+            return False, "File has no extension"
+        
+        ext = filename.rsplit('.', 1)[1].lower()
+        
+        if ext not in Config.PLEX_ALLOWED_EXTENSIONS:
+            allowed = ', '.join(sorted(Config.PLEX_ALLOWED_EXTENSIONS))
+            return False, f"File type '.{ext}' is not allowed for Plex import. Allowed types: {allowed}"
+        
+        # Check file size
+        if file_size > Config.PLEX_MAX_UPLOAD_SIZE:
+            size_gb = file_size / (1024 * 1024 * 1024)
+            max_gb = Config.PLEX_MAX_UPLOAD_SIZE / (1024 * 1024 * 1024)
+            return False, f"File size ({size_gb:.2f}GB) exceeds maximum allowed size ({max_gb:.2f}GB)"
+        
+        return True, ""
+    
     def upload_media_file(
         self,
         file_path: str,
@@ -271,7 +300,7 @@ class PlexService:
         media_type: str = None
     ) -> Dict:
         """
-        Upload media file to MinIO
+        Upload media file to MinIO with Plex-specific validation
         
         Args:
             file_path: Local path to file
@@ -282,6 +311,13 @@ class PlexService:
         Returns:
             Upload information dictionary
         """
+        file_size = os.path.getsize(file_path)
+        
+        # Validate using Plex-specific rules
+        is_valid, error = self.validate_media_file(original_filename, file_size)
+        if not is_valid:
+            raise ValueError(error)
+        
         # Detect media type if not provided
         if not media_type:
             media_type = self.detect_media_type(original_filename)
@@ -294,26 +330,48 @@ class PlexService:
         else:
             metadata = {'type': media_type}
         
-        # Upload to MinIO
-        upload_info = upload_service.upload_file(
-            file_path,
-            original_filename,
-            bucket='artifacts',
-            object_name=f"plex-staging/{job_id}/{original_filename}"
-        )
+        # Sanitize filename
+        from werkzeug.utils import secure_filename
+        safe_filename = secure_filename(original_filename)
+        if not safe_filename:
+            safe_filename = f"media_file_{job_id[:8]}"
+        
+        # Upload to MinIO directly (bypassing standard file validator)
+        upload_service._ensure_initialized()
+        
+        object_name = f"plex-staging/{job_id}/{safe_filename}"
+        bucket = 'artifacts'
+        
+        try:
+            upload_service.minio_client.fput_object(
+                bucket,
+                object_name,
+                file_path
+            )
+            
+            logger.info(f"Uploaded Plex media file: {bucket}/{object_name} ({file_size} bytes)")
+            
+        except Exception as e:
+            logger.error(f"MinIO upload error: {e}")
+            raise RuntimeError(f"Failed to upload file to storage: {str(e)}")
         
         # Add to database
         item = self.add_import_item(
             job_id=job_id,
-            filename=upload_info['safe_filename'],
+            filename=safe_filename,
             original_filename=original_filename,
-            file_size=upload_info['file_size'],
-            storage_path=upload_info['storage_path'],
+            file_size=file_size,
+            storage_path=f"{bucket}/{object_name}",
             metadata=metadata
         )
         
         return {
-            **upload_info,
+            'bucket': bucket,
+            'object_name': object_name,
+            'original_filename': original_filename,
+            'safe_filename': safe_filename,
+            'file_size': file_size,
+            'storage_path': f"{bucket}/{object_name}",
             'item_id': str(item.id),
             'metadata': metadata,
             'media_type': media_type
@@ -338,7 +396,7 @@ class PlexService:
             if not item:
                 raise ValueError(f"Import item {item_id} not found")
             
-            metadata = item.metadata or {}
+            metadata = item.item_metadata or {}
             media_type = metadata.get('type', 'movie')
             
             # Get target directory
