@@ -125,6 +125,7 @@ router.get('/twitch', requireAuth, async (req, res) => {
       scope: TWITCH_SCOPES,
       code_challenge_method: 'S256',
       code_challenge: codeChallenge,
+      force_verify: 'true',
     });
 
     res.redirect(authUrl);
