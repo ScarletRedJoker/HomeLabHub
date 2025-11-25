@@ -206,22 +206,27 @@ export class BotManager {
 
   // Manual fact posting
   async postManualFact(userId: string, platforms: string[]): Promise<string | null> {
-    const worker = this.workers.get(userId);
+    let worker = this.workers.get(userId);
 
     if (!worker) {
-      // Start worker temporarily for manual post
-      await this.startUserBot(userId);
-      const newWorker = this.workers.get(userId);
-
-      if (!newWorker) {
-        throw new Error("Failed to start bot for manual posting");
-      }
-
+      // Create worker for manual post (doesn't require bot to be "active")
+      console.log(`[BotManager] Creating worker for manual fact post (user ${userId})`);
+      
+      const userStorage = createUserStorage(userId);
+      worker = new BotWorker(userId, userStorage, (event) => {
+        this.handleBotEvent(event);
+      });
+      
+      // Store worker
+      this.workers.set(userId, worker);
+      
+      // Start the worker to connect platforms
       try {
-        const fact = await newWorker.postManualFact(platforms);
-        return fact;
-      } finally {
-        // Don't stop the worker - let it continue running
+        await worker.startForManualPosting();
+      } catch (error) {
+        console.error(`[BotManager] Failed to start worker for manual posting:`, error);
+        this.workers.delete(userId);
+        throw error;
       }
     }
 

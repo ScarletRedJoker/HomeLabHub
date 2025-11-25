@@ -142,6 +142,59 @@ export class BotWorker {
     }
   }
 
+  // Lightweight start for manual fact posting - only connects platform clients
+  async startForManualPosting(): Promise<void> {
+    if (this.isRunning) return;
+
+    try {
+      // Get or create a minimal config
+      let config = await this.storage.getBotConfig();
+      if (!config) {
+        // Create minimal config for manual posting
+        config = {
+          isActive: false,
+          activePlatforms: [],
+          chatKeywords: [],
+          enableChatTriggers: false,
+        } as BotConfig;
+      }
+      this.config = config;
+      this.isRunning = true;
+
+      console.log(`[BotWorker] Starting for manual posting (user ${this.userId})`);
+
+      // Connect Twitch client for posting
+      const twitchConnection = await this.storage.getPlatformConnectionByPlatform("twitch");
+      if (twitchConnection?.isConnected) {
+        console.log(`[BotWorker] Connecting Twitch for manual posting...`);
+        await this.startTwitchClient(twitchConnection, [], false); // No chat triggers needed
+      }
+
+      // Connect YouTube client for posting
+      const youtubeConnection = await this.storage.getPlatformConnectionByPlatform("youtube");
+      if (youtubeConnection?.isConnected) {
+        await this.startYouTubeClient(youtubeConnection, []);
+      }
+
+      // Connect Kick client for posting
+      const kickConnection = await this.storage.getPlatformConnectionByPlatform("kick");
+      if (kickConnection?.isConnected) {
+        await this.startKickClient(kickConnection, []);
+      }
+
+      // Track active platforms
+      if (twitchConnection?.isConnected) this.activePlatforms.add("twitch");
+      if (youtubeConnection?.isConnected) this.activePlatforms.add("youtube");
+      if (kickConnection?.isConnected) this.activePlatforms.add("kick");
+
+      console.log(`[BotWorker] Ready for manual posting on platforms: ${Array.from(this.activePlatforms).join(", ")}`);
+    } catch (error) {
+      this.isRunning = false;
+      console.error(`[BotWorker] Failed to start for manual posting:`, error);
+      throw error;
+    }
+  }
+
   async stop(): Promise<void> {
     if (!this.isRunning) return;
 
