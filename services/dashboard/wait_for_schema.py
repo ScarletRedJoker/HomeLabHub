@@ -61,37 +61,94 @@ def wait_for_postgres(engine, timeout: int = 60) -> bool:
     return False
 
 
-def run_migrations():
-    """Run Alembic migrations."""
-    logger.info("Running database migrations...")
+def run_migrations(engine, max_retries: int = 3):
+    """
+    Run Alembic migrations with verification.
+    Retries if tables are not created after migration.
+    """
     import subprocess
     
-    try:
-        result = subprocess.run(
-            ['alembic', 'upgrade', 'head'],
-            cwd=os.path.dirname(__file__),
-            capture_output=True,
-            text=True,
-            timeout=120,
-            env={**os.environ, 'PYTHONPATH': os.path.dirname(__file__)}
-        )
+    for attempt in range(1, max_retries + 1):
+        logger.info(f"Running database migrations (attempt {attempt}/{max_retries})...")
         
-        if result.returncode == 0:
-            logger.info("✓ Migrations completed successfully")
-            if result.stdout:
-                for line in result.stdout.strip().split('\n')[-5:]:
-                    logger.info(f"  {line}")
-            return True
-        else:
-            logger.error(f"Migration failed: {result.stderr}")
-            return False
+        try:
+            # First check if alembic_version exists
+            with engine.connect() as conn:
+                result = conn.execute(text(
+                    "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
+                    "WHERE table_name = 'alembic_version')"
+                ))
+                has_alembic = result.scalar()
+                
+                if has_alembic:
+                    rev_result = conn.execute(text("SELECT version_num FROM alembic_version"))
+                    current_rev = rev_result.scalar()
+                    logger.info(f"Current alembic revision: {current_rev or 'None'}")
+                else:
+                    logger.info("No alembic_version table - fresh database")
             
-    except subprocess.TimeoutExpired:
-        logger.error("Migration timed out")
-        return False
-    except Exception as e:
-        logger.error(f"Migration error: {e}")
-        return False
+            # Run alembic upgrade head
+            result = subprocess.run(
+                ['alembic', 'upgrade', 'head'],
+                cwd=os.path.dirname(__file__),
+                capture_output=True,
+                text=True,
+                timeout=180,  # Increased timeout
+                env={**os.environ, 'PYTHONPATH': os.path.dirname(__file__)}
+            )
+            
+            # Log full output for debugging
+            if result.stdout:
+                for line in result.stdout.strip().split('\n'):
+                    logger.info(f"  [alembic] {line}")
+            if result.stderr:
+                for line in result.stderr.strip().split('\n'):
+                    if 'INFO' in line:
+                        logger.info(f"  [alembic] {line}")
+                    elif 'WARNING' in line or 'ERROR' in line:
+                        logger.warning(f"  [alembic] {line}")
+            
+            if result.returncode != 0:
+                logger.error(f"Migration failed with code {result.returncode}")
+                if attempt < max_retries:
+                    logger.info(f"Retrying in 5 seconds...")
+                    time.sleep(5)
+                    continue
+                return False
+            
+            # Verify tables were actually created
+            missing = check_tables(engine)
+            if not missing:
+                logger.info("✓ Migrations completed and all tables exist")
+                return True
+            else:
+                logger.warning(f"Migrations ran but tables still missing: {missing[:3]}...")
+                if attempt < max_retries:
+                    logger.info("Waiting 10s for migrations from other workers...")
+                    time.sleep(10)
+                    continue
+                    
+        except subprocess.TimeoutExpired:
+            logger.error("Migration timed out after 180s")
+            if attempt < max_retries:
+                time.sleep(5)
+                continue
+            return False
+        except Exception as e:
+            logger.error(f"Migration error: {e}")
+            if attempt < max_retries:
+                time.sleep(5)
+                continue
+            return False
+    
+    # After all retries, check if tables exist now (another worker may have created them)
+    missing = check_tables(engine)
+    if not missing:
+        logger.info("✓ Tables exist (created by another worker)")
+        return True
+    
+    logger.warning(f"Migrations completed but {len(missing)} tables missing after {max_retries} attempts")
+    return True  # Return true to let wait_for_schema handle the waiting
 
 
 def check_tables(engine) -> list:
@@ -106,9 +163,13 @@ def check_tables(engine) -> list:
         return REQUIRED_TABLES
 
 
-def wait_for_schema(timeout: int = 120) -> bool:
+def wait_for_schema(timeout: int = 180) -> bool:
     """
     Main entry point: wait for database and schema to be ready.
+    Waits for PostgreSQL, runs migrations, then verifies all required tables exist.
+    
+    If another worker (e.g., celery) is running migrations, this will wait
+    until those migrations complete.
     """
     db_url = get_database_url()
     if not db_url:
@@ -117,6 +178,7 @@ def wait_for_schema(timeout: int = 120) -> bool:
     logger.info("=" * 60)
     logger.info("DATABASE SCHEMA READINESS CHECK")
     logger.info("=" * 60)
+    logger.info(f"Timeout: {timeout}s")
 
     try:
         engine = create_engine(db_url, pool_pre_ping=True)
@@ -125,7 +187,7 @@ def wait_for_schema(timeout: int = 120) -> bool:
             return False
 
         if os.environ.get('RUN_MIGRATIONS', 'true').lower() == 'true':
-            if not run_migrations():
+            if not run_migrations(engine):
                 logger.warning("Migrations may have failed, checking tables anyway...")
 
         logger.info("Verifying schema...")
@@ -157,12 +219,18 @@ def wait_for_schema(timeout: int = 120) -> bool:
 
 
 if __name__ == '__main__':
-    timeout = int(os.environ.get('SCHEMA_WAIT_TIMEOUT', '120'))
+    timeout = int(os.environ.get('SCHEMA_WAIT_TIMEOUT', '180'))
     skip = os.environ.get('SKIP_MIGRATION_WAIT', 'false').lower() == 'true'
     
     if skip:
         logger.info("SKIP_MIGRATION_WAIT=true, skipping schema check")
         sys.exit(0)
+    
+    # Optional startup delay to let other services (like postgres) fully stabilize
+    startup_delay = int(os.environ.get('SCHEMA_STARTUP_DELAY', '0'))
+    if startup_delay > 0:
+        logger.info(f"Startup delay: {startup_delay}s")
+        time.sleep(startup_delay)
     
     success = wait_for_schema(timeout=timeout)
     sys.exit(0 if success else 1)

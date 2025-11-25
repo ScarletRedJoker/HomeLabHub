@@ -23,7 +23,7 @@ echo "  Database Orchestration (wait_for_schema.py)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 RUN_MIGRATIONS=${RUN_MIGRATIONS:-true}
-SCHEMA_WAIT_TIMEOUT=${SCHEMA_WAIT_TIMEOUT:-120}
+SCHEMA_WAIT_TIMEOUT=${SCHEMA_WAIT_TIMEOUT:-180}
 
 # Run the wait_for_schema utility - this handles:
 # 1. Waiting for PostgreSQL to be ready
