@@ -72,20 +72,23 @@ function buildFactPrompt(recentFacts?: string[]): string {
   
   let avoidSection = "";
   if (recentFacts && recentFacts.length > 0) {
-    avoidSection = `\n\nIMPORTANT: Do NOT generate facts similar to these recent ones:\n${recentFacts.slice(0, 5).map(f => `- ${f}`).join('\n')}\n`;
+    avoidSection = `\nAvoid these recent facts:\n${recentFacts.slice(0, 3).map(f => `- ${f.substring(0, 50)}`).join('\n')}\n`;
   }
   
-  return `Generate a surprising, mind-blowing fact specifically about: ${topic}
+  return `Write a single Snapple cap fact about: ${topic}
 
-This should be a Snapple-style fact that makes people say "wow, I didn't know that!"
-
-Rules:
-- Keep it under 200 characters
-- Just return the fact itself, no quotes or extra text
-- Make it genuinely surprising and memorable
-- Be specific and concrete (use numbers, names, or specific details)
+STRICT RULES:
+- MUST be under 90 characters total
+- Short, punchy, one sentence
+- No intro phrases like "Did you know" or "Fun fact:"
+- Just state the fact directly
 ${avoidSection}
-Generate one unique and fascinating fact now:`;
+Examples of good short facts:
+- "A group of flamingos is called a flamboyance."
+- "Honey never spoils."
+- "Octopuses have three hearts."
+
+Your fact (under 90 chars):`;
 }
 
 const DEFAULT_PROMPT = buildFactPrompt();
@@ -114,8 +117,8 @@ export async function generateSnappleFact(customPrompt?: string, model?: string,
       const response = await openai.chat.completions.create({
         model: currentModel,
         messages: [{ role: "user", content: prompt }],
-        max_completion_tokens: 200,
-        temperature: 1.1, // Slightly higher temperature for more variety
+        max_completion_tokens: 60,
+        temperature: 0.9,
       });
       
       console.log("[OpenAI] Response received, choices:", response.choices?.length || 0);
