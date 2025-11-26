@@ -3,7 +3,7 @@ import * as cron from "node-cron";
 import { createClient } from "@retconned/kick-js";
 import { UserStorage } from "./user-storage";
 import { generateSnappleFact } from "./openai";
-import { sendYouTubeChatMessage, getActiveYouTubeLivestream } from "./youtube-client";
+import { sendYouTubeChatMessageForUser, getActiveYouTubeLivestreamForUser } from "./youtube-client";
 import { parseCommandVariables, type CommandContext } from "./command-variables";
 import { moderationService } from "./moderation-service";
 import { giveawayService } from "./giveaway-service";
@@ -417,7 +417,7 @@ export class BotWorker {
       } else if (platform === "youtube" && this.youtubeActiveLiveChatId) {
         if (action === "warn") {
           const warningMessage = `@${username}, please follow chat rules. ${reason || "Your message violated moderation rules."}`;
-          await sendYouTubeChatMessage(this.youtubeActiveLiveChatId, warningMessage);
+          await sendYouTubeChatMessageForUser(this.userId, this.youtubeActiveLiveChatId, warningMessage);
         }
         // Note: YouTube Live Chat API doesn't support direct timeout/ban actions
         // These would need to be handled via YouTube Studio API or manually
@@ -1414,8 +1414,8 @@ export class BotWorker {
 
   private async startYouTubeClient(connection: PlatformConnection, keywords: string[]) {
     try {
-      // Get active livestream and chat ID
-      const livestream = await getActiveYouTubeLivestream();
+      // Get active livestream and chat ID for THIS user
+      const livestream = await getActiveYouTubeLivestreamForUser(this.userId);
       if (livestream?.liveChatId) {
         this.youtubeActiveLiveChatId = livestream.liveChatId;
         console.log(`[BotWorker] YouTube bot ready for user ${this.userId} (Chat ID: ${this.youtubeActiveLiveChatId})`);
@@ -1753,7 +1753,7 @@ export class BotWorker {
 
       case "youtube":
         if (this.youtubeActiveLiveChatId) {
-          await sendYouTubeChatMessage(this.youtubeActiveLiveChatId, message);
+          await sendYouTubeChatMessageForUser(this.userId, this.youtubeActiveLiveChatId, message);
         } else {
           throw new Error("YouTube live chat not available (no active livestream)");
         }
