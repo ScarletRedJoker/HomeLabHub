@@ -173,18 +173,18 @@ code.evindrake.net {
         header_up Upgrade {http.request.header.Upgrade}
         header_up Connection {http.request.header.Connection}
         
-        # CRITICAL: Remove upstream X-Frame-Options header
+        # Remove ALL restrictive headers from code-server
+        header_down -x-frame-options
         header_down -X-Frame-Options
+        header_down -content-security-policy
         header_down -Content-Security-Policy
     }
     
-    # Add our own security headers AFTER reverse_proxy removes upstream headers
-    header {
-        X-Frame-Options "SAMEORIGIN"
-        X-Content-Type-Options "nosniff"
-        Referrer-Policy "same-origin"
-        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-    }
+    # Use deferred header setting with > prefix
+    header >X-Frame-Options "SAMEORIGIN"
+    header >X-Content-Type-Options "nosniff"
+    header >Referrer-Policy "same-origin"
+    header >Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
 }
 
 # ============================================
