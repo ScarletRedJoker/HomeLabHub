@@ -280,19 +280,33 @@ class NASService:
             Dictionary with folders, files, and path info
         """
         try:
+            path = path.strip() if path else ''
+            path = path.lstrip('/')
+            
+            if '..' in path.split(os.sep) or '..' in path.split('/'):
+                logger.warning(f"Path traversal attempt blocked: {path}")
+                return {
+                    'success': False,
+                    'error': 'Access denied: path traversal not allowed'
+                }
+            
             full_path = os.path.join(self.mount_base, path) if path else self.mount_base
+            
+            real_mount_base = os.path.realpath(self.mount_base)
+            real_full_path = os.path.realpath(full_path)
+            
+            if not real_full_path.startswith(real_mount_base):
+                logger.warning(f"Path traversal attempt blocked via symlink: {path} -> {real_full_path}")
+                return {
+                    'success': False,
+                    'error': 'Access denied: path traversal not allowed'
+                }
             
             if not os.path.exists(full_path):
                 return {
                     'success': False,
                     'error': f'Path does not exist: {path}',
                     'mounted': False
-                }
-            
-            if not full_path.startswith(self.mount_base):
-                return {
-                    'success': False,
-                    'error': 'Access denied: path traversal not allowed'
                 }
             
             folders = []
@@ -470,9 +484,22 @@ class NASService:
                     'error': f'Source file not found: {source_path}'
                 }
             
+            dest_folder = dest_folder.strip().lstrip('/') if dest_folder else ''
+            
+            if '..' in dest_folder.split(os.sep) or '..' in dest_folder.split('/'):
+                logger.warning(f"Path traversal attempt in copy_to_nas blocked: {dest_folder}")
+                return {
+                    'success': False,
+                    'error': 'Invalid destination path: path traversal not allowed'
+                }
+            
             dest_dir = os.path.join(self.mount_base, dest_folder)
             
-            if not dest_dir.startswith(self.mount_base):
+            real_mount_base = os.path.realpath(self.mount_base)
+            real_dest_dir = os.path.realpath(dest_dir) if os.path.exists(dest_dir) else os.path.realpath(os.path.dirname(dest_dir))
+            
+            if not real_dest_dir.startswith(real_mount_base) and not dest_dir.startswith(self.mount_base):
+                logger.warning(f"Path traversal attempt in copy_to_nas blocked: {dest_folder}")
                 return {
                     'success': False,
                     'error': 'Invalid destination path'
