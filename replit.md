@@ -3,15 +3,24 @@
 ## Overview
 The Nebula Command Dashboard is a web-based interface for managing a Ubuntu 25.10 server hosting 15 Docker-based services. These services are accessible via custom subdomains and include homelab management, Discord/Twitch bots, media streaming, remote desktop access, and home automation. The project aims to provide a centralized, robust, and secure platform for managing a comprehensive homelab environment, integrating various functionalities for personal and community use.
 
-## Recent Changes (November 2024)
-- **Jarvis Control Plane API:** Created `/api/jarvis/control/*` endpoints for code-server AI integration - enables Jarvis to manage all homelab services via Continue.dev
-- **Code-Server AI Integration:** Updated Continue.dev config with GPT-4o, custom homelab commands (/homelab-fix, /homelab-review, /homelab-deploy), and Jarvis persona
-- **Docker Compose Mounts:** Added Continue config mount at `/config/.continue/config.json` for code-server
-- **Database Orchestration Engine:** Implemented proper database startup sequencing with wait-for-schema utilities, migration locking, and health checks
-- **PostgreSQL Init Scripts Consolidated:** Unified to single `00-init-all-databases.sh` that creates all 3 databases (streambot, homelab_jarvis, ticketbot)
-- **YouTube OAuth Fixed:** Resolved "missing code verifier" PKCE issue by removing conflicting passport routes
+## Recent Changes (November 2025)
+- **Stream-bot OAuth Complete:** All platforms (Twitch, YouTube, Spotify, Kick) properly store refresh tokens with encrypted storage, token health endpoint, and warning banners for legacy connections
+- **Fact Length Enforcement:** Hard enforcement of 90-character limit for Snapple facts with smart truncation at sentence boundaries
+- **Token Refresh Service:** Added public isRunning() method for health checks, runs every 30 minutes to auto-refresh expiring tokens
+- **Plex Media Import:** Fixed chunked upload bug (file pre-allocation with seek), added 'plex-media' MinIO bucket, SHA256 checksum verification, retry logic with exponential backoff
+- **Discord-bot Verified:** All 15 slash commands registered globally, health check fixed, background jobs running (ticket reconciliation every 15min, auto-close hourly)
+- **Dashboard API Fixed:** SQLAlchemy 2.0 compatibility, CSRF exemptions for API blueprints, all core endpoints returning 200
+- **Static Sites Ready:** rig-city.com and scarletredjoker.com configured with Caddy SSL
+- **VNC Access Configured:** vnc.evindrake.net routing to host port 6080 with WebSocket support
+
+## Previous Changes (November 2024)
+- **Jarvis Control Plane API:** Created `/api/jarvis/control/*` endpoints for code-server AI integration
+- **Code-Server AI Integration:** Updated Continue.dev config with GPT-4o and custom homelab commands
+- **Docker Compose Mounts:** Added Continue config mount at `/config/.continue/config.json`
+- **Database Orchestration Engine:** Proper database startup sequencing with wait-for-schema utilities
+- **PostgreSQL Init Scripts Consolidated:** Single `00-init-all-databases.sh` for all 3 databases
+- **YouTube OAuth Fixed:** Resolved "missing code verifier" PKCE issue
 - **n8n Security:** Added basic auth requirement for production
-- **Integration Status Document:** Created `INTEGRATION_STATUS.md` with full feasibility assessment
 
 ## User Preferences
 - User: Evin
