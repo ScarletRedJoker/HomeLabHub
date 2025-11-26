@@ -201,13 +201,15 @@ code.evindrake.net {
         header_up Connection {http.request.header.Connection}
     }
     
-    # Enhanced security headers (but don't break WebSocket upgrade)
+    # Security headers optimized for code-server
+    # Note: X-Frame-Options must be SAMEORIGIN for VS Code extension host iframes to work
     header {
         X-Content-Type-Options "nosniff"
-        X-Frame-Options "DENY"
+        X-Frame-Options "SAMEORIGIN"
         X-XSS-Protection "1; mode=block"
-        Referrer-Policy "no-referrer"
+        Referrer-Policy "same-origin"
         Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        -Content-Security-Policy
     }
 }
 

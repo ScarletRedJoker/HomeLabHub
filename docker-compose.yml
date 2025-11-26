@@ -428,10 +428,14 @@ services:
       - JARVIS_API_URL=http://homelab-dashboard:5000/api/jarvis
       - SERVICE_AUTH_TOKEN=${SERVICE_AUTH_TOKEN}
       - HOMELAB_PROJECT_PATH=/config/workspace/HomeLabHub
+      - CS_DISABLE_GETTING_STARTED_OVERRIDE=true
+      - CS_DISABLE_TELEMETRY=true
     volumes:
       - code_server_data:/config
       - /home/${SERVICE_USER:-evin}/contain:/config/workspace
       - ./config/code-server/continue-config.json:/config/.continue/config.json:ro
+      - ./config/code-server/settings.json:/config/data/User/settings.json:ro
+      - ./config/code-server/extensions.json:/config/.local/share/code-server/extensions/.obsolete:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "-k", "https://localhost:8443/healthz"]
       interval: 30s
