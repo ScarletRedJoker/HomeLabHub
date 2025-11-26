@@ -681,6 +681,28 @@ def trigger_scan():
         return jsonify({'error': str(e)}), 500
 
 
+@plex_bp.route('/api/plex/status', methods=['GET'])
+@login_required
+def get_plex_status():
+    """
+    Get Plex connection status
+    
+    Returns:
+        JSON with connection status and server info
+    """
+    try:
+        status = plex_service.test_connection()
+        
+        return jsonify({
+            'success': status.get('connected', False),
+            **status
+        }), 200 if status.get('connected') else 503
+    
+    except Exception as e:
+        logger.error(f"Error checking Plex status: {e}", exc_info=True)
+        return jsonify({'error': str(e), 'connected': False}), 500
+
+
 @plex_bp.route('/api/plex/libraries', methods=['GET'])
 @login_required
 def get_libraries():

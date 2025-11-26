@@ -104,6 +104,62 @@ class PlexService:
             self.tv_path = '/media/TV Shows'
             self.music_path = '/media/Music'
     
+    def test_connection(self) -> Dict[str, Any]:
+        """
+        Test connection to Plex server.
+        
+        Returns:
+            Dictionary with connection status and server info
+        """
+        if not self.is_configured:
+            return {
+                'connected': False,
+                'error': 'Plex not configured. PLEX_URL and PLEX_TOKEN are required.',
+                'url': None,
+                'is_internal': False
+            }
+        
+        try:
+            url = f"{self.plex_url}/identity"
+            headers = {'Accept': 'application/json'}
+            if self.plex_token:
+                headers['X-Plex-Token'] = self.plex_token
+            
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            container = data.get('MediaContainer', {})
+            
+            return {
+                'connected': True,
+                'claimed': container.get('claimed') == '1',
+                'machine_identifier': container.get('machineIdentifier'),
+                'version': container.get('version'),
+                'url': self.plex_url,
+                'is_internal': self.is_internal
+            }
+            
+        except requests.RequestException as e:
+            error_msg = str(e)
+            if self.plex_token and self.plex_token in error_msg:
+                error_msg = error_msg.replace(self.plex_token, "[REDACTED]")
+            logger.error(f"Plex connection test failed: {error_msg}")
+            return {
+                'connected': False,
+                'error': error_msg,
+                'url': self.plex_url,
+                'is_internal': self.is_internal
+            }
+        except Exception as e:
+            logger.error(f"Plex connection test error: {e}")
+            return {
+                'connected': False,
+                'error': str(e),
+                'url': self.plex_url,
+                'is_internal': self.is_internal
+            }
+    
     def detect_media_type(self, filename: str) -> str:
         """
         Detect media type from filename
@@ -504,6 +560,20 @@ class PlexService:
                 if os.path.exists(temp_path):
                     os.remove(temp_path)
     
+    def _get_plex_headers(self) -> Dict[str, str]:
+        """
+        Get standard headers for Plex API requests.
+        
+        Plex returns XML by default - we need Accept: application/json for JSON responses.
+        
+        Returns:
+            Dictionary of headers
+        """
+        return {
+            'Accept': 'application/json',
+            'X-Plex-Token': self.plex_token or '',
+        }
+    
     def trigger_library_scan(self, library_type: Optional[str] = None) -> Dict[str, Any]:
         """
         Trigger Plex library scan
@@ -518,9 +588,10 @@ class PlexService:
             raise ValueError("PLEX_TOKEN not configured")
         
         try:
-            # Get all libraries
-            libraries_url = f"{self.plex_url}/library/sections?X-Plex-Token={self.plex_token}"
-            response = requests.get(libraries_url, timeout=10)
+            # Get all libraries with JSON headers
+            libraries_url = f"{self.plex_url}/library/sections"
+            headers = self._get_plex_headers()
+            response = requests.get(libraries_url, headers=headers, timeout=10)
             response.raise_for_status()
             
             libraries_data = response.json()
@@ -537,8 +608,8 @@ class PlexService:
                     continue
                 
                 # Trigger scan
-                scan_url = f"{self.plex_url}/library/sections/{lib_key}/refresh?X-Plex-Token={self.plex_token}"
-                scan_response = requests.get(scan_url, timeout=10)
+                scan_url = f"{self.plex_url}/library/sections/{lib_key}/refresh"
+                scan_response = requests.get(scan_url, headers=headers, timeout=10)
                 scan_response.raise_for_status()
                 
                 scanned_libraries.append({
@@ -573,8 +644,9 @@ class PlexService:
             raise ValueError("PLEX_TOKEN not configured")
         
         try:
-            url = f"{self.plex_url}/library/sections?X-Plex-Token={self.plex_token}"
-            response = requests.get(url, timeout=10)
+            url = f"{self.plex_url}/library/sections"
+            headers = self._get_plex_headers()
+            response = requests.get(url, headers=headers, timeout=10)
             response.raise_for_status()
             
             data = response.json()
