@@ -11,7 +11,7 @@
   "editor.bracketPairColorization.enabled": true,
   "editor.guides.bracketPairs": true,
   "editor.suggest.snippetsPreventQuickSuggestions": false,
-  "editor.inlineSuggest.enabled": true,
+  "editor.inlineSuggest.enabled": false,
   "files.autoSave": "afterDelay",
   "files.autoSaveDelay": 1000,
   "files.trimTrailingWhitespace": true,
@@ -50,10 +50,13 @@
     "*": false
   },
   "github.copilot.chat.enabled": false,
+  "github.copilot.editor.enableAutoCompletions": false,
   "chat.commandCenter.enabled": false,
   "chat.editor.enabled": false,
-  "codeium.enableCodeLens": true,
-  "codeium.enableSearch": true,
+  "chat.experimental.detectParticipant.enabled": false,
+  "inlineChat.mode": "disabled",
+  "workbench.panel.chat.defaultLocation": "hidden",
+  "workbench.activityBar.visible": true,
   "continue.telemetryEnabled": false,
   "continue.enableTabAutocomplete": true
 }

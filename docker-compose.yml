@@ -434,10 +434,11 @@ services:
       - code_server_data:/config
       - /home/${SERVICE_USER:-evin}/contain:/config/workspace
       - ./config/code-server/continue-config.json:/config/.continue/config.json:ro
-      - ./config/code-server/settings.json:/config/data/User/settings.json:ro
-      - ./config/code-server/extensions.json:/config/.local/share/code-server/extensions/.obsolete:ro
+      - ./config/code-server/settings.json:/config/data/User/settings.json
+      - ./config/code-server/config.yaml:/config/.config/code-server/config.yaml:ro
+      - ./config/code-server/custom-init.sh:/custom-cont-init.d/99-jarvis-init.sh:ro
     healthcheck:
-      test: ["CMD", "curl", "-f", "-k", "https://localhost:8443/healthz"]
+      test: ["CMD", "curl", "-f", "http://localhost:8443/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
