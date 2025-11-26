@@ -12343,3 +12343,127 @@ a {
 .gallery-item:not(:hover) {
     will-change: auto;
 }
+
+/* ========================================
+   ACCESSIBILITY & SKIP LINK STYLES
+   November 2025
+   ======================================== */
+
+.skip-link {
+    position: absolute;
+    top: -100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bs-primary);
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 0 0 8px 8px;
+    z-index: 9999;
+    text-decoration: none;
+    font-weight: 600;
+    transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+    top: 0;
+    outline: 3px solid #00ff88;
+    outline-offset: 2px;
+}
+
+.visually-hidden-focusable:not(:focus):not(:focus-within) {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+a:focus-visible,
+button:focus-visible,
+[tabindex]:focus-visible {
+    outline: 3px solid #00ff88;
+    outline-offset: 2px;
+}
+
+.nav-link:focus-visible {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+.btn:focus-visible {
+    outline: 3px solid #00ff88;
+    outline-offset: 3px;
+    box-shadow: 0 0 0 4px rgba(0, 255, 136, 0.3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    
+    .page-content,
+    .card-body,
+    .row > .col-md-4 {
+        animation: none !important;
+    }
+}
+
+@media (min-width: 320px) {
+    .container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .navbar-brand {
+        font-size: 1.1rem;
+    }
+    
+    .terminal {
+        font-size: 0.9rem;
+        padding: 1rem;
+    }
+    
+    .card-title {
+        font-size: 1.25rem;
+    }
+    
+    .display-4 {
+        font-size: 1.75rem;
+    }
+    
+    h1, .h1 {
+        font-size: 1.5rem;
+    }
+    
+    .w3-quarter {
+        width: 50%;
+        display: inline-block;
+        margin-bottom: 1rem;
+    }
+}
+
+.gallery-item:focus-within {
+    outline: 3px solid var(--bs-primary);
+    outline-offset: 2px;
+}
+
+.gallery-item img {
+    cursor: pointer;
+}
+
+.gallery-item img:focus {
+    outline: 3px solid #00ff88;
+    outline-offset: 2px;
+}

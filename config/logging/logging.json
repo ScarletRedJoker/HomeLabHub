@@ -1,0 +1,96 @@
+{
+  "_description": "Structured Logging Configuration for Homelab Services",
+  "_version": "1.0.0",
+  "_updated": "2025-11-26",
+  
+  "defaults": {
+    "format": "json",
+    "level": "INFO",
+    "include_timestamp": true,
+    "include_hostname": true,
+    "include_service": true,
+    "rotation": {
+      "max_size_mb": 100,
+      "max_files": 10,
+      "compress": true
+    }
+  },
+  
+  "services": {
+    "homelab-dashboard": {
+      "level": "INFO",
+      "log_file": "/app/logs/dashboard.log",
+      "json_format": true,
+      "fields": {
+        "service": "homelab-dashboard",
+        "component": "flask"
+      }
+    },
+    "homelab-celery-worker": {
+      "level": "INFO",
+      "log_file": "/app/logs/celery.log",
+      "json_format": true,
+      "fields": {
+        "service": "homelab-celery-worker",
+        "component": "celery"
+      }
+    },
+    "discord-bot": {
+      "level": "INFO",
+      "log_file": "/app/logs/discord-bot.log",
+      "json_format": true,
+      "fields": {
+        "service": "discord-bot",
+        "component": "nodejs"
+      }
+    },
+    "stream-bot": {
+      "level": "INFO",
+      "log_file": "/app/logs/stream-bot.log",
+      "json_format": true,
+      "fields": {
+        "service": "stream-bot",
+        "component": "nodejs"
+      }
+    },
+    "caddy": {
+      "level": "INFO",
+      "json_format": true,
+      "fields": {
+        "service": "caddy",
+        "component": "proxy"
+      }
+    },
+    "homelab-postgres": {
+      "level": "INFO",
+      "fields": {
+        "service": "homelab-postgres",
+        "component": "database"
+      }
+    },
+    "homelab-redis": {
+      "level": "INFO",
+      "fields": {
+        "service": "homelab-redis",
+        "component": "cache"
+      }
+    }
+  },
+  
+  "aggregation": {
+    "enabled": true,
+    "directory": "/var/log/homelab",
+    "combined_log": "combined.log",
+    "error_log": "errors.log",
+    "access_log": "access.log"
+  },
+  
+  "json_schema": {
+    "timestamp": "ISO8601",
+    "level": "string",
+    "service": "string",
+    "component": "string",
+    "message": "string",
+    "extra": "object"
+  }
+}

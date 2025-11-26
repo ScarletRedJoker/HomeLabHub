@@ -30,6 +30,32 @@ echo "  HOMELAB BOOTSTRAP - Enhanced Edition"
 echo "════════════════════════════════════════════════════════════════"
 echo -e "${NC}"
 
+# ============================================================================
+# RUN DEPENDENCY CHECK FIRST
+# ============================================================================
+if [ -f "$PROJECT_ROOT/check-dependencies.sh" ]; then
+    echo -e "${BLUE}Running dependency check...${NC}"
+    echo ""
+    
+    if ! "$PROJECT_ROOT/check-dependencies.sh" --quiet 2>/dev/null; then
+        echo ""
+        echo -e "${YELLOW}⚠ Dependency issues detected. Running full check...${NC}"
+        echo ""
+        "$PROJECT_ROOT/check-dependencies.sh"
+        echo ""
+        read -p "Continue with bootstrap anyway? (y/N): " confirm
+        if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+            echo "Bootstrap cancelled. Please fix dependencies first."
+            exit 1
+        fi
+    else
+        echo -e "${GREEN}✓ All dependencies satisfied${NC}"
+        echo ""
+    fi
+else
+    echo -e "${YELLOW}⚠ check-dependencies.sh not found, skipping dependency check${NC}"
+fi
+
 # State tracking for rollback
 DEPLOYMENT_STATE_FILE="$PROJECT_ROOT/var/state/deployment.state"
 ROLLBACK_BACKUP="$PROJECT_ROOT/var/backups/databases/pre-bootstrap-$(date +%Y%m%d-%H%M%S).sql"

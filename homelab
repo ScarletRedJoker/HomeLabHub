@@ -184,21 +184,101 @@ status() {
 }
 
 # ============================================
-# LOGS COMMAND with Auto-Save
+# LOGS COMMAND with Auto-Save and JSON Support
 # ============================================
 logs() {
     mkdir -p "$PROJECT_ROOT/logs"
     local timestamp=$(date +%Y%m%d-%H%M%S)
+    local json_mode=false
+    local service=""
+    local tail_lines=100
     
-    # Phase 2: Works with both modular and monolithic compose
-    if [ $# -eq 0 ]; then
-        # All services
-        echo -e "${CYAN}Showing logs for all services...${NC}"
-        compose logs --tail=100 -f | tee "$PROJECT_ROOT/logs/all-services-$timestamp.log"
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --json|-j)
+                json_mode=true
+                shift
+                ;;
+            --tail|-n)
+                tail_lines="$2"
+                shift 2
+                ;;
+            --tail=*)
+                tail_lines="${1#*=}"
+                shift
+                ;;
+            -*)
+                echo -e "${RED}Unknown option: $1${NC}"
+                echo "Usage: ./homelab logs [--json] [--tail N] [service]"
+                return 1
+                ;;
+            *)
+                service="$1"
+                shift
+                ;;
+        esac
+    done
+    
+    if $json_mode; then
+        # JSON output mode - structured logs for automation
+        echo -e "${CYAN}Outputting logs in JSON format...${NC}" >&2
+        
+        local json_log_file="$PROJECT_ROOT/logs/json-${service:-all}-$timestamp.json"
+        
+        if [ -z "$service" ]; then
+            # All services - JSON format
+            compose logs --tail="$tail_lines" --no-color 2>/dev/null | while IFS= read -r line; do
+                # Parse docker compose log format: container-name | message
+                local container=$(echo "$line" | cut -d'|' -f1 | xargs 2>/dev/null || echo "unknown")
+                local message=$(echo "$line" | cut -d'|' -f2- | sed 's/^ //')
+                local level="INFO"
+                
+                # Detect log level from content
+                if echo "$line" | grep -qiE '\b(error|exception|fail|fatal)\b'; then
+                    level="ERROR"
+                elif echo "$line" | grep -qiE '\b(warn|warning)\b'; then
+                    level="WARN"
+                elif echo "$line" | grep -qiE '\b(debug)\b'; then
+                    level="DEBUG"
+                fi
+                
+                # Escape special characters for JSON
+                message=$(echo "$message" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | tr -d '\n\r')
+                
+                echo "{\"timestamp\":\"$(date -Iseconds)\",\"level\":\"$level\",\"service\":\"$container\",\"message\":\"$message\"}"
+            done | tee "$json_log_file"
+        else
+            # Specific service - JSON format
+            compose logs --tail="$tail_lines" --no-color "$service" 2>/dev/null | while IFS= read -r line; do
+                local message=$(echo "$line" | cut -d'|' -f2- | sed 's/^ //' || echo "$line")
+                local level="INFO"
+                
+                if echo "$line" | grep -qiE '\b(error|exception|fail|fatal)\b'; then
+                    level="ERROR"
+                elif echo "$line" | grep -qiE '\b(warn|warning)\b'; then
+                    level="WARN"
+                elif echo "$line" | grep -qiE '\b(debug)\b'; then
+                    level="DEBUG"
+                fi
+                
+                message=$(echo "$message" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | tr -d '\n\r')
+                
+                echo "{\"timestamp\":\"$(date -Iseconds)\",\"level\":\"$level\",\"service\":\"$service\",\"message\":\"$message\"}"
+            done | tee "$json_log_file"
+        fi
+        
+        echo "" >&2
+        echo -e "${GREEN}JSON logs saved to: $json_log_file${NC}" >&2
     else
-        # Specific service
-        echo -e "${CYAN}Showing logs for $1...${NC}"
-        compose logs --tail=100 -f "$1" | tee "$PROJECT_ROOT/logs/$1-$timestamp.log"
+        # Standard output mode
+        if [ -z "$service" ]; then
+            echo -e "${CYAN}Showing logs for all services...${NC}"
+            compose logs --tail="$tail_lines" -f | tee "$PROJECT_ROOT/logs/all-services-$timestamp.log"
+        else
+            echo -e "${CYAN}Showing logs for $service...${NC}"
+            compose logs --tail="$tail_lines" -f "$service" | tee "$PROJECT_ROOT/logs/$service-$timestamp.log"
+        fi
     fi
 }
 
@@ -246,7 +326,45 @@ debug() {
 # HEALTH COMMAND - Comprehensive Health Checks
 # ============================================
 health() {
+    local use_doctor=false
+    local json_output=false
+    
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --full|--doctor|-d)
+                use_doctor=true
+                shift
+                ;;
+            --json|-j)
+                json_output=true
+                use_doctor=true
+                shift
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+    
+    # If doctor mode or JSON output requested, use the doctor script
+    if $use_doctor; then
+        if [ -f "$PROJECT_ROOT/homelab-doctor.sh" ]; then
+            if $json_output; then
+                "$PROJECT_ROOT/homelab-doctor.sh" json
+            else
+                "$PROJECT_ROOT/homelab-doctor.sh" human
+            fi
+            return $?
+        else
+            echo -e "${YELLOW}⚠ homelab-doctor.sh not found, running basic health check${NC}"
+        fi
+    fi
+    
     echo -e "\n${CYAN}═══ Comprehensive Health Check ═══${NC}\n"
+    echo "Tip: Use './homelab health --full' for comprehensive diagnostics"
+    echo "     Use './homelab health --json' for JSON output"
+    echo ""
     
     local health_issues=0
     
@@ -415,10 +533,29 @@ validate_env() {
 }
 
 # ============================================
-# BACKUP COMMAND - Database Backups
+# BACKUP COMMAND - Database Backups with Full System Option
 # ============================================
 backup() {
-    echo -e "\n${CYAN}═══ Database Backup ═══${NC}\n"
+    local full_backup=false
+    
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --full|-f)
+                full_backup=true
+                shift
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+    
+    if $full_backup; then
+        echo -e "\n${CYAN}═══ Full System Backup ═══${NC}\n"
+    else
+        echo -e "\n${CYAN}═══ Database Backup ═══${NC}\n"
+    fi
     
     if ! is_running "homelab-postgres"; then
         echo -e "${RED}✗ PostgreSQL container not running${NC}"
@@ -433,7 +570,7 @@ backup() {
     local timestamp=$(date +%Y%m%d-%H%M%S)
     local backup_file="$backup_dir/homelab-backup-$timestamp.sql"
     
-    echo "Backing up all databases to:"
+    echo "Backing up databases to:"
     echo "  $backup_file"
     echo ""
     
@@ -453,18 +590,91 @@ backup() {
         chmod 600 "$backup_file"
         
         local size=$(du -h "$backup_file" | cut -f1)
-        echo -e "${GREEN}✅ Backup created successfully${NC}"
+        echo -e "${GREEN}✅ Database backup created${NC}"
         echo "  Size: $size"
         echo "  File: $(basename $backup_file)"
-        echo "  Permissions: 600 (secure)"
-        echo ""
-        echo "To restore: ./homelab restore $backup_file"
         
-        # Keep only last 10 backups
+        # Full backup - include configuration files
+        if $full_backup; then
+            echo ""
+            echo -e "${CYAN}Creating full system backup (configs, compose files)...${NC}"
+            
+            local full_backup_dir="$backup_dir/full-$timestamp"
+            mkdir -p "$full_backup_dir"
+            chmod 700 "$full_backup_dir"
+            
+            # Copy database backup
+            cp "$backup_file" "$full_backup_dir/"
+            
+            # Backup configuration files (exclude secrets from .env)
+            if [ -f "$PROJECT_ROOT/.env" ]; then
+                # Create sanitized .env backup (remove sensitive values)
+                grep -v -E "PASSWORD|SECRET|TOKEN|KEY" "$PROJECT_ROOT/.env" > "$full_backup_dir/.env.sanitized" 2>/dev/null || true
+                echo -e "  ${GREEN}✓${NC} .env (sanitized)"
+            fi
+            
+            # Backup docker-compose files
+            for compose_file in docker-compose.yml docker-compose.override.yml; do
+                if [ -f "$PROJECT_ROOT/$compose_file" ]; then
+                    cp "$PROJECT_ROOT/$compose_file" "$full_backup_dir/"
+                    echo -e "  ${GREEN}✓${NC} $compose_file"
+                fi
+            done
+            
+            # Backup Caddyfile
+            if [ -f "$PROJECT_ROOT/Caddyfile" ]; then
+                cp "$PROJECT_ROOT/Caddyfile" "$full_backup_dir/"
+                echo -e "  ${GREEN}✓${NC} Caddyfile"
+            fi
+            
+            # Backup config directory (without secrets)
+            if [ -d "$PROJECT_ROOT/config" ]; then
+                mkdir -p "$full_backup_dir/config"
+                find "$PROJECT_ROOT/config" -type f \( -name "*.json" -o -name "*.yml" -o -name "*.yaml" -o -name "*.conf" \) \
+                    ! -name "*secret*" ! -name "*credentials*" -exec cp {} "$full_backup_dir/config/" \; 2>/dev/null || true
+                echo -e "  ${GREEN}✓${NC} config/ directory"
+            fi
+            
+            # Backup orchestration configs
+            if [ -d "$PROJECT_ROOT/orchestration" ]; then
+                mkdir -p "$full_backup_dir/orchestration"
+                cp -r "$PROJECT_ROOT/orchestration/"*.yml "$full_backup_dir/orchestration/" 2>/dev/null || true
+                cp -r "$PROJECT_ROOT/orchestration/"*.yaml "$full_backup_dir/orchestration/" 2>/dev/null || true
+                echo -e "  ${GREEN}✓${NC} orchestration/ directory"
+            fi
+            
+            # Create tarball
+            local tarball="$backup_dir/homelab-full-$timestamp.tar.gz"
+            tar -czf "$tarball" -C "$backup_dir" "full-$timestamp" 2>/dev/null
+            chmod 600 "$tarball"
+            rm -rf "$full_backup_dir"
+            
+            local tarball_size=$(du -h "$tarball" | cut -f1)
+            echo ""
+            echo -e "${GREEN}✅ Full system backup created${NC}"
+            echo "  Database: $(basename $backup_file) ($size)"
+            echo "  Full backup: $(basename $tarball) ($tarball_size)"
+            echo ""
+            echo "To restore:"
+            echo "  1. Extract: tar -xzf $tarball"
+            echo "  2. Restore DB: ./homelab restore $backup_file"
+            echo "  3. Manually restore configs as needed"
+        else
+            echo "  Permissions: 600 (secure)"
+            echo ""
+            echo "To restore: ./homelab restore $backup_file"
+            echo "For full backup (includes configs): ./homelab backup --full"
+        fi
+        
+        # Keep only last 10 database backups
         cd "$backup_dir"
         ls -t homelab-backup-*.sql 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null
+        # Keep only last 5 full backups
+        ls -t homelab-full-*.tar.gz 2>/dev/null | tail -n +6 | xargs rm -f 2>/dev/null
         local backup_count=$(ls -1 homelab-backup-*.sql 2>/dev/null | wc -l)
-        echo "  Backups retained: $backup_count"
+        local full_count=$(ls -1 homelab-full-*.tar.gz 2>/dev/null | wc -l)
+        echo ""
+        echo "  Backups retained: $backup_count database, $full_count full"
         
         # Clear password from environment
         unset POSTGRES_PASSWORD
@@ -2229,13 +2439,15 @@ case "${1:-help}" in
         debug
         ;;
     health)
-        health
+        shift
+        health "$@"
         ;;
     validate-env)
         validate_env
         ;;
     backup)
-        backup
+        shift
+        backup "$@"
         ;;
     restore)
         shift
@@ -2335,6 +2547,23 @@ case "${1:-help}" in
         compose down
         echo -e "${GREEN}✓ All services stopped${NC}"
         ;;
+    doctor)
+        shift
+        if [ -f "$PROJECT_ROOT/homelab-doctor.sh" ]; then
+            "$PROJECT_ROOT/homelab-doctor.sh" "${1:-human}"
+        else
+            echo -e "${RED}✗ homelab-doctor.sh not found${NC}"
+            exit 1
+        fi
+        ;;
+    check-deps|deps)
+        if [ -f "$PROJECT_ROOT/check-dependencies.sh" ]; then
+            "$PROJECT_ROOT/check-dependencies.sh" "$@"
+        else
+            echo -e "${RED}✗ check-dependencies.sh not found${NC}"
+            exit 1
+        fi
+        ;;
     help|*)
         cat << 'EOF'
 ╔════════════════════════════════════════════════════════╗
@@ -2344,11 +2573,12 @@ case "${1:-help}" in
 Usage: ./homelab [command]
 
 CORE COMMANDS:
-  fix              - Fix everything and start all services
-  status           - Show which services are running
-  logs [service]   - View logs (add service name for specific)
-  restart          - Restart all services
-  stop             - Stop everything
+  fix                   - Fix everything and start all services
+  status                - Show which services are running
+  logs [service]        - View logs (add service name for specific)
+  logs --json [service] - Output logs in JSON format
+  restart               - Restart all services
+  stop                  - Stop everything
 
 MODULAR DEPLOYMENT (Phase 2):
   deploy <target>       - Deploy service or group
@@ -2390,10 +2620,14 @@ DNS AUTOMATION (Phase 8):
   dns delete <name>    - Delete DNS record
 
 HEALTH & DIAGNOSTICS:
-  health           - Comprehensive health checks (DB, API, disk, memory)
-  validate-env     - Check .env has all required variables
-  debug            - Show detailed debugging info
-  test             - Run integration tests on all services
+  health                - Basic health checks (DB, API, disk, memory)
+  health --full         - Run comprehensive doctor diagnostics
+  health --json         - Output diagnostics as JSON
+  doctor [human|json]   - Full system diagnostics with JSON report
+  validate-env          - Check .env has all required variables
+  check-deps            - Verify all system dependencies
+  debug                 - Show detailed debugging info
+  test                  - Run integration tests on all services
 
 DEPLOYMENT & CI/CD (Phase 6):
   deploy-prod <service>       - Deploy service to production with health checks
@@ -2402,12 +2636,13 @@ DEPLOYMENT & CI/CD (Phase 6):
   deployment status           - Show current deployment status
 
 OPERATIONS:
-  backup           - Backup all databases to timestamped files
-  restore <file>   - Restore from backup
-  update           - Git pull and redeploy (for production)
-  rebuild <svc>    - Rebuild and restart specific service
-  clean            - Clean old logs, unused containers/images
-  db-shell [db]    - Quick PostgreSQL shell access
+  backup              - Backup all databases to timestamped files
+  backup --full       - Complete system backup (DB + configs)
+  restore <file>      - Restore from backup
+  update              - Git pull and redeploy (for production)
+  rebuild <svc>       - Rebuild and restart specific service
+  clean               - Clean old logs, unused containers/images
+  db-shell [db]       - Quick PostgreSQL shell access
 
 CONFIGURATION MANAGEMENT:
   config generate <env> <host>  - Generate encrypted configs
@@ -2423,16 +2658,20 @@ EXAMPLES:
   ./homelab undeploy discord-bot   # Stop Discord bot
   ./homelab services list          # List available services
   ./homelab services deps dashboard # Show dashboard dependencies
-  ./homelab health                 # Run health checks
+  ./homelab health                 # Run basic health checks
+  ./homelab health --full          # Run comprehensive diagnostics
+  ./homelab doctor json            # Generate JSON diagnostic report
   ./homelab validate-env           # Check environment variables
   ./homelab backup                 # Backup databases
+  ./homelab backup --full          # Full system backup (DB + configs)
   ./homelab restore backup.sql     # Restore from backup
   ./homelab update                 # Update from git
   ./homelab rebuild discord-bot    # Rebuild specific service
   ./homelab clean                  # Cleanup old files
   ./homelab db-shell homelab_jarvis  # Access database
   ./homelab test                   # Run integration tests
-  ./homelab logs homelab-dashboard # View dashboard logs
+  ./homelab logs homelab-dashboard   # View dashboard logs
+  ./homelab logs --json              # Output logs in JSON format
 
 MODULAR ARCHITECTURE:
   Services are now modular - deploy only what you need!
