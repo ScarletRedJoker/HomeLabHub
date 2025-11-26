@@ -1,7 +1,7 @@
 """Add RBAC, Audit Trail, and Deployment Queue tables
 
 Revision ID: 017_add_rbac_audit_deployment_queue
-Revises: 016_20251119_141405_add_marketplace_deployments
+Revises: 016_marketplace_deployments
 Create Date: 2025-11-26
 
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 revision = '017_add_rbac_audit_deployment_queue'
-down_revision = '016_20251119_141405_add_marketplace_deployments'
+down_revision = '016_marketplace_deployments'
 branch_labels = None
 depends_on = None
 

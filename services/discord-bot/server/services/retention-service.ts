@@ -167,7 +167,7 @@ async function safeDelete(query: string, params: any[] = []): Promise<number> {
     const result = await pool.query(query, params);
     return result.rowCount || 0;
   } catch (error: any) {
-    if (error.code === '42P01') {
+    if (error.code === '42P01' || error.code === '42703') {
       return 0;
     }
     throw error;
@@ -200,7 +200,7 @@ export async function cleanupOldLogs(): Promise<RetentionJobResult> {
     );
 
     recordsDeleted += await safeDelete(
-      `DELETE FROM stream_notification_log WHERE sent_at < $1`,
+      `DELETE FROM stream_notification_log WHERE created_at < $1`,
       [cutoffDate]
     );
 

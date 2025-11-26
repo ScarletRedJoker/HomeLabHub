@@ -3,15 +3,68 @@
 ## Overview
 The Nebula Command Dashboard is a web-based interface for managing a Ubuntu 25.10 server hosting 15 Docker-based services. These services are accessible via custom subdomains and include homelab management, Discord/Twitch bots, media streaming, remote desktop access, and home automation. The project aims to provide a centralized, robust, and secure platform for managing a comprehensive homelab environment, integrating various functionalities for personal and community use.
 
-## Recent Changes (November 2025)
-- **Stream-bot OAuth Complete:** All platforms (Twitch, YouTube, Spotify, Kick) properly store refresh tokens with encrypted storage, token health endpoint, and warning banners for legacy connections
-- **Fact Length Enforcement:** Hard enforcement of 90-character limit for Snapple facts with smart truncation at sentence boundaries
-- **Token Refresh Service:** Added public isRunning() method for health checks, runs every 30 minutes to auto-refresh expiring tokens
-- **Plex Media Import:** Fixed chunked upload bug (file pre-allocation with seek), added 'plex-media' MinIO bucket, SHA256 checksum verification, retry logic with exponential backoff
-- **Discord-bot Verified:** All 15 slash commands registered globally, health check fixed, background jobs running (ticket reconciliation every 15min, auto-close hourly)
-- **Dashboard API Fixed:** SQLAlchemy 2.0 compatibility, CSRF exemptions for API blueprints, all core endpoints returning 200
-- **Static Sites Ready:** rig-city.com and scarletredjoker.com configured with Caddy SSL
-- **VNC Access Configured:** vnc.evindrake.net routing to host port 6080 with WebSocket support
+## Major Upgrade (November 26, 2025)
+
+### Dashboard Enhancements
+- **RBAC System:** User roles (admin/operator/viewer), permission decorators, service ownership tracking
+- **Docker Lifecycle APIs:** Complete container management (start/stop/restart/logs/stats)
+- **Marketplace Deployment Queue:** Background job processing with rollback capability
+- **Audit Trail System:** Full API call logging with filtering, export, and cleanup
+- **WebSocket Improvements:** Heartbeat/ping-pong, reconnection logic, state broadcasting
+- **Agentic Remediation (Jarvis):** AI-powered service diagnosis and auto-repair
+- **Anomaly Detection:** Z-score based metrics monitoring with health scoring
+- **Multi-Model Routing:** OpenAI + Ollama support with complexity-based routing
+- **Offline Fallbacks:** Cached responses and request queuing when AI unavailable
+- **Mobile-First UI:** Collapsible sidebar, bottom navigation, skeleton loading, responsive grids
+
+### Discord-bot Enhancements  
+- **Ticket SLA Automation:** Response time tracking, auto-escalation, SLA breach alerts
+- **Escalation Rules:** Keyword detection, time-based escalation, path tracking
+- **Cross-Service Webhooks:** Incoming webhook endpoint, signature verification
+- **Enhanced Health Probes:** /ready, /live, /metrics endpoints with detailed status
+- **Guild Provisioning:** Auto-setup of ticket categories and channels for new servers
+- **LLM-Assisted Triage:** AI-powered priority assignment and category suggestion
+- **Thread Summarization:** Automatic summary with key points and action items
+- **Sentiment Analysis:** Real-time sentiment tracking with trend reporting
+- **Auto-Draft Responses:** AI-generated response suggestions
+- **Retention System:** 30-day ticket archival, 90-day log cleanup
+- **Mobile-First UI:** Bottom navigation, pull-to-refresh, connection status indicator
+
+### Stream-bot Enhancements
+- **Broadcaster Onboarding Wizard:** Multi-step guided setup with progress tracking
+- **Feature Toggles:** 17 toggleable features with per-user configuration
+- **Circuit Breaker:** Platform failover with message queuing and retry
+- **Job Queue System:** Background task processing with priorities and scheduling
+- **Enhanced Token Management:** Rotation history, expiry alerts, health dashboard
+- **Intent Detection:** Real-time message classification and routing
+- **Enhanced Moderation:** OpenAI Moderation API with configurable sensitivity
+- **Personalized Facts:** User preference learning, 20 topic categories, 90-char limit
+- **Speech-to-Text Prep:** Queue-based architecture for Whisper integration
+- **Overlay Editor:** Visual drag-and-drop positioning tool
+- **Mobile-First UI:** Bottom navigation, connection quality indicator, platform cards
+
+### Static Sites
+- **SEO Optimization:** Meta tags, Open Graph, Twitter Cards, JSON-LD structured data
+- **Responsive Design:** Mobile-first layouts, touch-friendly navigation
+- **Accessibility:** Skip links, ARIA labels, focus states, reduced motion support
+- **Performance:** Lazy loading, script deferral, ad scripts removed from scarletredjoker.com
+- **Sitemaps:** sitemap.xml and robots.txt for both sites
+
+### Lifecycle Management
+- **homelab-doctor.sh:** Comprehensive diagnostics with JSON output
+- **check-dependencies.sh:** System package and version validation
+- **Structured Logging:** JSON format, logrotate, aggregation scripts
+- **Enhanced homelab script:** New commands (logs --json, health --full, backup --full, doctor)
+
+## Previous Changes (November 2025)
+- **Stream-bot OAuth Complete:** All platforms properly store refresh tokens with encrypted storage
+- **Fact Length Enforcement:** Hard 90-character limit with smart truncation
+- **Token Refresh Service:** 30-minute refresh cycle for expiring tokens
+- **Plex Media Import:** Chunked uploads, SHA256 verification, MinIO integration
+- **Discord-bot Verified:** 15 slash commands, background jobs, safeguard checks
+- **Dashboard API Fixed:** SQLAlchemy 2.0 compatibility, CSRF exemptions
+- **Static Sites Ready:** rig-city.com and scarletredjoker.com configured
+- **VNC Access Configured:** vnc.evindrake.net routing with WebSocket
 
 ## Previous Changes (November 2024)
 - **Jarvis Control Plane API:** Created `/api/jarvis/control/*` endpoints for code-server AI integration
