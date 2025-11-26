@@ -2,219 +2,441 @@
 
 {% block title %}Plex Media Import - Nebula Command{% endblock %}
 
+{% block head %}
+<style>
+.plex-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+.plex-header h2 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.5rem;
+}
+.plex-header h2 i {
+    color: #e5a00d;
+}
+.upload-zone {
+    border: 2px dashed rgba(229, 160, 13, 0.4);
+    border-radius: 12px;
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: rgba(229, 160, 13, 0.05);
+}
+.upload-zone:hover,
+.upload-zone.dragover {
+    border-color: #e5a00d;
+    background: rgba(229, 160, 13, 0.12);
+}
+.upload-zone .upload-icon {
+    font-size: 3.5rem;
+    color: #e5a00d;
+    margin-bottom: 1rem;
+}
+.upload-zone h4 {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+.upload-zone p {
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+}
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+}
+.card-header {
+    background: rgba(0,0,0,0.2);
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.card-header h5, .card-header h6 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.card-body {
+    padding: 1.25rem;
+}
+.info-section h6 {
+    color: #e5a00d;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+.info-section ul, .info-section ol {
+    padding-left: 1.25rem;
+    margin-bottom: 1rem;
+}
+.info-section li {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+}
+.library-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: rgba(0,0,0,0.2);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+.library-item:last-child {
+    margin-bottom: 0;
+}
+.library-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+}
+.library-icon.movie { background: linear-gradient(135deg, #e5a00d, #cc8a00); }
+.library-icon.show { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+.library-icon.artist { background: linear-gradient(135deg, #10b981, #059669); }
+.library-icon.photo { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+.library-info {
+    flex: 1;
+}
+.library-info strong {
+    display: block;
+    font-size: 0.9rem;
+}
+.library-info small {
+    color: var(--text-muted);
+    text-transform: capitalize;
+}
+.plex-status {
+    padding: 1rem;
+    border-radius: 8px;
+    text-align: center;
+}
+.plex-status.connected {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+.plex-status.disconnected {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.plex-status i {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+.plex-status.connected i { color: #10b981; }
+.plex-status.disconnected i { color: #ef4444; }
+.selected-files-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+.file-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: rgba(0,0,0,0.2);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+.file-item:last-child {
+    margin-bottom: 0;
+}
+.file-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+    min-width: 0;
+}
+.file-info i {
+    color: #e5a00d;
+    font-size: 1.25rem;
+}
+.file-details {
+    min-width: 0;
+}
+.file-details strong {
+    display: block;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.file-details small {
+    color: var(--text-muted);
+}
+.jobs-table {
+    width: 100%;
+}
+.jobs-table th {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+}
+.jobs-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+.jobs-table tr:last-child td {
+    border-bottom: none;
+}
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-muted);
+}
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+.progress {
+    height: 8px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.progress-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+.upload-progress-container {
+    background: rgba(0,0,0,0.2);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+.upload-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+.media-type-select {
+    margin-bottom: 1.5rem;
+}
+.media-type-select label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+.media-type-select .form-select {
+    max-width: 300px;
+}
+@media (max-width: 991px) {
+    .plex-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .upload-zone {
+        padding: 2rem 1rem;
+    }
+    .upload-zone .upload-icon {
+        font-size: 2.5rem;
+    }
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="header">
-                <h2>
-                    <i class="bi bi-film"></i> Plex Media Import
-                </h2>
-                <button class="btn btn-sm btn-primary" onclick="refreshJobs()">
-                    <i class="bi bi-arrow-clockwise"></i> Refresh Jobs
-                </button>
-            </div>
-        </div>
+<div class="container-fluid py-4">
+    <div class="plex-header">
+        <h2><i class="bi bi-film"></i> Plex Media Import</h2>
+        <button class="btn btn-primary btn-sm" onclick="refreshJobs()">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
     </div>
 
-    <!-- Upload Card -->
-    <div class="row mb-4">
+    <div class="row g-4">
         <div class="col-lg-8">
-            <div class="card">
+            <div class="card mb-4">
                 <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-cloud-upload"></i> Upload Media Files
-                    </h5>
+                    <h5><i class="bi bi-cloud-upload"></i> Upload Media</h5>
                 </div>
                 <div class="card-body">
-                    <!-- Drag and Drop Zone -->
-                    <div id="dropZone" class="border border-2 border-dashed rounded p-5 text-center mb-4" 
-                         style="min-height: 200px; cursor: pointer; transition: all 0.3s; background: rgba(139, 92, 246, 0.05);">
-                        <i class="bi bi-film" style="font-size: 3rem; color: var(--accent-purple);"></i>
-                        <h4 class="mt-3 mb-2">Drag & Drop Media Files Here</h4>
-                        <p class="text-muted mb-3">or click to browse</p>
+                    <div id="dropZone" class="upload-zone" onclick="document.getElementById('fileInput').click()">
+                        <i class="bi bi-film upload-icon"></i>
+                        <h4>Drag & Drop Media Files</h4>
+                        <p>or click to browse your computer</p>
                         <input type="file" id="fileInput" class="d-none" multiple accept="video/*,audio/*">
-                        <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
-                            <i class="bi bi-folder2-open"></i> Browse Files
+                        <button class="btn btn-primary" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">
+                            <i class="bi bi-folder2-open me-2"></i>Browse Files
                         </button>
                     </div>
 
-                    <!-- Media Type Selector -->
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="mediaTypeSelect" class="form-label">Media Type</label>
+                    <div id="selectedFilesSection" style="display: none;" class="mt-4">
+                        <div class="media-type-select">
+                            <label for="mediaTypeSelect">Media Type</label>
                             <select id="mediaTypeSelect" class="form-select">
-                                <option value="" selected>Auto-detect</option>
+                                <option value="" selected>Auto-detect from filename</option>
                                 <option value="movie">Movie</option>
                                 <option value="tv_show">TV Show</option>
                                 <option value="music">Music</option>
                             </select>
-                            <small class="text-muted">Leave as auto-detect for automatic type detection from filename</small>
                         </div>
+
+                        <label class="form-label fw-semibold">Selected Files</label>
+                        <div id="fileList" class="selected-files-list"></div>
                     </div>
 
-                    <!-- Progress Bar -->
-                    <div id="uploadProgress" class="mb-3" style="display: none;">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <label class="form-label mb-0">Upload Progress</label>
-                            <button id="cancelUploadBtn" class="btn btn-sm btn-outline-danger" onclick="cancelCurrentUpload()" style="display: none;">
-                                <i class="bi bi-x-circle"></i> Cancel
-                            </button>
-                        </div>
-                        <div class="progress" style="height: 25px;">
-                            <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" 
-                                 role="progressbar" style="width: 0%">
-                                <span id="progressText">0%</span>
+                    <div id="uploadProgress" style="display: none;" class="mt-4">
+                        <div class="upload-progress-container">
+                            <div class="upload-progress-header">
+                                <span id="uploadStatusText">Uploading...</span>
+                                <button id="cancelUploadBtn" class="btn btn-outline-danger btn-sm" onclick="cancelCurrentUpload()" style="display: none;">
+                                    <i class="bi bi-x-circle"></i> Cancel
+                                </button>
                             </div>
-                        </div>
-                        <small id="uploadStatus" class="text-muted mt-2 d-block"></small>
-                    </div>
-
-                    <!-- Selected Files -->
-                    <div id="selectedFiles" class="mb-3" style="display: none;">
-                        <label class="form-label">Selected Files</label>
-                        <div id="fileList" class="list-group"></div>
-                    </div>
-
-                    <!-- Upload Button -->
-                    <div class="d-grid gap-2">
-                        <button id="uploadBtn" class="btn btn-success btn-lg" disabled>
-                            <i class="bi bi-upload"></i> Upload and Import
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Info Card -->
-        <div class="col-lg-4">
-            <div class="card">
-                <div class="card-header">
-                    <h6 class="mb-0">
-                        <i class="bi bi-info-circle"></i> Import Guidelines
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <h6>Supported Formats:</h6>
-                    <ul class="small">
-                        <li>Videos: .mp4, .mkv, .avi, .mov</li>
-                        <li>Music: .mp3, .flac, .m4a, .wav</li>
-                    </ul>
-                    
-                    <h6 class="mt-3">Naming Conventions:</h6>
-                    <ul class="small">
-                        <li><strong>Movies:</strong> "Movie Name (2020).mp4"</li>
-                        <li><strong>TV Shows:</strong> "Show Name S01E01.mp4"</li>
-                        <li>System auto-detects based on filename</li>
-                    </ul>
-                    
-                    <h6 class="mt-3">Process:</h6>
-                    <ol class="small">
-                        <li>Files upload to staging area</li>
-                        <li>Metadata extracted from filename</li>
-                        <li>Files organized into Plex directories</li>
-                        <li>Plex library automatically scanned</li>
-                    </ol>
-                    
-                    <div class="mt-3">
-                        <button class="btn btn-sm btn-outline-primary w-100" onclick="triggerManualScan()">
-                            <i class="bi bi-arrow-repeat"></i> Manual Library Scan
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Libraries Card -->
-            <div class="card mt-3">
-                <div class="card-header">
-                    <h6 class="mb-0">
-                        <i class="bi bi-collection"></i> Plex Libraries
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div id="librariesList">
-                        <div class="text-center">
-                            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
-                            <small class="d-block mt-2 text-muted">Loading...</small>
+                            <div class="progress">
+                                <div id="progressBar" class="progress-bar bg-success" style="width: 0%"></div>
+                            </div>
+                            <small id="uploadStatus" class="text-muted mt-2 d-block"></small>
                         </div>
                     </div>
+
+                    <button id="uploadBtn" class="btn btn-success btn-lg w-100 mt-3" disabled onclick="startUpload()">
+                        <i class="bi bi-upload me-2"></i>Upload and Import
+                    </button>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Import Jobs -->
-    <div class="row">
-        <div class="col-12">
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">
-                        <i class="bi bi-list-task"></i> Import Jobs
-                    </h5>
-                    <div>
-                        <button class="btn btn-sm btn-outline-danger" onclick="cleanupOldJobs()">
-                            <i class="bi bi-trash"></i> Cleanup Old Jobs
-                        </button>
-                        <button class="btn btn-sm btn-primary" onclick="refreshJobs()">
-                            <i class="bi bi-arrow-clockwise"></i> Refresh
-                        </button>
-                    </div>
+                <div class="card-header">
+                    <h5><i class="bi bi-list-task"></i> Import Jobs</h5>
+                    <button class="btn btn-outline-danger btn-sm" onclick="cleanupOldJobs()">
+                        <i class="bi bi-trash"></i> Cleanup
+                    </button>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     <div id="jobsLoading" class="text-center py-5">
-                        <div class="spinner-border text-primary" role="status"></div>
-                        <p class="mt-2 text-muted">Loading jobs...</p>
+                        <div class="spinner-border spinner-border-sm text-primary"></div>
+                        <span class="ms-2 text-muted">Loading jobs...</span>
                     </div>
-                    
-                    <div id="jobsList" style="display: none;">
+
+                    <div id="jobsContent" style="display: none;">
                         <div class="table-responsive">
-                            <table class="table table-hover">
+                            <table class="jobs-table">
                                 <thead>
                                     <tr>
-                                        <th>Job ID</th>
+                                        <th>Job</th>
                                         <th>Type</th>
                                         <th>Status</th>
                                         <th>Progress</th>
                                         <th>Created</th>
-                                        <th>Actions</th>
+                                        <th></th>
                                     </tr>
                                 </thead>
                                 <tbody id="jobsTableBody"></tbody>
                             </table>
                         </div>
-                        <div id="noJobs" class="text-center py-4 text-muted" style="display: none;">
-                            <i class="bi bi-inbox" style="font-size: 3rem;"></i>
-                            <p class="mt-2">No import jobs yet</p>
+                        <div id="noJobs" class="empty-state" style="display: none;">
+                            <i class="bi bi-inbox"></i>
+                            <p>No import jobs yet</p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-</div>
 
-<!-- Job Details Modal -->
-<div class="modal fade" id="jobDetailsModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="bi bi-info-circle"></i> Job Details
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div id="jobDetailsContent">
-                    <div class="text-center py-4">
-                        <div class="spinner-border text-primary" role="status"></div>
+        <div class="col-lg-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6><i class="bi bi-server"></i> Plex Connection</h6>
+                </div>
+                <div class="card-body">
+                    <div id="plexStatus">
+                        <div class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm text-primary"></div>
+                            <small class="d-block mt-2 text-muted">Checking connection...</small>
+                        </div>
                     </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6><i class="bi bi-collection"></i> Libraries</h6>
+                    <button class="btn btn-outline-primary btn-sm" onclick="triggerManualScan()" title="Scan Libraries">
+                        <i class="bi bi-arrow-repeat"></i>
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="librariesList">
+                        <div class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm text-primary"></div>
+                            <small class="d-block mt-2 text-muted">Loading...</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h6><i class="bi bi-info-circle"></i> Import Guide</h6>
+                </div>
+                <div class="card-body info-section">
+                    <h6>Supported Formats</h6>
+                    <ul>
+                        <li>Videos: .mp4, .mkv, .avi, .mov</li>
+                        <li>Music: .mp3, .flac, .m4a, .wav</li>
+                    </ul>
+
+                    <h6>Naming Conventions</h6>
+                    <ul>
+                        <li><strong>Movies:</strong> Movie Name (2020).mp4</li>
+                        <li><strong>TV Shows:</strong> Show Name S01E01.mp4</li>
+                    </ul>
+
+                    <h6>How It Works</h6>
+                    <ol>
+                        <li>Upload files to staging area</li>
+                        <li>Metadata extracted from filename</li>
+                        <li>Files organized into Plex folders</li>
+                        <li>Library automatically scanned</li>
+                    </ol>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Toast Notifications -->
+<div class="modal fade" id="jobDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-info-circle me-2"></i>Job Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="jobDetailsContent"></div>
+        </div>
+    </div>
+</div>
+
 <div class="toast-container position-fixed bottom-0 end-0 p-3">
     <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert">
         <div class="d-flex">
@@ -234,8 +456,17 @@
 let selectedFiles = [];
 let uploadConfig = null;
 let currentUpload = null;
-
 const CHUNKED_UPLOAD_THRESHOLD = 50 * 1024 * 1024;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadUploadConfig();
+    setupDropZone();
+    setupFileInput();
+    loadJobs();
+    loadLibraries();
+    checkPlexConnection();
+    setInterval(refreshJobs, 10000);
+});
 
 async function loadUploadConfig() {
     try {
@@ -243,10 +474,8 @@ async function loadUploadConfig() {
         const data = await response.json();
         if (data.success) {
             uploadConfig = data;
-            console.log('Upload config loaded:', uploadConfig);
         }
     } catch (error) {
-        console.error('Failed to load upload config:', error);
         uploadConfig = {
             max_file_size: 10 * 1024 * 1024 * 1024,
             chunk_size: 10 * 1024 * 1024,
@@ -255,555 +484,330 @@ async function loadUploadConfig() {
     }
 }
 
-function validateFile(file) {
-    if (!uploadConfig) {
-        return { valid: true, error: null };
-    }
-    
-    if (file.size > uploadConfig.max_file_size) {
-        const sizeGB = (file.size / (1024 * 1024 * 1024)).toFixed(2);
-        const maxGB = (uploadConfig.max_file_size / (1024 * 1024 * 1024)).toFixed(2);
-        return { valid: false, error: `File "${file.name}" is too large (${sizeGB}GB). Maximum size is ${maxGB}GB.` };
-    }
-    
-    const ext = file.name.split('.').pop().toLowerCase();
-    if (!uploadConfig.allowed_extensions.includes(ext)) {
-        return { valid: false, error: `File type ".${ext}" is not allowed. Allowed types: ${uploadConfig.allowed_extensions.join(', ')}` };
-    }
-    
-    return { valid: true, error: null };
+function checkPlexConnection() {
+    fetch('/api/plex/libraries')
+        .then(r => r.json())
+        .then(data => {
+            const container = document.getElementById('plexStatus');
+            if (data.success) {
+                container.innerHTML = `
+                    <div class="plex-status connected">
+                        <i class="bi bi-check-circle-fill"></i>
+                        <strong>Connected</strong>
+                        <small class="d-block text-muted mt-1">${data.libraries.length} libraries available</small>
+                    </div>`;
+            } else {
+                container.innerHTML = `
+                    <div class="plex-status disconnected">
+                        <i class="bi bi-x-circle-fill"></i>
+                        <strong>Not Connected</strong>
+                        <small class="d-block text-muted mt-1">${data.error || 'Check server configuration'}</small>
+                    </div>`;
+            }
+        })
+        .catch(() => {
+            document.getElementById('plexStatus').innerHTML = `
+                <div class="plex-status disconnected">
+                    <i class="bi bi-x-circle-fill"></i>
+                    <strong>Connection Error</strong>
+                    <small class="d-block text-muted mt-1">Unable to reach Plex server</small>
+                </div>`;
+        });
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    loadUploadConfig();
-    setupDropZone();
-    setupFileInput();
-    loadJobs();
-    loadLibraries();
-    
-    setInterval(refreshJobs, 10000);
-});
+function loadLibraries() {
+    fetch('/api/plex/libraries')
+        .then(r => r.json())
+        .then(data => {
+            const container = document.getElementById('librariesList');
+            if (data.success && data.libraries.length > 0) {
+                container.innerHTML = data.libraries.map(lib => `
+                    <div class="library-item">
+                        <div class="library-icon ${lib.type}">
+                            <i class="bi bi-${getLibraryIcon(lib.type)}"></i>
+                        </div>
+                        <div class="library-info">
+                            <strong>${lib.title}</strong>
+                            <small>${lib.type}</small>
+                        </div>
+                    </div>
+                `).join('');
+            } else if (data.success) {
+                container.innerHTML = '<p class="text-muted text-center mb-0">No libraries configured</p>';
+            } else {
+                container.innerHTML = `<p class="text-muted text-center mb-0">${data.error || 'Unable to load libraries'}</p>`;
+            }
+        })
+        .catch(() => {
+            document.getElementById('librariesList').innerHTML = '<p class="text-danger text-center mb-0">Connection failed</p>';
+        });
+}
+
+function getLibraryIcon(type) {
+    const icons = { movie: 'film', show: 'tv', artist: 'music-note-beamed', photo: 'image' };
+    return icons[type] || 'collection';
+}
 
 function setupDropZone() {
     const dropZone = document.getElementById('dropZone');
-    
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, preventDefaults, false);
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => {
+        dropZone.addEventListener(e, evt => { evt.preventDefault(); evt.stopPropagation(); });
     });
-    
-    function preventDefaults(e) {
-        e.preventDefault();
-        e.stopPropagation();
-    }
-    
-    ['dragenter', 'dragover'].forEach(eventName => {
-        dropZone.addEventListener(eventName, () => {
-            dropZone.style.borderColor = 'var(--accent-purple)';
-            dropZone.style.background = 'rgba(139, 92, 246, 0.15)';
-        });
+    ['dragenter', 'dragover'].forEach(e => {
+        dropZone.addEventListener(e, () => dropZone.classList.add('dragover'));
     });
-    
-    ['dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, () => {
-            dropZone.style.borderColor = '';
-            dropZone.style.background = 'rgba(139, 92, 246, 0.05)';
-        });
+    ['dragleave', 'drop'].forEach(e => {
+        dropZone.addEventListener(e, () => dropZone.classList.remove('dragover'));
     });
-    
-    dropZone.addEventListener('drop', handleDrop);
-    dropZone.addEventListener('click', () => document.getElementById('fileInput').click());
-}
-
-function handleDrop(e) {
-    const dt = e.dataTransfer;
-    const files = dt.files;
-    handleFiles(files);
+    dropZone.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
 }
 
 function setupFileInput() {
-    document.getElementById('fileInput').addEventListener('change', function(e) {
-        handleFiles(e.target.files);
-    });
+    document.getElementById('fileInput').addEventListener('change', e => handleFiles(e.target.files));
+}
+
+function validateFile(file) {
+    if (!uploadConfig) return { valid: true, error: null };
+    if (file.size > uploadConfig.max_file_size) {
+        return { valid: false, error: `"${file.name}" exceeds max size` };
+    }
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!uploadConfig.allowed_extensions.includes(ext)) {
+        return { valid: false, error: `".${ext}" not allowed` };
+    }
+    return { valid: true, error: null };
 }
 
 function handleFiles(files) {
-    const validFiles = [];
-    const errors = [];
-    
-    Array.from(files).forEach(file => {
-        const validation = validateFile(file);
-        if (validation.valid) {
-            validFiles.push(file);
-        } else {
-            errors.push(validation.error);
-        }
+    const valid = [], errors = [];
+    Array.from(files).forEach(f => {
+        const v = validateFile(f);
+        v.valid ? valid.push(f) : errors.push(v.error);
     });
-    
-    if (errors.length > 0) {
-        showToast('error', errors.join('\n'));
-    }
-    
-    selectedFiles = validFiles;
+    if (errors.length) showToast('error', errors.join(', '));
+    selectedFiles = valid;
     displaySelectedFiles();
     document.getElementById('uploadBtn').disabled = selectedFiles.length === 0;
 }
 
 function displaySelectedFiles() {
-    const container = document.getElementById('selectedFiles');
+    const section = document.getElementById('selectedFilesSection');
     const list = document.getElementById('fileList');
-    
     if (selectedFiles.length === 0) {
-        container.style.display = 'none';
+        section.style.display = 'none';
         return;
     }
-    
-    container.style.display = 'block';
-    list.innerHTML = '';
-    
-    selectedFiles.forEach((file, index) => {
-        const item = document.createElement('div');
-        item.className = 'list-group-item d-flex justify-content-between align-items-center';
-        const needsChunked = file.size > CHUNKED_UPLOAD_THRESHOLD;
-        item.innerHTML = `
-            <div>
-                <i class="bi bi-file-earmark-film me-2"></i>
-                <strong>${file.name}</strong>
-                <small class="text-muted ms-2">(${formatFileSize(file.size)})</small>
-                ${needsChunked ? '<span class="badge bg-info ms-2">Chunked</span>' : ''}
+    section.style.display = 'block';
+    list.innerHTML = selectedFiles.map((f, i) => `
+        <div class="file-item">
+            <div class="file-info">
+                <i class="bi bi-file-earmark-film"></i>
+                <div class="file-details">
+                    <strong>${f.name}</strong>
+                    <small>${formatFileSize(f.size)}${f.size > CHUNKED_UPLOAD_THRESHOLD ? ' <span class="badge bg-info">Chunked</span>' : ''}</small>
+                </div>
             </div>
-            <button class="btn btn-sm btn-outline-danger" onclick="removeFile(${index})">
-                <i class="bi bi-x"></i>
-            </button>
-        `;
-        list.appendChild(item);
-    });
+            <button class="btn btn-outline-danger btn-sm" onclick="removeFile(${i})"><i class="bi bi-x"></i></button>
+        </div>
+    `).join('');
 }
 
-function removeFile(index) {
-    selectedFiles.splice(index, 1);
+function removeFile(i) {
+    selectedFiles.splice(i, 1);
     displaySelectedFiles();
     document.getElementById('uploadBtn').disabled = selectedFiles.length === 0;
+}
+
+async function startUpload() {
+    if (selectedFiles.length === 0) return;
+    const mediaType = document.getElementById('mediaTypeSelect').value;
+    document.getElementById('uploadBtn').disabled = true;
+    document.getElementById('uploadProgress').style.display = 'block';
+    document.getElementById('cancelUploadBtn').style.display = 'inline-block';
+
+    let successCount = 0, failCount = 0;
+    for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        try {
+            updateProgress((i / selectedFiles.length) * 100, `Uploading ${file.name}...`);
+            if (file.size > CHUNKED_UPLOAD_THRESHOLD) {
+                await uploadFileChunked(file, mediaType);
+            } else {
+                await uploadFileSimple(file, mediaType);
+            }
+            successCount++;
+        } catch (error) {
+            console.error('Upload failed:', error);
+            failCount++;
+            showToast('error', `Failed: ${file.name} - ${error.message}`);
+        }
+    }
+
+    document.getElementById('uploadProgress').style.display = 'none';
+    document.getElementById('cancelUploadBtn').style.display = 'none';
+    document.getElementById('uploadBtn').disabled = false;
+
+    if (successCount > 0) {
+        showToast('success', `${successCount} file(s) uploaded successfully`);
+        selectedFiles = [];
+        displaySelectedFiles();
+        document.getElementById('uploadBtn').disabled = true;
+        loadJobs();
+    }
+}
+
+async function uploadFileSimple(file, mediaType) {
+    const formData = new FormData();
+    formData.append('files', file);
+    if (mediaType) formData.append('media_type', mediaType);
+
+    const response = await fetch('/api/plex/import', { method: 'POST', body: formData });
+    const data = await response.json();
+    if (!data.success && !data.job_id) throw new Error(data.error || 'Upload failed');
+    return data;
 }
 
 async function uploadFileChunked(file, mediaType) {
     const chunkSize = uploadConfig?.chunk_size || 10 * 1024 * 1024;
     const totalChunks = Math.ceil(file.size / chunkSize);
-    const MAX_RETRIES = 3;
-    const RETRY_DELAY = 1000;
-    
-    updateProgress(0, `Initializing upload for ${file.name}...`);
-    
+
     const initResponse = await fetch('/api/plex/upload/init', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            filename: file.name,
-            file_size: file.size,
-            media_type: mediaType || null
-        })
+        body: JSON.stringify({ filename: file.name, file_size: file.size, media_type: mediaType || null })
     });
-    
     const initData = await initResponse.json();
-    if (!initData.success) {
-        throw new Error(initData.error || 'Failed to initialize upload');
-    }
-    
+    if (!initData.success) throw new Error(initData.error || 'Init failed');
+
     const uploadId = initData.upload_id;
-    currentUpload = { uploadId, cancelled: false, failedChunks: [] };
-    
-    async function uploadChunkWithRetry(chunkIndex, retryCount = 0) {
-        if (currentUpload?.cancelled) {
-            throw new Error('Upload cancelled by user');
-        }
-        
-        const start = chunkIndex * chunkSize;
-        const end = Math.min(start + chunkSize, file.size);
-        const chunk = file.slice(start, end);
-        
+    currentUpload = { uploadId, cancelled: false };
+
+    for (let i = 0; i < totalChunks; i++) {
+        if (currentUpload?.cancelled) throw new Error('Cancelled');
+        const start = i * chunkSize;
+        const chunk = file.slice(start, Math.min(start + chunkSize, file.size));
         const formData = new FormData();
         formData.append('upload_id', uploadId);
-        formData.append('chunk_index', chunkIndex);
+        formData.append('chunk_index', i);
         formData.append('chunk', chunk);
-        
-        try {
-            const chunkResponse = await fetch('/api/plex/upload/chunk', {
-                method: 'POST',
-                body: formData
-            });
-            
-            if (!chunkResponse.ok) {
-                throw new Error(`HTTP ${chunkResponse.status}`);
-            }
-            
-            const chunkData = await chunkResponse.json();
-            if (!chunkData.success) {
-                throw new Error(chunkData.error || 'Chunk upload failed');
-            }
-            
-            return chunkData;
-            
-        } catch (error) {
-            if (retryCount < MAX_RETRIES) {
-                console.warn(`Chunk ${chunkIndex} failed, retrying (${retryCount + 1}/${MAX_RETRIES})...`);
-                updateProgress(null, `Retrying chunk ${chunkIndex + 1}/${totalChunks}...`);
-                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (retryCount + 1)));
-                return uploadChunkWithRetry(chunkIndex, retryCount + 1);
-            }
-            throw new Error(`Chunk ${chunkIndex} failed after ${MAX_RETRIES} retries: ${error.message}`);
-        }
+
+        const chunkResponse = await fetch('/api/plex/upload/chunk', { method: 'POST', body: formData });
+        const chunkData = await chunkResponse.json();
+        if (!chunkData.success) throw new Error(chunkData.error || 'Chunk failed');
+        updateProgress(((i + 1) / totalChunks) * 100, `${file.name}: ${i + 1}/${totalChunks} chunks`);
     }
-    
-    let completedChunks = 0;
-    const failedChunks = [];
-    
-    for (let i = 0; i < totalChunks; i++) {
-        if (currentUpload?.cancelled) {
-            await cancelUpload(uploadId);
-            throw new Error('Upload cancelled by user');
-        }
-        
-        try {
-            await uploadChunkWithRetry(i);
-            completedChunks++;
-            const progress = (completedChunks / totalChunks) * 100;
-            updateProgress(progress, `Uploading ${file.name}: ${completedChunks}/${totalChunks} chunks`);
-        } catch (error) {
-            console.error(`Failed to upload chunk ${i}:`, error);
-            failedChunks.push(i);
-        }
-    }
-    
-    if (failedChunks.length > 0) {
-        currentUpload.failedChunks = failedChunks;
-        throw new Error(`${failedChunks.length} chunk(s) failed to upload: ${failedChunks.join(', ')}`);
-    }
-    
-    updateProgress(99, `Finalizing upload for ${file.name}...`);
-    
+
     const completeResponse = await fetch('/api/plex/upload/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ upload_id: uploadId })
     });
-    
     const completeData = await completeResponse.json();
-    
-    if (!completeData.success) {
-        if (completeData.missing_chunks && completeData.missing_chunks.length > 0) {
-            throw new Error(`Missing chunks: ${completeData.missing_chunks.join(', ')}. Please retry the upload.`);
-        }
-        throw new Error(completeData.error || 'Failed to complete upload');
-    }
-    
-    updateProgress(100, `Upload complete: ${file.name}`);
+    if (!completeData.success) throw new Error(completeData.error || 'Complete failed');
     currentUpload = null;
     return completeData;
 }
 
-async function cancelUpload(uploadId) {
-    try {
-        await fetch('/api/plex/upload/cancel', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ upload_id: uploadId })
-        });
-    } catch (e) {
-        console.warn('Failed to cancel upload:', e);
-    }
-}
-
-async function uploadFileStandard(file, mediaType) {
-    const formData = new FormData();
-    formData.append('files', file);
-    if (mediaType) {
-        formData.append('media_type', mediaType);
-    }
-    
-    const response = await fetch('/api/plex/import', {
-        method: 'POST',
-        body: formData
-    });
-    
-    return await response.json();
-}
-
-document.getElementById('uploadBtn').addEventListener('click', async function() {
-    if (selectedFiles.length === 0) return;
-    
-    const mediaType = document.getElementById('mediaTypeSelect').value;
-    showProgress();
-    
-    try {
-        const largeFiles = selectedFiles.filter(f => f.size > CHUNKED_UPLOAD_THRESHOLD);
-        const smallFiles = selectedFiles.filter(f => f.size <= CHUNKED_UPLOAD_THRESHOLD);
-        
-        let successCount = 0;
-        let errorCount = 0;
-        
-        for (const file of largeFiles) {
-            try {
-                updateProgress(0, `Starting upload: ${file.name}`);
-                await uploadFileChunked(file, mediaType);
-                successCount++;
-            } catch (error) {
-                console.error(`Failed to upload ${file.name}:`, error);
-                errorCount++;
-            }
-        }
-        
-        if (smallFiles.length > 0) {
-            updateProgress(50, `Uploading ${smallFiles.length} smaller files...`);
-            
-            const formData = new FormData();
-            smallFiles.forEach(file => formData.append('files', file));
-            if (mediaType) {
-                formData.append('media_type', mediaType);
-            }
-            
-            const response = await fetch('/api/plex/import', {
-                method: 'POST',
-                body: formData
-            });
-            
-            const data = await response.json();
-            if (data.success) {
-                successCount += data.uploaded_files.filter(f => !f.error).length;
-                errorCount += data.uploaded_files.filter(f => f.error).length;
-            } else {
-                errorCount += smallFiles.length;
-            }
-        }
-        
-        hideProgress();
-        
-        if (successCount > 0) {
-            showToast('success', `Successfully uploaded ${successCount} file(s)!`);
-        }
-        if (errorCount > 0) {
-            showToast('error', `Failed to upload ${errorCount} file(s)`);
-        }
-        
-        selectedFiles = [];
-        displaySelectedFiles();
-        document.getElementById('uploadBtn').disabled = true;
-        loadJobs();
-        
-    } catch (error) {
-        hideProgress();
-        showToast('error', 'Upload failed: ' + error.message);
-    }
-});
-
-function updateProgress(percent, statusText) {
-    const progressBar = document.getElementById('progressBar');
-    const progressText = document.getElementById('progressText');
-    const uploadStatus = document.getElementById('uploadStatus');
-    
-    if (percent !== null && percent !== undefined) {
-        progressBar.style.width = `${percent}%`;
-        progressText.textContent = `${Math.round(percent)}%`;
-    }
-    if (statusText) {
-        uploadStatus.textContent = statusText;
-    }
-}
-
-function showProgress() {
-    document.getElementById('uploadProgress').style.display = 'block';
-    document.getElementById('uploadBtn').disabled = true;
-    document.getElementById('cancelUploadBtn').style.display = 'inline-block';
-    updateProgress(0, 'Preparing upload...');
-}
-
-function hideProgress() {
-    document.getElementById('uploadProgress').style.display = 'none';
-    document.getElementById('uploadBtn').disabled = selectedFiles.length === 0;
-    document.getElementById('cancelUploadBtn').style.display = 'none';
-    currentUpload = null;
-}
-
 function cancelCurrentUpload() {
-    if (currentUpload && !currentUpload.cancelled) {
-        currentUpload.cancelled = true;
-        updateProgress(null, 'Cancelling upload...');
-        showToast('error', 'Upload cancelled');
-    }
+    if (currentUpload) currentUpload.cancelled = true;
 }
 
-// Load jobs
+function updateProgress(percent, text) {
+    if (percent !== null) document.getElementById('progressBar').style.width = percent + '%';
+    if (text) document.getElementById('uploadStatusText').textContent = text;
+}
+
 function loadJobs() {
     fetch('/api/plex/jobs')
-        .then(response => response.json())
+        .then(r => r.json())
         .then(data => {
-            displayJobs(data.jobs);
-        })
-        .catch(error => {
-            console.error('Error loading jobs:', error);
             document.getElementById('jobsLoading').style.display = 'none';
-            document.getElementById('jobsList').style.display = 'block';
+            document.getElementById('jobsContent').style.display = 'block';
+            const tbody = document.getElementById('jobsTableBody');
+            const noJobs = document.getElementById('noJobs');
+
+            if (!data.success || !data.jobs || data.jobs.length === 0) {
+                tbody.innerHTML = '';
+                noJobs.style.display = 'block';
+                return;
+            }
+
+            noJobs.style.display = 'none';
+            tbody.innerHTML = data.jobs.map(job => {
+                const pct = job.total_files > 0 ? Math.round((job.processed_files / job.total_files) * 100) : 0;
+                return `
+                    <tr>
+                        <td><code>${job.id.substring(0, 8)}...</code></td>
+                        <td><span class="badge bg-secondary">${job.job_type}</span></td>
+                        <td>${getStatusBadge(job.status)}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="progress flex-grow-1" style="width: 80px;">
+                                    <div class="progress-bar ${getProgressColor(job.status)}" style="width: ${pct}%"></div>
+                                </div>
+                                <small>${job.processed_files}/${job.total_files}</small>
+                            </div>
+                        </td>
+                        <td><small>${formatDate(job.created_at)}</small></td>
+                        <td>
+                            <button class="btn btn-outline-primary btn-sm" onclick="viewJobDetails('${job.id}')"><i class="bi bi-eye"></i></button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="deleteJob('${job.id}')"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>`;
+            }).join('');
+        })
+        .catch(() => {
+            document.getElementById('jobsLoading').style.display = 'none';
+            document.getElementById('jobsContent').style.display = 'block';
             document.getElementById('noJobs').style.display = 'block';
         });
 }
 
-function displayJobs(jobs) {
-    const loading = document.getElementById('jobsLoading');
-    const list = document.getElementById('jobsList');
-    const tbody = document.getElementById('jobsTableBody');
-    const noJobs = document.getElementById('noJobs');
-    
-    loading.style.display = 'none';
-    list.style.display = 'block';
-    
-    if (jobs.length === 0) {
-        tbody.innerHTML = '';
-        noJobs.style.display = 'block';
-        return;
-    }
-    
-    noJobs.style.display = 'none';
-    tbody.innerHTML = '';
-    
-    jobs.forEach(job => {
-        const row = document.createElement('tr');
-        const progressPercent = job.total_files > 0 
-            ? Math.round((job.processed_files / job.total_files) * 100) 
-            : 0;
-        
-        row.innerHTML = `
-            <td><code>${job.id.substr(0, 8)}</code></td>
-            <td><span class="badge bg-secondary">${job.job_type}</span></td>
-            <td>${getStatusBadge(job.status)}</td>
-            <td>
-                <div class="progress" style="height: 20px;">
-                    <div class="progress-bar ${getProgressColor(job.status)}" 
-                         role="progressbar" 
-                         style="width: ${progressPercent}%">
-                        ${job.processed_files}/${job.total_files}
-                    </div>
-                </div>
-            </td>
-            <td><small>${formatDate(job.created_at)}</small></td>
-            <td>
-                <button class="btn btn-sm btn-outline-primary" onclick="viewJobDetails('${job.id}')">
-                    <i class="bi bi-eye"></i>
-                </button>
-                ${job.status === 'failed' || job.status === 'cancelled' ? 
-                    `<button class="btn btn-sm btn-outline-warning" onclick="retryJob('${job.id}')">
-                        <i class="bi bi-arrow-clockwise"></i>
-                    </button>` : ''}
-                <button class="btn btn-sm btn-outline-danger" onclick="deleteJob('${job.id}')">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </td>
-        `;
-        tbody.appendChild(row);
-    });
-}
+function refreshJobs() { loadJobs(); }
 
 function getStatusBadge(status) {
     const badges = {
-        'pending': '<span class="badge bg-secondary">Pending</span>',
-        'running': '<span class="badge bg-primary">Running</span>',
-        'completed': '<span class="badge bg-success">Completed</span>',
-        'completed_with_errors': '<span class="badge bg-warning">Completed with Errors</span>',
-        'failed': '<span class="badge bg-danger">Failed</span>',
-        'cancelled': '<span class="badge bg-secondary">Cancelled</span>'
+        pending: 'bg-secondary', running: 'bg-primary', completed: 'bg-success',
+        completed_with_errors: 'bg-warning', failed: 'bg-danger', cancelled: 'bg-secondary'
     };
-    return badges[status] || `<span class="badge bg-secondary">${status}</span>`;
+    return `<span class="badge ${badges[status] || 'bg-secondary'}">${status}</span>`;
 }
 
 function getProgressColor(status) {
-    const colors = {
-        'completed': 'bg-success',
-        'running': 'bg-primary',
-        'failed': 'bg-danger',
-        'completed_with_errors': 'bg-warning'
-    };
+    const colors = { completed: 'bg-success', running: 'bg-primary', failed: 'bg-danger', completed_with_errors: 'bg-warning' };
     return colors[status] || 'bg-secondary';
 }
 
-// Job actions
 function viewJobDetails(jobId) {
     fetch(`/api/plex/jobs/${jobId}`)
-        .then(response => response.json())
+        .then(r => r.json())
         .then(data => {
-            if (data.success) {
-                showJobDetailsModal(data.job);
-            }
-        })
-        .catch(error => {
-            showToast('error', 'Failed to load job details');
-        });
-}
-
-function showJobDetailsModal(job) {
-    const content = document.getElementById('jobDetailsContent');
-    
-    let itemsHtml = '';
-    if (job.items && job.items.length > 0) {
-        itemsHtml = `
-            <h6 class="mt-3">Files (${job.items.length}):</h6>
-            <div class="list-group">
-                ${job.items.map(item => `
+            if (!data.success) return;
+            const job = data.job;
+            let items = '';
+            if (job.items?.length) {
+                items = `<h6 class="mt-3">Files</h6><div class="list-group">${job.items.map(item => `
                     <div class="list-group-item">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>${item.original_filename}</strong>
-                                <br>
-                                <small class="text-muted">
-                                    ${getStatusBadge(item.status)}
-                                    ${item.final_path ? `<br>Path: ${item.final_path}` : ''}
-                                    ${item.error_message ? `<br><span class="text-danger">Error: ${item.error_message}</span>` : ''}
-                                </small>
-                            </div>
-                            <small class="text-muted">${formatFileSize(item.file_size)}</small>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-    }
-    
-    content.innerHTML = `
-        <div>
-            <p><strong>Job ID:</strong> ${job.id}</p>
-            <p><strong>Type:</strong> ${job.job_type}</p>
-            <p><strong>Status:</strong> ${getStatusBadge(job.status)}</p>
-            <p><strong>Progress:</strong> ${job.processed_files}/${job.total_files} files</p>
-            <p><strong>Created:</strong> ${formatDate(job.created_at)}</p>
-            ${job.completed_at ? `<p><strong>Completed:</strong> ${formatDate(job.completed_at)}</p>` : ''}
-            ${job.error_message ? `<p><strong>Error:</strong> <span class="text-danger">${job.error_message}</span></p>` : ''}
-            ${itemsHtml}
-        </div>
-    `;
-    
-    const modal = new bootstrap.Modal(document.getElementById('jobDetailsModal'));
-    modal.show();
-}
-
-function retryJob(jobId) {
-    if (!confirm('Retry this import job?')) return;
-    
-    fetch(`/api/plex/jobs/${jobId}/retry`, { method: 'POST' })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showToast('success', 'Job retry triggered');
-                loadJobs();
-            } else {
-                showToast('error', data.error || 'Retry failed');
+                        <strong>${item.original_filename}</strong>
+                        <span class="float-end">${getStatusBadge(item.status)}</span>
+                        ${item.error_message ? `<br><small class="text-danger">${item.error_message}</small>` : ''}
+                    </div>`).join('')}</div>`;
             }
-        })
-        .catch(error => {
-            showToast('error', 'Retry failed: ' + error.message);
+            document.getElementById('jobDetailsContent').innerHTML = `
+                <p><strong>ID:</strong> ${job.id}</p>
+                <p><strong>Type:</strong> ${job.job_type}</p>
+                <p><strong>Status:</strong> ${getStatusBadge(job.status)}</p>
+                <p><strong>Progress:</strong> ${job.processed_files}/${job.total_files}</p>
+                <p><strong>Created:</strong> ${formatDate(job.created_at)}</p>
+                ${items}`;
+            new bootstrap.Modal(document.getElementById('jobDetailsModal')).show();
         });
 }
 
 function deleteJob(jobId) {
-    if (!confirm('Delete this import job?')) return;
-    
+    if (!confirm('Delete this job?')) return;
     fetch(`/api/plex/jobs/${jobId}`, { method: 'DELETE' })
-        .then(response => response.json())
+        .then(r => r.json())
         .then(data => {
             if (data.success) {
                 showToast('success', 'Job deleted');
@@ -811,110 +815,53 @@ function deleteJob(jobId) {
             } else {
                 showToast('error', data.error || 'Delete failed');
             }
-        })
-        .catch(error => {
-            showToast('error', 'Delete failed: ' + error.message);
         });
-}
-
-function refreshJobs() {
-    loadJobs();
 }
 
 function cleanupOldJobs() {
-    if (!confirm('Cleanup completed jobs older than 30 days?')) return;
-    
+    if (!confirm('Remove completed jobs older than 30 days?')) return;
     const formData = new FormData();
     formData.append('days', 30);
-    
-    fetch('/api/plex/cleanup', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showToast('success', 'Cleanup task triggered');
-            setTimeout(loadJobs, 2000);
-        } else {
-            showToast('error', data.error || 'Cleanup failed');
-        }
-    })
-    .catch(error => {
-        showToast('error', 'Cleanup failed: ' + error.message);
-    });
-}
-
-// Load libraries
-function loadLibraries() {
-    fetch('/api/plex/libraries')
-        .then(response => response.json())
+    fetch('/api/plex/cleanup', { method: 'POST', body: formData })
+        .then(r => r.json())
         .then(data => {
             if (data.success) {
-                displayLibraries(data.libraries);
+                showToast('success', 'Cleanup started');
+                setTimeout(loadJobs, 2000);
+            } else {
+                showToast('error', data.error || 'Cleanup failed');
             }
-        })
-        .catch(error => {
-            document.getElementById('librariesList').innerHTML = 
-                '<small class="text-danger">Failed to load libraries</small>';
         });
 }
 
-function displayLibraries(libraries) {
-    const container = document.getElementById('librariesList');
-    
-    if (libraries.length === 0) {
-        container.innerHTML = '<small class="text-muted">No libraries found</small>';
-        return;
-    }
-    
-    container.innerHTML = libraries.map(lib => `
-        <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-dark rounded">
-            <div>
-                <strong>${lib.title}</strong>
-                <br>
-                <small class="text-muted">${lib.type}</small>
-            </div>
-        </div>
-    `).join('');
-}
-
-// Manual scan
 function triggerManualScan() {
     fetch('/api/plex/scan', { method: 'POST' })
-        .then(response => response.json())
+        .then(r => r.json())
         .then(data => {
             if (data.success) {
-                showToast('success', `Scanned ${data.libraries.length} libraries`);
+                showToast('success', `Scanned ${data.libraries?.length || 0} libraries`);
             } else {
                 showToast('error', data.error || 'Scan failed');
             }
-        })
-        .catch(error => {
-            showToast('error', 'Scan failed: ' + error.message);
         });
 }
 
-// Utilities
 function showToast(type, message) {
     const toast = document.getElementById(type + 'Toast');
     toast.querySelector('.toast-body').textContent = message;
-    const bsToast = new bootstrap.Toast(toast);
-    bsToast.show();
+    new bootstrap.Toast(toast).show();
 }
 
 function formatFileSize(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    if (bytes === 0) return '0 B';
+    const k = 1024, sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
 }
 
-function formatDate(dateString) {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleString();
+function formatDate(d) {
+    if (!d) return 'N/A';
+    return new Date(d).toLocaleString();
 }
 </script>
 {% endblock %}

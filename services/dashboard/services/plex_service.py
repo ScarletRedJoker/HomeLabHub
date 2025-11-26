@@ -186,7 +186,7 @@ class PlexService:
         
         return self.movies_path
     
-    def create_import_job(self, user_id: str, job_type: str, metadata: Dict = None) -> PlexImportJob:
+    def create_import_job(self, user_id: str, job_type: str, metadata: Optional[Dict] = None) -> PlexImportJob:
         """
         Create a new import job
         
@@ -222,7 +222,7 @@ class PlexService:
         original_filename: str,
         file_size: int,
         storage_path: str,
-        metadata: Dict = None
+        metadata: Optional[Dict] = None
     ) -> PlexImportItem:
         """
         Add an item to an import job
@@ -297,7 +297,7 @@ class PlexService:
         file_path: str,
         original_filename: str,
         job_id: str,
-        media_type: str = None
+        media_type: Optional[str] = None
     ) -> Dict:
         """
         Upload media file to MinIO with Plex-specific validation
