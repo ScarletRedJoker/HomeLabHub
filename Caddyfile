@@ -167,21 +167,23 @@ vnc.evindrake.net {
 # Code Server (VS Code in Browser) - VPN ONLY ACCESS
 # ============================================
 code.evindrake.net {
-    # Apply header modifications FIRST before reverse proxy
-    header {
-        -X-Frame-Options
-        -Content-Security-Policy
-        X-Frame-Options "SAMEORIGIN"
-        X-Content-Type-Options "nosniff"
-        Referrer-Policy "same-origin"
-        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-    }
-    
     reverse_proxy http://code-server:8443 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_up Upgrade {http.request.header.Upgrade}
         header_up Connection {http.request.header.Connection}
+        
+        # CRITICAL: Remove upstream X-Frame-Options header
+        header_down -X-Frame-Options
+        header_down -Content-Security-Policy
+    }
+    
+    # Add our own security headers AFTER reverse_proxy removes upstream headers
+    header {
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "same-origin"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
     }
 }
 
