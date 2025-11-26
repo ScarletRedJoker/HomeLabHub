@@ -79,20 +79,27 @@ You should see your folders: admin, games, music, photo, video, etc.
 
 The Plex container has `/mnt/nas` mapped to `/nas` (read-only). Your NAS folders are accessible at:
 
-| NAS Folder | Plex Container Path | Library Type |
-|------------|---------------------|--------------|
-| video      | /nas/networkshare/video | Movies/TV Shows |
-| music      | /nas/networkshare/music | Music |
-| photo      | /nas/networkshare/photo | Photos |
-| games      | /nas/networkshare/games | Other |
+| NAS Folder | Plex Container Path (Full) | Symlink Path | Library Type |
+|------------|---------------------------|--------------|--------------|
+| video      | /nas/nfs/networkshare/video | /nas/video | Movies/TV Shows |
+| music      | /nas/nfs/networkshare/music | /nas/music | Music |
+| photo      | /nas/nfs/networkshare/photo | /nas/photo | Photos |
+| games      | /nas/nfs/networkshare/games | /nas/games | Other |
 
 ### Add Libraries in Plex
 
 1. Go to https://plex.evindrake.net
-2. Settings → Libraries → Add Library
+2. Settings → Manage → Libraries → Add Library
 3. Choose library type (Movies, TV Shows, Music, etc.)
-4. Add folder: `/nas/networkshare/video` (or appropriate folder)
-5. Click "Add Library"
+4. Click "Browse for media folder"
+5. Navigate to `/nas/video` (or `/nas/nfs/networkshare/video`)
+6. Click "Add" then "Add Library"
+
+**Recommended Library Setup:**
+- **Movies**: `/nas/video` (or subfolder like `/nas/video/Movies`)
+- **TV Shows**: `/nas/video` (or subfolder like `/nas/video/TV Shows`)  
+- **Music**: `/nas/music`
+- **Photos**: `/nas/photo`
 
 ## Step 4: Using the Dashboard
 
