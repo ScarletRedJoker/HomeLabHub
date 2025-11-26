@@ -3,6 +3,12 @@
 ## Overview
 The Nebula Command Dashboard is a web-based interface for managing a Ubuntu 25.10 server hosting 15 Docker-based services. These services are accessible via custom subdomains and include homelab management, Discord/Twitch bots, media streaming, remote desktop access, and home automation. The project aims to provide a centralized, robust, and secure platform for managing a comprehensive homelab environment, integrating various functionalities for personal and community use.
 
+## Code-Server X-Frame-Options Fix (November 26, 2025)
+- **Problem:** code-server was sending `X-Frame-Options: DENY` header, blocking VS Code's internal extension host iframe and causing "No default agent contributed" errors
+- **Solution:** Added nginx sidecar proxy (`code-server-proxy`) between Caddy and code-server that strips the restrictive header using `proxy_hide_header X-Frame-Options` and sets `X-Frame-Options: SAMEORIGIN` with proper CSP `frame-ancestors` directive
+- **Flow:** Caddy → nginx (code-server-proxy:8080) → code-server:8443
+- **Files:** `config/code-server-proxy/nginx.conf`, updated `docker-compose.yml` and `Caddyfile`
+
 ## Major Upgrade (November 26, 2025)
 
 ### Dashboard Enhancements
