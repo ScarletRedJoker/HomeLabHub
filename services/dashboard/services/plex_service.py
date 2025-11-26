@@ -533,8 +533,13 @@ class PlexService:
             return libraries
             
         except requests.RequestException as e:
-            logger.error(f"Failed to get Plex libraries: {e}")
-            raise RuntimeError(f"Failed to get Plex libraries: {str(e)}")
+            error_msg = str(e)
+            if self.plex_token and self.plex_token in error_msg:
+                error_msg = error_msg.replace(self.plex_token, "[REDACTED]")
+            logger.error(f"Failed to get Plex libraries: {error_msg}")
+            if "401" in error_msg:
+                raise RuntimeError("Plex authentication failed. Please check your PLEX_TOKEN is valid.")
+            raise RuntimeError(f"Failed to connect to Plex: {error_msg}")
     
     def get_import_job(self, job_id: str) -> Optional[PlexImportJob]:
         """
