@@ -18,9 +18,19 @@ from typing import Dict, Optional, Tuple, List, Any
 from datetime import datetime, timedelta
 
 try:
-    from config import Config
+    from config import Config  # type: ignore[import-not-found]
 except ImportError:
-    Config = None  # type: ignore
+    Config = None  # type: ignore[assignment]
+
+PLEX_ALLOWED_EXTENSIONS: set[str] = getattr(Config, 'PLEX_ALLOWED_EXTENSIONS', {
+    'mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm', 'm4v', 'mpg', 'mpeg',
+    'mp3', 'flac', 'm4a', 'wav', 'aac', 'ogg', 'wma'
+}) if Config else {
+    'mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm', 'm4v', 'mpg', 'mpeg',
+    'mp3', 'flac', 'm4a', 'wav', 'aac', 'ogg', 'wma'
+}
+
+PLEX_MAX_UPLOAD_SIZE: int = getattr(Config, 'PLEX_MAX_UPLOAD_SIZE', 10 * 1024 * 1024 * 1024) if Config else 10 * 1024 * 1024 * 1024  # 10GB
 
 from env_config.environment import get_plex_config, is_docker, get_environment_info
 from services.upload_service import upload_service
@@ -329,14 +339,14 @@ class PlexService:
         
         ext = filename.rsplit('.', 1)[1].lower()
         
-        if ext not in Config.PLEX_ALLOWED_EXTENSIONS:
-            allowed = ', '.join(sorted(Config.PLEX_ALLOWED_EXTENSIONS))
+        if ext not in PLEX_ALLOWED_EXTENSIONS:
+            allowed = ', '.join(sorted(PLEX_ALLOWED_EXTENSIONS))
             return False, f"File type '.{ext}' is not allowed for Plex import. Allowed types: {allowed}"
         
         # Check file size
-        if file_size > Config.PLEX_MAX_UPLOAD_SIZE:
+        if file_size > PLEX_MAX_UPLOAD_SIZE:
             size_gb = file_size / (1024 * 1024 * 1024)
-            max_gb = Config.PLEX_MAX_UPLOAD_SIZE / (1024 * 1024 * 1024)
+            max_gb = PLEX_MAX_UPLOAD_SIZE / (1024 * 1024 * 1024)
             return False, f"File size ({size_gb:.2f}GB) exceeds maximum allowed size ({max_gb:.2f}GB)"
         
         return True, ""
@@ -639,7 +649,7 @@ class PlexService:
             
             return jobs
     
-    def update_job_status(self, job_id: str, status: str, error_message: str = None) -> bool:
+    def update_job_status(self, job_id: str, status: str, error_message: Optional[str] = None) -> bool:
         """
         Update job status
         

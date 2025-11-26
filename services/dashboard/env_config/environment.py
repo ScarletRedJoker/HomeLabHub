@@ -171,10 +171,17 @@ def get_plex_config() -> PlexConfig:
     Raises:
         ValueError if PLEX_TOKEN is not configured
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
     plex_token = os.getenv("PLEX_TOKEN")
     plex_url_env = os.getenv("PLEX_URL")
     
     if not plex_token:
+        logger.warning(
+            "PLEX_TOKEN is not set! Plex integration will not work. "
+            "Get your token: docker exec plex-server cat '/config/Library/Application Support/Plex Media Server/Preferences.xml' | grep -oP 'PlexOnlineToken=\"\\K[^\"]+'"
+        )
         raise ValueError(
             "PLEX_TOKEN is required. Get it from your Plex server: "
             "docker exec plex-server cat '/config/Library/Application Support/Plex Media Server/Preferences.xml' | grep -oP 'PlexOnlineToken=\"\\K[^\"]+'"
