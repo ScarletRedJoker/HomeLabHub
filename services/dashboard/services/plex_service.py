@@ -1,13 +1,28 @@
-"""Plex Media Import Service"""
+"""Plex Media Import Service
+
+This service handles all Plex Media Server integrations including:
+- Media file uploads and imports
+- Library scanning
+- Metadata extraction from filenames
+- Import job management
+
+When running inside Docker, it automatically uses the internal Docker network
+to communicate with Plex (http://plex-server:32400) for reliable connectivity.
+"""
 import os
 import re
 import shutil
 import logging
 import requests
-from typing import Dict, Optional, Tuple, List
+from typing import Dict, Optional, Tuple, List, Any
 from datetime import datetime, timedelta
-from config import Config
-from env_config.environment import get_plex_config
+
+try:
+    from config import Config
+except ImportError:
+    Config = None  # type: ignore
+
+from env_config.environment import get_plex_config, is_docker, get_environment_info
 from services.upload_service import upload_service
 from services.db_service import db_service
 from models.plex import PlexImportJob, PlexImportItem
@@ -16,34 +31,68 @@ logger = logging.getLogger(__name__)
 
 
 class PlexService:
-    """Service for managing Plex media imports"""
+    """
+    Service for managing Plex media imports.
     
-    # Video file extensions
+    Handles intelligent URL resolution for Docker environments:
+    - Inside Docker: Uses internal network (http://plex-server:32400)
+    - Outside Docker: Uses configured PLEX_URL
+    
+    Attributes:
+        plex_url: The Plex server URL (internal or external based on environment)
+        plex_token: Authentication token for Plex API
+        is_configured: Whether Plex is properly configured
+        is_internal: Whether using internal Docker network
+    """
+    
     VIDEO_EXTENSIONS = {'.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm', '.m4v', '.mpg', '.mpeg'}
-    
-    # Music file extensions
     MUSIC_EXTENSIONS = {'.mp3', '.flac', '.m4a', '.wav', '.aac', '.ogg', '.wma'}
     
-    # Regex patterns for filename parsing
     MOVIE_PATTERN = re.compile(r'^(.+?)[\s._-]+\(?(\d{4})\)?', re.IGNORECASE)
     TV_PATTERN = re.compile(r'^(.+?)[\s._-]+[Ss](\d{1,2})[Ee](\d{1,2})', re.IGNORECASE)
     TV_PATTERN_ALT = re.compile(r'^(.+?)[\s._-]+(\d{1,2})x(\d{1,2})', re.IGNORECASE)
     
-    def __init__(self):
-        """Initialize Plex service"""
+    def __init__(self) -> None:
+        """
+        Initialize Plex service with environment-aware configuration.
+        
+        Automatically detects Docker environment and uses appropriate URLs.
+        """
+        self.plex_url: Optional[str] = None
+        self.plex_token: Optional[str] = None
+        self.is_configured: bool = False
+        self.is_internal: bool = False
+        
         try:
             plex_config = get_plex_config()
-            self.plex_url = plex_config["url"]
-            self.plex_token = plex_config["token"]
-            logger.info(f"Plex service initialized with URL: {self.plex_url}")
+            self.plex_url = plex_config.url
+            self.plex_token = plex_config.token
+            self.is_internal = plex_config.is_internal
+            self.is_configured = True
+            
+            env_type = "Docker internal" if self.is_internal else "external"
+            logger.info(f"Plex service initialized ({env_type}): {self.plex_url}")
+            
+            if is_docker():
+                env_info = get_environment_info()
+                logger.debug(f"Environment info: {env_info}")
+                
         except ValueError as e:
             logger.warning(f"Plex service not fully configured: {e}")
-            self.plex_url = Config.PLEX_URL if hasattr(Config, 'PLEX_URL') else None
-            self.plex_token = Config.PLEX_TOKEN if hasattr(Config, 'PLEX_TOKEN') else None
+            if Config:
+                self.plex_url = getattr(Config, 'PLEX_URL', None)
+                self.plex_token = getattr(Config, 'PLEX_TOKEN', None)
+                if self.plex_url and self.plex_token:
+                    self.is_configured = True
         
-        self.movies_path = Config.PLEX_MOVIES_PATH
-        self.tv_path = Config.PLEX_TV_PATH
-        self.music_path = Config.PLEX_MUSIC_PATH
+        if Config:
+            self.movies_path: str = getattr(Config, 'PLEX_MOVIES_PATH', '/media/Movies')
+            self.tv_path: str = getattr(Config, 'PLEX_TV_PATH', '/media/TV Shows')
+            self.music_path: str = getattr(Config, 'PLEX_MUSIC_PATH', '/media/Music')
+        else:
+            self.movies_path = '/media/Movies'
+            self.tv_path = '/media/TV Shows'
+            self.music_path = '/media/Music'
     
     def detect_media_type(self, filename: str) -> str:
         """
@@ -336,8 +385,10 @@ class PlexService:
         if not safe_filename:
             safe_filename = f"media_file_{job_id[:8]}"
         
-        # Upload to MinIO directly (bypassing standard file validator)
         upload_service._ensure_initialized()
+        
+        if not upload_service.minio_client:
+            raise RuntimeError("MinIO storage not available")
         
         object_name = f"staging/{job_id}/{safe_filename}"
         bucket = 'plex-media'
@@ -443,7 +494,7 @@ class PlexService:
                 if os.path.exists(temp_path):
                     os.remove(temp_path)
     
-    def trigger_library_scan(self, library_type: str = None) -> Dict:
+    def trigger_library_scan(self, library_type: Optional[str] = None) -> Dict[str, Any]:
         """
         Trigger Plex library scan
         
@@ -560,7 +611,7 @@ class PlexService:
                 session.expunge(job)
             return job
     
-    def list_import_jobs(self, user_id: str = None, limit: int = 50) -> List[PlexImportJob]:
+    def list_import_jobs(self, user_id: Optional[str] = None, limit: int = 50) -> List[PlexImportJob]:
         """
         List import jobs
         

@@ -7,8 +7,9 @@ from uuid import uuid4
 from flask import Blueprint, request, jsonify, session, render_template
 from werkzeug.utils import secure_filename
 from functools import wraps
+from typing import Any, Dict, Set
 
-from config import Config
+from config import Config  # type: ignore[import-not-found]
 from services.plex_service import plex_service
 from workers.plex_worker import process_import_job, cleanup_old_imports
 from utils.auth import require_auth, require_web_auth
@@ -17,7 +18,16 @@ logger = logging.getLogger(__name__)
 
 plex_bp = Blueprint('plex', __name__)
 
-CHUNKED_UPLOADS = {}
+CHUNKED_UPLOADS: Dict[str, Any] = {}
+
+UPLOAD_FOLDER: str = getattr(Config, 'UPLOAD_FOLDER', '/tmp/jarvis_uploads')
+PLEX_MAX_UPLOAD_SIZE: int = getattr(Config, 'PLEX_MAX_UPLOAD_SIZE', 10 * 1024 * 1024 * 1024)
+PLEX_CHUNK_SIZE: int = getattr(Config, 'PLEX_CHUNK_SIZE', 10 * 1024 * 1024)
+PLEX_ALLOWED_EXTENSIONS: Set[str] = getattr(Config, 'PLEX_ALLOWED_EXTENSIONS', {
+    'mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm', 'm4v', 'mpg', 'mpeg', 'ts', 'm2ts',
+    'mp3', 'flac', 'm4a', 'wav', 'aac', 'ogg', 'wma', 'aiff', 'ape',
+    'srt', 'ass', 'ssa', 'sub', 'vtt'
+})
 
 
 def login_required(f):
@@ -69,19 +79,16 @@ def import_media():
         job_id = str(job.id)
         uploaded_files = []
         
-        # Create temp directory
-        os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
         
-        # Upload each file
         for file in files:
             if not file.filename or file.filename == '':
                 continue
             
             filename = str(file.filename)
             
-            # Save to temp location
             temp_path = os.path.join(
-                Config.UPLOAD_FOLDER,
+                UPLOAD_FOLDER,
                 f"{uuid4()}_{secure_filename(filename)}"
             )
             file.save(temp_path)
@@ -140,10 +147,10 @@ def get_upload_config():
     """
     return jsonify({
         'success': True,
-        'max_file_size': Config.PLEX_MAX_UPLOAD_SIZE,
-        'max_file_size_gb': Config.PLEX_MAX_UPLOAD_SIZE / (1024 * 1024 * 1024),
-        'chunk_size': Config.PLEX_CHUNK_SIZE,
-        'allowed_extensions': list(Config.PLEX_ALLOWED_EXTENSIONS)
+        'max_file_size': PLEX_MAX_UPLOAD_SIZE,
+        'max_file_size_gb': PLEX_MAX_UPLOAD_SIZE / (1024 * 1024 * 1024),
+        'chunk_size': PLEX_CHUNK_SIZE,
+        'allowed_extensions': list(PLEX_ALLOWED_EXTENSIONS)
     }), 200
 
 
@@ -194,13 +201,11 @@ def init_chunked_upload():
         job_id = str(job.id)
         upload_id = str(uuid4())
         
-        # Calculate expected chunks
-        chunk_size = Config.PLEX_CHUNK_SIZE
+        chunk_size = PLEX_CHUNK_SIZE
         total_chunks = (file_size + chunk_size - 1) // chunk_size
         
-        # Create temp file for assembling chunks
-        os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
-        temp_path = os.path.join(Config.UPLOAD_FOLDER, f"chunked_{upload_id}")
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        temp_path = os.path.join(UPLOAD_FOLDER, f"chunked_{upload_id}")
         
         # Store upload session info
         CHUNKED_UPLOADS[upload_id] = {
@@ -548,9 +553,11 @@ def get_job_status(job_id):
         job_dict = job.to_dict()
         job_dict['items'] = items
         
-        # Calculate progress percentage
-        if job.total_files > 0:
-            job_dict['progress_percent'] = int((job.processed_files / job.total_files) * 100)
+        total_files: int = int(job_dict.get('total_files', 0))
+        processed_files: int = int(job_dict.get('processed_files', 0))
+        
+        if total_files > 0:
+            job_dict['progress_percent'] = int((processed_files / total_files) * 100)
         else:
             job_dict['progress_percent'] = 0
         

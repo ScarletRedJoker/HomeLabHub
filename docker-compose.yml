@@ -107,6 +107,7 @@ services:
       - FLASK_ENV=production
       - PYTHONUNBUFFERED=1
       - RUN_MIGRATIONS=true
+      - DOCKER_CONTAINER=true
       - COMPOSE_PROJECT_DIR=/home/${SERVICE_USER:-evin}/contain/HomeLabHub
       - JARVIS_DATABASE_URL=postgresql://jarvis:${JARVIS_DB_PASSWORD}@homelab-postgres:5432/homelab_jarvis
       - REDIS_URL=redis://redis:6379/0
@@ -116,6 +117,8 @@ services:
       - HOME_ASSISTANT_URL=${HOME_ASSISTANT_URL:-http://homeassistant:8123}
       - HOME_ASSISTANT_TOKEN=${HOME_ASSISTANT_TOKEN:-}
       - HOME_ASSISTANT_VERIFY_SSL=${HOME_ASSISTANT_VERIFY_SSL:-False}
+      - PLEX_URL=http://plex-server:32400
+      - PLEX_TOKEN=${PLEX_TOKEN}
       - AI_PROVIDER=openai
       - AI_MODEL=gpt-4o
       - SERVICE_AUTH_TOKEN=${SERVICE_AUTH_TOKEN}
@@ -142,12 +145,18 @@ services:
         condition: service_healthy
     environment:
       - RUN_MIGRATIONS=false
+      - DOCKER_CONTAINER=true
       - REDIS_URL=redis://redis:6379/0
       - JARVIS_DATABASE_URL=postgresql://jarvis:${JARVIS_DB_PASSWORD}@homelab-postgres:5432/homelab_jarvis
       - PYTHONUNBUFFERED=1
       - HOME_ASSISTANT_URL=${HOME_ASSISTANT_URL:-http://homeassistant:8123}
       - HOME_ASSISTANT_TOKEN=${HOME_ASSISTANT_TOKEN:-}
       - HOME_ASSISTANT_VERIFY_SSL=${HOME_ASSISTANT_VERIFY_SSL:-False}
+      - PLEX_URL=http://plex-server:32400
+      - PLEX_TOKEN=${PLEX_TOKEN}
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-admin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minio_admin_password}
       - COMPOSE_FILE=/docker-compose.yml
       - CADDYFILE_PATH=/Caddyfile
       - ENV_FILE=/.env

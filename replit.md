@@ -57,6 +57,7 @@ The Nebula Command Dashboard is a web-based interface for managing a Ubuntu 25.1
 - **Enhanced homelab script:** New commands (logs --json, health --full, backup --full, doctor)
 
 ## Previous Changes (November 2025)
+- **Plex Integration Fixed:** Implemented intelligent Docker network detection - dashboard automatically uses internal URLs (http://plex-server:32400) when running inside Docker, eliminating 401 authentication errors from external URL routing. Added `is_docker()` and `can_resolve_hostname()` helpers in environment.py.
 - **Stream-bot OAuth Complete:** All platforms properly store refresh tokens with encrypted storage
 - **Fact Length Enforcement:** Hard 90-character limit with smart truncation
 - **Token Refresh Service:** 30-minute refresh cycle for expiring tokens
