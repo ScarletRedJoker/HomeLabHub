@@ -147,24 +147,36 @@ mount_all() {
     # Create base mount directory
     mkdir -p "$MOUNT_BASE"
     
-    # Mount main networkshare (contains all media folders)
-    mount_share "$nas_address" "nfs/networkshare" "$MOUNT_BASE/networkshare" "$creds_file" "rw"
+    # Mount the nfs share (which contains networkshare folder with all media)
+    # Zyxel NAS326 exposes 'nfs' as the SMB share name
+    mount_share "$nas_address" "nfs" "$MOUNT_BASE/nfs" "$creds_file" "rw"
     
-    # Create symlinks for easier access
-    if [ -d "$MOUNT_BASE/networkshare" ]; then
-        # Link common media folders if they exist
+    # Create symlink for networkshare if it exists inside nfs
+    if [ -d "$MOUNT_BASE/nfs/networkshare" ]; then
+        ln -sf "$MOUNT_BASE/nfs/networkshare" "$MOUNT_BASE/networkshare" 2>/dev/null || true
+        log_info "Created symlink: networkshare -> nfs/networkshare"
+        
+        # Link common media folders if they exist inside networkshare
         for folder in video music photo games admin; do
-            if [ -d "$MOUNT_BASE/networkshare/$folder" ]; then
-                ln -sf "$MOUNT_BASE/networkshare/$folder" "$MOUNT_BASE/$folder" 2>/dev/null || true
+            if [ -d "$MOUNT_BASE/nfs/networkshare/$folder" ]; then
+                ln -sf "$MOUNT_BASE/nfs/networkshare/$folder" "$MOUNT_BASE/$folder" 2>/dev/null || true
             fi
         done
         log_info "Created symlinks for media folders"
+    elif [ -d "$MOUNT_BASE/nfs" ]; then
+        # If no networkshare subfolder, link folders directly from nfs
+        for folder in video music photo games admin; do
+            if [ -d "$MOUNT_BASE/nfs/$folder" ]; then
+                ln -sf "$MOUNT_BASE/nfs/$folder" "$MOUNT_BASE/$folder" 2>/dev/null || true
+            fi
+        done
+        log_info "Created symlinks for media folders from nfs share"
     fi
     
     log_info "NAS mounting complete!"
     echo ""
     log_info "Plex can now access media at:"
-    echo "  - /nas/networkshare (inside container)"
+    echo "  - /nas/nfs/networkshare (inside container)"
     echo "  - /nas/video, /nas/music, etc. (symlinks)"
     echo ""
     log_info "Configure Plex libraries to point to these paths"
@@ -174,13 +186,14 @@ unmount_all() {
     log_info "Unmounting NAS shares..."
     
     # Remove symlinks first
+    rm -f "$MOUNT_BASE/networkshare" 2>/dev/null || true
     for folder in video music photo games admin; do
         rm -f "$MOUNT_BASE/$folder" 2>/dev/null || true
     done
     
     # Unmount shares
-    if mountpoint -q "$MOUNT_BASE/networkshare" 2>/dev/null; then
-        umount "$MOUNT_BASE/networkshare" && log_info "Unmounted networkshare"
+    if mountpoint -q "$MOUNT_BASE/nfs" 2>/dev/null; then
+        umount "$MOUNT_BASE/nfs" && log_info "Unmounted nfs share"
     fi
     
     log_info "NAS unmount complete"
@@ -190,17 +203,23 @@ show_status() {
     echo "=== NAS Mount Status ==="
     echo ""
     
-    if mountpoint -q "$MOUNT_BASE/networkshare" 2>/dev/null; then
-        echo -e "${GREEN}[MOUNTED]${NC} $MOUNT_BASE/networkshare"
+    if mountpoint -q "$MOUNT_BASE/nfs" 2>/dev/null; then
+        echo -e "${GREEN}[MOUNTED]${NC} $MOUNT_BASE/nfs"
         echo ""
         echo "Contents:"
-        ls -la "$MOUNT_BASE/networkshare" 2>/dev/null | head -20 || echo "  (unable to list)"
+        ls -la "$MOUNT_BASE/nfs" 2>/dev/null | head -20 || echo "  (unable to list)"
     else
-        echo -e "${RED}[NOT MOUNTED]${NC} $MOUNT_BASE/networkshare"
+        echo -e "${RED}[NOT MOUNTED]${NC} $MOUNT_BASE/nfs"
     fi
     
     echo ""
     echo "=== Symlinks ==="
+    if [ -L "$MOUNT_BASE/networkshare" ]; then
+        echo -e "${GREEN}[OK]${NC} $MOUNT_BASE/networkshare -> $(readlink -f "$MOUNT_BASE/networkshare")"
+    else
+        echo -e "${YELLOW}[MISSING]${NC} $MOUNT_BASE/networkshare"
+    fi
+    
     for folder in video music photo games admin; do
         if [ -L "$MOUNT_BASE/$folder" ]; then
             echo -e "${GREEN}[OK]${NC} $MOUNT_BASE/$folder -> $(readlink -f "$MOUNT_BASE/$folder")"
@@ -220,9 +239,10 @@ setup_automount() {
     create_credentials_file
     
     # Add to /etc/fstab if not already present
-    local fstab_entry="//$nas_address/nfs/networkshare $MOUNT_BASE/networkshare cifs credentials=$creds_file,uid=1000,gid=1000,iocharset=utf8,_netdev,vers=3.0 0 0"
+    # Mount the 'nfs' share which contains networkshare folder
+    local fstab_entry="//$nas_address/nfs $MOUNT_BASE/nfs cifs credentials=$creds_file,uid=1000,gid=1000,iocharset=utf8,_netdev,vers=3.0 0 0"
     
-    if ! grep -q "$MOUNT_BASE/networkshare" /etc/fstab; then
+    if ! grep -q "$MOUNT_BASE/nfs" /etc/fstab; then
         echo "$fstab_entry" >> /etc/fstab
         log_info "Added NAS mount to /etc/fstab"
     else
