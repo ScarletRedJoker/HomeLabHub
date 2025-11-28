@@ -27,6 +27,11 @@ The Nebula Command Dashboard is a web-based interface for managing a Ubuntu 25.1
 - Spotify OAuth: ✓ Configured with PKCE
 - Kick OAuth: ✓ Configured
 
+### Bootstrap Fixes
+- **Discord Bot Missing Package:** Added `openai` to dependencies - was causing "Cannot find package 'openai'" errors on startup
+- **Migration 017 Concurrency Fix:** Added try/except guards around enum type creation to handle concurrent execution from multiple Celery workers
+- **Celery Worker Migration Prevention:** Added RUN_MIGRATIONS check to app.py - workers now skip migrations (RUN_MIGRATIONS=false) while dashboard runs them
+
 ## Code-Server X-Frame-Options Fix (November 26, 2025)
 - **Problem:** code-server was sending `X-Frame-Options: DENY` header, blocking VS Code's internal extension host iframe and causing "No default agent contributed" errors
 - **Solution:** Added nginx sidecar proxy (`code-server-proxy`) between Caddy and code-server that strips the restrictive header using `proxy_hide_header X-Frame-Options` and sets `X-Frame-Options: SAMEORIGIN` with proper CSP `frame-ancestors` directive
