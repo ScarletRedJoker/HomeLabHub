@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Events, REST, Routes, EmbedBuilder } from 'discord.js';
+import { Client, GatewayIntentBits, Events, REST, Routes, EmbedBuilder, ActivityType } from 'discord.js';
 import { commands, registerCommands, sendTicketNotificationToAdminChannel } from './commands';
 import { developerCommands } from './dev-commands';
 import { IStorage } from '../storage';
@@ -2012,6 +2012,13 @@ export async function startBot(storage: IStorage, broadcast: (data: any) => void
     // Handle ready event
     client.once(Events.ClientReady, async (readyClient) => {
       console.log(`Discord bot ready! Logged in as ${readyClient.user.tag}`);
+      
+      // Set bot presence to show it's online and active
+      readyClient.user.setPresence({
+        activities: [{ name: 'Support Tickets | /ticket', type: ActivityType.Watching }],
+        status: 'online',
+      });
+      console.log('[Discord] Bot presence set to ONLINE');
       
       // Log connected servers
       const guilds = readyClient.guilds.cache;
