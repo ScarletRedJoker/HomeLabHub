@@ -372,12 +372,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/facts/public - Public community fact feed (no auth required)
-  // Returns facts from all users with pagination, filtering, and sorting
+  // Returns only AI-generated facts (source: 'stream-bot' or 'openai') with pagination
+  // Manual/admin-created facts are excluded for security
   app.get("/api/facts/public", async (req, res) => {
     try {
       const { db } = await import('./db');
       const { facts } = await import('@shared/schema');
-      const { desc, asc, ilike, sql } = await import('drizzle-orm');
+      const { desc, asc, ilike, sql, inArray, and } = await import('drizzle-orm');
       
       // Parse query parameters with defaults
       const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 100);
@@ -386,17 +387,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const search = (req.query.search as string) || '';
       const tag = (req.query.tag as string) || '';
       
-      // Build query with filters
-      let query = db.select({
-        id: facts.id,
-        fact: facts.fact,
-        source: facts.source,
-        tags: facts.tags,
-        createdAt: facts.createdAt,
-      }).from(facts);
+      // Only allow public AI-generated facts (exclude manual/admin entries for security)
+      const allowedSources = ['stream-bot', 'openai'];
+      
+      // Build conditions array - always start with source filter for security
+      const conditions: any[] = [inArray(facts.source, allowedSources)];
       
       // Apply search filter if provided
-      const conditions: any[] = [];
       if (search) {
         conditions.push(ilike(facts.fact, `%${search}%`));
       }
@@ -406,28 +403,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         conditions.push(sql`${facts.tags} @> ${JSON.stringify([tag])}::jsonb`);
       }
       
-      // Apply conditions
-      if (conditions.length > 0) {
-        query = query.where(conditions.length === 1 ? conditions[0] : sql`${conditions[0]} AND ${conditions[1]}`);
-      }
+      // Build the where clause using and()
+      const whereClause = conditions.length === 1 ? conditions[0] : and(...conditions);
       
-      // Apply sorting
-      query = query.orderBy(sort === 'oldest' ? asc(facts.createdAt) : desc(facts.createdAt));
+      // Execute query with all filters, sorting, and pagination
+      const publicFacts = await db.select({
+        id: facts.id,
+        fact: facts.fact,
+        source: facts.source,
+        tags: facts.tags,
+        createdAt: facts.createdAt,
+      })
+        .from(facts)
+        .where(whereClause)
+        .orderBy(sort === 'oldest' ? asc(facts.createdAt) : desc(facts.createdAt))
+        .limit(limit)
+        .offset(offset);
       
-      // Apply pagination
-      query = query.limit(limit).offset(offset);
+      // Get total count for pagination with same filters
+      const [{ count: totalCount }] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(facts)
+        .where(whereClause);
       
-      const publicFacts = await query;
-      
-      // Get total count for pagination
-      let countQuery = db.select({ count: sql<number>`count(*)::int` }).from(facts);
-      if (conditions.length > 0) {
-        countQuery = countQuery.where(conditions.length === 1 ? conditions[0] : sql`${conditions[0]} AND ${conditions[1]}`);
-      }
-      const [{ count: totalCount }] = await countQuery;
-      
-      // Get unique tags for filtering UI
-      const allTags = await db.select({ tags: facts.tags }).from(facts);
+      // Get unique tags for filtering UI (only from allowed sources)
+      const allTags = await db.select({ tags: facts.tags })
+        .from(facts)
+        .where(inArray(facts.source, allowedSources));
       const uniqueTags = [...new Set(allTags.flatMap(f => (f.tags as string[]) || []))].sort();
       
       res.json({

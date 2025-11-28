@@ -1,6 +1,6 @@
 """
 Docker Compose File Manager
-Programmatically manage docker-compose.unified.yml
+Programmatically manage docker-compose.yml
 """
 
 import yaml
@@ -16,7 +16,7 @@ class ComposeManager:
     """Manage Docker Compose configuration files"""
     
     def __init__(self, compose_file_path: Optional[str] = None):
-        self.compose_file_path = compose_file_path or os.getenv('COMPOSE_FILE', 'docker-compose.unified.yml')
+        self.compose_file_path = compose_file_path or os.getenv('COMPOSE_FILE', 'docker-compose.yml')
         self.config: Dict[str, Any] = {}
         self.load_config()
     

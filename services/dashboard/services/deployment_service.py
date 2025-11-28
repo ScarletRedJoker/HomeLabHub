@@ -18,7 +18,7 @@ class DeploymentService:
     """Orchestrate service deployments"""
     
     def __init__(self, 
-                 compose_path: str = 'docker-compose.unified.yml',
+                 compose_path: str = 'docker-compose.yml',
                  caddyfile_path: str = 'Caddyfile',
                  env_path: str = '.env'):
         self.templates = ServiceTemplateLibrary()

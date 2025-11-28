@@ -3,6 +3,30 @@
 ## Overview
 The Nebula Command Dashboard is a web-based interface for managing a Ubuntu 25.10 server hosting 15 Docker-based services. These services are accessible via custom subdomains and include homelab management, Discord/Twitch bots, media streaming, remote desktop access, and home automation. The project aims to provide a centralized, robust, and secure platform for managing a comprehensive homelab environment, integrating various functionalities for personal and community use.
 
+## Latest Changes (November 28, 2025)
+
+### Jarvis/Continue.dev Integration Fix
+- **Secure API Key Handling:** Created `config/code-server/continue-config.ts` that reads `OPENAI_API_KEY` from `process.env` instead of hardcoding
+- **Docker Mount Updated:** Changed from `config.json` to `config.ts` in docker-compose.yml
+- **Custom Commands:** `/homelab-fix`, `/homelab-review`, `/homelab-deploy`, `/homelab-status`
+- **System Prompt:** Jarvis configured as AI assistant for Nebula Command homelab
+
+### Stream-bot Public Fact Feed
+- **New Page:** Added `/fact-feed` route showing community fact history
+- **API Endpoint:** `GET /api/facts/public` with pagination, search, filtering
+- **Security:** Only AI-generated facts shown (source: 'stream-bot' or 'openai'), excludes manual/admin entries
+- **Features:** Tag filtering, search, sort by newest/oldest, responsive grid layout
+
+### Dashboard Cleanup
+- **Removed AI Facts:** Deleted redundant facts page from dashboard (now in stream-bot)
+- **Fixed Compose References:** Changed `docker-compose.unified.yml` to `docker-compose.yml`
+
+### OAuth Status (All Platforms Working)
+- Twitch OAuth: ✓ Configured
+- YouTube OAuth: ✓ Configured with PKCE
+- Spotify OAuth: ✓ Configured with PKCE
+- Kick OAuth: ✓ Configured
+
 ## Code-Server X-Frame-Options Fix (November 26, 2025)
 - **Problem:** code-server was sending `X-Frame-Options: DENY` header, blocking VS Code's internal extension host iframe and causing "No default agent contributed" errors
 - **Solution:** Added nginx sidecar proxy (`code-server-proxy`) between Caddy and code-server that strips the restrictive header using `proxy_hide_header X-Frame-Options` and sets `X-Frame-Options: SAMEORIGIN` with proper CSP `frame-ancestors` directive
