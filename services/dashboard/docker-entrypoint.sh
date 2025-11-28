@@ -22,14 +22,16 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "  Database Orchestration (wait_for_schema.py)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-RUN_MIGRATIONS=${RUN_MIGRATIONS:-true}
+# Always run migrations in the entrypoint (once at startup)
+# The Flask app has RUN_MIGRATIONS=false to prevent duplicate runs by workers
+ENTRYPOINT_RUN_MIGRATIONS=true
 SCHEMA_WAIT_TIMEOUT=${SCHEMA_WAIT_TIMEOUT:-180}
 
 # Run the wait_for_schema utility - this handles:
 # 1. Waiting for PostgreSQL to be ready
 # 2. Running Alembic migrations
 # 3. Verifying all required tables exist
-export RUN_MIGRATIONS
+export RUN_MIGRATIONS=$ENTRYPOINT_RUN_MIGRATIONS
 export SCHEMA_WAIT_TIMEOUT
 export DATABASE_URL="$JARVIS_DATABASE_URL"
 

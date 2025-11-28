@@ -31,6 +31,7 @@ The Nebula Command Dashboard is a web-based interface for managing a Ubuntu 25.1
 - **Discord Bot Missing Packages:** Added `openai`, `p-limit`, and `p-retry` to dependencies - was causing "Cannot find package" errors on startup
 - **Migration 017 Concurrency Fix:** Updated enum creation to use PostgreSQL DO blocks with EXCEPTION handlers for idempotent execution - prevents "invalid input value for enum" errors during concurrent migrations
 - **Celery Worker Migration Prevention:** Added RUN_MIGRATIONS check to app.py - workers now skip migrations (RUN_MIGRATIONS=false) while dashboard runs them
+- **Gunicorn Worker Migration Race Condition:** Set RUN_MIGRATIONS=false in docker-compose.yml for dashboard - migrations now only run ONCE in docker-entrypoint.sh, not in each Gunicorn worker
 
 ## Code-Server X-Frame-Options Fix (November 26, 2025)
 - **Problem:** code-server was sending `X-Frame-Options: DENY` header, blocking VS Code's internal extension host iframe and causing "No default agent contributed" errors

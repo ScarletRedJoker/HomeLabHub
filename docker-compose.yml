@@ -106,7 +106,7 @@ services:
     environment:
       - FLASK_ENV=production
       - PYTHONUNBUFFERED=1
-      - RUN_MIGRATIONS=true
+      - RUN_MIGRATIONS=false
       - DOCKER_CONTAINER=true
       - COMPOSE_PROJECT_DIR=/home/${SERVICE_USER:-evin}/contain/HomeLabHub
       - JARVIS_DATABASE_URL=postgresql://jarvis:${JARVIS_DB_PASSWORD}@homelab-postgres:5432/homelab_jarvis
