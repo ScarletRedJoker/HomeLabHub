@@ -173,7 +173,26 @@ Direct AI access to browse, read, edit, and search the actual HomeLabHub codebas
 - **Files:** `services/dashboard/services/jarvis_codebase_service.py`, `routes/jarvis_codebase_routes.py`
 - **Features:** File browsing, code search, automated edits with backups, Git status
 - **Security:** Protected paths (.env, .git), file type whitelist, automatic .jarvis-backup files
-- **Requirements:** Set `HOMELAB_PROJECT_ROOT=/home/evin/contain/HomeLabHub`
+- **Requirements:** Uses `HOMELAB_PROJECT_ROOT` environment variable (defaults to `/project` in Docker)
+
+### Jarvis Infrastructure Orchestrator (NEW - November 30, 2025)
+Multi-billion dollar AI SaaS platform for autonomous infrastructure management:
+- **Location:** `/api/jarvis/infrastructure/*` API endpoints
+- **Files:** `services/dashboard/jarvis/infrastructure_orchestrator.py`, `jarvis/stack_templates.py`, `routes/jarvis_infrastructure_api.py`
+- **Features:**
+  - **15+ Stack Templates:** LAMP, MEAN, MERN, Django, Flask, WordPress, Redis Cluster, PostgreSQL HA, MongoDB Replica Set, RabbitMQ, Kafka, Prometheus/Grafana, Elasticsearch, GitLab CI/CD
+  - **Natural Language Deployment:** "Deploy a WordPress site with SSL" → Full deployment plan + compose files
+  - **Cost Estimation:** Pricing models for Linode, DigitalOcean, AWS, Hetzner
+  - **Security Scanning:** 10+ checks (exposed ports, weak credentials, SSL, network isolation)
+  - **Multi-Host Orchestration:** Deploy across Fleet-managed hosts via Tailscale VPN
+  - **One-Command Deploy:** End-to-end deployment from a single API request
+- **API Endpoints:**
+  - `GET /api/jarvis/infrastructure/stacks` - List all stack templates
+  - `POST /api/jarvis/infrastructure/generate/compose` - Generate docker-compose from template
+  - `POST /api/jarvis/infrastructure/plan` - Create deployment plan from natural language
+  - `POST /api/jarvis/infrastructure/estimate` - Estimate deployment costs
+  - `POST /api/jarvis/infrastructure/security/scan` - Security analysis
+  - `POST /api/jarvis/infrastructure/deploy/fleet` - Multi-host deployment
 
 ### Production Configuration
 Gunicorn WSGI server configuration for Docker deployment:
