@@ -24,13 +24,14 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-# Detect project root
-if [ -d "/home/evin/contain/HomeLabHub" ]; then
-    PROJECT_ROOT="/home/evin/contain/HomeLabHub"
-elif [ -d "/opt/homelab/HomeLabHub" ]; then
-    PROJECT_ROOT="/opt/homelab/HomeLabHub"
-else
-    PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# Detect project root - use script location, no hardcoded paths
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# Verify we're in a valid project directory
+if [ ! -f "$PROJECT_ROOT/docker-compose.yml" ]; then
+    echo -e "${RED}✗ Not a valid HomeLabHub directory${NC}"
+    echo "Could not find docker-compose.yml in $PROJECT_ROOT"
+    exit 1
 fi
 
 cd "$PROJECT_ROOT"

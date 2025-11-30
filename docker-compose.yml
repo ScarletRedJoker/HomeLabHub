@@ -88,8 +88,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./services/dashboard/logs:/app/logs
-      - ${HOMELAB_PROJECT_ROOT:-/data/projects}:${HOMELAB_PROJECT_ROOT:-/data/projects}:ro
-      - ${STATIC_SITE_PATH:-/var/www}:${STATIC_SITE_PATH:-/var/www}
+      - .:/project
+      - ${HOST_STATIC_SITE_PATH:-./static-sites}:/var/www
       - ./docker-compose.yml:/app/docker-compose.yml:ro
       - ./Caddyfile:/app/Caddyfile:ro
       - ./.env:/app/.env:ro
@@ -100,9 +100,9 @@ services:
       - PYTHONUNBUFFERED=1
       - RUN_MIGRATIONS=false
       - DOCKER_CONTAINER=true
-      - HOMELAB_PROJECT_ROOT=${HOMELAB_PROJECT_ROOT:-/data/projects}
-      - STATIC_SITE_PATH=${STATIC_SITE_PATH:-/var/www}
-      - COMPOSE_PROJECT_DIR=${HOMELAB_PROJECT_ROOT:-/data/projects}
+      - HOMELAB_PROJECT_ROOT=/project
+      - STATIC_SITE_PATH=/var/www
+      - COMPOSE_PROJECT_DIR=/project
       - JARVIS_DATABASE_URL=postgresql://jarvis:${JARVIS_DB_PASSWORD}@homelab-postgres:5432/homelab_jarvis
       - REDIS_URL=redis://redis:6379/0
       - AI_PROVIDER=${AI_PROVIDER:-openai}
