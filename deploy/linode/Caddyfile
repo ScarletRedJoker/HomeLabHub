@@ -1,0 +1,78 @@
+{
+    email evin@evindrake.net
+}
+
+bot.rig-city.com {
+    reverse_proxy discord-bot:4000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+    }
+}
+
+stream.rig-city.com {
+    reverse_proxy stream-bot:5000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+    }
+}
+
+rig-city.com {
+    reverse_proxy rig-city-site:80
+}
+
+www.rig-city.com {
+    redir https://rig-city.com{uri} permanent
+}
+
+n8n.evindrake.net {
+    reverse_proxy n8n:5678
+    
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    }
+}
+
+host.evindrake.net, dashboard.evindrake.net {
+    reverse_proxy homelab-dashboard:5000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_down Cache-Control "no-cache, no-store, must-revalidate, private"
+        header_down Pragma "no-cache"
+        header_down Expires "0"
+    }
+    
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    }
+}
+
+code.evindrake.net {
+    reverse_proxy http://code-server-proxy:8080 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up Upgrade {http.request.header.Upgrade}
+        header_up Connection {http.request.header.Connection}
+    }
+    
+    header {
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "same-origin"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    }
+}
+
+scarletredjoker.com {
+    reverse_proxy scarletredjoker-web:80
+}
+
+www.scarletredjoker.com {
+    redir https://scarletredjoker.com{uri} permanent
+}

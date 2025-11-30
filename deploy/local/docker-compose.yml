@@ -1,0 +1,106 @@
+networks:
+  homelab:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:
+  minio_data:
+  homeassistant_config:
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy-local
+    restart: unless-stopped
+    networks:
+      - homelab
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  minio:
+    image: minio/minio:latest
+    container_name: homelab-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    networks:
+      - homelab
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-admin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: plex-server
+    restart: unless-stopped
+    networks:
+      - homelab
+    ports:
+      - "32400:32400"
+      - "3005:3005"
+      - "8324:8324"
+      - "32469:32469"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+      - VERSION=docker
+      - PLEX_CLAIM=${PLEX_CLAIM:-}
+      - ADVERTISE_IP=https://plex.evindrake.net:443
+    volumes:
+      - ./services/plex/config:/config
+      - ./services/plex/transcode:/transcode
+      - ./services/plex/media:/media
+      - /mnt/nas:/nas:ro
+    devices:
+      - /dev/dri:/dev/dri
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:32400/identity || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    restart: unless-stopped
+    privileged: true
+    networks:
+      - homelab
+    environment:
+      - TZ=America/New_York
+    volumes:
+      - homeassistant_config:/config
+      - ./config/homeassistant:/config-templates:ro
+      - /run/dbus:/run/dbus:ro
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_ADMIN
+    ports:
+      - "8123:8123"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8123/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

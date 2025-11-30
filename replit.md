@@ -1,116 +1,38 @@
 # Nebula Command Dashboard Project
 
 ## Overview
-The Nebula Command Dashboard is a web-based interface for managing a Ubuntu 25.10 server hosting 15 Docker-based services. These services are accessible via custom subdomains and include homelab management, Discord/Twitch bots, media streaming, remote desktop access, and home automation. The project aims to provide a centralized, robust, and secure platform for managing a comprehensive homelab environment, integrating various functionalities for personal and community use.
+The Nebula Command Dashboard is a web-based interface for managing a homelab environment consisting of a Ubuntu 25.10 server hosting 15 Docker-based services. These services, including homelab management, Discord/Twitch bots, media streaming, remote desktop, and home automation, are accessible via custom subdomains. The project aims to provide a centralized, robust, and secure platform, integrating various functionalities for personal and community use, with a vision to offer an app marketplace for one-click deployments.
 
-## Latest Changes (November 28, 2025)
+## Split Deployment Architecture (NEW - November 30, 2025)
 
-### Jarvis/Continue.dev Integration Fix
-- **Secure API Key Handling:** Created `config/code-server/continue-config.ts` that reads `OPENAI_API_KEY` from `process.env` instead of hardcoding
-- **Docker Mount Updated:** Changed from `config.json` to `config.ts` in docker-compose.yml
-- **Custom Commands:** `/homelab-fix`, `/homelab-review`, `/homelab-deploy`, `/homelab-status`
-- **System Prompt:** Jarvis configured as AI assistant for Nebula Command homelab
+The project now supports splitting services between a Linode cloud server and local Ubuntu host for optimal game streaming performance.
 
-### Stream-bot Public Fact Feed
-- **New Page:** Added `/fact-feed` route showing community fact history
-- **API Endpoint:** `GET /api/facts/public` with pagination, search, filtering
-- **Security:** Only AI-generated facts shown (source: 'stream-bot' or 'openai'), excludes manual/admin entries
-- **Features:** Tag filtering, search, sort by newest/oldest, responsive grid layout
+### Service Distribution
+**Linode Cloud ($20-40/mo):**
+- Discord Bot, Stream Bot, Dashboard/Celery, PostgreSQL, Redis, n8n, Code-Server, Static Sites
 
-### Dashboard Cleanup
-- **Removed AI Facts:** Deleted redundant facts page from dashboard (now in stream-bot)
-- **Fixed Compose References:** Changed `docker-compose.unified.yml` to `docker-compose.yml`
+**Local Ubuntu Host (Gaming Priority):**
+- Plex Media Server, Home Assistant, MinIO Storage, VNC Desktop
 
-### OAuth Status (All Platforms Working)
-- Twitch OAuth: ✓ Configured
-- YouTube OAuth: ✓ Configured with PKCE
-- Spotify OAuth: ✓ Configured with PKCE
-- Kick OAuth: ✓ Configured
+### Benefits
+- Frees ~6-8GB RAM and 4-6 CPU cores on local machine
+- Lower latency for Discord/Twitch webhooks (cloud-to-cloud)
+- Better OBS performance for game streaming
 
-### Bootstrap Fixes
-- **Discord Bot Missing Packages:** Added `openai`, `p-limit`, and `p-retry` to dependencies - was causing "Cannot find package" errors on startup
-- **Migration 017 Concurrency Fix:** Updated enum creation to use PostgreSQL DO blocks with EXCEPTION handlers for idempotent execution - prevents "invalid input value for enum" errors during concurrent migrations
-- **Celery Worker Migration Prevention:** Added RUN_MIGRATIONS check to app.py - workers now skip migrations (RUN_MIGRATIONS=false) while dashboard runs them
-- **Gunicorn Worker Migration Race Condition:** Set RUN_MIGRATIONS=false in docker-compose.yml for dashboard - migrations now only run ONCE in docker-entrypoint.sh, not in each Gunicorn worker
-
-## Code-Server X-Frame-Options Fix (November 26, 2025)
-- **Problem:** code-server was sending `X-Frame-Options: DENY` header, blocking VS Code's internal extension host iframe and causing "No default agent contributed" errors
-- **Solution:** Added nginx sidecar proxy (`code-server-proxy`) between Caddy and code-server that strips the restrictive header using `proxy_hide_header X-Frame-Options` and sets `X-Frame-Options: SAMEORIGIN` with proper CSP `frame-ancestors` directive
-- **Flow:** Caddy → nginx (code-server-proxy:8080) → code-server:8443
-- **Files:** `config/code-server-proxy/nginx.conf`, updated `docker-compose.yml` and `Caddyfile`
-
-## Major Upgrade (November 26, 2025)
-
-### Dashboard Enhancements
-- **RBAC System:** User roles (admin/operator/viewer), permission decorators, service ownership tracking
-- **Docker Lifecycle APIs:** Complete container management (start/stop/restart/logs/stats)
-- **Marketplace Deployment Queue:** Background job processing with rollback capability
-- **Audit Trail System:** Full API call logging with filtering, export, and cleanup
-- **WebSocket Improvements:** Heartbeat/ping-pong, reconnection logic, state broadcasting
-- **Agentic Remediation (Jarvis):** AI-powered service diagnosis and auto-repair
-- **Anomaly Detection:** Z-score based metrics monitoring with health scoring
-- **Multi-Model Routing:** OpenAI + Ollama support with complexity-based routing
-- **Offline Fallbacks:** Cached responses and request queuing when AI unavailable
-- **Mobile-First UI:** Collapsible sidebar, bottom navigation, skeleton loading, responsive grids
-
-### Discord-bot Enhancements  
-- **Ticket SLA Automation:** Response time tracking, auto-escalation, SLA breach alerts
-- **Escalation Rules:** Keyword detection, time-based escalation, path tracking
-- **Cross-Service Webhooks:** Incoming webhook endpoint, signature verification
-- **Enhanced Health Probes:** /ready, /live, /metrics endpoints with detailed status
-- **Guild Provisioning:** Auto-setup of ticket categories and channels for new servers
-- **LLM-Assisted Triage:** AI-powered priority assignment and category suggestion
-- **Thread Summarization:** Automatic summary with key points and action items
-- **Sentiment Analysis:** Real-time sentiment tracking with trend reporting
-- **Auto-Draft Responses:** AI-generated response suggestions
-- **Retention System:** 30-day ticket archival, 90-day log cleanup
-- **Mobile-First UI:** Bottom navigation, pull-to-refresh, connection status indicator
-
-### Stream-bot Enhancements
-- **Broadcaster Onboarding Wizard:** Multi-step guided setup with progress tracking
-- **Feature Toggles:** 17 toggleable features with per-user configuration
-- **Circuit Breaker:** Platform failover with message queuing and retry
-- **Job Queue System:** Background task processing with priorities and scheduling
-- **Enhanced Token Management:** Rotation history, expiry alerts, health dashboard
-- **Intent Detection:** Real-time message classification and routing
-- **Enhanced Moderation:** OpenAI Moderation API with configurable sensitivity
-- **Personalized Facts:** User preference learning, 20 topic categories, 90-char limit
-- **Speech-to-Text Prep:** Queue-based architecture for Whisper integration
-- **Overlay Editor:** Visual drag-and-drop positioning tool
-- **Mobile-First UI:** Bottom navigation, connection quality indicator, platform cards
-
-### Static Sites
-- **SEO Optimization:** Meta tags, Open Graph, Twitter Cards, JSON-LD structured data
-- **Responsive Design:** Mobile-first layouts, touch-friendly navigation
-- **Accessibility:** Skip links, ARIA labels, focus states, reduced motion support
-- **Performance:** Lazy loading, script deferral, ad scripts removed from scarletredjoker.com
-- **Sitemaps:** sitemap.xml and robots.txt for both sites
-
-### Lifecycle Management
-- **homelab-doctor.sh:** Comprehensive diagnostics with JSON output
-- **check-dependencies.sh:** System package and version validation
-- **Structured Logging:** JSON format, logrotate, aggregation scripts
-- **Enhanced homelab script:** New commands (logs --json, health --full, backup --full, doctor)
-
-## Previous Changes (November 2025)
-- **Plex Integration Fixed:** Implemented intelligent Docker network detection - dashboard automatically uses internal URLs (http://plex-server:32400) when running inside Docker, eliminating 401 authentication errors from external URL routing. Added `is_docker()` and `can_resolve_hostname()` helpers in environment.py.
-- **Stream-bot OAuth Complete:** All platforms properly store refresh tokens with encrypted storage
-- **Fact Length Enforcement:** Hard 90-character limit with smart truncation
-- **Token Refresh Service:** 30-minute refresh cycle for expiring tokens
-- **Plex Media Import:** Chunked uploads, SHA256 verification, MinIO integration
-- **Discord-bot Verified:** 15 slash commands, background jobs, safeguard checks
-- **Dashboard API Fixed:** SQLAlchemy 2.0 compatibility, CSRF exemptions
-- **Static Sites Ready:** rig-city.com and scarletredjoker.com configured
-- **VNC Access Configured:** vnc.evindrake.net routing with WebSocket
-
-## Previous Changes (November 2024)
-- **Jarvis Control Plane API:** Created `/api/jarvis/control/*` endpoints for code-server AI integration
-- **Code-Server AI Integration:** Updated Continue.dev config with GPT-4o and custom homelab commands
-- **Docker Compose Mounts:** Added Continue config mount at `/config/.continue/config.json`
-- **Database Orchestration Engine:** Proper database startup sequencing with wait-for-schema utilities
-- **PostgreSQL Init Scripts Consolidated:** Single `00-init-all-databases.sh` for all 3 databases
-- **YouTube OAuth Fixed:** Resolved "missing code verifier" PKCE issue
-- **n8n Security:** Added basic auth requirement for production
+### Deployment Files
+```
+deploy/
+├── linode/docker-compose.yml    # Cloud services
+├── local/docker-compose.yml     # Local services
+├── linode/Caddyfile             # Cloud reverse proxy
+├── local/Caddyfile              # Local reverse proxy
+└── scripts/
+    ├── bootstrap-linode.sh      # Linode server setup
+    ├── bootstrap-local.sh       # Local host setup
+    ├── migrate-database.sh      # DB migration
+    ├── setup-tailscale.sh       # VPN mesh
+    └── health-check.sh          # Cross-env monitoring
+```
 
 ## User Preferences
 - User: Evin
@@ -121,60 +43,48 @@ The Nebula Command Dashboard is a web-based interface for managing a Ubuntu 25.1
 - Main password: `Brs=2729` (used for most services)
 - Managed domains: rig-city.com, evindrake.net, scarletredjoker.com
 
-## Database Architecture
-- **PostgreSQL 16 Alpine** - Centralized database server (`homelab-postgres`)
-- **Databases:**
-  - `streambot` (user: streambot) - Stream Bot service
-  - `homelab_jarvis` (user: jarvis) - Dashboard & Jarvis AI
-  - `ticketbot` (user: ticketbot) - Discord Bot
-- **Orchestration:** `services/dashboard/services/database_orchestrator.py` handles migrations, health checks, and schema verification
-- **Init Scripts:** `config/postgres-init/00-init-all-databases.sh` provisions all databases on first startup
-
 ## System Architecture
 
 ### UI/UX Decisions
-The dashboard is a Flask-based management UI using Bootstrap 5 and Chart.js for visualization. Bot interfaces are built with React, Vite, Tailwind CSS, and Radix UI.
+The dashboard features a Flask-based UI with Bootstrap 5 and Chart.js for visualization. Bot interfaces are built with React, Vite, Tailwind CSS, and Radix UI. UI/UX emphasizes a mobile-first design with responsive layouts, collapsible sidebars, bottom navigation, and skeleton loading states.
 
 ### Technical Implementations
-The core system relies on Docker Compose for orchestrating 15 services. A `bootstrap-homelab.sh` script provides idempotent fresh installations with pre-flight checks, rollback capabilities, and comprehensive validation. A `./homelab` script offers day-to-day management, including fixing issues, checking status, viewing logs, restarting services, health checks, database operations (backup/restore), and updates.
+The core system leverages Docker Compose for orchestrating 15 services across a split deployment architecture (Linode cloud and local Ubuntu host). A `bootstrap-homelab.sh` script handles idempotent fresh installations, while a `./homelab` script provides day-to-day management, including diagnostics, health checks, and database operations. Key features include an RBAC system, Docker lifecycle APIs, a marketplace deployment queue with rollback, and an audit trail system. The project also incorporates Jarvis, an AI-powered agentic remediation system for service diagnosis and auto-repair, with multi-model routing (OpenAI + Ollama) and offline fallbacks.
 
 ### Feature Specifications
-- **Dashboard & AI:** Flask UI with Jarvis AI assistant (GPT-4o), Agent Swarm (5 specialized AI agents), Voice Interface, Docker/system monitoring, JWT token management UI.
-- **Storage & Data:** NAS Management, Storage Monitor, Database Admin (PostgreSQL management), File Manager, Plex Media Import (drag-and-drop), Automated backup system.
-- **Bots:** Discord ticket bot and multi-platform stream bot (SnappleBotAI for Twitch/Kick/YouTube).
-- **Services:** Remote Ubuntu desktop (Host VNC - TigerVNC + noVNC, not containerized), VS Code in browser (code-server), Plex media server, n8n workflow automation, Home Assistant.
-- **App Marketplace:** One-click deployment of 5 pre-configured applications (WordPress, Nextcloud, Gitea, Uptime Kuma, Portainer).
-- **Static Sites:** Hosting for rig-city.com and scarletredjoker.com.
-- **Notification System:** Multi-channel alerts (Discord, Email) for service health, storage thresholds, backup failures, and OAuth token expiry.
-- **Monitoring & Alerts:** Prometheus with 15+ alert rules, Grafana dashboards, Loki log aggregation, automated alerting.
-- **DNS Automation:** Auto-sync DNS records to Cloudflare when services change, Traefik route watching.
-- **Security:** Automatic SSL via Caddy/Let's Encrypt, environment-based secrets, isolated database credentials, password-protected VNC/Code Server, rate limiting, CSRF protection, JWT authentication.
+- **Dashboard & AI:** Flask UI with Jarvis AI assistant (GPT-4o), Agent Swarm, Voice Interface, Docker/system monitoring, JWT token management, and anomaly detection.
+- **Storage & Data:** NAS Management, Storage Monitor, Database Admin, File Manager, Plex Media Import, and automated backup.
+- **Bots:** Discord ticket bot with SLA automation, LLM-assisted triage, and sentiment analysis; multi-platform stream bot (Twitch/Kick/YouTube) with broadcaster onboarding, feature toggles, and enhanced moderation.
+- **Services:** Remote Ubuntu desktop (Host VNC), VS Code in browser (code-server), Plex media server, n8n workflow automation, and Home Assistant.
+- **App Marketplace:** One-click deployment for WordPress, Nextcloud, Gitea, Uptime Kuma, and Portainer.
+- **Static Sites:** Hosting for rig-city.com and scarletredjoker.com with SEO, responsive design, and accessibility optimizations.
+- **Notifications & Monitoring:** Multi-channel alerts (Discord, Email), Prometheus, Grafana, and Loki for comprehensive observability.
+- **Security:** Automatic SSL via Caddy/Let's Encrypt, environment-based secrets, isolated database credentials, rate limiting, and JWT authentication.
 
 ### System Design Choices
 - **Containerization:** All services are Dockerized and managed by Docker Compose.
-- **Centralized Database:** A single PostgreSQL container (`homelab-postgres`) serves as the shared database for all services.
-- **Reverse Proxy:** Caddy handles reverse proxying and automatic SSL.
-- **Environment Management:** All configuration is managed via a single `.env` file at the project root.
-- **Modular Architecture:** Designed for easy addition of new services.
-- **Authentication:** Centralized session-based authentication using `session['authenticated']`.
-- **Homelab Transformation:** Implemented an 8-phase roadmap covering configuration foundation (SOPS, Jinja2 templates), modular service packaging, service discovery & networking (Consul, Traefik), database platform upgrade (pgBouncer, pgBackRest), observability & auto-recovery (Prometheus, Grafana, Loki), deployment & rollback automation (GitHub Actions), API Gateway & Auth (Traefik, JWT), and DNS Automation (Cloudflare API integration). Each service is designed to own its data, UI, and API.
+- **Centralized Database:** A single PostgreSQL 16 Alpine container (`homelab-postgres`) serves all services, with `database_orchestrator.py` handling migrations and health checks.
+- **Reverse Proxy:** Caddy handles reverse proxying and automatic SSL. An Nginx sidecar proxy is used for `code-server` to handle `X-Frame-Options` headers.
+- **Environment Management:** All configuration is managed via a single `.env` file.
+- **Modular Architecture:** Designed for easy scalability and addition of new services.
+- **Homelab Transformation:** Implemented an 8-phase roadmap covering configuration, modular service packaging, service discovery & networking (Consul, Traefik), database platform upgrade, observability, deployment automation, API Gateway & Auth, and DNS Automation (Cloudflare API).
 
 ## External Dependencies
-
-- **PostgreSQL 16 Alpine:** Shared database for all services.
-- **Redis:** Used for caching.
+- **PostgreSQL 16 Alpine:** Shared database.
+- **Redis:** Caching.
 - **MinIO:** S3-compatible object storage.
-- **Caddy:** Reverse proxy with automatic SSL via Let's Encrypt.
-- **GPT-4o (OpenAI API):** Powers the Jarvis AI assistant and stream bot's fact generation.
-- **Discord API:** For the Discord ticket bot.
-- **Twitch/Kick/YouTube APIs:** For the multi-platform stream bot.
-- **Plex Media Server:** Integrated for media streaming.
-- **n8n:** Workflow automation tool.
-- **Home Assistant:** Smart home hub integration.
-- **Cloudflare API:** For DNS automation.
+- **Caddy:** Reverse proxy and SSL.
+- **GPT-4o (OpenAI API):** Jarvis AI assistant, Stream Bot fact generation.
+- **Ollama:** AI model for complexity-based routing.
+- **Discord API:** Discord ticket bot.
+- **Twitch/Kick/YouTube APIs:** Multi-platform stream bot.
+- **Plex Media Server:** Media streaming.
+- **n8n:** Workflow automation.
+- **Home Assistant:** Smart home hub.
+- **Cloudflare API:** DNS automation.
 - **Consul:** Service registry.
 - **Traefik:** Unified API gateway and reverse proxy.
 - **Prometheus:** Metrics collection.
-- **Grafana:** Dashboards for monitoring.
+- **Grafana:** Monitoring dashboards.
 - **Loki:** Log aggregation.
 - **Tailscale:** VPN integration.

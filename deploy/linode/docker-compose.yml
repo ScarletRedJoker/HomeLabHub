@@ -1,0 +1,291 @@
+networks:
+  homelab:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  n8n_data:
+  caddy_data:
+  caddy_config:
+  code_server_data:
+  redis_data:
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    restart: unless-stopped
+    networks:
+      - homelab
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  redis:
+    image: redis:7-alpine
+    container_name: homelab-redis
+    restart: unless-stopped
+    networks:
+      - homelab
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  homelab-postgres:
+    image: postgres:16-alpine
+    container_name: homelab-postgres
+    restart: unless-stopped
+    networks:
+      homelab:
+        aliases:
+          - postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+      DISCORD_DB_PASSWORD: ${DISCORD_DB_PASSWORD}
+      STREAMBOT_DB_PASSWORD: ${STREAMBOT_DB_PASSWORD}
+      JARVIS_DB_PASSWORD: ${JARVIS_DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  homelab-dashboard:
+    build:
+      context: ./services/dashboard
+      dockerfile: Dockerfile
+    container_name: homelab-dashboard
+    restart: unless-stopped
+    depends_on:
+      homelab-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - homelab
+    environment:
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+      - RUN_MIGRATIONS=false
+      - DOCKER_CONTAINER=true
+      - JARVIS_DATABASE_URL=postgresql://jarvis:${JARVIS_DB_PASSWORD}@homelab-postgres:5432/homelab_jarvis
+      - REDIS_URL=redis://redis:6379/0
+      - AI_PROVIDER=openai
+      - AI_MODEL=gpt-4o
+      - SERVICE_AUTH_TOKEN=${SERVICE_AUTH_TOKEN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - WEB_USERNAME=${WEB_USERNAME}
+      - WEB_PASSWORD=${WEB_PASSWORD}
+      - PLEX_URL=${TAILSCALE_LOCAL_HOST}:32400
+      - PLEX_TOKEN=${PLEX_TOKEN}
+      - HOME_ASSISTANT_URL=${TAILSCALE_LOCAL_HOST}:8123
+      - HOME_ASSISTANT_TOKEN=${HOME_ASSISTANT_TOKEN}
+    volumes:
+      - ./services/dashboard/logs:/app/logs
+
+  homelab-celery-worker:
+    build:
+      context: ./services/dashboard
+      dockerfile: Dockerfile
+    container_name: homelab-celery-worker
+    restart: unless-stopped
+    command: celery -A celery_app.celery_app worker --loglevel=info --concurrency=4
+    networks:
+      - homelab
+    depends_on:
+      redis:
+        condition: service_healthy
+      homelab-postgres:
+        condition: service_healthy
+    environment:
+      - RUN_MIGRATIONS=false
+      - DOCKER_CONTAINER=true
+      - REDIS_URL=redis://redis:6379/0
+      - JARVIS_DATABASE_URL=postgresql://jarvis:${JARVIS_DB_PASSWORD}@homelab-postgres:5432/homelab_jarvis
+      - PYTHONUNBUFFERED=1
+      - AI_PROVIDER=openai
+      - AI_MODEL=gpt-4o
+      - PLEX_URL=${TAILSCALE_LOCAL_HOST}:32400
+      - PLEX_TOKEN=${PLEX_TOKEN}
+    volumes:
+      - ./services/dashboard/logs:/app/logs
+
+  discord-bot:
+    build:
+      context: ./services/discord-bot
+      dockerfile: Dockerfile
+    container_name: discord-bot
+    restart: unless-stopped
+    depends_on:
+      homelab-postgres:
+        condition: service_healthy
+    networks:
+      - homelab
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    environment:
+      DATABASE_URL: "postgresql://ticketbot:${DISCORD_DB_PASSWORD}@homelab-postgres:5432/ticketbot"
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
+      DISCORD_APP_ID: ${DISCORD_APP_ID}
+      VITE_DISCORD_CLIENT_ID: ${VITE_DISCORD_CLIENT_ID}
+      DISCORD_CALLBACK_URL: https://bot.rig-city.com/auth/discord/callback
+      APP_URL: https://bot.rig-city.com
+      PUBLIC_DOMAIN: https://bot.rig-city.com
+      SESSION_SECRET: ${DISCORD_SESSION_SECRET}
+      TWITCH_CLIENT_ID: ${TWITCH_CLIENT_ID}
+      TWITCH_CLIENT_SECRET: ${TWITCH_CLIENT_SECRET}
+      NODE_ENV: production
+      PORT: 4000
+      HOST: 0.0.0.0
+    volumes:
+      - ./services/discord-bot/attached_assets:/app/attached_assets
+      - ./services/discord-bot/logs:/app/logs
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  stream-bot:
+    build:
+      context: ./services/stream-bot
+      dockerfile: Dockerfile
+    container_name: stream-bot
+    restart: unless-stopped
+    networks:
+      - homelab
+    depends_on:
+      homelab-postgres:
+        condition: service_healthy
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    environment:
+      DATABASE_URL: postgresql://streambot:${STREAMBOT_DB_PASSWORD}@homelab-postgres:5432/streambot
+      SESSION_SECRET: ${STREAMBOT_SESSION_SECRET}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_BASE_URL: https://api.openai.com/v1
+      STREAMBOT_FACT_MODEL: gpt-4o
+      NODE_ENV: production
+      PORT: 5000
+      HOST: 0.0.0.0
+      APP_URL: https://stream.rig-city.com
+      TWITCH_CLIENT_ID: ${TWITCH_CLIENT_ID}
+      TWITCH_CLIENT_SECRET: ${TWITCH_CLIENT_SECRET}
+      TWITCH_REDIRECT_URI: https://stream.rig-city.com/api/auth/twitch/callback
+      TWITCH_SIGNIN_CALLBACK_URL: https://stream.rig-city.com/api/auth/twitch/callback
+      YOUTUBE_CLIENT_ID: ${YOUTUBE_CLIENT_ID}
+      YOUTUBE_CLIENT_SECRET: ${YOUTUBE_CLIENT_SECRET}
+      YOUTUBE_REDIRECT_URI: https://stream.rig-city.com/api/auth/youtube/callback
+      YOUTUBE_SIGNIN_CALLBACK_URL: https://stream.rig-city.com/api/auth/youtube/callback
+      SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID}
+      SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET}
+      SPOTIFY_REDIRECT_URI: https://stream.rig-city.com/api/auth/spotify/callback
+      KICK_CLIENT_ID: ${KICK_CLIENT_ID}
+      KICK_CLIENT_SECRET: ${KICK_CLIENT_SECRET}
+      KICK_REDIRECT_URI: https://stream.rig-city.com/api/auth/kick/callback
+      KICK_SIGNIN_CALLBACK_URL: https://stream.rig-city.com/api/auth/kick/callback
+      SERVICE_AUTH_TOKEN: ${SERVICE_AUTH_TOKEN}
+    volumes:
+      - ./services/stream-bot/logs:/app/logs
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    networks:
+      - homelab
+    environment:
+      - N8N_HOST=n8n.evindrake.net
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - NODE_ENV=production
+      - WEBHOOK_URL=https://n8n.evindrake.net/
+      - GENERIC_TIMEZONE=America/New_York
+      - TZ=America/New_York
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD}
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+  code-server:
+    image: lscr.io/linuxserver/code-server:latest
+    container_name: code-server
+    restart: unless-stopped
+    networks:
+      - homelab
+    environment:
+      - PASSWORD=${CODE_SERVER_PASSWORD}
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - JARVIS_API_URL=http://homelab-dashboard:5000/api/jarvis
+      - SERVICE_AUTH_TOKEN=${SERVICE_AUTH_TOKEN}
+      - CS_DISABLE_GETTING_STARTED_OVERRIDE=true
+      - CS_DISABLE_TELEMETRY=true
+    volumes:
+      - code_server_data:/config
+      - ./workspace:/config/workspace
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8443/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  code-server-proxy:
+    image: nginx:alpine
+    container_name: code-server-proxy
+    restart: unless-stopped
+    networks:
+      - homelab
+    volumes:
+      - ./code-server-proxy-nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - code-server
+
+  scarletredjoker-web:
+    image: nginx:alpine
+    container_name: scarletredjoker-web
+    restart: unless-stopped
+    networks:
+      - homelab
+    volumes:
+      - ./services/static-site:/usr/share/nginx/html:ro
+
+  rig-city-site:
+    image: nginx:alpine
+    container_name: rig-city-site
+    restart: unless-stopped
+    networks:
+      - homelab
+    volumes:
+      - ./services/rig-city-site:/usr/share/nginx/html:ro

@@ -1,0 +1,45 @@
+{
+    email evin@evindrake.net
+}
+
+plex.evindrake.net {
+    reverse_proxy plex-server:32400 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up Upgrade {http.request.header.Upgrade}
+        header_up Connection {http.request.header.Connection}
+    }
+}
+
+vnc.evindrake.net {
+    reverse_proxy 172.17.0.1:6080 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up Upgrade {http.request.header.Upgrade}
+        header_up Connection {http.request.header.Connection}
+    }
+    
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "no-referrer"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    }
+}
+
+home.evindrake.net {
+    reverse_proxy homeassistant:8123 {
+        header_up Upgrade {>Upgrade}
+        header_up Connection {>Connection}
+        header_up X-Forwarded-Host {host}
+        
+        transport http {
+            read_timeout 90s
+            write_timeout 90s
+        }
+    }
+}
+
+game.evindrake.net {
+    redir https://dashboard.evindrake.net/game-connect permanent
+}
