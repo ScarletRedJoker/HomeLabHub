@@ -15,36 +15,40 @@ branch_labels = None
 depends_on = None
 
 
+def table_exists(table_name):
+    """Check if a table exists in the database"""
+    connection = op.get_bind()
+    result = connection.execute(
+        sa.text("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = :table_name)"),
+        {"table_name": table_name}
+    )
+    return result.scalar()
+
+
+def enum_exists(enum_name):
+    """Check if an enum type exists in the database"""
+    connection = op.get_bind()
+    result = connection.execute(
+        sa.text("SELECT EXISTS (SELECT 1 FROM pg_type WHERE typname = :enum_name)"),
+        {"enum_name": enum_name}
+    )
+    return result.scalar()
+
+
 def upgrade():
     connection = op.get_bind()
     
-    # Use DO blocks for idempotent enum creation - handles concurrent execution safely
-    connection.execute(sa.text("""
-        DO $$
-        BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'userrole') THEN
-                CREATE TYPE userrole AS ENUM ('admin', 'operator', 'viewer');
-            END IF;
-        EXCEPTION WHEN duplicate_object THEN
-            NULL;
-        END
-        $$;
-    """))
+    # Create enums only if they don't exist (safe, idempotent approach)
+    if not enum_exists('userrole'):
+        connection.execute(sa.text("CREATE TYPE userrole AS ENUM ('admin', 'operator', 'viewer')"))
     
-    connection.execute(sa.text("""
-        DO $$
-        BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'deploymentstatus') THEN
-                CREATE TYPE deploymentstatus AS ENUM (
-                    'pending', 'queued', 'pulling_image', 'creating_container', 'configuring',
-                    'starting', 'running', 'completed', 'failed', 'rolling_back', 'rolled_back', 'cancelled'
-                );
-            END IF;
-        EXCEPTION WHEN duplicate_object THEN
-            NULL;
-        END
-        $$;
-    """))
+    if not enum_exists('deploymentstatus'):
+        connection.execute(sa.text("""
+            CREATE TYPE deploymentstatus AS ENUM (
+                'pending', 'queued', 'pulling_image', 'creating_container', 'configuring',
+                'starting', 'running', 'completed', 'failed', 'rolling_back', 'rolled_back', 'cancelled'
+            )
+        """))
     
     user_role_enum = postgresql.ENUM('admin', 'operator', 'viewer', name='userrole', create_type=False)
     deployment_status_enum = postgresql.ENUM(
@@ -196,12 +200,3 @@ def downgrade():
     connection = op.get_bind()
     connection.execute(sa.text("DROP TYPE IF EXISTS deploymentstatus"))
     connection.execute(sa.text("DROP TYPE IF EXISTS userrole"))
-
-
-def table_exists(table_name):
-    """Check if a table exists in the database"""
-    connection = op.get_bind()
-    result = connection.execute(
-        sa.text(f"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = '{table_name}')")
-    )
-    return result.scalar()

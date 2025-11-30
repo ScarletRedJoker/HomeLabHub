@@ -12,7 +12,7 @@ from services.activity_service import activity_service
 from services.notification_service import notification_service
 from utils.auth import require_auth
 from utils.favicon_manager import get_favicon_manager
-from config import Config
+from config import Config  # type: ignore[import]
 import logging
 import os
 import re
@@ -99,7 +99,7 @@ def celery_health():
             redis_client.ping()
             redis_healthy = True
             
-            info = redis_client.info()
+            info: dict = redis_client.info()  # type: ignore[assignment]
             redis_info = {
                 'connected_clients': info.get('connected_clients', 0),
                 'used_memory_human': info.get('used_memory_human', 'Unknown'),
@@ -176,7 +176,7 @@ def celery_health():
                 total_pending = 0
                 for queue_name in ['default', 'deployments', 'dns', 'analysis', 'google']:
                     key = f'celery'
-                    queue_length = redis_client.llen(queue_name)
+                    queue_length: int = redis_client.llen(queue_name)  # type: ignore[assignment]
                     queue_lengths[queue_name] = queue_length
                     total_pending += queue_length
                 
@@ -671,8 +671,8 @@ def get_connection_examples(container_name):
         
         # Extract credentials from environment variables based on db type
         password = 'YOUR_PASSWORD'
-        username = None
-        database = None
+        username: str = 'user'
+        database: str = 'mydb'
         
         if db_type == 'postgresql':
             password = env.get('POSTGRES_PASSWORD', password)
@@ -695,10 +695,11 @@ def get_connection_examples(container_name):
         examples = database_service.get_connection_examples(
             db_type=db_type,
             container_name=container_name,
-            host_port=int(port),
+            port=int(port),
             password=password,
             username=username,
-            database=database
+            database=database,
+            host_port=int(port)
         )
         
         return jsonify({'success': True, 'data': examples})
@@ -1161,29 +1162,26 @@ def ai_chat_stream():
     """
     from flask import Response
     
+    def make_error_stream(error_message: str):
+        def stream():
+            yield f"data: {{'error': '{error_message}'}}\n\n"
+            yield "data: [DONE]\n\n"
+        return stream
+    
     try:
         data = request.get_json()
         if not data:
-            def error_stream():
-                yield f"data: {{'error': 'No JSON data provided'}}\n\n"
-                yield "data: [DONE]\n\n"
-            return Response(error_stream(), mimetype='text/event-stream')
+            return Response(make_error_stream('No JSON data provided')(), mimetype='text/event-stream')
         
         message = data.get('message', '').strip()
         history = data.get('history', [])
         model = data.get('model', 'gpt-4o')
         
         if not message:
-            def error_stream():
-                yield f"data: {{'error': 'Message is required'}}\n\n"
-                yield "data: [DONE]\n\n"
-            return Response(error_stream(), mimetype='text/event-stream')
+            return Response(make_error_stream('Message is required')(), mimetype='text/event-stream')
         
         if not ai_service.enabled:
-            def error_stream():
-                yield f"data: {{'error': 'AI service is not available'}}\n\n"
-                yield "data: [DONE]\n\n"
-            return Response(error_stream(), mimetype='text/event-stream')
+            return Response(make_error_stream('AI service is not available')(), mimetype='text/event-stream')
         
         return Response(
             ai_service.chat_stream(message, history, model),
@@ -1196,10 +1194,7 @@ def ai_chat_stream():
     
     except Exception as e:
         logger.error(f"Error in AI chat stream endpoint: {e}")
-        def error_stream():
-            yield f"data: {{'error': '{str(e)}'}}\n\n"
-            yield "data: [DONE]\n\n"
-        return Response(error_stream(), mimetype='text/event-stream')
+        return Response(make_error_stream(str(e))(), mimetype='text/event-stream')
 
 
 @api_bp.route('/ai/models', methods=['GET'])

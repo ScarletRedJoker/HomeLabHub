@@ -43,7 +43,7 @@ class JarvisCodebaseService:
     Service for Jarvis to directly access and modify the HomeLabHub codebase
     """
     
-    def __init__(self, project_root: str = None):
+    def __init__(self, project_root: Optional[str] = None):
         self.project_root = Path(project_root or PROJECT_ROOT)
         self.enabled = self.project_root.exists()
         
@@ -92,7 +92,7 @@ class JarvisCodebaseService:
         """Check if a file type is editable"""
         return any(path.lower().endswith(ext) for ext in EDITABLE_EXTENSIONS)
     
-    def get_project_structure(self, max_depth: int = 3, path: str = "") -> Dict:
+    def get_project_structure(self, max_depth: int = 3, path: str = "") -> Dict[str, Any]:
         """Get the project directory structure"""
         if not self.enabled:
             return {'error': 'Codebase access not available'}
@@ -103,11 +103,11 @@ class JarvisCodebaseService:
         
         base_path = self.project_root / path if path else self.project_root
         
-        def build_tree(current_path: Path, depth: int) -> Dict:
+        def build_tree(current_path: Path, depth: int) -> Dict[str, Any]:
             if depth > max_depth:
                 return {'truncated': True}
             
-            result = {
+            result: Dict[str, Any] = {
                 'name': current_path.name or str(self.project_root),
                 'type': 'directory' if current_path.is_dir() else 'file',
                 'path': str(current_path.relative_to(self.project_root)),
@@ -135,7 +135,7 @@ class JarvisCodebaseService:
         
         return build_tree(base_path, 0)
     
-    def list_files(self, path: str = "", pattern: str = None) -> List[Dict]:
+    def list_files(self, path: str = "", pattern: Optional[str] = None) -> List[Dict[str, Any]]:
         """List files in a directory, optionally filtered by pattern"""
         if not self.enabled:
             return []
@@ -170,7 +170,7 @@ class JarvisCodebaseService:
         
         return files
     
-    def read_file(self, path: str, max_lines: int = None) -> Dict:
+    def read_file(self, path: str, max_lines: Optional[int] = None) -> Dict[str, Any]:
         """Read a file from the codebase"""
         if not self.enabled:
             return {'success': False, 'error': 'Codebase access not available'}
@@ -215,7 +215,7 @@ class JarvisCodebaseService:
         except Exception as e:
             return {'success': False, 'error': str(e)}
     
-    def write_file(self, path: str, content: str, create_backup: bool = True) -> Dict:
+    def write_file(self, path: str, content: str, create_backup: bool = True) -> Dict[str, Any]:
         """Write content to a file in the codebase"""
         if not self.enabled:
             return {'success': False, 'error': 'Codebase access not available'}
@@ -250,7 +250,7 @@ class JarvisCodebaseService:
         except Exception as e:
             return {'success': False, 'error': str(e)}
     
-    def edit_file(self, path: str, old_text: str, new_text: str) -> Dict:
+    def edit_file(self, path: str, old_text: str, new_text: str) -> Dict[str, Any]:
         """Replace specific text in a file"""
         read_result = self.read_file(path)
         if not read_result.get('success'):
@@ -275,7 +275,7 @@ class JarvisCodebaseService:
         
         return write_result
     
-    def search_code(self, pattern: str, path: str = "", file_pattern: str = None, max_results: int = 50) -> List[Dict]:
+    def search_code(self, pattern: str, path: str = "", file_pattern: Optional[str] = None, max_results: int = 50) -> List[Dict[str, Any]]:
         """Search for a pattern in the codebase using grep"""
         if not self.enabled:
             return [{'error': 'Codebase access not available'}]
@@ -327,7 +327,7 @@ class JarvisCodebaseService:
         except Exception as e:
             return [{'error': str(e)}]
     
-    def get_file_context(self, path: str, line: int, context_lines: int = 5) -> Dict:
+    def get_file_context(self, path: str, line: int, context_lines: int = 5) -> Dict[str, Any]:
         """Get lines around a specific line number for context"""
         read_result = self.read_file(path)
         if not read_result.get('success'):
@@ -355,7 +355,7 @@ class JarvisCodebaseService:
             'end_line': end,
         }
     
-    def get_project_summary(self) -> Dict:
+    def get_project_summary(self) -> Dict[str, Any]:
         """Get a summary of the project for AI context"""
         if not self.enabled:
             return {'error': 'Codebase access not available'}
@@ -389,7 +389,7 @@ class JarvisCodebaseService:
         
         return summary
     
-    def create_file(self, path: str, content: str = "") -> Dict:
+    def create_file(self, path: str, content: str = "") -> Dict[str, Any]:
         """Create a new file"""
         if not self.enabled:
             return {'success': False, 'error': 'Codebase access not available'}
@@ -405,7 +405,7 @@ class JarvisCodebaseService:
         
         return self.write_file(path, content, create_backup=False)
     
-    def delete_file(self, path: str) -> Dict:
+    def delete_file(self, path: str) -> Dict[str, Any]:
         """Delete a file (moves to .jarvis-trash)"""
         if not self.enabled:
             return {'success': False, 'error': 'Codebase access not available'}
@@ -436,7 +436,7 @@ class JarvisCodebaseService:
         except Exception as e:
             return {'success': False, 'error': str(e)}
     
-    def get_git_status(self) -> Dict:
+    def get_git_status(self) -> Dict[str, Any]:
         """Get git status of the project"""
         if not self.enabled:
             return {'error': 'Codebase access not available'}
