@@ -248,17 +248,84 @@ class FleetManager:
             client.close()
             return None
     
-    def execute_command(self, host_id: str, command: str, timeout: int = None) -> Dict:
-        """Execute a shell command on a remote host"""
+    # Whitelist of allowed command prefixes for security
+    ALLOWED_COMMANDS = [
+        # System info (read-only)
+        'uptime', 'uname', 'hostname', 'whoami', 'id',
+        'cat /proc/cpuinfo', 'cat /proc/meminfo', 'cat /etc/os-release',
+        'free', 'df', 'du', 'nproc', 'lscpu', 'lsmem',
+        'ps', 'top -b -n 1', 'htop', 'vmstat',
+        'ip addr', 'ip link', 'ifconfig', 'netstat', 'ss',
+        'ls', 'pwd', 'find', 'grep', 'wc', 'head', 'tail',
+        # Docker operations
+        'docker ps', 'docker images', 'docker stats', 'docker logs',
+        'docker inspect', 'docker info', 'docker version',
+        'docker start', 'docker stop', 'docker restart',
+        'docker-compose ps', 'docker-compose logs',
+        'docker-compose start', 'docker-compose stop', 'docker-compose restart',
+        # Service management
+        'systemctl status', 'systemctl is-active',
+        'journalctl', 'dmesg',
+        # Git operations (read-only)
+        'git status', 'git log', 'git branch', 'git diff',
+        # Tailscale
+        'tailscale status', 'tailscale ip',
+    ]
+    
+    def _is_command_allowed(self, command: str) -> tuple[bool, str]:
+        """
+        Check if a command is in the whitelist.
+        Returns (is_allowed, reason)
+        """
+        if not command or not command.strip():
+            return False, 'Empty command'
+        
+        cmd_stripped = command.strip()
+        
+        # Check if command starts with an allowed prefix
+        for allowed in self.ALLOWED_COMMANDS:
+            if cmd_stripped.startswith(allowed):
+                return True, 'Command allowed'
+        
+        # Special case: allow docker commands on specific containers
+        if cmd_stripped.startswith('docker '):
+            parts = cmd_stripped.split()
+            if len(parts) >= 2:
+                action = parts[1]
+                # Allow specific docker actions
+                if action in ['ps', 'images', 'stats', 'info', 'version']:
+                    return True, 'Docker read command allowed'
+                if action in ['logs', 'inspect']:
+                    return True, 'Docker read command allowed'
+                if action in ['start', 'stop', 'restart'] and len(parts) >= 3:
+                    # Validate container name - alphanumeric, underscores, dashes only
+                    import re
+                    container = parts[2]
+                    if re.match(r'^[a-zA-Z0-9_-]+$', container):
+                        return True, 'Docker container action allowed'
+                    return False, f'Invalid container name: {container}'
+        
+        return False, f'Command not in whitelist. Allowed commands: {", ".join(self.ALLOWED_COMMANDS[:10])}...'
+    
+    def execute_command(self, host_id: str, command: str, timeout: int = None, bypass_whitelist: bool = False) -> Dict:
+        """
+        Execute a shell command on a remote host.
+        
+        By default, commands are validated against a whitelist for security.
+        Set bypass_whitelist=True only for internal trusted operations.
+        """
         start_time = time.time()
         
-        if not command or not command.strip():
-            return {'success': False, 'error': 'Empty command'}
-        
-        dangerous_patterns = ['rm -rf /', 'mkfs', ':(){', 'dd if=/dev/zero']
-        for pattern in dangerous_patterns:
-            if pattern in command:
-                return {'success': False, 'error': f'Dangerous command pattern detected: {pattern}'}
+        # Validate command against whitelist (unless bypassed for internal use)
+        if not bypass_whitelist:
+            is_allowed, reason = self._is_command_allowed(command)
+            if not is_allowed:
+                logger.warning(f"Blocked unauthorized command on {host_id}: {command}")
+                return {
+                    'success': False, 
+                    'error': f'Command not allowed: {reason}',
+                    'blocked': True
+                }
         
         client = self._get_ssh_client(host_id)
         if not client:

@@ -10,8 +10,15 @@ logger = logging.getLogger(__name__)
 
 jarvis_builder_bp = Blueprint('jarvis_builder', __name__, url_prefix='/api/jarvis/builder')
 
+try:
+    from utils.auth import require_auth
+except ImportError:
+    def require_auth(f):
+        return f
+
 
 @jarvis_builder_bp.route('/start', methods=['POST'])
+@require_auth
 def start_project():
     """
     POST /api/jarvis/builder/start
@@ -59,6 +66,7 @@ def start_project():
 
 
 @jarvis_builder_bp.route('/plan', methods=['POST'])
+@require_auth
 def plan_project():
     """
     POST /api/jarvis/builder/plan
@@ -104,6 +112,7 @@ def plan_project():
 
 
 @jarvis_builder_bp.route('/generate', methods=['POST'])
+@require_auth
 def generate_component():
     """
     POST /api/jarvis/builder/generate
@@ -155,6 +164,7 @@ def generate_component():
 
 
 @jarvis_builder_bp.route('/approve', methods=['POST'])
+@require_auth
 def approve_checkpoint():
     """
     POST /api/jarvis/builder/approve
@@ -192,6 +202,7 @@ def approve_checkpoint():
 
 
 @jarvis_builder_bp.route('/reject', methods=['POST'])
+@require_auth
 def reject_checkpoint():
     """
     POST /api/jarvis/builder/reject
@@ -231,6 +242,7 @@ def reject_checkpoint():
 
 
 @jarvis_builder_bp.route('/deploy/preview', methods=['POST'])
+@require_auth
 def deploy_preview():
     """
     POST /api/jarvis/builder/deploy/preview
@@ -268,6 +280,7 @@ def deploy_preview():
 
 
 @jarvis_builder_bp.route('/deploy/production', methods=['POST'])
+@require_auth
 def deploy_production():
     """
     POST /api/jarvis/builder/deploy/production
@@ -313,6 +326,7 @@ def deploy_production():
 
 
 @jarvis_builder_bp.route('/projects', methods=['GET'])
+@require_auth
 def list_projects():
     """
     GET /api/jarvis/builder/projects
@@ -336,6 +350,7 @@ def list_projects():
 
 
 @jarvis_builder_bp.route('/project/<project_id>', methods=['GET'])
+@require_auth
 def get_project(project_id):
     """
     GET /api/jarvis/builder/project/<id>
@@ -359,6 +374,7 @@ def get_project(project_id):
 
 
 @jarvis_builder_bp.route('/check-in', methods=['POST'])
+@require_auth
 def check_in():
     """
     POST /api/jarvis/builder/check-in
@@ -406,6 +422,7 @@ def check_in():
 
 
 @jarvis_builder_bp.route('/build-all', methods=['POST'])
+@require_auth
 def build_all():
     """
     POST /api/jarvis/builder/build-all
