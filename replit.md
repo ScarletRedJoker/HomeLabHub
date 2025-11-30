@@ -88,3 +88,66 @@ The core system leverages Docker Compose for orchestrating 15 services across a 
 - **Grafana:** Monitoring dashboards.
 - **Loki:** Log aggregation.
 - **Tailscale:** VPN integration.
+
+## New Features (November 30, 2025)
+
+### DNS Management Engine
+Full Cloudflare API integration for managing all three domains (evindrake.net, rig-city.com, scarletredjoker.com):
+- **Location:** `/dns-management` in dashboard
+- **Files:** `services/dashboard/services/dns_service.py`, `routes/dns_routes.py`
+- **Features:** CRUD operations for DNS records, domain health monitoring, auto-sync from services catalog
+- **Requirements:** Set `CLOUDFLARE_API_TOKEN` environment variable
+
+### Fleet Manager
+Remote server control via Tailscale VPN mesh:
+- **Location:** `/fleet-management` in dashboard
+- **Files:** `services/dashboard/services/fleet_service.py`, `routes/fleet_routes.py`
+- **Features:** SSH-based command execution with whitelist security, Docker container management, service deployment
+- **Hosts:** Linode cloud server + Local Ubuntu host
+- **Requirements:** Set `TAILSCALE_LINODE_HOST`, `TAILSCALE_LOCAL_HOST`, `FLEET_SSH_KEY_PATH`
+
+### Jarvis Code Service
+AI-powered code editing and deployment integration for code.evindrake.net:
+- **Location:** `/jarvis-code` in dashboard
+- **Files:** `services/dashboard/services/jarvis_code_service.py`, `routes/jarvis_code_routes.py`
+- **Features:** Project analysis, AI code generation (GPT-4o), file editing, code review, test execution, deployment via git/rsync
+- **Templates:** Flask, FastAPI, Express, Static HTML
+- **Requirements:** `AI_INTEGRATIONS_OPENAI_API_KEY` or `OPENAI_API_KEY`
+
+### Unified Storage Service
+Dual-backend storage abstraction (local MinIO + cloud S3):
+- **Location:** `/storage/management` in dashboard
+- **Files:** `services/dashboard/services/storage_service.py`, `routes/storage_routes.py`
+- **Features:** Bucket management, file upload/download, cross-backend copy/sync, storage statistics, cloud mirroring
+- **Local Backend:** MINIO_ENDPOINT, MINIO_ROOT_USER, MINIO_ROOT_PASSWORD
+- **Cloud Backend:** CLOUD_S3_ENDPOINT, CLOUD_S3_ACCESS_KEY, CLOUD_S3_SECRET_KEY
+
+### Jarvis Website Builder (v2.0)
+Autonomous AI-powered website generation:
+- **Location:** `/jarvis-builder` in dashboard
+- **Files:** `services/dashboard/services/jarvis_website_builder.py`, `routes/jarvis_builder_routes.py`, `models/builder_project.py`
+- **Features:** Natural language to website, project planning, page/backend/database generation, human-in-loop checkpoints, preview/production deployment
+- **Stages:** PLANNING → SCAFFOLDING → BUILDING → REVIEWING → DEPLOYING → COMPLETE
+- **Tech Stacks:** Static HTML, Flask, FastAPI, Express, React, Vue, Next.js
+
+### Multi-Platform Deployment Guide
+Interactive deployment documentation:
+- **Location:** `/deployment-guide` in dashboard
+- **Files:** `deploy/DEPLOYMENT_GUIDE.md`, `services/dashboard/templates/deployment_guide.html`
+- **Features:** Step-by-step setup, progress tracking, command copy-to-clipboard, architecture visualization
+
+## Dashboard Routes Summary
+```
+/                       - Home dashboard
+/jarvis                 - AI assistant chat
+/jarvis-code            - Code editing/deployment
+/jarvis-builder         - Website builder
+/dns-management         - Cloudflare DNS
+/fleet-management       - Remote server control
+/storage/management     - Unified storage
+/deployment-guide       - Setup documentation
+/containers             - Docker management
+/marketplace            - App deployment
+/database-admin         - PostgreSQL admin
+/plex-import            - Media management
+```
