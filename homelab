@@ -1,7 +1,17 @@
 #!/bin/bash
 # ╔════════════════════════════════════════════════════════════════╗
-# ║              HOMELAB - PRODUCTION-READY MANAGEMENT            ║
+# ║              HOMELAB - Simple, Unified Management              ║
 # ╚════════════════════════════════════════════════════════════════╝
+# Philosophy: Simple, straightforward, automated, self-healing
+#
+# Usage:
+#   ./homelab up       - Start all services
+#   ./homelab down     - Stop all services
+#   ./homelab status   - Show service status
+#   ./homelab logs     - View logs
+#   ./homelab fix      - Rebuild and restart everything
+#   ./homelab health   - Run health checks
+#   ./homelab restart  - Restart all services
 
 set -euo pipefail
 
@@ -14,84 +24,51 @@ NC='\033[0m'
 
 # Auto-detect project root
 if [ -d "/home/evin/contain/HomeLabHub" ]; then
-    # On Ubuntu server
     PROJECT_ROOT="/home/evin/contain/HomeLabHub"
 else
-    # In development/Replit
     PROJECT_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 fi
 
-# Phase 2: Detect DEPLOYMENT_PATH for per-environment configs
-# Priority: ENV var > auto-detect > fallback to root .env
-# Use ${DEPLOYMENT_PATH:-} to avoid unbound variable error with set -u
-if [ -z "${DEPLOYMENT_PATH:-}" ]; then
-    # Auto-detect if not set
-    if [ -d "$PROJECT_ROOT/deployment/prod/evindrake_net" ] && [ -f "$PROJECT_ROOT/deployment/prod/evindrake_net/.env" ]; then
-        # Auto-detect production deployment on evindrake.net host
-        DEPLOYMENT_PATH="$PROJECT_ROOT/deployment/prod/evindrake_net"
-    elif [ -d "$PROJECT_ROOT/deployment/dev/localhost" ] && [ -f "$PROJECT_ROOT/deployment/dev/localhost/.env" ]; then
-        # Auto-detect development deployment
-        DEPLOYMENT_PATH="$PROJECT_ROOT/deployment/dev/localhost"
-    else
-        # Fallback: Use root directory (legacy behavior)
-        DEPLOYMENT_PATH="$PROJECT_ROOT"
-    fi
-fi
-
-# CRITICAL: Export before docker compose calls
-export DEPLOYMENT_PATH
-
-ENV_FILE="${DEPLOYMENT_PATH}/.env"
+# Simple configuration - ONE .env, ONE compose file
+ENV_FILE="$PROJECT_ROOT/.env"
 COMPOSE_FILE="$PROJECT_ROOT/docker-compose.yml"
-
-echo -e "${CYAN}Project Root: $PROJECT_ROOT${NC}"
-echo -e "${CYAN}Deployment Path: $DEPLOYMENT_PATH${NC}"
 
 # Verify files exist
 if [ ! -f "$ENV_FILE" ]; then
-    echo -e "${RED}ERROR: .env file not found at $ENV_FILE${NC}"
+    echo -e "${RED}ERROR: .env file not found${NC}"
     echo ""
-    echo "Phase 1 deployment configs not generated!"
-    echo "Run: python3 config/scripts/generate-config.py prod evindrake_net"
+    echo "Quick setup:"
+    echo "  cp .env.example .env"
+    echo "  nano .env  # Update your credentials"
+    echo "  ./deploy/scripts/bootstrap.sh"
     echo ""
     exit 1
 fi
 
 if [ ! -f "$COMPOSE_FILE" ]; then
-    echo -e "${RED}ERROR: docker-compose.yml not found at $COMPOSE_FILE${NC}"
+    echo -e "${RED}ERROR: docker-compose.yml not found${NC}"
     exit 1
 fi
 
-# Docker Compose command with ABSOLUTE PATHS
-# Phase 2: Use modular bundles when available, fallback to monolith
+# Docker Compose wrapper - simple and direct
 compose() {
-    if [ -f "$PROJECT_ROOT/orchestration/compose.all.yml" ]; then
-        # Modular approach - use compose.all.yml which includes all bundles
-        # CRITICAL: --env-file ensures ${DEPLOYMENT_PATH} is substituted in compose files
-        docker compose \
-            --project-directory "$PROJECT_ROOT" \
-            --env-file "$ENV_FILE" \
-            -f "$PROJECT_ROOT/orchestration/compose.all.yml" \
-            "$@"
-    else
-        # Legacy fallback - use monolithic docker-compose.yml
-        docker compose \
-            --project-directory "$PROJECT_ROOT" \
-            --env-file "$ENV_FILE" \
-            -f "$COMPOSE_FILE" \
-            "$@"
-    fi
+    docker compose \
+        --project-directory "$PROJECT_ROOT" \
+        --env-file "$ENV_FILE" \
+        -f "$COMPOSE_FILE" \
+        "$@"
 }
 
-# Service list
+# Service list (cloud services only - local services run on Ubuntu host)
 ALL_SERVICES=(
-    "homelab-postgres" "homelab-redis" "homelab-minio"
+    "homelab-postgres" "homelab-redis"
     "homelab-dashboard" "homelab-celery-worker"
     "discord-bot" "stream-bot"
-    "caddy" "vnc-desktop" "code-server"
-    "plex-server" "n8n" "homeassistant"
+    "caddy" "code-server" "code-server-proxy"
+    "n8n"
     "rig-city-site" "scarletredjoker-web"
 )
+TOTAL_SERVICES=12
 
 # Check if service is running
 is_running() {
@@ -143,10 +120,10 @@ fix() {
     # Status
     local running=$(count_running)
     echo ""
-    if [ $running -eq 15 ]; then
-        echo -e "${GREEN}✅ SUCCESS! All 15/15 services running!${NC}"
+    if [ $running -eq $TOTAL_SERVICES ]; then
+        echo -e "${GREEN}✅ SUCCESS! All $TOTAL_SERVICES/$TOTAL_SERVICES services running!${NC}"
     else
-        echo -e "${YELLOW}⚠ $running/15 services running${NC}"
+        echo -e "${YELLOW}⚠ $running/$TOTAL_SERVICES services running${NC}"
         echo "Check logs: ./homelab logs"
     fi
 }
@@ -157,29 +134,21 @@ fix() {
 status() {
     echo -e "\n${CYAN}═══ Service Status ═══${NC}\n"
     
-    # Phase 2: Use modular bundles when available
-    if [ -f "$PROJECT_ROOT/orchestration/services.yaml" ]; then
-        # Use modular approach with compose ps
-        compose ps
-        echo ""
-    else
-        # Legacy fallback - manual status check
-        local running=0
-        for service in "${ALL_SERVICES[@]}"; do
-            if is_running "$service"; then
-                echo -e "$service: ${GREEN}● Running${NC}"
-                ((running++))
-            else
-                echo -e "$service: ${RED}○ Stopped${NC}"
-            fi
-        done
-        
-        echo ""
-        if [ $running -eq 15 ]; then
-            echo -e "${GREEN}✅ All 15/15 services running${NC}"
+    local running=0
+    for service in "${ALL_SERVICES[@]}"; do
+        if is_running "$service"; then
+            echo -e "$service: ${GREEN}● Running${NC}"
+            ((running++))
         else
-            echo -e "${YELLOW}⚠ $running/15 services running${NC}"
+            echo -e "$service: ${RED}○ Stopped${NC}"
         fi
+    done
+    
+    echo ""
+    if [ $running -eq $TOTAL_SERVICES ]; then
+        echo -e "${GREEN}✅ All $TOTAL_SERVICES/$TOTAL_SERVICES services running${NC}"
+    else
+        echo -e "${YELLOW}⚠ $running/$TOTAL_SERVICES services running${NC}"
     fi
 }
 

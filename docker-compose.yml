@@ -7,17 +7,10 @@ volumes:
   n8n_data:
   caddy_data:
   caddy_config:
-  # vnc_home: # Removed - using host VNC instead of container
   code_server_data:
   redis_data:
-  minio_data:
-  homeassistant_config:
-  ollama_models:
 
 services:
-  # ============================================
-  # Caddy - Reverse Proxy with Auto SSL
-  # ============================================
   caddy:
     image: caddy:2-alpine
     container_name: caddy
@@ -32,10 +25,13 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
-  # ============================================
-  # Redis - Message Broker & Cache
-  # ============================================
   redis:
     image: redis:7-alpine
     container_name: homelab-redis
@@ -51,33 +47,31 @@ services:
       timeout: 5s
       retries: 5
 
-  # ============================================
-  # MinIO - S3-Compatible Object Storage
-  # ============================================
-  minio:
-    image: minio/minio:latest
-    container_name: homelab-minio
+  homelab-postgres:
+    image: postgres:16-alpine
+    container_name: homelab-postgres
     restart: unless-stopped
-    command: server /data --console-address ":9001"
     networks:
-      - homelab
+      homelab:
+        aliases:
+          - postgres
     environment:
-      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-admin}
-      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minio_admin_password}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+      DISCORD_DB_PASSWORD: ${DISCORD_DB_PASSWORD}
+      STREAMBOT_DB_PASSWORD: ${STREAMBOT_DB_PASSWORD}
+      JARVIS_DB_PASSWORD: ${JARVIS_DB_PASSWORD}
     volumes:
-      - minio_data:/data
-    ports:
-      - "9000:9000"
-      - "9001:9001"
+      - postgres_data:/var/lib/postgresql/data
+      - ./config/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
-  # ============================================
-  # Homelab Dashboard
-  # ============================================
   homelab-dashboard:
     build:
       context: ./services/dashboard
@@ -89,8 +83,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      minio:
-        condition: service_healthy
     networks:
       - homelab
     volumes:
@@ -101,34 +93,34 @@ services:
       - ./docker-compose.yml:/app/docker-compose.yml:ro
       - ./Caddyfile:/app/Caddyfile:ro
       - ./.env:/app/.env:ro
-    env_file: 
-      - /home/evin/contain/HomeLabHub/.env
+    env_file:
+      - .env
     environment:
-      - FLASK_ENV=production
+      - FLASK_ENV=${FLASK_ENV:-production}
       - PYTHONUNBUFFERED=1
       - RUN_MIGRATIONS=false
       - DOCKER_CONTAINER=true
       - COMPOSE_PROJECT_DIR=/home/${SERVICE_USER:-evin}/contain/HomeLabHub
       - JARVIS_DATABASE_URL=postgresql://jarvis:${JARVIS_DB_PASSWORD}@homelab-postgres:5432/homelab_jarvis
       - REDIS_URL=redis://redis:6379/0
-      - MINIO_ENDPOINT=minio:9000
-      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-admin}
-      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minio_admin_password}
-      - HOME_ASSISTANT_URL=${HOME_ASSISTANT_URL:-http://homeassistant:8123}
-      - HOME_ASSISTANT_TOKEN=${HOME_ASSISTANT_TOKEN:-}
-      - HOME_ASSISTANT_VERIFY_SSL=${HOME_ASSISTANT_VERIFY_SSL:-False}
-      - PLEX_URL=http://plex-server:32400
-      - PLEX_TOKEN=${PLEX_TOKEN}
-      - AI_PROVIDER=openai
-      - AI_MODEL=gpt-4o
+      - AI_PROVIDER=${AI_PROVIDER:-openai}
+      - AI_MODEL=${AI_MODEL:-gpt-4o}
       - SERVICE_AUTH_TOKEN=${SERVICE_AUTH_TOKEN}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - WEB_USERNAME=${WEB_USERNAME}
+      - WEB_USERNAME=${WEB_USERNAME:-admin}
       - WEB_PASSWORD=${WEB_PASSWORD}
+      - PLEX_URL=${PLEX_URL:-http://100.64.0.1:32400}
+      - PLEX_TOKEN=${PLEX_TOKEN:-}
+      - HOME_ASSISTANT_URL=${HOME_ASSISTANT_URL:-http://100.64.0.1:8123}
+      - HOME_ASSISTANT_TOKEN=${HOME_ASSISTANT_TOKEN:-}
+      - HOME_ASSISTANT_VERIFY_SSL=${HOME_ASSISTANT_VERIFY_SSL:-False}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
-  # ============================================
-  # Celery Worker - Background Task Processing
-  # ============================================
   homelab-celery-worker:
     build:
       context: ./services/dashboard
@@ -149,19 +141,15 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - JARVIS_DATABASE_URL=postgresql://jarvis:${JARVIS_DB_PASSWORD}@homelab-postgres:5432/homelab_jarvis
       - PYTHONUNBUFFERED=1
-      - HOME_ASSISTANT_URL=${HOME_ASSISTANT_URL:-http://homeassistant:8123}
+      - AI_PROVIDER=${AI_PROVIDER:-openai}
+      - AI_MODEL=${AI_MODEL:-gpt-4o}
+      - PLEX_URL=${PLEX_URL:-http://100.64.0.1:32400}
+      - PLEX_TOKEN=${PLEX_TOKEN:-}
+      - HOME_ASSISTANT_URL=${HOME_ASSISTANT_URL:-http://100.64.0.1:8123}
       - HOME_ASSISTANT_TOKEN=${HOME_ASSISTANT_TOKEN:-}
-      - HOME_ASSISTANT_VERIFY_SSL=${HOME_ASSISTANT_VERIFY_SSL:-False}
-      - PLEX_URL=http://plex-server:32400
-      - PLEX_TOKEN=${PLEX_TOKEN}
-      - MINIO_ENDPOINT=minio:9000
-      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-admin}
-      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minio_admin_password}
       - COMPOSE_FILE=/docker-compose.yml
       - CADDYFILE_PATH=/Caddyfile
       - ENV_FILE=/.env
-      - AI_PROVIDER=openai
-      - AI_MODEL=gpt-4o
     env_file:
       - .env
     volumes:
@@ -171,35 +159,6 @@ services:
       - ./docker-compose.yml:/docker-compose.yml:ro
       - ./Caddyfile:/Caddyfile:ro
       - ./.env:/.env:ro
-
-  # ============================================
-  # PostgreSQL Database Server (Homelab Infrastructure)
-  # ============================================
-  homelab-postgres:
-    image: postgres:16-alpine
-    container_name: homelab-postgres
-    restart: unless-stopped
-    networks:
-      homelab:
-        aliases:
-          - postgres
-    environment:
-      POSTGRES_USER: postgres  # Standard PostgreSQL superuser
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: postgres  # Default database
-      # Database passwords for init scripts
-      DISCORD_DB_PASSWORD: ${DISCORD_DB_PASSWORD}
-      STREAMBOT_DB_PASSWORD: ${STREAMBOT_DB_PASSWORD}
-      JARVIS_DB_PASSWORD: ${JARVIS_DB_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./config/postgres-init:/docker-entrypoint-initdb.d:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
 
   discord-bot:
     build:
@@ -220,16 +179,16 @@ services:
       DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
       DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
       DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
-      DISCORD_APP_ID: ${DISCORD_APP_ID}
-      VITE_DISCORD_CLIENT_ID: ${VITE_DISCORD_CLIENT_ID}
+      DISCORD_APP_ID: ${DISCORD_APP_ID:-${DISCORD_CLIENT_ID}}
+      VITE_DISCORD_CLIENT_ID: ${VITE_DISCORD_CLIENT_ID:-${DISCORD_CLIENT_ID}}
       DISCORD_CALLBACK_URL: https://bot.rig-city.com/auth/discord/callback
       APP_URL: https://bot.rig-city.com
       PUBLIC_DOMAIN: https://bot.rig-city.com
       VITE_CUSTOM_WS_URL: ${VITE_CUSTOM_WS_URL:-}
       SESSION_SECRET: ${DISCORD_SESSION_SECRET}
-      TWITCH_CLIENT_ID: ${TWITCH_CLIENT_ID}
-      TWITCH_CLIENT_SECRET: ${TWITCH_CLIENT_SECRET}
-      NODE_ENV: production
+      TWITCH_CLIENT_ID: ${TWITCH_CLIENT_ID:-}
+      TWITCH_CLIENT_SECRET: ${TWITCH_CLIENT_SECRET:-}
+      NODE_ENV: ${NODE_ENV:-production}
       PORT: 4000
       HOST: 0.0.0.0
       RESET_DB: ${RESET_DB:-false}
@@ -243,9 +202,6 @@ services:
       retries: 3
       start_period: 60s
 
-  # ============================================
-  # Stream Bot (Snapple Facts AI)
-  # ============================================
   stream-bot:
     build:
       context: ./services/stream-bot
@@ -267,13 +223,13 @@ services:
       SESSION_SECRET: ${STREAMBOT_SESSION_SECRET}
       OPENAI_API_KEY: ${STREAMBOT_OPENAI_API_KEY:-${OPENAI_API_KEY}}
       OPENAI_BASE_URL: ${STREAMBOT_OPENAI_BASE_URL:-https://api.openai.com/v1}
-      STREAMBOT_FACT_MODEL: gpt-4o
+      STREAMBOT_FACT_MODEL: ${STREAMBOT_FACT_MODEL:-gpt-4o}
       NODE_ENV: ${STREAMBOT_NODE_ENV:-production}
       PORT: ${STREAMBOT_PORT:-5000}
       HOST: 0.0.0.0
       APP_URL: https://stream.rig-city.com
-      TWITCH_CLIENT_ID: ${TWITCH_CLIENT_ID}
-      TWITCH_CLIENT_SECRET: ${TWITCH_CLIENT_SECRET}
+      TWITCH_CLIENT_ID: ${TWITCH_CLIENT_ID:-}
+      TWITCH_CLIENT_SECRET: ${TWITCH_CLIENT_SECRET:-}
       TWITCH_REDIRECT_URI: ${TWITCH_REDIRECT_URI:-https://stream.rig-city.com/api/auth/twitch/callback}
       TWITCH_SIGNIN_CALLBACK_URL: https://stream.rig-city.com/api/auth/twitch/callback
       YOUTUBE_CLIENT_ID: ${YOUTUBE_CLIENT_ID:-}
@@ -299,44 +255,6 @@ services:
       retries: 3
       start_period: 40s
 
-  # ============================================
-  # Plex Media Server
-  # ============================================
-  plex:
-    image: lscr.io/linuxserver/plex:latest
-    container_name: plex-server
-    restart: unless-stopped
-    networks:
-      - homelab
-    ports:
-      - "32400:32400"
-      - "3005:3005"
-      - "8324:8324"
-      - "32469:32469"
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=America/New_York
-      - VERSION=docker
-      - PLEX_CLAIM=${PLEX_CLAIM:-}
-      - ADVERTISE_IP=https://plex.evindrake.net:443
-    volumes:
-      - ./services/plex/config:/config
-      - ./services/plex/transcode:/transcode
-      - ./services/plex/media:/media
-      - /mnt/nas:/nas:ro
-    devices:
-      - /dev/dri:/dev/dri
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:32400/identity || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-
-  # ============================================
-  # n8n Automation
-  # ============================================
   n8n:
     image: docker.n8n.io/n8nio/n8n:latest
     container_name: n8n
@@ -344,13 +262,13 @@ services:
     networks:
       - homelab
     environment:
-      - N8N_HOST=n8n.evindrake.net
+      - N8N_HOST=${N8N_HOST:-n8n.evindrake.net}
       - N8N_PORT=5678
       - N8N_PROTOCOL=https
       - NODE_ENV=production
-      - WEBHOOK_URL=https://n8n.evindrake.net/
-      - GENERIC_TIMEZONE=America/New_York
-      - TZ=America/New_York
+      - WEBHOOK_URL=${N8N_WEBHOOK_URL:-https://n8n.evindrake.net/}
+      - GENERIC_TIMEZONE=${TZ:-America/New_York}
+      - TZ=${TZ:-America/New_York}
       - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
       - N8N_RUNNERS_ENABLED=true
       - DB_SQLITE_POOL_SIZE=10
@@ -358,15 +276,18 @@ services:
       - N8N_GIT_NODE_DISABLE_BARE_REPOS=true
       - N8N_METRICS=true
       - N8N_DIAGNOSTICS_ENABLED=false
-      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_ACTIVE=${N8N_BASIC_AUTH_ACTIVE:-true}
       - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-admin}
       - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD:-}
     volumes:
       - n8n_data:/home/node/.n8n
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
-  # ============================================
-  # Static Website (Scarlet Red Joker)
-  # ============================================
   scarletredjoker-web:
     image: nginx:alpine
     container_name: scarletredjoker-web
@@ -375,10 +296,12 @@ services:
       - homelab
     volumes:
       - ./services/static-site:/usr/share/nginx/html:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # ============================================
-  # Rig City Community Website
-  # ============================================
   rig-city-site:
     image: nginx:alpine
     container_name: rig-city-site
@@ -387,32 +310,12 @@ services:
       - homelab
     volumes:
       - ./services/rig-city-site:/usr/share/nginx/html:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # ============================================
-  # VNC Remote Desktop - DISABLED (Using Host VNC)
-  # ============================================
-  # The VNC container has been replaced with host-based TigerVNC + noVNC
-  # This is faster, more resource-efficient, and provides access to the real desktop
-  # 
-  # Host VNC Setup (already configured):
-  #   - TigerVNC server runs on host at :5901
-  #   - noVNC web client runs on host at :6080
-  #   - Caddy proxies vnc.evindrake.net -> host:6080
-  #
-  # To start VNC on host:
-  #   systemctl --user start vncserver@:1
-  #   /opt/novnc/utils/novnc_proxy --vnc localhost:5901 --listen 6080
-  #
-  # vnc-desktop:
-  #   build:
-  #     context: ./services/vnc-desktop
-  #     dockerfile: Dockerfile
-  #   container_name: vnc-desktop
-  #   ... (container disabled)
-
-  # ============================================
-  # Code-Server (VS Code in Browser) with Jarvis AI
-  # ============================================
   code-server:
     image: lscr.io/linuxserver/code-server:latest
     container_name: code-server
@@ -421,9 +324,9 @@ services:
       - homelab
     environment:
       - PASSWORD=${CODE_SERVER_PASSWORD}
-      - PUID=1000
-      - PGID=1000
-      - TZ=America/New_York
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-America/New_York}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - JARVIS_API_URL=http://homelab-dashboard:5000/api/jarvis
       - SERVICE_AUTH_TOKEN=${SERVICE_AUTH_TOKEN}
@@ -442,9 +345,6 @@ services:
       retries: 3
       start_period: 40s
 
-  # ============================================
-  # Code Server Header Proxy - Fixes X-Frame-Options
-  # ============================================
   code-server-proxy:
     image: nginx:alpine
     container_name: code-server-proxy
@@ -461,68 +361,3 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-
-  # ============================================
-  # Home Assistant - Smart Home Automation Hub
-  # ============================================
-  homeassistant:
-    image: ghcr.io/home-assistant/home-assistant:stable
-    container_name: homeassistant
-    restart: unless-stopped
-    privileged: true
-    networks:
-      - homelab
-    environment:
-      - TZ=America/New_York
-    volumes:
-      - homeassistant_config:/config
-      - ./config/homeassistant:/config-templates:ro
-      - /run/dbus:/run/dbus:ro
-    devices:
-      - /dev/bus/usb:/dev/bus/usb
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-      - SYS_ADMIN
-    ports:
-      - "8123:8123"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8123/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-
-  # ============================================
-  # Ollama - Local AI Models (DISABLED - Use host Ollama)
-  # ============================================
-  # NOTE: Ollama is already running on the Ubuntu host at port 11434
-  # Dashboard can access it via http://localhost:11434 or http://host.docker.internal:11434
-  # If you need to run Ollama in Docker instead, uncomment below and stop host Ollama first:
-  #
-  # ollama:
-  #   image: ollama/ollama:latest
-  #   container_name: ollama
-  #   restart: unless-stopped
-  #   networks:
-  #     - homelab
-  #   ports:
-  #     - "11434:11434"
-  #   volumes:
-  #     - ollama_models:/root/.ollama
-  #   environment:
-  #     - OLLAMA_HOST=0.0.0.0:11434
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
-  #     start_period: 60s
-  #   deploy:
-  #     resources:
-  #       limits:
-  #         cpus: '4.0'
-  #         memory: 8G
-  #       reservations:
-  #         cpus: '2.0'
-  #         memory: 4G

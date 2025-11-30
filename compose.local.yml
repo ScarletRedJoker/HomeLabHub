@@ -1,0 +1,134 @@
+# ============================================
+# HomeLabHub Local Services - Ubuntu Host
+# ============================================
+# These services run on the local Ubuntu host (gaming/streaming PC)
+# They connect to cloud services via Tailscale
+#
+# Usage:
+#   docker compose -f compose.local.yml up -d
+#
+# Prerequisites:
+#   - Tailscale connected to your network
+#   - LINODE_TAILSCALE_IP set in .env.local
+# ============================================
+
+networks:
+  homelab-local:
+    driver: bridge
+
+volumes:
+  minio_data:
+  homeassistant_config:
+  plex_config:
+  plex_transcode:
+
+services:
+  # ============================================
+  # MinIO - S3-Compatible Object Storage
+  # ============================================
+  minio:
+    image: minio/minio:latest
+    container_name: homelab-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    networks:
+      - homelab-local
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-admin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # ============================================
+  # Plex Media Server
+  # ============================================
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: plex-server
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-America/New_York}
+      - VERSION=docker
+      - PLEX_CLAIM=${PLEX_CLAIM:-}
+      - ADVERTISE_IP=https://plex.evindrake.net:443
+    volumes:
+      - plex_config:/config
+      - plex_transcode:/transcode
+      - ${PLEX_MEDIA_PATH:-/media}:/media
+      - /mnt/nas:/nas:ro
+    devices:
+      - /dev/dri:/dev/dri
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:32400/identity || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ============================================
+  # Home Assistant - Smart Home Hub
+  # ============================================
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    environment:
+      - TZ=${TZ:-America/New_York}
+    volumes:
+      - homeassistant_config:/config
+      - /run/dbus:/run/dbus:ro
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_ADMIN
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8123/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+# ============================================
+# VNC REMOTE DESKTOP NOTES
+# ============================================
+# VNC runs natively on the host for better performance:
+#
+# Setup TigerVNC:
+#   sudo apt install tigervnc-standalone-server tigervnc-common
+#   vncpasswd  # Set VNC password
+#   vncserver :1 -geometry 1920x1080 -depth 24
+#
+# Setup noVNC (web client):
+#   git clone https://github.com/novnc/noVNC.git /opt/novnc
+#   /opt/novnc/utils/novnc_proxy --vnc localhost:5901 --listen 6080
+#
+# Caddy proxies vnc.evindrake.net -> localhost:6080
+# ============================================
+
+# ============================================
+# CONNECTING TO CLOUD SERVICES
+# ============================================
+# Your Linode server runs the following services via Tailscale:
+#   - Dashboard: https://host.evindrake.net (or ${LINODE_TAILSCALE_IP}:5000)
+#   - Discord Bot: https://bot.rig-city.com
+#   - Stream Bot: https://stream.rig-city.com
+#   - PostgreSQL: ${LINODE_TAILSCALE_IP}:5432
+#   - Redis: ${LINODE_TAILSCALE_IP}:6379
+#
+# Set LINODE_TAILSCALE_IP in your .env.local to connect
+# ============================================
