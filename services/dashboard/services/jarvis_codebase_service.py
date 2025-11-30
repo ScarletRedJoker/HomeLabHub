@@ -52,13 +52,21 @@ class JarvisCodebaseService:
         else:
             logger.info(f"Jarvis Codebase Service initialized at {self.project_root}")
     
-    def _is_path_safe(self, path: str) -> tuple[bool, str]:
+    def _is_path_safe(self, path: str, for_write: bool = False) -> tuple[bool, str]:
         """Check if a path is safe to access"""
         try:
-            resolved = (self.project_root / path).resolve()
+            if '..' in path or path.startswith('/'):
+                return False, "Invalid path format"
             
-            if not str(resolved).startswith(str(self.project_root.resolve())):
+            target = self.project_root / path
+            resolved = target.resolve()
+            project_resolved = self.project_root.resolve()
+            
+            if not str(resolved).startswith(str(project_resolved) + os.sep) and resolved != project_resolved:
                 return False, "Path traversal attempt detected"
+            
+            if target.is_symlink():
+                return False, "Symlinks are not allowed"
             
             path_parts = Path(path).parts
             for protected in PROTECTED_PATHS:
@@ -66,6 +74,15 @@ class JarvisCodebaseService:
                     if protected == '.env' and path.endswith('.env.example'):
                         continue
                     return False, f"Access to {protected} is restricted"
+            
+            if for_write:
+                parent_resolved = resolved.parent.resolve()
+                if not str(parent_resolved).startswith(str(project_resolved) + os.sep) and parent_resolved != project_resolved:
+                    return False, "Cannot write to parent directory outside project"
+                
+                for protected in PROTECTED_PATHS:
+                    if protected in Path(path).parent.parts:
+                        return False, f"Cannot write to protected directory: {protected}"
             
             return True, "OK"
         except Exception as e:
@@ -203,12 +220,15 @@ class JarvisCodebaseService:
         if not self.enabled:
             return {'success': False, 'error': 'Codebase access not available'}
         
-        safe, reason = self._is_path_safe(path)
+        safe, reason = self._is_path_safe(path, for_write=True)
         if not safe:
             return {'success': False, 'error': reason}
         
         if not self._is_editable(path):
             return {'success': False, 'error': f'File type not editable: {path}'}
+        
+        if '\x00' in content:
+            return {'success': False, 'error': 'Binary content not allowed'}
         
         file_path = self.project_root / path
         

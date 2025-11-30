@@ -136,6 +136,33 @@ Interactive deployment documentation:
 - **Files:** `deploy/DEPLOYMENT_GUIDE.md`, `services/dashboard/templates/deployment_guide.html`
 - **Features:** Step-by-step setup, progress tracking, command copy-to-clipboard, architecture visualization
 
+### Setup Wizard
+Interactive configuration wizard for all required services:
+- **Location:** `/setup-wizard` in dashboard
+- **Files:** `services/dashboard/routes/setup_routes.py`, `templates/setup_wizard.html`
+- **Features:** 5 configuration sections with test connections, real-time status detection, database persistence
+- **Sections:** Cloudflare DNS, Tailscale VPN, Fleet SSH Keys, Cloud Storage, OpenAI API
+
+### Jarvis Codebase Access
+Direct AI access to browse, read, edit, and search the actual HomeLabHub codebase:
+- **Location:** `/api/jarvis/codebase/*` API endpoints
+- **Files:** `services/dashboard/services/jarvis_codebase_service.py`, `routes/jarvis_codebase_routes.py`
+- **Features:** File browsing, code search, automated edits with backups, Git status
+- **Security:** Protected paths (.env, .git), file type whitelist, automatic .jarvis-backup files
+- **Requirements:** Set `HOMELAB_PROJECT_ROOT=/home/evin/contain/HomeLabHub`
+
+### Production Configuration
+Gunicorn WSGI server configuration for Docker deployment:
+- **Files:** `services/dashboard/Dockerfile`, `gunicorn.conf.py`, `docker-entrypoint.sh`
+- **Features:** 4 workers, 2 threads, 120s timeout, health checks, preloaded app
+- **Dev vs Prod:** Flask dev server in Replit, gunicorn in Docker
+
+### Enhanced Automation Scripts
+Shell scripts for deployment automation:
+- **setup-tailscale.sh:** Automatic authkey authentication, exit node configuration, DNS setup
+- **setup-ssh-keys.sh:** Key generation (ed25519/rsa), copy to hosts, connection testing
+- **health-check.sh:** Tailscale connectivity, SSH verification, cross-host ping tests
+
 ## Dashboard Routes Summary
 ```
 /                       - Home dashboard
@@ -146,6 +173,7 @@ Interactive deployment documentation:
 /fleet-management       - Remote server control
 /storage/management     - Unified storage
 /deployment-guide       - Setup documentation
+/setup-wizard           - Configuration wizard
 /containers             - Docker management
 /marketplace            - App deployment
 /database-admin         - PostgreSQL admin

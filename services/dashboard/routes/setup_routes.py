@@ -6,11 +6,47 @@ from flask import Blueprint, jsonify, request, render_template
 from utils.auth import require_auth, require_web_auth
 import logging
 import os
+import re
 import requests
 
 logger = logging.getLogger(__name__)
 
 setup_bp = Blueprint('setup', __name__)
+
+TAILSCALE_IP_PATTERN = re.compile(r'^100\.\d{1,3}\.\d{1,3}\.\d{1,3}$')
+PRIVATE_IP_PATTERN = re.compile(r'^(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})$')
+ALLOWED_HOST_IDS = ['linode', 'local']
+ALLOWED_STORAGE_ENDPOINTS = [
+    'play.min.io',
+    's3.amazonaws.com',
+    's3.backblazeb2.com',
+]
+
+def is_valid_tailscale_or_private_ip(ip: str) -> bool:
+    """Check if IP is a valid Tailscale or private network IP"""
+    if not ip:
+        return False
+    return bool(TAILSCALE_IP_PATTERN.match(ip) or PRIVATE_IP_PATTERN.match(ip))
+
+def is_safe_storage_endpoint(endpoint: str) -> bool:
+    """Check if storage endpoint is from allowed list or user's own domain"""
+    if not endpoint:
+        return False
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(endpoint)
+        host = parsed.netloc or parsed.path
+        host = host.split(':')[0]
+        for allowed in ALLOWED_STORAGE_ENDPOINTS:
+            if host.endswith(allowed):
+                return True
+        if is_valid_tailscale_or_private_ip(host):
+            return True
+        if host.endswith('.evindrake.net') or host.endswith('.rig-city.com'):
+            return True
+        return False
+    except Exception:
+        return False
 
 
 def make_response(success: bool, data=None, message=None, status_code=200):
@@ -149,7 +185,7 @@ def test_cloudflare():
 def test_tailscale():
     """
     POST /api/setup/test/tailscale
-    Test Tailscale connectivity to configured hosts
+    Test Tailscale connectivity to configured hosts (only Tailscale/private IPs)
     """
     try:
         data = request.get_json() or {}
@@ -165,6 +201,10 @@ def test_tailscale():
         
         for host_key, ip in [('linode', linode_ip), ('local', local_ip)]:
             if ip:
+                if not is_valid_tailscale_or_private_ip(ip):
+                    results[host_key]['error'] = 'Only Tailscale (100.x.x.x) or private network IPs allowed'
+                    continue
+                    
                 try:
                     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     sock.settimeout(5)
@@ -189,11 +229,14 @@ def test_tailscale():
 def test_ssh():
     """
     POST /api/setup/test/ssh
-    Test SSH connection to fleet hosts
+    Test SSH connection to fleet hosts (only 'linode' or 'local' allowed)
     """
     try:
         data = request.get_json() or {}
         host_id = data.get('host_id', 'linode')
+        
+        if host_id not in ALLOWED_HOST_IDS:
+            return make_response(False, message=f"Invalid host_id. Allowed: {', '.join(ALLOWED_HOST_IDS)}", status_code=400)
         
         try:
             from services.fleet_service import fleet_manager
@@ -226,7 +269,7 @@ def test_ssh():
 def test_storage():
     """
     POST /api/setup/test/storage
-    Test cloud storage connection (MinIO/S3/B2)
+    Test cloud storage connection (MinIO/S3/B2) - only allowed endpoints
     """
     try:
         data = request.get_json() or {}
@@ -236,6 +279,9 @@ def test_storage():
         
         if not all([endpoint, access_key, secret_key]):
             return make_response(False, message="Endpoint, access key, and secret key are required", status_code=400)
+        
+        if not is_safe_storage_endpoint(endpoint):
+            return make_response(False, message="Storage endpoint not allowed. Use AWS S3, Backblaze B2, or local MinIO on private network.", status_code=400)
         
         try:
             from minio import Minio
