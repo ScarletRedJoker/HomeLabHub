@@ -507,6 +507,12 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a href="/jarvis-builder" class="nav-link cosmic {% if request.path == '/jarvis-builder' %}active{% endif %}">
+                    <i class="bi bi-browser-chrome"></i>
+                    <span>Website Builder</span>
+                </a>
+            </li>
+            <li class="nav-item">
                 <a href="/game-streaming" class="nav-link cosmic {% if request.path == '/game-streaming' %}active{% endif %}">
                     <i class="bi bi-controller"></i>
                     <span>Game Streaming</span>
@@ -625,6 +631,27 @@
                     <i class="bi bi-display"></i>
                     <span>VNC Desktop</span>
                     <i class="bi bi-box-arrow-up-right" style="margin-left: auto; font-size: 0.75rem;"></i>
+                </a>
+            </li>
+        </ul>
+        
+        <div style="padding: 20px 20px 12px; margin: 20px 0 0; border-top: 1px solid var(--border-color);">
+            <div style="color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; margin-bottom: 12px;">
+                <i class="bi bi-gear-wide-connected"></i> Administration
+            </div>
+        </div>
+        
+        <ul>
+            <li class="nav-item">
+                <a href="/fleet-management" class="nav-link cosmic {% if request.path == '/fleet-management' %}active{% endif %}">
+                    <i class="bi bi-hdd-network"></i>
+                    <span>Fleet Manager</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/deployment-guide" class="nav-link cosmic {% if request.path == '/deployment-guide' %}active{% endif %}">
+                    <i class="bi bi-rocket-takeoff"></i>
+                    <span>Deployment Guide</span>
                 </a>
             </li>
         </ul>

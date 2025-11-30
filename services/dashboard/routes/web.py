@@ -220,3 +220,23 @@ def jarvis_code():
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
     return response
+
+@web_bp.route('/deployment-guide')
+@require_web_auth
+def deployment_guide():
+    """Multi-Platform Deployment Guide - Split architecture documentation"""
+    response = make_response(render_template('deployment_guide.html'))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
+
+@web_bp.route('/jarvis-builder')
+@require_web_auth
+def jarvis_builder():
+    """Jarvis 2.0 Website Builder - Autonomous AI-powered website generation"""
+    response = make_response(render_template('jarvis_website_builder.html'))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response

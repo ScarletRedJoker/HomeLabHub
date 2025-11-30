@@ -1,0 +1,1384 @@
+{% extends "base.html" %}
+
+{% block title %}Deployment Guide - Nebula Command{% endblock %}
+{% block page_title %}Multi-Platform Deployment Guide{% endblock %}
+
+{% block extra_css %}
+<style>
+    .deployment-hero {
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(59, 130, 246, 0.1) 50%, rgba(236, 72, 153, 0.1) 100%);
+        border: 1px solid rgba(139, 92, 246, 0.3);
+        border-radius: 16px;
+        padding: 32px;
+        margin-bottom: 24px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .deployment-hero::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 50%);
+        animation: pulse-glow 8s ease-in-out infinite;
+    }
+    
+    @keyframes pulse-glow {
+        0%, 100% { transform: scale(1); opacity: 0.5; }
+        50% { transform: scale(1.1); opacity: 0.8; }
+    }
+    
+    .hero-content {
+        position: relative;
+        z-index: 1;
+    }
+    
+    .hero-stats {
+        display: flex;
+        gap: 24px;
+        margin-top: 24px;
+        flex-wrap: wrap;
+    }
+    
+    .hero-stat {
+        background: rgba(17, 24, 39, 0.8);
+        border: 1px solid rgba(139, 92, 246, 0.2);
+        border-radius: 12px;
+        padding: 16px 24px;
+        text-align: center;
+        min-width: 140px;
+    }
+    
+    .hero-stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #8B5CF6, #3B82F6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .hero-stat-label {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        margin-top: 4px;
+    }
+    
+    .phase-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 16px;
+    }
+    
+    .phase-tab {
+        background: rgba(31, 41, 55, 0.6);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 12px 20px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 500;
+    }
+    
+    .phase-tab:hover {
+        background: rgba(139, 92, 246, 0.1);
+        border-color: rgba(139, 92, 246, 0.3);
+        color: var(--text-primary);
+    }
+    
+    .phase-tab.active {
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(59, 130, 246, 0.15));
+        border-color: rgba(139, 92, 246, 0.5);
+        color: var(--accent-purple);
+    }
+    
+    .phase-tab.completed {
+        border-color: var(--accent-green);
+    }
+    
+    .phase-tab.completed::after {
+        content: '✓';
+        color: var(--accent-green);
+        font-weight: bold;
+    }
+    
+    .phase-content {
+        display: none;
+    }
+    
+    .phase-content.active {
+        display: block;
+        animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .checklist-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 16px;
+        background: rgba(31, 41, 55, 0.4);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        margin-bottom: 12px;
+        transition: all 0.3s ease;
+    }
+    
+    .checklist-item:hover {
+        background: rgba(31, 41, 55, 0.6);
+    }
+    
+    .checklist-item.completed {
+        border-color: var(--accent-green);
+        background: rgba(52, 211, 153, 0.05);
+    }
+    
+    .checklist-checkbox {
+        width: 24px;
+        height: 24px;
+        border: 2px solid var(--border-color);
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+    }
+    
+    .checklist-checkbox:hover {
+        border-color: var(--accent-purple);
+    }
+    
+    .checklist-item.completed .checklist-checkbox {
+        background: var(--accent-green);
+        border-color: var(--accent-green);
+        color: white;
+    }
+    
+    .checklist-content {
+        flex: 1;
+    }
+    
+    .checklist-title {
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+    
+    .checklist-description {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin-bottom: 12px;
+    }
+    
+    .command-block {
+        background: rgba(17, 24, 39, 0.9);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 16px;
+        position: relative;
+        font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        font-size: 0.875rem;
+        overflow-x: auto;
+    }
+    
+    .command-block pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+    
+    .copy-btn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: rgba(139, 92, 246, 0.2);
+        border: 1px solid rgba(139, 92, 246, 0.3);
+        color: var(--text-secondary);
+        padding: 6px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.75rem;
+        transition: all 0.2s ease;
+    }
+    
+    .copy-btn:hover {
+        background: rgba(139, 92, 246, 0.4);
+        color: var(--text-primary);
+    }
+    
+    .copy-btn.copied {
+        background: var(--accent-green);
+        color: white;
+    }
+    
+    .architecture-diagram {
+        background: rgba(17, 24, 39, 0.8);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 24px;
+        margin: 24px 0;
+    }
+    
+    .arch-row {
+        display: flex;
+        justify-content: center;
+        gap: 48px;
+        margin: 24px 0;
+        flex-wrap: wrap;
+    }
+    
+    .arch-node {
+        background: linear-gradient(145deg, rgba(31, 41, 55, 0.8), rgba(17, 24, 39, 0.9));
+        border: 2px solid var(--border-color);
+        border-radius: 12px;
+        padding: 20px;
+        min-width: 280px;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+    
+    .arch-node.cloud {
+        border-color: rgba(59, 130, 246, 0.5);
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
+    }
+    
+    .arch-node.local {
+        border-color: rgba(236, 72, 153, 0.5);
+        box-shadow: 0 0 20px rgba(236, 72, 153, 0.1);
+    }
+    
+    .arch-node:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 30px rgba(139, 92, 246, 0.2);
+    }
+    
+    .arch-node-title {
+        font-size: 1.2rem;
+        font-weight: 700;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    
+    .arch-node.cloud .arch-node-title { color: var(--accent-blue); }
+    .arch-node.local .arch-node-title { color: #EC4899; }
+    
+    .arch-services {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        text-align: left;
+    }
+    
+    .arch-service {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: rgba(17, 24, 39, 0.6);
+        border-radius: 6px;
+        font-size: 0.875rem;
+    }
+    
+    .arch-service-status {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent-green);
+    }
+    
+    .arch-service-status.offline { background: var(--accent-red); }
+    .arch-service-status.unknown { background: var(--accent-yellow); }
+    
+    .arch-connector {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+    }
+    
+    .arch-connector-line {
+        width: 100px;
+        height: 4px;
+        background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple), #EC4899);
+        border-radius: 2px;
+        position: relative;
+    }
+    
+    .arch-connector-label {
+        position: absolute;
+        top: -24px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(17, 24, 39, 0.9);
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        color: var(--accent-purple);
+        white-space: nowrap;
+    }
+    
+    .domain-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    
+    .domain-table th {
+        background: rgba(31, 41, 55, 0.6);
+        padding: 12px 16px;
+        text-align: left;
+        font-weight: 600;
+        border-bottom: 2px solid var(--border-color);
+    }
+    
+    .domain-table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+    }
+    
+    .domain-table tr:hover td {
+        background: rgba(31, 41, 55, 0.3);
+    }
+    
+    .host-badge {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .host-badge.linode {
+        background: rgba(59, 130, 246, 0.2);
+        color: var(--accent-blue);
+    }
+    
+    .host-badge.local {
+        background: rgba(236, 72, 153, 0.2);
+        color: #EC4899;
+    }
+    
+    .progress-bar-container {
+        background: rgba(17, 24, 39, 0.8);
+        border-radius: 8px;
+        height: 8px;
+        overflow: hidden;
+        margin-bottom: 16px;
+    }
+    
+    .progress-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #8B5CF6, #3B82F6, #EC4899);
+        background-size: 200% 100%;
+        animation: gradient-flow 3s ease infinite;
+        transition: width 0.5s ease;
+    }
+    
+    @keyframes gradient-flow {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    
+    .quick-links {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-top: 24px;
+    }
+    
+    .quick-link {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px;
+        background: rgba(31, 41, 55, 0.4);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        text-decoration: none;
+        transition: all 0.3s ease;
+    }
+    
+    .quick-link:hover {
+        background: rgba(139, 92, 246, 0.1);
+        border-color: rgba(139, 92, 246, 0.3);
+        transform: translateX(4px);
+    }
+    
+    .quick-link i {
+        font-size: 1.5rem;
+        color: var(--accent-purple);
+    }
+    
+    .cost-card {
+        background: linear-gradient(135deg, rgba(52, 211, 153, 0.1), rgba(59, 130, 246, 0.1));
+        border: 1px solid rgba(52, 211, 153, 0.3);
+        border-radius: 12px;
+        padding: 20px;
+    }
+    
+    .cost-breakdown {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+    }
+    
+    .cost-breakdown:last-child {
+        border-bottom: none;
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+    
+    .troubleshoot-accordion {
+        margin-bottom: 12px;
+    }
+    
+    .troubleshoot-header {
+        background: rgba(31, 41, 55, 0.6);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 16px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.3s ease;
+    }
+    
+    .troubleshoot-header:hover {
+        background: rgba(31, 41, 55, 0.8);
+    }
+    
+    .troubleshoot-header.active {
+        border-radius: 8px 8px 0 0;
+        border-bottom: none;
+    }
+    
+    .troubleshoot-body {
+        display: none;
+        background: rgba(17, 24, 39, 0.6);
+        border: 1px solid var(--border-color);
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        padding: 16px;
+    }
+    
+    .troubleshoot-body.active {
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="deployment-hero">
+    <div class="hero-content">
+        <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 12px;">
+            <i class="bi bi-rocket-takeoff"></i> Split Architecture Deployment
+        </h1>
+        <p style="color: var(--text-secondary); font-size: 1.1rem; max-width: 600px;">
+            Deploy your homelab across Linode cloud and local Ubuntu for optimal gaming performance. Free up to 8GB RAM on your gaming machine.
+        </p>
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <div class="hero-stat-value">6-8 GB</div>
+                <div class="hero-stat-label">RAM Freed</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-value">4-6</div>
+                <div class="hero-stat-label">CPU Cores Saved</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-value">$20-40</div>
+                <div class="hero-stat-label">Monthly Cost</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-value" id="progress-percent">0%</div>
+                <div class="hero-stat-label">Deployment Progress</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card cosmic cosmic-fade-in mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-list-check"></i> Deployment Progress</span>
+                <button class="btn btn-sm btn-warning" onclick="resetProgress()">
+                    <i class="bi bi-arrow-counterclockwise"></i> Reset
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="progress-bar" style="width: 0%"></div>
+                </div>
+                
+                <div class="phase-tabs">
+                    <button class="phase-tab active" data-phase="overview" onclick="showPhase('overview')">
+                        <i class="bi bi-diagram-3"></i> Overview
+                    </button>
+                    <button class="phase-tab" data-phase="prerequisites" onclick="showPhase('prerequisites')">
+                        <i class="bi bi-check2-square"></i> Prerequisites
+                    </button>
+                    <button class="phase-tab" data-phase="linode" onclick="showPhase('linode')">
+                        <i class="bi bi-cloud"></i> Linode Setup
+                    </button>
+                    <button class="phase-tab" data-phase="tailscale" onclick="showPhase('tailscale')">
+                        <i class="bi bi-shield-lock"></i> Tailscale VPN
+                    </button>
+                    <button class="phase-tab" data-phase="dns" onclick="showPhase('dns')">
+                        <i class="bi bi-globe"></i> DNS Config
+                    </button>
+                    <button class="phase-tab" data-phase="local" onclick="showPhase('local')">
+                        <i class="bi bi-pc-display"></i> Local Setup
+                    </button>
+                    <button class="phase-tab" data-phase="verify" onclick="showPhase('verify')">
+                        <i class="bi bi-check-circle"></i> Verify
+                    </button>
+                </div>
+
+                <div id="phase-overview" class="phase-content active">
+                    <h4 class="mb-4"><i class="bi bi-diagram-3"></i> Architecture Overview</h4>
+                    
+                    <div class="architecture-diagram">
+                        <div class="text-center mb-3">
+                            <span class="badge bg-secondary"><i class="bi bi-globe2"></i> INTERNET</span>
+                        </div>
+                        
+                        <div class="arch-row">
+                            <div class="arch-node cloud">
+                                <div class="arch-node-title">
+                                    <i class="bi bi-cloud"></i> LINODE SERVER
+                                </div>
+                                <div class="text-secondary mb-3" style="font-size: 0.875rem;">$20-40/month • Always On</div>
+                                <div class="arch-services">
+                                    <div class="arch-service">
+                                        <span class="arch-service-status" id="status-discord"></span>
+                                        <span>Discord Bot</span>
+                                    </div>
+                                    <div class="arch-service">
+                                        <span class="arch-service-status" id="status-stream"></span>
+                                        <span>Stream Bot</span>
+                                    </div>
+                                    <div class="arch-service">
+                                        <span class="arch-service-status" id="status-dashboard"></span>
+                                        <span>Dashboard</span>
+                                    </div>
+                                    <div class="arch-service">
+                                        <span class="arch-service-status" id="status-postgres"></span>
+                                        <span>PostgreSQL</span>
+                                    </div>
+                                    <div class="arch-service">
+                                        <span class="arch-service-status" id="status-redis"></span>
+                                        <span>Redis</span>
+                                    </div>
+                                    <div class="arch-service">
+                                        <span class="arch-service-status" id="status-n8n"></span>
+                                        <span>n8n</span>
+                                    </div>
+                                    <div class="arch-service">
+                                        <span class="arch-service-status" id="status-code"></span>
+                                        <span>Code-Server</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="arch-connector">
+                                <div class="arch-connector-line">
+                                    <span class="arch-connector-label">
+                                        <i class="bi bi-shield-lock"></i> Tailscale VPN
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div class="arch-node local">
+                                <div class="arch-node-title">
+                                    <i class="bi bi-pc-display"></i> LOCAL UBUNTU
+                                </div>
+                                <div class="text-secondary mb-3" style="font-size: 0.875rem;">Gaming Priority • Hardware Access</div>
+                                <div class="arch-services">
+                                    <div class="arch-service">
+                                        <span class="arch-service-status" id="status-plex"></span>
+                                        <span>Plex (GPU Transcode)</span>
+                                    </div>
+                                    <div class="arch-service">
+                                        <span class="arch-service-status" id="status-ha"></span>
+                                        <span>Home Assistant</span>
+                                    </div>
+                                    <div class="arch-service">
+                                        <span class="arch-service-status" id="status-minio"></span>
+                                        <span>MinIO Storage</span>
+                                    </div>
+                                    <div class="arch-service">
+                                        <span class="arch-service-status" id="status-vnc"></span>
+                                        <span>VNC Desktop</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h5 class="mt-4 mb-3"><i class="bi bi-globe2"></i> Domain Mapping</h5>
+                    <table class="domain-table">
+                        <thead>
+                            <tr>
+                                <th>Domain</th>
+                                <th>Host</th>
+                                <th>Service</th>
+                                <th>Port</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>dashboard.evindrake.net</code></td>
+                                <td><span class="host-badge linode">Linode</span></td>
+                                <td>Nebula Command Dashboard</td>
+                                <td>5000</td>
+                            </tr>
+                            <tr>
+                                <td><code>code.evindrake.net</code></td>
+                                <td><span class="host-badge linode">Linode</span></td>
+                                <td>Code-Server (VS Code)</td>
+                                <td>8443</td>
+                            </tr>
+                            <tr>
+                                <td><code>bot.rig-city.com</code></td>
+                                <td><span class="host-badge linode">Linode</span></td>
+                                <td>Discord Bot</td>
+                                <td>4000</td>
+                            </tr>
+                            <tr>
+                                <td><code>stream.rig-city.com</code></td>
+                                <td><span class="host-badge linode">Linode</span></td>
+                                <td>Stream Bot</td>
+                                <td>5000</td>
+                            </tr>
+                            <tr>
+                                <td><code>n8n.evindrake.net</code></td>
+                                <td><span class="host-badge linode">Linode</span></td>
+                                <td>n8n Automation</td>
+                                <td>5678</td>
+                            </tr>
+                            <tr>
+                                <td><code>plex.evindrake.net</code></td>
+                                <td><span class="host-badge local">Local</span></td>
+                                <td>Plex Media Server</td>
+                                <td>32400</td>
+                            </tr>
+                            <tr>
+                                <td><code>home.evindrake.net</code></td>
+                                <td><span class="host-badge local">Local</span></td>
+                                <td>Home Assistant</td>
+                                <td>8123</td>
+                            </tr>
+                            <tr>
+                                <td><code>vnc.evindrake.net</code></td>
+                                <td><span class="host-badge local">Local</span></td>
+                                <td>VNC Desktop</td>
+                                <td>6080</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <div class="quick-links">
+                        <a href="/fleet-management" class="quick-link">
+                            <i class="bi bi-hdd-network"></i>
+                            <div>
+                                <div style="font-weight: 600;">Fleet Manager</div>
+                                <div style="font-size: 0.8rem; color: var(--text-secondary);">Manage remote hosts</div>
+                            </div>
+                        </a>
+                        <a href="/domains" class="quick-link">
+                            <i class="bi bi-globe"></i>
+                            <div>
+                                <div style="font-weight: 600;">DNS Manager</div>
+                                <div style="font-size: 0.8rem; color: var(--text-secondary);">Configure domains</div>
+                            </div>
+                        </a>
+                        <a href="/storage" class="quick-link">
+                            <i class="bi bi-pie-chart"></i>
+                            <div>
+                                <div style="font-weight: 600;">Storage Monitor</div>
+                                <div style="font-size: 0.8rem; color: var(--text-secondary);">Check disk usage</div>
+                            </div>
+                        </a>
+                        <a href="/containers" class="quick-link">
+                            <i class="bi bi-box-seam"></i>
+                            <div>
+                                <div style="font-weight: 600;">Container Manager</div>
+                                <div style="font-size: 0.8rem; color: var(--text-secondary);">Docker control</div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <div id="phase-prerequisites" class="phase-content">
+                    <h4 class="mb-4"><i class="bi bi-check2-square"></i> Prerequisites Checklist</h4>
+                    
+                    <div class="checklist-item" data-id="prereq-linode">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">Linode Account</div>
+                            <div class="checklist-description">Create a Linode account for cloud hosting ($20-40/month)</div>
+                            <a href="https://www.linode.com/" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-box-arrow-up-right"></i> Sign Up at Linode
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="checklist-item" data-id="prereq-cloudflare">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">Cloudflare Account</div>
+                            <div class="checklist-description">For DNS management and CDN (free tier available)</div>
+                            <a href="https://www.cloudflare.com/" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-box-arrow-up-right"></i> Sign Up at Cloudflare
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="checklist-item" data-id="prereq-tailscale">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">Tailscale Account</div>
+                            <div class="checklist-description">Free VPN mesh for secure host-to-host communication</div>
+                            <a href="https://tailscale.com/" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-box-arrow-up-right"></i> Sign Up at Tailscale
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="checklist-item" data-id="prereq-github">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">GitHub Repository</div>
+                            <div class="checklist-description">Fork or clone the HomeLabHub repository</div>
+                            <a href="https://github.com/ScarletRedJoker/HomeLabHub" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-github"></i> View Repository
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="checklist-item" data-id="prereq-ubuntu">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">Ubuntu 25.10 or LTS on Local Machine</div>
+                            <div class="checklist-description">Your gaming/streaming machine with Docker installed</div>
+                            <div class="command-block mt-2">
+                                <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                                <pre>docker --version && docker compose version</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="checklist-item" data-id="prereq-ssh">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">SSH Keys Generated</div>
+                            <div class="checklist-description">Ed25519 keys for secure server access</div>
+                            <div class="command-block mt-2">
+                                <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                                <pre>ssh-keygen -t ed25519 -C "your_email@example.com"</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="checklist-item" data-id="prereq-domains">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">Domain Names</div>
+                            <div class="checklist-description">At least one domain configured in Cloudflare</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="phase-linode" class="phase-content">
+                    <h4 class="mb-4"><i class="bi bi-cloud"></i> Linode Server Setup</h4>
+                    
+                    <div class="checklist-item" data-id="linode-create">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">Create Linode Instance</div>
+                            <div class="checklist-description">
+                                Recommended: Linode 4GB Nanode ($20/mo) or 8GB ($40/mo)<br>
+                                OS: Ubuntu 22.04 LTS • Region: Choose closest to you
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="checklist-item" data-id="linode-ssh">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">SSH into Linode</div>
+                            <div class="command-block mt-2">
+                                <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                                <pre>ssh root@YOUR_LINODE_IP</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="checklist-item" data-id="linode-update">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">Update System</div>
+                            <div class="command-block mt-2">
+                                <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                                <pre>apt update && apt upgrade -y</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="checklist-item" data-id="linode-bootstrap">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">Run Bootstrap Script</div>
+                            <div class="checklist-description">This installs Docker, Tailscale, configures firewall, and sets up directories</div>
+                            <div class="command-block mt-2">
+                                <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                                <pre>curl -fsSL https://raw.githubusercontent.com/ScarletRedJoker/HomeLabHub/main/deploy/scripts/bootstrap-linode.sh | bash</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="checklist-item" data-id="linode-env">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">Configure Environment</div>
+                            <div class="command-block mt-2">
+                                <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                                <pre>cd /opt/homelab
+cp .env.template .env
+nano .env  # Fill in your secrets</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="phase-tailscale" class="phase-content">
+                    <h4 class="mb-4"><i class="bi bi-shield-lock"></i> Tailscale VPN Setup</h4>
+                    
+                    <div class="alert alert-info mb-4">
+                        <i class="bi bi-info-circle"></i> Tailscale creates a secure mesh VPN between your machines, allowing them to communicate over the internet as if they were on the same local network.
+                    </div>
+                    
+                    <div class="checklist-item" data-id="ts-linode">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">Authenticate Tailscale on Linode</div>
+                            <div class="command-block mt-2">
+                                <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                                <pre>sudo tailscale up
+# Follow the URL to authenticate
+tailscale ip -4  # Note this IP (e.g., 100.x.x.x)</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="checklist-item" data-id="ts-local">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">Install & Authenticate on Local</div>
+                            <div class="command-block mt-2">
+                                <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                                <pre>curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+tailscale ip -4  # Note this IP (e.g., 100.y.y.y)</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="checklist-item" data-id="ts-verify">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">Verify Connectivity</div>
+                            <div class="command-block mt-2">
+                                <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                                <pre># From Linode, ping local machine
+ping 100.y.y.y
+
+# From local, ping Linode
+ping 100.x.x.x</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="checklist-item" data-id="ts-tags">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">Tag Machines in Tailscale Admin</div>
+                            <div class="checklist-description">
+                                Go to Tailscale Admin Console → Machines → Add "homelab" tag to both machines
+                            </div>
+                            <a href="https://login.tailscale.com/admin/machines" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
+                                <i class="bi bi-box-arrow-up-right"></i> Open Tailscale Admin
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="phase-dns" class="phase-content">
+                    <h4 class="mb-4"><i class="bi bi-globe"></i> DNS Configuration</h4>
+                    
+                    <div class="checklist-item" data-id="dns-linode">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">Add Linode DNS Records</div>
+                            <div class="checklist-description">In Cloudflare, add A records pointing to your Linode IP:</div>
+                            <table class="domain-table mt-3">
+                                <thead>
+                                    <tr><th>Type</th><th>Name</th><th>Content</th><th>Proxy</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td>A</td><td>dashboard</td><td>LINODE_IP</td><td>Proxied</td></tr>
+                                    <tr><td>A</td><td>code</td><td>LINODE_IP</td><td>Proxied</td></tr>
+                                    <tr><td>A</td><td>n8n</td><td>LINODE_IP</td><td>Proxied</td></tr>
+                                    <tr><td>A</td><td>bot.rig-city.com</td><td>LINODE_IP</td><td>DNS Only</td></tr>
+                                    <tr><td>A</td><td>stream.rig-city.com</td><td>LINODE_IP</td><td>DNS Only</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="checklist-item" data-id="dns-local">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">Add Local DNS Records</div>
+                            <div class="checklist-description">A records pointing to your local public IP:</div>
+                            <table class="domain-table mt-3">
+                                <thead>
+                                    <tr><th>Type</th><th>Name</th><th>Content</th><th>Proxy</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td>A</td><td>plex</td><td>LOCAL_PUBLIC_IP</td><td>DNS Only</td></tr>
+                                    <tr><td>A</td><td>home</td><td>LOCAL_PUBLIC_IP</td><td>DNS Only</td></tr>
+                                    <tr><td>A</td><td>vnc</td><td>LOCAL_PUBLIC_IP</td><td>DNS Only</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="checklist-item" data-id="dns-ssl">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">Configure SSL/TLS</div>
+                            <div class="checklist-description">
+                                In Cloudflare SSL/TLS settings, set mode to "Full (strict)" for proxied domains
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="phase-local" class="phase-content">
+                    <h4 class="mb-4"><i class="bi bi-pc-display"></i> Local Ubuntu Setup</h4>
+                    
+                    <div class="checklist-item" data-id="local-clone">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">Clone Repository</div>
+                            <div class="command-block mt-2">
+                                <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                                <pre>cd ~/contain
+git clone https://github.com/ScarletRedJoker/HomeLabHub.git
+cd HomeLabHub</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="checklist-item" data-id="local-bootstrap">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">Run Local Bootstrap</div>
+                            <div class="command-block mt-2">
+                                <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                                <pre>./deploy/scripts/bootstrap-local.sh</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="checklist-item" data-id="local-stop">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">Stop Cloud Services Locally</div>
+                            <div class="checklist-description">These will run on Linode instead</div>
+                            <div class="command-block mt-2">
+                                <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                                <pre>docker compose stop discord-bot stream-bot homelab-dashboard \
+    homelab-celery-worker homelab-postgres redis n8n \
+    code-server code-server-proxy scarletredjoker-web rig-city-site</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="checklist-item" data-id="local-env">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">Configure Local Environment</div>
+                            <div class="command-block mt-2">
+                                <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                                <pre>cd ~/contain/HomeLabLocal
+cp .env.template .env
+nano .env  # Add PLEX_TOKEN, HOME_ASSISTANT_TOKEN, etc.</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="checklist-item" data-id="local-start">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">Start Local Services</div>
+                            <div class="command-block mt-2">
+                                <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                                <pre>docker compose up -d</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="phase-verify" class="phase-content">
+                    <h4 class="mb-4"><i class="bi bi-check-circle"></i> Verification & Health Checks</h4>
+                    
+                    <div class="checklist-item" data-id="verify-linode">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">Start Linode Services</div>
+                            <div class="command-block mt-2">
+                                <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                                <pre>cd /opt/homelab
+docker compose up -d
+docker compose ps</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="checklist-item" data-id="verify-health">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">Run Health Checks</div>
+                            <div class="command-block mt-2">
+                                <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                                <pre># Test Dashboard
+curl -I https://dashboard.evindrake.net/health
+
+# Test Discord Bot
+curl -I https://bot.rig-city.com/health
+
+# Test Plex
+curl -I http://localhost:32400/identity</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="checklist-item" data-id="verify-tailscale">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">Verify Tailscale Mesh</div>
+                            <div class="command-block mt-2">
+                                <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                                <pre>tailscale status</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="checklist-item" data-id="verify-fleet">
+                        <div class="checklist-checkbox" onclick="toggleCheck(this)"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-title">Test Fleet Manager</div>
+                            <div class="checklist-description">Access the Dashboard Fleet Manager to manage both hosts</div>
+                            <a href="/fleet-management" class="btn btn-sm btn-primary mt-2">
+                                <i class="bi bi-hdd-network"></i> Open Fleet Manager
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="cost-card mt-4">
+                        <h5 class="mb-3"><i class="bi bi-currency-dollar"></i> Monthly Cost Summary</h5>
+                        <div class="cost-breakdown">
+                            <span>Linode 4GB Nanode</span>
+                            <span>$20</span>
+                        </div>
+                        <div class="cost-breakdown">
+                            <span>Cloudflare DNS</span>
+                            <span>Free</span>
+                        </div>
+                        <div class="cost-breakdown">
+                            <span>Tailscale</span>
+                            <span>Free</span>
+                        </div>
+                        <div class="cost-breakdown">
+                            <span>Total</span>
+                            <span style="color: var(--accent-green);">~$20/month</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card cosmic cosmic-fade-in">
+            <div class="card-header">
+                <i class="bi bi-question-circle"></i> Troubleshooting
+            </div>
+            <div class="card-body">
+                <div class="troubleshoot-accordion">
+                    <div class="troubleshoot-header" onclick="toggleTroubleshoot(this)">
+                        <span><i class="bi bi-box-seam"></i> Container Won't Start</span>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="troubleshoot-body">
+                        <div class="command-block">
+                            <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                            <pre># Check container logs
+docker logs container-name --tail 100
+
+# Check for port conflicts
+sudo netstat -tlnp | grep PORT
+
+# Verify environment variables
+docker compose config</pre>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="troubleshoot-accordion">
+                    <div class="troubleshoot-header" onclick="toggleTroubleshoot(this)">
+                        <span><i class="bi bi-database"></i> Database Connection Failed</span>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="troubleshoot-body">
+                        <div class="command-block">
+                            <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                            <pre># Test PostgreSQL connection
+docker exec -it homelab-postgres psql -U postgres -c '\l'
+
+# Verify DATABASE_URL format
+echo $DATABASE_URL
+# Should be: postgresql://user:pass@host:5432/dbname</pre>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="troubleshoot-accordion">
+                    <div class="troubleshoot-header" onclick="toggleTroubleshoot(this)">
+                        <span><i class="bi bi-shield-lock"></i> Tailscale Not Connecting</span>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="troubleshoot-body">
+                        <div class="command-block">
+                            <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                            <pre># Check Tailscale status
+tailscale status
+
+# Re-authenticate
+sudo tailscale up --reset
+
+# Check firewall
+sudo ufw status</pre>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="troubleshoot-accordion">
+                    <div class="troubleshoot-header" onclick="toggleTroubleshoot(this)">
+                        <span><i class="bi bi-shield-check"></i> SSL Certificate Issues</span>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="troubleshoot-body">
+                        <div class="command-block">
+                            <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                            <pre># Check Caddy logs
+docker logs caddy --tail 50
+
+# Force certificate renewal
+docker exec caddy caddy reload --config /etc/caddy/Caddyfile
+
+# Verify DNS
+dig +short domain.com</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const STORAGE_KEY = 'deployment-progress';
+
+function loadProgress() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+        const progress = JSON.parse(saved);
+        progress.forEach(id => {
+            const item = document.querySelector(`.checklist-item[data-id="${id}"]`);
+            if (item) {
+                item.classList.add('completed');
+                const checkbox = item.querySelector('.checklist-checkbox');
+                if (checkbox) checkbox.innerHTML = '<i class="bi bi-check"></i>';
+            }
+        });
+    }
+    updateProgressBar();
+}
+
+function saveProgress() {
+    const completed = [];
+    document.querySelectorAll('.checklist-item.completed').forEach(item => {
+        completed.push(item.dataset.id);
+    });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(completed));
+    updateProgressBar();
+}
+
+function toggleCheck(checkbox) {
+    const item = checkbox.closest('.checklist-item');
+    item.classList.toggle('completed');
+    
+    if (item.classList.contains('completed')) {
+        checkbox.innerHTML = '<i class="bi bi-check"></i>';
+    } else {
+        checkbox.innerHTML = '';
+    }
+    
+    saveProgress();
+}
+
+function updateProgressBar() {
+    const total = document.querySelectorAll('.checklist-item').length;
+    const completed = document.querySelectorAll('.checklist-item.completed').length;
+    const percent = Math.round((completed / total) * 100);
+    
+    document.getElementById('progress-bar').style.width = percent + '%';
+    document.getElementById('progress-percent').textContent = percent + '%';
+    
+    document.querySelectorAll('.phase-tab').forEach(tab => {
+        const phase = tab.dataset.phase;
+        const phaseContent = document.getElementById('phase-' + phase);
+        if (phaseContent) {
+            const phaseTotal = phaseContent.querySelectorAll('.checklist-item').length;
+            const phaseCompleted = phaseContent.querySelectorAll('.checklist-item.completed').length;
+            if (phaseTotal > 0 && phaseTotal === phaseCompleted) {
+                tab.classList.add('completed');
+            } else {
+                tab.classList.remove('completed');
+            }
+        }
+    });
+}
+
+function showPhase(phase) {
+    document.querySelectorAll('.phase-tab').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.phase-content').forEach(content => content.classList.remove('active'));
+    
+    document.querySelector(`.phase-tab[data-phase="${phase}"]`).classList.add('active');
+    document.getElementById('phase-' + phase).classList.add('active');
+}
+
+function resetProgress() {
+    if (confirm('Reset all deployment progress?')) {
+        localStorage.removeItem(STORAGE_KEY);
+        document.querySelectorAll('.checklist-item').forEach(item => {
+            item.classList.remove('completed');
+            item.querySelector('.checklist-checkbox').innerHTML = '';
+        });
+        updateProgressBar();
+    }
+}
+
+function copyCommand(btn) {
+    const block = btn.closest('.command-block');
+    const text = block.querySelector('pre').textContent;
+    
+    navigator.clipboard.writeText(text).then(() => {
+        btn.classList.add('copied');
+        btn.textContent = 'Copied!';
+        setTimeout(() => {
+            btn.classList.remove('copied');
+            btn.textContent = 'Copy';
+        }, 2000);
+    });
+}
+
+function toggleTroubleshoot(header) {
+    const body = header.nextElementSibling;
+    const isActive = header.classList.contains('active');
+    
+    document.querySelectorAll('.troubleshoot-header').forEach(h => h.classList.remove('active'));
+    document.querySelectorAll('.troubleshoot-body').forEach(b => b.classList.remove('active'));
+    
+    if (!isActive) {
+        header.classList.add('active');
+        body.classList.add('active');
+    }
+}
+
+async function checkServiceStatus() {
+    try {
+        const response = await fetch('/api/containers/list', { credentials: 'include' });
+        const data = await response.json();
+        
+        if (data.success && data.containers) {
+            const statusMap = {
+                'discord-bot': 'status-discord',
+                'stream-bot': 'status-stream',
+                'homelab-dashboard': 'status-dashboard',
+                'homelab-postgres': 'status-postgres',
+                'homelab-redis': 'status-redis',
+                'redis': 'status-redis',
+                'n8n': 'status-n8n',
+                'code-server': 'status-code',
+                'plex': 'status-plex',
+                'plex-server': 'status-plex',
+                'homeassistant': 'status-ha',
+                'minio': 'status-minio',
+                'homelab-minio': 'status-minio',
+                'vnc-desktop': 'status-vnc'
+            };
+            
+            Object.entries(statusMap).forEach(([container, statusId]) => {
+                const el = document.getElementById(statusId);
+                if (el) {
+                    const containerData = data.containers.find(c => c.name.includes(container));
+                    if (containerData && containerData.state === 'running') {
+                        el.classList.remove('offline', 'unknown');
+                    } else {
+                        el.classList.add('unknown');
+                    }
+                }
+            });
+        }
+    } catch (error) {
+        console.log('Could not fetch container status');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadProgress();
+    checkServiceStatus();
+    setInterval(checkServiceStatus, 30000);
+});
+</script>
+{% endblock %}

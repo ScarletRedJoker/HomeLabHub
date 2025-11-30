@@ -1,0 +1,1241 @@
+{% extends "base.html" %}
+
+{% block title %}Jarvis Website Builder - Nebula Command{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/html.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/css.min.js"></script>
+<style>
+    .builder-container {
+        display: grid;
+        grid-template-columns: 350px 1fr 380px;
+        gap: 16px;
+        height: calc(100vh - 120px);
+        padding: 16px;
+    }
+    
+    .panel {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    
+    .panel-header {
+        padding: 14px 18px;
+        border-bottom: 1px solid var(--border-color);
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 1.05rem;
+    }
+    
+    .panel-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+    }
+    
+    .stage-indicator {
+        display: flex;
+        justify-content: space-between;
+        padding: 16px;
+        background: rgba(0,0,0,0.2);
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .stage {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        flex: 1;
+        position: relative;
+    }
+    
+    .stage::after {
+        content: '';
+        position: absolute;
+        top: 15px;
+        left: 50%;
+        width: 100%;
+        height: 2px;
+        background: var(--border-color);
+        z-index: 0;
+    }
+    
+    .stage:last-child::after {
+        display: none;
+    }
+    
+    .stage-dot {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: var(--bg-tertiary);
+        border: 2px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1;
+        transition: all 0.3s;
+    }
+    
+    .stage-dot i {
+        font-size: 0.8rem;
+        opacity: 0.5;
+    }
+    
+    .stage.active .stage-dot {
+        background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%);
+        border-color: #8B5CF6;
+        box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+    }
+    
+    .stage.active .stage-dot i {
+        opacity: 1;
+        color: white;
+    }
+    
+    .stage.complete .stage-dot {
+        background: var(--accent-green);
+        border-color: var(--accent-green);
+    }
+    
+    .stage.complete .stage-dot i {
+        opacity: 1;
+        color: white;
+    }
+    
+    .stage-label {
+        font-size: 0.7rem;
+        color: var(--text-secondary);
+        margin-top: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .stage.active .stage-label {
+        color: var(--accent-purple);
+        font-weight: 600;
+    }
+    
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .message {
+        max-width: 90%;
+        padding: 12px 16px;
+        border-radius: 12px;
+        animation: fadeInUp 0.3s ease;
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .message.user {
+        background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%);
+        color: white;
+        align-self: flex-end;
+        border-bottom-right-radius: 4px;
+    }
+    
+    .message.assistant {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        align-self: flex-start;
+        border-bottom-left-radius: 4px;
+    }
+    
+    .message.system {
+        background: rgba(251, 191, 36, 0.1);
+        border: 1px solid var(--accent-yellow);
+        color: var(--accent-yellow);
+        align-self: center;
+        font-size: 0.9rem;
+    }
+    
+    .chat-input-area {
+        padding: 16px;
+        border-top: 1px solid var(--border-color);
+        background: rgba(0,0,0,0.2);
+    }
+    
+    .chat-input-wrapper {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .chat-input {
+        flex: 1;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 12px 16px;
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        font-size: 15px;
+        resize: none;
+        min-height: 50px;
+        max-height: 150px;
+    }
+    
+    .chat-input:focus {
+        outline: none;
+        border-color: var(--accent-purple);
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+    }
+    
+    .send-btn {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%);
+        border: none;
+        color: white;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+    
+    .send-btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+    }
+    
+    .send-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+    }
+    
+    .code-preview {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+    
+    .code-tabs {
+        display: flex;
+        border-bottom: 1px solid var(--border-color);
+        background: rgba(0,0,0,0.2);
+    }
+    
+    .code-tab {
+        padding: 10px 16px;
+        cursor: pointer;
+        color: var(--text-secondary);
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s;
+        font-size: 0.9rem;
+    }
+    
+    .code-tab:hover {
+        color: var(--text-primary);
+        background: rgba(255,255,255,0.05);
+    }
+    
+    .code-tab.active {
+        color: var(--accent-blue);
+        border-bottom-color: var(--accent-blue);
+    }
+    
+    .code-content {
+        flex: 1;
+        overflow: auto;
+        background: #0d1117;
+    }
+    
+    .code-content pre {
+        margin: 0;
+        padding: 16px;
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+    
+    .code-content code {
+        background: transparent !important;
+    }
+    
+    .preview-iframe {
+        flex: 1;
+        border: none;
+        background: white;
+        border-radius: 8px;
+    }
+    
+    .checkpoint-panel {
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%);
+        border: 1px solid rgba(139, 92, 246, 0.3);
+        border-radius: 12px;
+        padding: 20px;
+        margin: 16px 0;
+    }
+    
+    .checkpoint-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 12px;
+        color: var(--accent-purple);
+    }
+    
+    .checkpoint-message {
+        color: var(--text-secondary);
+        line-height: 1.6;
+        margin-bottom: 16px;
+    }
+    
+    .checkpoint-actions {
+        display: flex;
+        gap: 12px;
+    }
+    
+    .btn-approve {
+        background: var(--accent-green);
+        color: white;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s;
+    }
+    
+    .btn-approve:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(52, 211, 153, 0.4);
+    }
+    
+    .btn-reject {
+        background: transparent;
+        color: var(--accent-red);
+        border: 1px solid var(--accent-red);
+        padding: 10px 24px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s;
+    }
+    
+    .btn-reject:hover {
+        background: rgba(248, 113, 113, 0.1);
+    }
+    
+    .project-card {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .project-card:hover {
+        border-color: var(--accent-blue);
+        transform: translateX(4px);
+    }
+    
+    .project-card.active {
+        border-color: var(--accent-purple);
+        background: rgba(139, 92, 246, 0.1);
+    }
+    
+    .project-name {
+        font-weight: 600;
+        margin-bottom: 6px;
+    }
+    
+    .project-status {
+        font-size: 0.8rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        background: rgba(96, 165, 250, 0.15);
+        color: var(--accent-blue);
+    }
+    
+    .project-status.complete {
+        background: rgba(52, 211, 153, 0.15);
+        color: var(--accent-green);
+    }
+    
+    .project-status.building {
+        background: rgba(251, 191, 36, 0.15);
+        color: var(--accent-yellow);
+    }
+    
+    .new-project-btn {
+        width: 100%;
+        padding: 14px;
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(59, 130, 246, 0.2) 100%);
+        border: 2px dashed var(--accent-purple);
+        border-radius: 10px;
+        color: var(--accent-purple);
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        transition: all 0.2s;
+    }
+    
+    .new-project-btn:hover {
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.3) 0%, rgba(59, 130, 246, 0.3) 100%);
+        transform: scale(1.02);
+    }
+    
+    .plan-preview {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 16px;
+        margin-top: 12px;
+    }
+    
+    .plan-section {
+        margin-bottom: 16px;
+    }
+    
+    .plan-section-title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--accent-blue);
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .plan-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .plan-list li {
+        padding: 6px 0;
+        padding-left: 20px;
+        position: relative;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+    
+    .plan-list li::before {
+        content: '→';
+        position: absolute;
+        left: 0;
+        color: var(--accent-purple);
+    }
+    
+    .deploy-section {
+        background: linear-gradient(135deg, rgba(52, 211, 153, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+        border: 1px solid var(--accent-green);
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 16px;
+    }
+    
+    .deploy-title {
+        font-weight: 600;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--accent-green);
+    }
+    
+    .domain-input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        margin-bottom: 12px;
+    }
+    
+    .domain-input:focus {
+        outline: none;
+        border-color: var(--accent-green);
+    }
+    
+    .loading-indicator {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        background: rgba(139, 92, 246, 0.1);
+        border-radius: 8px;
+        color: var(--accent-purple);
+    }
+    
+    .typing-indicator {
+        display: flex;
+        gap: 4px;
+    }
+    
+    .typing-indicator span {
+        width: 8px;
+        height: 8px;
+        background: var(--accent-purple);
+        border-radius: 50%;
+        animation: bounce 1.4s infinite ease-in-out both;
+    }
+    
+    .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+    .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+    
+    @keyframes bounce {
+        0%, 80%, 100% { transform: scale(0); }
+        40% { transform: scale(1); }
+    }
+    
+    @media (max-width: 1200px) {
+        .builder-container {
+            grid-template-columns: 1fr;
+            height: auto;
+        }
+        
+        .panel {
+            min-height: 500px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="builder-container">
+    <div class="panel" id="projectsPanel">
+        <div class="panel-header">
+            <i class="bi bi-folder2-open"></i>
+            Projects
+        </div>
+        <div class="panel-body">
+            <button class="new-project-btn" onclick="showNewProjectModal()">
+                <i class="bi bi-plus-circle"></i>
+                New Website Project
+            </button>
+            <div id="projectsList" class="mt-3">
+            </div>
+        </div>
+    </div>
+    
+    <div class="panel" id="builderPanel">
+        <div class="stage-indicator" id="stageIndicator">
+            <div class="stage" data-stage="planning">
+                <div class="stage-dot"><i class="bi bi-lightbulb"></i></div>
+                <div class="stage-label">Plan</div>
+            </div>
+            <div class="stage" data-stage="scaffolding">
+                <div class="stage-dot"><i class="bi bi-diagram-3"></i></div>
+                <div class="stage-label">Scaffold</div>
+            </div>
+            <div class="stage" data-stage="building">
+                <div class="stage-dot"><i class="bi bi-code-slash"></i></div>
+                <div class="stage-label">Build</div>
+            </div>
+            <div class="stage" data-stage="reviewing">
+                <div class="stage-dot"><i class="bi bi-eye"></i></div>
+                <div class="stage-label">Review</div>
+            </div>
+            <div class="stage" data-stage="deploying">
+                <div class="stage-dot"><i class="bi bi-rocket"></i></div>
+                <div class="stage-label">Deploy</div>
+            </div>
+            <div class="stage" data-stage="complete">
+                <div class="stage-dot"><i class="bi bi-check-lg"></i></div>
+                <div class="stage-label">Live</div>
+            </div>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <div class="message system">
+                <i class="bi bi-robot"></i> Welcome to Jarvis Website Builder! Describe your website and I'll build it for you.
+            </div>
+        </div>
+        
+        <div id="checkpointArea"></div>
+        
+        <div class="chat-input-area">
+            <div class="chat-input-wrapper">
+                <textarea 
+                    class="chat-input" 
+                    id="chatInput" 
+                    placeholder="Describe your website... (e.g., 'Build a landing page for my SaaS product with pricing and contact form')"
+                    rows="2"
+                ></textarea>
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                    <i class="bi bi-send"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="panel" id="previewPanel">
+        <div class="panel-header">
+            <i class="bi bi-code-square"></i>
+            Code & Preview
+        </div>
+        <div class="code-tabs" id="codeTabs">
+            <div class="code-tab active" data-tab="html" onclick="showCodeTab('html')">HTML</div>
+            <div class="code-tab" data-tab="css" onclick="showCodeTab('css')">CSS</div>
+            <div class="code-tab" data-tab="js" onclick="showCodeTab('js')">JS</div>
+            <div class="code-tab" data-tab="preview" onclick="showCodeTab('preview')">Preview</div>
+        </div>
+        <div class="code-content" id="codeContent">
+            <pre><code class="language-html" id="codeDisplay"><!-- Generated code will appear here --></code></pre>
+        </div>
+        <div id="previewFrame" style="display: none; flex: 1;">
+            <iframe class="preview-iframe" id="livePreview" style="width: 100%; height: 100%;"></iframe>
+        </div>
+        
+        <div id="deploySection" style="display: none; padding: 16px;">
+            <div class="deploy-section">
+                <div class="deploy-title">
+                    <i class="bi bi-globe"></i>
+                    Deploy Your Website
+                </div>
+                <button class="btn btn-success w-100 mb-2" onclick="deployPreview()">
+                    <i class="bi bi-eye"></i> Deploy to Preview
+                </button>
+                <input type="text" class="domain-input" id="productionDomain" placeholder="Enter domain (e.g., mysite.com)">
+                <button class="btn btn-primary w-100" onclick="deployProduction()">
+                    <i class="bi bi-rocket"></i> Deploy to Production
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="newProjectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background: var(--bg-secondary); border: 1px solid var(--border-color);">
+            <div class="modal-header" style="border-color: var(--border-color);">
+                <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>New Website Project</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Project Name</label>
+                    <input type="text" class="form-control" id="projectName" placeholder="My Awesome Website" style="background: var(--bg-tertiary); border-color: var(--border-color); color: var(--text-primary);">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" id="projectDescription" rows="4" placeholder="Describe your website in detail. What should it look like? What features should it have?" style="background: var(--bg-tertiary); border-color: var(--border-color); color: var(--text-primary);"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Domain (optional)</label>
+                    <input type="text" class="form-control" id="projectDomain" placeholder="mysite.com" style="background: var(--bg-tertiary); border-color: var(--border-color); color: var(--text-primary);">
+                </div>
+            </div>
+            <div class="modal-footer" style="border-color: var(--border-color);">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createProject()">
+                    <i class="bi bi-rocket me-2"></i>Start Building
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    
+    let currentProject = null;
+    let currentCheckpoint = null;
+    let generatedCode = {
+        html: '',
+        css: '',
+        js: ''
+    };
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        loadProjects();
+        
+        document.getElementById('chatInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+    });
+    
+    async function loadProjects() {
+        try {
+            const response = await fetch('/api/jarvis/builder/projects', {
+                headers: { 'X-CSRFToken': csrfToken }
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                renderProjects(data.projects);
+            }
+        } catch (error) {
+            console.error('Error loading projects:', error);
+        }
+    }
+    
+    function renderProjects(projects) {
+        const container = document.getElementById('projectsList');
+        
+        if (!projects || projects.length === 0) {
+            container.innerHTML = '<p class="text-muted text-center">No projects yet. Create one!</p>';
+            return;
+        }
+        
+        container.innerHTML = projects.map(project => `
+            <div class="project-card ${currentProject?.id === project.id ? 'active' : ''}" 
+                 onclick="selectProject('${project.id}')">
+                <div class="project-name">${project.name}</div>
+                <div class="project-status ${project.status}">
+                    <i class="bi bi-${getStatusIcon(project.status)}"></i>
+                    ${project.status?.replace('_', ' ') || 'Unknown'}
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    function getStatusIcon(status) {
+        const icons = {
+            'planning': 'lightbulb',
+            'scaffolding': 'diagram-3',
+            'building': 'code-slash',
+            'reviewing': 'eye',
+            'deploying': 'rocket',
+            'complete': 'check-circle',
+            'failed': 'x-circle',
+            'paused': 'pause-circle'
+        };
+        return icons[status] || 'circle';
+    }
+    
+    async function selectProject(projectId) {
+        try {
+            const response = await fetch(`/api/jarvis/builder/project/${projectId}`, {
+                headers: { 'X-CSRFToken': csrfToken }
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                currentProject = data.project;
+                updateStageIndicator(data.project.status);
+                loadProjectMessages(data.project);
+                
+                if (data.pending_checkpoint) {
+                    currentCheckpoint = data.pending_checkpoint;
+                    showCheckpoint(data.pending_checkpoint);
+                }
+                
+                document.querySelectorAll('.project-card').forEach(card => {
+                    card.classList.remove('active');
+                    if (card.getAttribute('onclick').includes(projectId)) {
+                        card.classList.add('active');
+                    }
+                });
+                
+                if (data.project.pages && data.project.pages.length > 0) {
+                    const firstPage = data.project.pages[0];
+                    generatedCode.html = firstPage.html_content || '';
+                    generatedCode.css = firstPage.css_content || '';
+                    generatedCode.js = firstPage.js_content || '';
+                    updateCodeDisplay('html');
+                }
+                
+                if (['reviewing', 'deploying', 'complete'].includes(data.project.status)) {
+                    document.getElementById('deploySection').style.display = 'block';
+                }
+            }
+        } catch (error) {
+            console.error('Error selecting project:', error);
+        }
+    }
+    
+    function loadProjectMessages(project) {
+        const container = document.getElementById('chatMessages');
+        container.innerHTML = '';
+        
+        if (project.ai_messages) {
+            project.ai_messages.forEach(msg => {
+                addMessage(msg.content, msg.role);
+            });
+        }
+        
+        if (project.plan) {
+            addPlanPreview(project.plan);
+        }
+    }
+    
+    function updateStageIndicator(status) {
+        const stages = ['planning', 'scaffolding', 'building', 'reviewing', 'deploying', 'complete'];
+        const currentIndex = stages.indexOf(status);
+        
+        document.querySelectorAll('.stage').forEach((stage, index) => {
+            stage.classList.remove('active', 'complete');
+            if (index < currentIndex) {
+                stage.classList.add('complete');
+            } else if (index === currentIndex) {
+                stage.classList.add('active');
+            }
+        });
+    }
+    
+    function showNewProjectModal() {
+        const modal = new bootstrap.Modal(document.getElementById('newProjectModal'));
+        modal.show();
+    }
+    
+    async function createProject() {
+        const name = document.getElementById('projectName').value.trim();
+        const description = document.getElementById('projectDescription').value.trim();
+        const domain = document.getElementById('projectDomain').value.trim();
+        
+        if (!name || !description) {
+            alert('Please enter a project name and description');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/jarvis/builder/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ name, description, domain })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('newProjectModal')).hide();
+                currentProject = data.project;
+                
+                addMessage(`Starting project: ${name}`, 'user');
+                addMessage(data.message, 'assistant');
+                
+                loadProjects();
+                updateStageIndicator('planning');
+                
+                setTimeout(() => generatePlan(data.project.id, description), 500);
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (error) {
+            console.error('Error creating project:', error);
+            alert('Failed to create project');
+        }
+    }
+    
+    async function generatePlan(projectId, description) {
+        showTypingIndicator();
+        
+        try {
+            const response = await fetch('/api/jarvis/builder/plan', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ project_id: projectId, description })
+            });
+            
+            const data = await response.json();
+            hideTypingIndicator();
+            
+            if (data.success) {
+                currentProject = data.project;
+                addMessage("I've analyzed your request and created a project plan!", 'assistant');
+                addPlanPreview(data.plan);
+                
+                if (data.checkpoint) {
+                    currentCheckpoint = data.checkpoint;
+                    showCheckpoint(data.checkpoint);
+                }
+            } else {
+                addMessage('Error generating plan: ' + data.error, 'system');
+            }
+        } catch (error) {
+            hideTypingIndicator();
+            console.error('Error generating plan:', error);
+            addMessage('Failed to generate plan. Please try again.', 'system');
+        }
+    }
+    
+    function addPlanPreview(plan) {
+        const html = `
+            <div class="plan-preview">
+                <div class="plan-section">
+                    <div class="plan-section-title">
+                        <i class="bi bi-stack"></i> Tech Stack: ${plan.tech_stack?.replace('_', ' ').toUpperCase() || 'Static HTML'}
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary);">${plan.tech_stack_reason || ''}</p>
+                </div>
+                <div class="plan-section">
+                    <div class="plan-section-title">
+                        <i class="bi bi-file-earmark-code"></i> Pages (${plan.pages?.length || 0})
+                    </div>
+                    <ul class="plan-list">
+                        ${(plan.pages || []).map(p => `<li>${p.name} - ${p.path}</li>`).join('')}
+                    </ul>
+                </div>
+                ${plan.api_endpoints?.length ? `
+                <div class="plan-section">
+                    <div class="plan-section-title">
+                        <i class="bi bi-plug"></i> API Endpoints (${plan.api_endpoints.length})
+                    </div>
+                    <ul class="plan-list">
+                        ${plan.api_endpoints.map(e => `<li>${e.method} ${e.path}</li>`).join('')}
+                    </ul>
+                </div>
+                ` : ''}
+            </div>
+        `;
+        
+        const container = document.getElementById('chatMessages');
+        const div = document.createElement('div');
+        div.innerHTML = html;
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
+    
+    function showCheckpoint(checkpoint) {
+        const container = document.getElementById('checkpointArea');
+        container.innerHTML = `
+            <div class="checkpoint-panel">
+                <div class="checkpoint-title">
+                    <i class="bi bi-question-circle"></i>
+                    Checkpoint: ${checkpoint.step_name?.replace('_', ' ') || 'Review'}
+                </div>
+                <div class="checkpoint-message">${checkpoint.message}</div>
+                <div class="checkpoint-actions">
+                    <button class="btn-approve" onclick="approveCheckpoint('${checkpoint.id}')">
+                        <i class="bi bi-check-lg"></i> Approve & Continue
+                    </button>
+                    <button class="btn-reject" onclick="showRejectDialog('${checkpoint.id}')">
+                        <i class="bi bi-x-lg"></i> Request Changes
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    async function approveCheckpoint(checkpointId) {
+        showTypingIndicator();
+        
+        try {
+            const response = await fetch('/api/jarvis/builder/approve', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ checkpoint_id: checkpointId })
+            });
+            
+            const data = await response.json();
+            hideTypingIndicator();
+            
+            if (data.success) {
+                currentProject = data.project;
+                currentCheckpoint = null;
+                document.getElementById('checkpointArea').innerHTML = '';
+                
+                addMessage(`✓ Approved! Moving to ${data.next_stage}...`, 'assistant');
+                updateStageIndicator(data.next_stage);
+                
+                if (data.next_stage === 'scaffolding' || data.next_stage === 'building') {
+                    setTimeout(() => buildProject(data.project.id), 500);
+                }
+                
+                if (['reviewing', 'deploying', 'complete'].includes(data.next_stage)) {
+                    document.getElementById('deploySection').style.display = 'block';
+                }
+                
+                loadProjects();
+            } else {
+                addMessage('Error: ' + data.error, 'system');
+            }
+        } catch (error) {
+            hideTypingIndicator();
+            console.error('Error approving checkpoint:', error);
+        }
+    }
+    
+    function showRejectDialog(checkpointId) {
+        const feedback = prompt('What changes would you like to make?');
+        if (feedback) {
+            rejectCheckpoint(checkpointId, feedback);
+        }
+    }
+    
+    async function rejectCheckpoint(checkpointId, feedback) {
+        try {
+            const response = await fetch('/api/jarvis/builder/reject', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ checkpoint_id: checkpointId, feedback })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                addMessage(`Feedback: ${feedback}`, 'user');
+                addMessage(data.message, 'assistant');
+                document.getElementById('checkpointArea').innerHTML = '';
+            }
+        } catch (error) {
+            console.error('Error rejecting checkpoint:', error);
+        }
+    }
+    
+    async function buildProject(projectId) {
+        showTypingIndicator();
+        addMessage("Building your website... This may take a moment.", 'assistant');
+        
+        try {
+            const response = await fetch('/api/jarvis/builder/build-all', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ project_id: projectId })
+            });
+            
+            const data = await response.json();
+            hideTypingIndicator();
+            
+            if (data.success) {
+                currentProject = data.project;
+                
+                const pagesBuilt = data.build_results.pages.filter(p => p.success).length;
+                addMessage(`🎉 Build complete! Generated ${pagesBuilt} pages.`, 'assistant');
+                
+                if (data.project.pages && data.project.pages.length > 0) {
+                    const firstPage = data.project.pages[0];
+                    generatedCode.html = firstPage.html_content || '';
+                    generatedCode.css = firstPage.css_content || '';
+                    generatedCode.js = firstPage.js_content || '';
+                    updateCodeDisplay('html');
+                }
+                
+                updateStageIndicator('reviewing');
+                document.getElementById('deploySection').style.display = 'block';
+                loadProjects();
+            } else {
+                addMessage('Build failed: ' + data.error, 'system');
+            }
+        } catch (error) {
+            hideTypingIndicator();
+            console.error('Error building project:', error);
+            addMessage('Build failed. Please try again.', 'system');
+        }
+    }
+    
+    async function sendMessage() {
+        const input = document.getElementById('chatInput');
+        const message = input.value.trim();
+        
+        if (!message) return;
+        
+        addMessage(message, 'user');
+        input.value = '';
+        
+        if (!currentProject) {
+            document.getElementById('projectDescription').value = message;
+            showNewProjectModal();
+            return;
+        }
+        
+        showTypingIndicator();
+        
+        setTimeout(() => {
+            hideTypingIndicator();
+            addMessage("I'll incorporate that feedback into the build.", 'assistant');
+        }, 1000);
+    }
+    
+    function addMessage(content, role) {
+        const container = document.getElementById('chatMessages');
+        const div = document.createElement('div');
+        div.className = `message ${role}`;
+        div.textContent = content;
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
+    
+    function showTypingIndicator() {
+        const container = document.getElementById('chatMessages');
+        const div = document.createElement('div');
+        div.id = 'typingIndicator';
+        div.className = 'loading-indicator';
+        div.innerHTML = `
+            <div class="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <span>Jarvis is thinking...</span>
+        `;
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
+    
+    function hideTypingIndicator() {
+        const indicator = document.getElementById('typingIndicator');
+        if (indicator) indicator.remove();
+    }
+    
+    function showCodeTab(tab) {
+        document.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
+        document.querySelector(`.code-tab[data-tab="${tab}"]`).classList.add('active');
+        
+        const codeContent = document.getElementById('codeContent');
+        const previewFrame = document.getElementById('previewFrame');
+        
+        if (tab === 'preview') {
+            codeContent.style.display = 'none';
+            previewFrame.style.display = 'block';
+            updatePreview();
+        } else {
+            codeContent.style.display = 'block';
+            previewFrame.style.display = 'none';
+            updateCodeDisplay(tab);
+        }
+    }
+    
+    function updateCodeDisplay(type) {
+        const codeDisplay = document.getElementById('codeDisplay');
+        const langMap = { html: 'html', css: 'css', js: 'javascript' };
+        
+        codeDisplay.className = `language-${langMap[type]}`;
+        codeDisplay.textContent = generatedCode[type] || `<!-- No ${type.toUpperCase()} generated yet -->`;
+        
+        hljs.highlightElement(codeDisplay);
+    }
+    
+    function updatePreview() {
+        const iframe = document.getElementById('livePreview');
+        const fullHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>${generatedCode.css}</style>
+            </head>
+            <body>
+                ${generatedCode.html}
+                <script>${generatedCode.js}<\/script>
+            </body>
+            </html>
+        `;
+        
+        iframe.srcdoc = fullHtml;
+    }
+    
+    async function deployPreview() {
+        if (!currentProject) {
+            alert('No project selected');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/jarvis/builder/deploy/preview', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ project_id: currentProject.id })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                addMessage(`🚀 Preview deployed at: ${data.preview_url}`, 'assistant');
+                updateStageIndicator('reviewing');
+            } else {
+                alert('Deploy failed: ' + data.error);
+            }
+        } catch (error) {
+            console.error('Error deploying preview:', error);
+        }
+    }
+    
+    async function deployProduction() {
+        if (!currentProject) {
+            alert('No project selected');
+            return;
+        }
+        
+        const domain = document.getElementById('productionDomain').value.trim();
+        if (!domain) {
+            alert('Please enter a domain');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/jarvis/builder/deploy/production', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ project_id: currentProject.id, domain })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                addMessage(`🎉 Live at: ${data.production_url}`, 'assistant');
+                updateStageIndicator('complete');
+                loadProjects();
+            } else {
+                alert('Deploy failed: ' + data.error);
+            }
+        } catch (error) {
+            console.error('Error deploying to production:', error);
+        }
+    }
+</script>
+{% endblock %}

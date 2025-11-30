@@ -43,6 +43,10 @@ from .jarvis_ai import (
     ModelUsage, ResponseCache, RequestQueue
 )
 from .fleet import FleetHost, FleetCommand
+from .builder_project import (
+    BuilderProject, BuilderPage, BuilderCheckpoint,
+    BuilderProjectStatus, BuilderTechStack, CheckpointStatus
+)
 
 __all__ = [
     'Base',
@@ -110,5 +114,11 @@ __all__ = [
     'ResponseCache',
     'RequestQueue',
     'FleetHost',
-    'FleetCommand'
+    'FleetCommand',
+    'BuilderProject',
+    'BuilderPage',
+    'BuilderCheckpoint',
+    'BuilderProjectStatus',
+    'BuilderTechStack',
+    'CheckpointStatus'
 ]
