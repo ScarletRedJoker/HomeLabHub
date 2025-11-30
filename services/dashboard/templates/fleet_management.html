@@ -1,0 +1,596 @@
+{% extends "base.html" %}
+
+{% block title %}Fleet Management - Nebula Command{% endblock %}
+{% block page_title %}Fleet Management{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card cosmic cosmic-fade-in mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-hdd-network"></i> Remote Host Fleet</span>
+                <div>
+                    <button class="btn btn-sm btn-primary" onclick="refreshFleet()">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                    <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addHostModal">
+                        <i class="bi bi-plus-lg"></i> Add Host
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="fleet-hosts" class="row">
+                    <div class="loading">
+                        <div class="spinner-border"></div>
+                        <p style="margin-top: 20px; color: var(--text-secondary);">Loading fleet hosts...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card cosmic cosmic-fade-in mb-4">
+            <div class="card-header">
+                <i class="bi bi-terminal"></i> Remote Command Terminal
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Target Host</label>
+                    <select id="cmd-host" class="form-select">
+                        <option value="">Select a host...</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Command</label>
+                    <div class="input-group">
+                        <input type="text" id="cmd-input" class="form-control" placeholder="Enter command..." onkeypress="handleCommandKeypress(event)">
+                        <button class="btn btn-primary" onclick="executeCommand()">
+                            <i class="bi bi-play-fill"></i> Run
+                        </button>
+                    </div>
+                </div>
+                <div id="cmd-output" class="bg-dark text-light p-3 rounded" style="min-height: 200px; max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 0.85rem; white-space: pre-wrap;">
+                    <span class="text-secondary">Command output will appear here...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card cosmic cosmic-fade-in mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-box-seam"></i> Remote Containers</span>
+                <select id="container-host" class="form-select form-select-sm" style="width: auto;" onchange="loadContainers()">
+                    <option value="">Select a host...</option>
+                </select>
+            </div>
+            <div class="card-body">
+                <div id="container-list" style="max-height: 400px; overflow-y: auto;">
+                    <p class="text-secondary text-center">Select a host to view containers</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card cosmic cosmic-fade-in mb-4">
+            <div class="card-header">
+                <i class="bi bi-rocket-takeoff"></i> Deploy Service
+            </div>
+            <div class="card-body">
+                <form id="deploy-form" onsubmit="deployService(event)">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Target Host</label>
+                            <select id="deploy-host" class="form-select" required>
+                                <option value="">Select a host...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Docker Image</label>
+                            <input type="text" id="deploy-image" class="form-control" placeholder="nginx:latest" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Container Name</label>
+                            <input type="text" id="deploy-name" class="form-control" placeholder="my-service">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Ports (comma-separated)</label>
+                            <input type="text" id="deploy-ports" class="form-control" placeholder="80:80, 443:443">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Volumes (comma-separated)</label>
+                            <input type="text" id="deploy-volumes" class="form-control" placeholder="/host/path:/container/path">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Restart Policy</label>
+                            <select id="deploy-restart" class="form-select">
+                                <option value="unless-stopped">Unless Stopped</option>
+                                <option value="always">Always</option>
+                                <option value="on-failure">On Failure</option>
+                                <option value="no">Never</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Environment Variables (JSON)</label>
+                        <textarea id="deploy-env" class="form-control" rows="2" placeholder='{"KEY": "value"}'></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-rocket-takeoff"></i> Deploy Service
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addHostModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-lg"></i> Add New Host</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="add-host-form" onsubmit="addHost(event)">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Host ID</label>
+                        <input type="text" id="new-host-id" class="form-control" placeholder="my-server" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Display Name</label>
+                        <input type="text" id="new-host-name" class="form-control" placeholder="My Server" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tailscale IP</label>
+                        <input type="text" id="new-host-ip" class="form-control" placeholder="100.x.x.x" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">SSH User</label>
+                            <input type="text" id="new-host-user" class="form-control" value="root">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">SSH Port</label>
+                            <input type="number" id="new-host-port" class="form-control" value="22">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Role</label>
+                        <select id="new-host-role" class="form-select">
+                            <option value="custom">Custom</option>
+                            <option value="cloud">Cloud Server</option>
+                            <option value="local">Local Server</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea id="new-host-desc" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Add Host</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="logsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-file-text"></i> Container Logs</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="logs-content" class="bg-dark text-light p-3 rounded" style="min-height: 300px; max-height: 500px; overflow-y: auto; font-family: monospace; font-size: 0.8rem; white-space: pre-wrap;">
+                    Loading logs...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let fleetHosts = [];
+
+async function loadFleet() {
+    try {
+        const response = await fetch('/api/fleet/hosts', { credentials: 'include' });
+        const result = await response.json();
+        
+        const hostsContainer = document.getElementById('fleet-hosts');
+        
+        if (!result.success) {
+            hostsContainer.innerHTML = `<div class="col-12"><div class="alert alert-danger">${result.message || 'Failed to load fleet'}</div></div>`;
+            return;
+        }
+        
+        fleetHosts = result.data?.hosts || [];
+        
+        if (fleetHosts.length === 0) {
+            hostsContainer.innerHTML = `
+                <div class="col-12 text-center py-4">
+                    <i class="bi bi-hdd-network display-4 text-secondary"></i>
+                    <p class="text-secondary mt-3">No hosts configured. Set TAILSCALE_LINODE_HOST or TAILSCALE_LOCAL_HOST environment variables, or add a host manually.</p>
+                </div>`;
+            return;
+        }
+        
+        let html = '';
+        for (const host of fleetHosts) {
+            const statusClass = host.online ? 'success' : 'danger';
+            const statusText = host.online ? 'Online' : 'Offline';
+            const roleIcon = host.role === 'cloud' ? 'bi-cloud' : 'bi-pc-display';
+            const roleBadge = host.role === 'cloud' ? 'badge-primary' : 'badge-info';
+            
+            html += `
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="card bg-dark border-secondary h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi ${roleIcon} me-2"></i>${host.name}
+                                </h5>
+                                <span class="badge bg-${statusClass}">${statusText}</span>
+                            </div>
+                            <p class="text-secondary small mb-2">
+                                <span class="badge ${roleBadge}">${host.role}</span>
+                                <code class="ms-2">${host.tailscale_ip || 'No IP'}</code>
+                            </p>
+                            <p class="text-secondary small mb-3">${host.description || ''}</p>
+                            <div class="btn-group btn-group-sm w-100">
+                                <button class="btn btn-outline-primary" onclick="viewHostStatus('${host.host_id}')" ${!host.online ? 'disabled' : ''}>
+                                    <i class="bi bi-activity"></i> Status
+                                </button>
+                                <button class="btn btn-outline-info" onclick="selectHostForContainers('${host.host_id}')" ${!host.online ? 'disabled' : ''}>
+                                    <i class="bi bi-box-seam"></i> Containers
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        }
+        
+        hostsContainer.innerHTML = html;
+        updateHostSelects();
+        
+    } catch (error) {
+        console.error('Failed to load fleet:', error);
+        document.getElementById('fleet-hosts').innerHTML = 
+            '<div class="col-12"><div class="alert alert-danger">Failed to load fleet hosts. Check API connection.</div></div>';
+    }
+}
+
+function updateHostSelects() {
+    const selects = ['cmd-host', 'container-host', 'deploy-host'];
+    selects.forEach(id => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        
+        const currentValue = select.value;
+        select.innerHTML = '<option value="">Select a host...</option>';
+        
+        fleetHosts.filter(h => h.online).forEach(host => {
+            const option = document.createElement('option');
+            option.value = host.host_id;
+            option.textContent = `${host.name} (${host.role})`;
+            select.appendChild(option);
+        });
+        
+        if (currentValue && select.querySelector(`option[value="${currentValue}"]`)) {
+            select.value = currentValue;
+        }
+    });
+}
+
+async function viewHostStatus(hostId) {
+    try {
+        const response = await fetch(`/api/fleet/hosts/${hostId}/status`, { credentials: 'include' });
+        const result = await response.json();
+        
+        if (!result.success) {
+            alert('Failed to get host status: ' + (result.message || 'Unknown error'));
+            return;
+        }
+        
+        const data = result.data;
+        const statusHtml = `
+            <strong>Host Status: ${hostId}</strong><br>
+            <br>
+            <strong>CPU:</strong> ${data.cpu_percent}% (${data.cpu_cores} cores)<br>
+            <strong>Memory:</strong> ${data.memory_used_gb} / ${data.memory_total_gb} GB (${data.memory_percent}%)<br>
+            <strong>Disk:</strong> ${data.disk_used_gb} / ${data.disk_total_gb} GB (${data.disk_percent}%)<br>
+            <strong>Containers:</strong> ${data.containers_running} running / ${data.container_count} total<br>
+            <strong>Uptime Since:</strong> ${data.uptime_since}<br>
+        `;
+        
+        document.getElementById('cmd-output').innerHTML = statusHtml;
+        document.getElementById('cmd-host').value = hostId;
+        
+    } catch (error) {
+        alert('Error getting host status: ' + error.message);
+    }
+}
+
+function selectHostForContainers(hostId) {
+    document.getElementById('container-host').value = hostId;
+    loadContainers();
+}
+
+async function loadContainers() {
+    const hostId = document.getElementById('container-host').value;
+    const containerList = document.getElementById('container-list');
+    
+    if (!hostId) {
+        containerList.innerHTML = '<p class="text-secondary text-center">Select a host to view containers</p>';
+        return;
+    }
+    
+    containerList.innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm"></div> Loading...</div>';
+    
+    try {
+        const response = await fetch(`/api/fleet/hosts/${hostId}/containers`, { credentials: 'include' });
+        const result = await response.json();
+        
+        if (!result.success) {
+            containerList.innerHTML = `<div class="alert alert-danger">${result.message}</div>`;
+            return;
+        }
+        
+        const containers = result.data?.containers || [];
+        
+        if (containers.length === 0) {
+            containerList.innerHTML = '<p class="text-secondary text-center">No containers found</p>';
+            return;
+        }
+        
+        let html = '<table class="table table-sm table-dark"><thead><tr><th>Name</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+        
+        containers.forEach(c => {
+            const isRunning = c.state?.toLowerCase() === 'running';
+            const statusClass = isRunning ? 'success' : 'secondary';
+            
+            html += `<tr>
+                <td><small>${c.name}</small></td>
+                <td><span class="badge bg-${statusClass}">${c.state || c.status}</span></td>
+                <td>
+                    ${isRunning ? 
+                        `<button class="btn btn-warning btn-sm py-0" onclick="containerAction('${hostId}', '${c.name}', 'stop')"><i class="bi bi-stop-fill"></i></button>
+                         <button class="btn btn-warning btn-sm py-0" onclick="containerAction('${hostId}', '${c.name}', 'restart')"><i class="bi bi-arrow-clockwise"></i></button>` :
+                        `<button class="btn btn-success btn-sm py-0" onclick="containerAction('${hostId}', '${c.name}', 'start')"><i class="bi bi-play-fill"></i></button>`
+                    }
+                    <button class="btn btn-info btn-sm py-0" onclick="viewLogs('${hostId}', '${c.name}')"><i class="bi bi-file-text"></i></button>
+                </td>
+            </tr>`;
+        });
+        
+        html += '</tbody></table>';
+        containerList.innerHTML = html;
+        
+    } catch (error) {
+        containerList.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+    }
+}
+
+async function containerAction(hostId, container, action) {
+    if (!confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} container ${container}?`)) return;
+    
+    try {
+        const response = await fetch(`/api/fleet/hosts/${hostId}/containers/${container}/action`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ action })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            setTimeout(loadContainers, 1000);
+        } else {
+            alert('Error: ' + (result.message || 'Unknown error'));
+        }
+        
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+async function viewLogs(hostId, container) {
+    const logsContent = document.getElementById('logs-content');
+    logsContent.textContent = 'Loading logs...';
+    
+    const modal = new bootstrap.Modal(document.getElementById('logsModal'));
+    modal.show();
+    
+    try {
+        const response = await fetch(`/api/fleet/hosts/${hostId}/containers/${container}/action`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ action: 'logs' })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            logsContent.textContent = result.data?.output || 'No logs available';
+        } else {
+            logsContent.textContent = 'Error: ' + (result.message || result.data?.error || 'Unknown error');
+        }
+        
+    } catch (error) {
+        logsContent.textContent = 'Error: ' + error.message;
+    }
+}
+
+function handleCommandKeypress(event) {
+    if (event.key === 'Enter') {
+        executeCommand();
+    }
+}
+
+async function executeCommand() {
+    const hostId = document.getElementById('cmd-host').value;
+    const command = document.getElementById('cmd-input').value.trim();
+    const output = document.getElementById('cmd-output');
+    
+    if (!hostId) {
+        alert('Please select a host');
+        return;
+    }
+    
+    if (!command) {
+        alert('Please enter a command');
+        return;
+    }
+    
+    output.innerHTML = '<span class="text-info">Executing command...</span>';
+    
+    try {
+        const response = await fetch(`/api/fleet/hosts/${hostId}/command`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ command })
+        });
+        
+        const result = await response.json();
+        
+        let html = `<span class="text-success">$ ${command}</span>\n\n`;
+        
+        if (result.success) {
+            html += result.data?.output || '<span class="text-secondary">(no output)</span>';
+            if (result.data?.error) {
+                html += `\n<span class="text-warning">${result.data.error}</span>`;
+            }
+            html += `\n\n<span class="text-secondary">Exit code: ${result.data?.exit_code} | Duration: ${result.data?.duration_ms}ms</span>`;
+        } else {
+            html += `<span class="text-danger">Error: ${result.message || result.data?.error || 'Unknown error'}</span>`;
+        }
+        
+        output.innerHTML = html;
+        
+    } catch (error) {
+        output.innerHTML = `<span class="text-danger">Error: ${error.message}</span>`;
+    }
+}
+
+async function deployService(event) {
+    event.preventDefault();
+    
+    const hostId = document.getElementById('deploy-host').value;
+    const image = document.getElementById('deploy-image').value.trim();
+    
+    if (!hostId || !image) {
+        alert('Host and image are required');
+        return;
+    }
+    
+    const portsValue = document.getElementById('deploy-ports').value.trim();
+    const volumesValue = document.getElementById('deploy-volumes').value.trim();
+    const envValue = document.getElementById('deploy-env').value.trim();
+    
+    const config = {
+        image: image,
+        name: document.getElementById('deploy-name').value.trim() || undefined,
+        restart: document.getElementById('deploy-restart').value,
+        ports: portsValue ? portsValue.split(',').map(p => p.trim()) : [],
+        volumes: volumesValue ? volumesValue.split(',').map(v => v.trim()) : [],
+    };
+    
+    if (envValue) {
+        try {
+            config.environment = JSON.parse(envValue);
+        } catch (e) {
+            alert('Invalid JSON in environment variables');
+            return;
+        }
+    }
+    
+    if (!confirm(`Deploy ${image} to ${hostId}?`)) return;
+    
+    try {
+        const response = await fetch(`/api/fleet/hosts/${hostId}/deploy`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(config)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Deployment successful! Container ID: ' + (result.data?.container_id || 'unknown'));
+            document.getElementById('deploy-form').reset();
+            if (document.getElementById('container-host').value === hostId) {
+                loadContainers();
+            }
+        } else {
+            alert('Deployment failed: ' + (result.message || 'Unknown error'));
+        }
+        
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+async function addHost(event) {
+    event.preventDefault();
+    
+    const hostData = {
+        host_id: document.getElementById('new-host-id').value.trim(),
+        name: document.getElementById('new-host-name').value.trim(),
+        tailscale_ip: document.getElementById('new-host-ip').value.trim(),
+        ssh_user: document.getElementById('new-host-user').value.trim() || 'root',
+        ssh_port: parseInt(document.getElementById('new-host-port').value) || 22,
+        role: document.getElementById('new-host-role').value,
+        description: document.getElementById('new-host-desc').value.trim(),
+    };
+    
+    try {
+        const response = await fetch('/api/fleet/hosts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(hostData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            bootstrap.Modal.getInstance(document.getElementById('addHostModal')).hide();
+            document.getElementById('add-host-form').reset();
+            loadFleet();
+        } else {
+            alert('Failed to add host: ' + (result.message || 'Unknown error'));
+        }
+        
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+function refreshFleet() {
+    loadFleet();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadFleet();
+    setInterval(loadFleet, 60000);
+});
+</script>
+{% endblock %}

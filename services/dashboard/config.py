@@ -80,6 +80,15 @@ class Config:
     DB_ADMIN_ENCRYPTION_KEY = os.environ.get('DB_ADMIN_ENCRYPTION_KEY', '')
     # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
     
+    # Cloudflare DNS Configuration
+    CLOUDFLARE_API_TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
+    CLOUDFLARE_API_BASE = "https://api.cloudflare.com/client/v4"
+    CLOUDFLARE_MANAGED_DOMAINS = [
+        "evindrake.net",
+        "rig-city.com",
+        "scarletredjoker.com"
+    ]
+    
     # NAS (Zyxel NAS326) Configuration
     NAS_IP = os.environ.get('NAS_IP', '192.168.1.100')  # Update with actual NAS IP
     NAS_HOSTNAME = os.environ.get('NAS_HOSTNAME', 'zyxel-nas326')

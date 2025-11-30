@@ -42,6 +42,7 @@ from .jarvis_ai import (
     AnomalyBaseline, AnomalyEvent, RemediationHistory, RemediationStatus,
     ModelUsage, ResponseCache, RequestQueue
 )
+from .fleet import FleetHost, FleetCommand
 
 __all__ = [
     'Base',
@@ -107,5 +108,7 @@ __all__ = [
     'RemediationStatus',
     'ModelUsage',
     'ResponseCache',
-    'RequestQueue'
+    'RequestQueue',
+    'FleetHost',
+    'FleetCommand'
 ]

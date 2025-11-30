@@ -200,3 +200,13 @@ def jarvis_voice():
 #     response.headers['Pragma'] = 'no-cache'
 #     response.headers['Expires'] = '0'
 #     return response
+
+@web_bp.route('/fleet-management')
+@require_web_auth
+def fleet_management():
+    """Fleet management page for remote server control via Tailscale"""
+    response = make_response(render_template('fleet_management.html'))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
