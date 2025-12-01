@@ -63,23 +63,52 @@ git clone https://github.com/ScarletRedJoker/HomeLabHub.git
 cd HomeLabHub
 ```
 
-## Step 4: Run Bootstrap Script
+## Step 4: Install Docker & Tailscale
 
-The bootstrap script installs Docker, Tailscale, and configures the firewall.
+**Important**: Do NOT use rootless Docker. Regular Docker with root privileges is the correct approach for a server deployment.
 
 ```bash
-# Make executable and run
+# Install Docker (as root)
+curl -fsSL https://get.docker.com | sh
+
+# Verify Docker is running
+docker version
+
+# Install Tailscale
+curl -fsSL https://tailscale.com/install.sh | sh
+```
+
+### Optional: Create Non-Root User for Docker (More Secure)
+
+If you want to run Docker commands as a non-root user:
+
+```bash
+# Create homelab user
+useradd -m -s /bin/bash homelab
+
+# Add to docker group
+usermod -aG docker homelab
+
+# Switch to homelab user for remaining steps
+su - homelab
+```
+
+### Alternative: Run Bootstrap Script
+
+The bootstrap script does all of the above automatically:
+
+```bash
 chmod +x deploy/scripts/bootstrap-linode.sh
 sudo ./deploy/scripts/bootstrap-linode.sh
 ```
 
-### What the Script Does
-1. ✓ Installs Docker and Docker Compose
-2. ✓ Installs Tailscale VPN
-3. ✓ Configures UFW firewall
-4. ✓ Creates directory structure
-5. ✓ Sets up PostgreSQL init scripts
-6. ✓ Creates environment template
+What the script does:
+1. Installs Docker and Docker Compose
+2. Installs Tailscale VPN
+3. Configures UFW firewall
+4. Creates directory structure
+5. Sets up PostgreSQL init scripts
+6. Creates environment template
 
 ## Step 5: Authenticate Tailscale
 

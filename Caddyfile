@@ -38,16 +38,25 @@ www.rig-city.com {
 }
 
 # ============================================
-# Plex Media Server (Docker)
+# Plex Media Server (Local Ubuntu Host via Tailscale)
 # ============================================
+# Plex runs on the LOCAL Ubuntu host, not in Docker on Linode.
+# Route through Tailscale VPN to reach local Plex.
+# REQUIRED: Set LOCAL_TAILSCALE_IP in .env (e.g., 100.64.x.x)
 plex.evindrake.net {
-    reverse_proxy plex-server:32400 {
+    reverse_proxy {$LOCAL_TAILSCALE_IP}:32400 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         
         # WebSocket support for Plex Companion/remote features
         header_up Upgrade {http.request.header.Upgrade}
         header_up Connection {http.request.header.Connection}
+        
+        # Increased timeouts for media streaming
+        transport http {
+            dial_timeout 30s
+            response_header_timeout 60s
+        }
     }
 }
 
@@ -185,7 +194,28 @@ code.evindrake.net {
 }
 
 # ============================================
-# Game Streaming Connection Page
+# Sunshine GameStream Web UI (Local via Tailscale)
+# ============================================
+# Sunshine runs on the LOCAL Ubuntu host for game streaming.
+# Access the web UI to pair Moonlight clients and configure games.
+# REQUIRED: Set LOCAL_TAILSCALE_IP in .env (e.g., 100.64.x.x)
+gamestream.evindrake.net {
+    reverse_proxy {$LOCAL_TAILSCALE_IP}:47990 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        
+        # WebSocket support for live updates
+        header_up Upgrade {http.request.header.Upgrade}
+        header_up Connection {http.request.header.Connection}
+        
+        transport http {
+            tls_insecure_skip_verify
+        }
+    }
+}
+
+# ============================================
+# Game Streaming Connection Page (Dashboard Info)
 # ============================================
 game.evindrake.net {
     handle / {
@@ -214,10 +244,13 @@ www.scarletredjoker.com {
 }
 
 # ============================================
-# Home Assistant - Smart Home Hub
+# Home Assistant - Smart Home Hub (Local Ubuntu Host via Tailscale)
 # ============================================
+# Home Assistant runs on the LOCAL Ubuntu host, not in Docker on Linode.
+# Route through Tailscale VPN to reach local Home Assistant.
+# REQUIRED: Set LOCAL_TAILSCALE_IP in .env (e.g., 100.64.x.x)
 home.evindrake.net {
-    reverse_proxy homeassistant:8123 {
+    reverse_proxy {$LOCAL_TAILSCALE_IP}:8123 {
         # WebSocket support for Home Assistant
         header_up Upgrade {>Upgrade}
         header_up Connection {>Connection}
@@ -227,6 +260,7 @@ home.evindrake.net {
         
         # Increase timeout for long-polling connections
         transport http {
+            dial_timeout 30s
             read_timeout 90s
             write_timeout 90s
         }

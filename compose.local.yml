@@ -104,6 +104,48 @@ services:
       start_period: 60s
 
 # ============================================
+# Sunshine Game Streaming Server
+# ============================================
+# Sunshine is a self-hosted game streaming server that works with
+# Moonlight clients (iOS, Android, PC, TV, etc.)
+# This enables low-latency game streaming from your gaming PC.
+  sunshine:
+    image: lizardbyte/sunshine:latest
+    container_name: sunshine-gamestream
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-America/New_York}
+      - SUNSHINE_USER=${SUNSHINE_USER:-admin}
+      - SUNSHINE_PASS=${SUNSHINE_PASS:-}
+      # NVIDIA GPU support (for hardware encoding)
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-all}
+      - NVIDIA_DRIVER_CAPABILITIES=${NVIDIA_DRIVER_CAPABILITIES:-all}
+    volumes:
+      - ./config/sunshine:/config
+      - /dev/dri:/dev/dri
+      - /run/udev/data:/run/udev/data
+    devices:
+      - /dev/dri:/dev/dri
+      - /dev/uinput:/dev/uinput
+      - /dev/input:/dev/input
+    cap_add:
+      - SYS_ADMIN
+      - NET_ADMIN
+    ipc: host
+    # For NVIDIA GPUs, uncomment the following line:
+    # runtime: nvidia
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:47990/api/configuredClients || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+# ============================================
 # VNC REMOTE DESKTOP NOTES
 # ============================================
 # VNC runs natively on the host for better performance:
@@ -118,6 +160,18 @@ services:
 #   /opt/novnc/utils/novnc_proxy --vnc localhost:5901 --listen 6080
 #
 # Caddy proxies vnc.evindrake.net -> localhost:6080
+# ============================================
+
+# ============================================
+# GAMESTREAM SETUP
+# ============================================
+# 1. Start Sunshine: docker compose -f compose.local.yml up -d sunshine
+# 2. Access web UI: https://gamestream.evindrake.net or http://localhost:47990
+# 3. Pair Moonlight client using the PIN shown in web UI
+# 4. Configure apps/games to stream in Sunshine web UI
+#
+# Moonlight clients: https://moonlight-stream.org
+# Supported on: iOS, Android, PC, Mac, Linux, Fire TV, Raspberry Pi
 # ============================================
 
 # ============================================

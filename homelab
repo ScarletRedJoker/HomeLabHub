@@ -25,13 +25,57 @@ NC='\033[0m'
 # Auto-detect project root
 if [ -d "/home/evin/contain/HomeLabHub" ]; then
     PROJECT_ROOT="/home/evin/contain/HomeLabHub"
+elif [ -d "/opt/homelab/HomeLabHub" ]; then
+    PROJECT_ROOT="/opt/homelab/HomeLabHub"
 else
     PROJECT_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 fi
 
-# Simple configuration - ONE .env, ONE compose file
-ENV_FILE="$PROJECT_ROOT/.env"
-COMPOSE_FILE="$PROJECT_ROOT/docker-compose.yml"
+# Auto-detect role: local (Ubuntu host) vs cloud (Linode)
+# Priority: 1) HOMELAB_ROLE env var, 2) --role flag, 3) auto-detect
+detect_role() {
+    # Check environment variable first
+    if [ -n "${HOMELAB_ROLE:-}" ]; then
+        echo "$HOMELAB_ROLE"
+        return
+    fi
+    
+    # Auto-detect based on available compose files and hostname
+    if [ -f "$PROJECT_ROOT/compose.local.yml" ] && [ ! -f "$PROJECT_ROOT/docker-compose.yml" ]; then
+        echo "local"
+    elif hostname | grep -qi "linode\|localhost" && [ -f "$PROJECT_ROOT/docker-compose.yml" ]; then
+        echo "cloud"
+    elif [ -f "$PROJECT_ROOT/compose.local.yml" ] && [ -d "/home/evin" ]; then
+        # Ubuntu host with local compose file
+        echo "local"
+    else
+        echo "cloud"
+    fi
+}
+
+ROLE="${HOMELAB_ROLE:-$(detect_role)}"
+
+# Configure based on role
+if [ "$ROLE" = "local" ]; then
+    ENV_FILE="$PROJECT_ROOT/.env"
+    COMPOSE_FILE="$PROJECT_ROOT/compose.local.yml"
+    ALL_SERVICES=("plex-server" "homeassistant" "homelab-minio" "sunshine-gamestream")
+    TOTAL_SERVICES=4
+    ROLE_NAME="Local (Ubuntu Host)"
+else
+    ENV_FILE="$PROJECT_ROOT/.env"
+    COMPOSE_FILE="$PROJECT_ROOT/docker-compose.yml"
+    ALL_SERVICES=(
+        "homelab-postgres" "homelab-redis"
+        "homelab-dashboard" "homelab-celery-worker"
+        "discord-bot" "stream-bot"
+        "caddy" "code-server" "code-server-proxy"
+        "n8n"
+        "rig-city-site" "scarletredjoker-web"
+    )
+    TOTAL_SERVICES=12
+    ROLE_NAME="Cloud (Linode)"
+fi
 
 # Verify files exist
 if [ ! -f "$ENV_FILE" ]; then
@@ -40,13 +84,16 @@ if [ ! -f "$ENV_FILE" ]; then
     echo "Quick setup:"
     echo "  cp .env.example .env"
     echo "  nano .env  # Update your credentials"
-    echo "  ./deploy/scripts/bootstrap.sh"
+    echo "  ./deploy/scripts/bootstrap.sh --role $ROLE"
     echo ""
     exit 1
 fi
 
 if [ ! -f "$COMPOSE_FILE" ]; then
-    echo -e "${RED}ERROR: docker-compose.yml not found${NC}"
+    echo -e "${RED}ERROR: Compose file not found: $COMPOSE_FILE${NC}"
+    echo "Role: $ROLE"
+    echo ""
+    echo "Make sure you have the correct compose file for your role."
     exit 1
 fi
 
@@ -58,17 +105,6 @@ compose() {
         -f "$COMPOSE_FILE" \
         "$@"
 }
-
-# Service list (cloud services only - local services run on Ubuntu host)
-ALL_SERVICES=(
-    "homelab-postgres" "homelab-redis"
-    "homelab-dashboard" "homelab-celery-worker"
-    "discord-bot" "stream-bot"
-    "caddy" "code-server" "code-server-proxy"
-    "n8n"
-    "rig-city-site" "scarletredjoker-web"
-)
-TOTAL_SERVICES=12
 
 # Check if service is running
 is_running() {
@@ -132,7 +168,8 @@ fix() {
 # STATUS COMMAND
 # ============================================
 status() {
-    echo -e "\n${CYAN}═══ Service Status ═══${NC}\n"
+    echo -e "\n${CYAN}═══ Service Status ═══${NC}"
+    echo -e "Role: ${YELLOW}$ROLE_NAME${NC}\n"
     
     local running=0
     for service in "${ALL_SERVICES[@]}"; do
