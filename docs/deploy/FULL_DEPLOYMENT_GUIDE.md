@@ -12,7 +12,7 @@
 | Set up DNS/DDNS | [Phase 2: Infrastructure](#phase-2-infrastructure-setup) |
 | Set up OAuth apps | [Phase 4: OAuth Configuration](#phase-4-oauth-configuration) |
 | Configure email | [Phase 4.6: Email Setup](#46-email--notifications-setup) |
-| Set up Windows Sunshine | [Phase 5: Local Deployment](#phase-5-local-deployment-windows--optional-linux-services) |
+| Set up KVM + Sunshine | [Phase 5: Local Deployment](#phase-5-local-deployment-ubuntu--windows-kvm) |
 | Set up automation | [Phase 7: Automation](#phase-7-operational-automation) |
 | Fix something | [Troubleshooting](#troubleshooting) |
 | Daily management | [Operations](#daily-operations) |
@@ -26,9 +26,10 @@
 **What you're building:**
 - A split-architecture homelab with cloud services (always-on) and local services (GPU-intensive)
 - Cloud (Linode $24/mo): Dashboard, Discord Bot, Stream Bot, Database, n8n, Code-Server
-- Local (Your Windows PC): Sunshine GameStream, Plex, Home Assistant, MinIO Storage
+- Local (Ubuntu 25.10 host): Plex, Home Assistant, MinIO Storage, Docker services
+- Windows 11 KVM VM (GPU passthrough): Sunshine GameStream with RTX 3060
 
-**Time to deploy:** ~2 hours from scratch
+**Time to deploy:** ~2-3 hours from scratch
 
 **Architecture:**
 ```
@@ -38,22 +39,25 @@
                            │
            ┌───────────────┴───────────────┐
            ▼                               │
-┌─────────────────────┐         ┌──────────┴──────────┐
-│   LINODE CLOUD      │◄═══════►│   LOCAL WINDOWS     │
-│   $24/month         │ Tailscale│   (Your Gaming PC)  │
-│   (Public DNS)      │   VPN    │   (Tailscale only)  │
-│                     │         │                     │
-│ • Dashboard         │         │ • Sunshine Games    │
-│ • Discord Bot       │         │ • Plex Media        │
-│ • Stream Bot        │         │ • Home Assistant    │
-│ • PostgreSQL        │         │ • MinIO Storage     │
-│ • Redis/n8n/Caddy   │         │                     │
-└─────────────────────┘         └─────────────────────┘
-     ▲                                    ▲
-     │                                    │
- dash.evindrake.net              Moonlight + Tailscale
- n8n.evindrake.net               app.plex.tv (native)
- bot.rig-city.com                (NO public DNS needed)
+┌─────────────────────┐         ┌──────────┴──────────────────────┐
+│   LINODE CLOUD      │◄═══════►│   LOCAL UBUNTU 25.10            │
+│   Ubuntu 25.10      │ Tailscale│   (Your Main PC)                │
+│   $24/month         │   VPN    │                                 │
+│   (Public DNS)      │         │   Native Docker Services:       │
+│                     │         │   • Plex Media                  │
+│ • Dashboard         │         │   • Home Assistant              │
+│ • Discord Bot       │         │   • MinIO Storage               │
+│ • Stream Bot        │         │                                 │
+│ • PostgreSQL        │         │   ┌─────────────────────────┐   │
+│ • Redis/n8n/Caddy   │         │   │ Windows 11 KVM VM       │   │
+└─────────────────────┘         │   │ (GPU Passthrough: 3060) │   │
+     ▲                          │   │ • Sunshine GameStream   │   │
+     │                          │   └─────────────────────────┘   │
+ dash.evindrake.net             └─────────────────────────────────┘
+ n8n.evindrake.net                          ▲
+ bot.rig-city.com                 Moonlight + Tailscale
+                                  app.plex.tv (native)
+                                  (NO public DNS needed)
 ```
 
 ---
@@ -173,14 +177,14 @@ Go to Cloudflare → Select domain → **DNS** → Add these records:
 
 #### Local Services (NO Public DNS Needed)
 
-These services run on your local Windows PC and should NOT have public DNS records pointing to Linode:
+These services run on your local Ubuntu host and should NOT have public DNS records pointing to Linode:
 
 | Service | How to Access Remotely |
 |---------|------------------------|
 | **Plex** | Use [app.plex.tv](https://app.plex.tv) - Plex handles remote access automatically |
 | **Home Assistant** | Use [Nabu Casa](https://www.nabucasa.com/) ($6.50/mo) or access via Tailscale IP: `http://100.110.227.25:8123` |
 | **MinIO** | Internal only - access via Tailscale: `http://100.110.227.25:9000` |
-| **Sunshine** | Local network or Tailscale only (for game streaming latency) |
+| **Sunshine** | Runs in Windows KVM VM - access via Moonlight + Tailscale (for game streaming latency) |
 
 **Why not proxy through Linode?**
 - Wastes bandwidth (Plex streams would double-hop)
@@ -211,26 +215,33 @@ tailscale ip -4
 # Example output: 100.66.61.51
 ```
 
-**Install on Local Windows PC:**
+**Install on Local Ubuntu Host:**
+```bash
+# Install Tailscale
+curl -fsSL https://tailscale.com/install.sh | sh
 
-> **Note:** Full Windows Tailscale setup is covered in [Phase 5](#51-install-tailscale-on-windows). Quick version:
+# Connect (use your auth key)
+sudo tailscale up --authkey=tskey-auth-XXXXX --hostname=homelab-local
 
-1. Download from [tailscale.com/download/windows](https://tailscale.com/download/windows)
-2. Run installer, sign in with same account as Linode
-3. Get your Tailscale IP from the system tray icon
+# Get and save your Tailscale IP
+tailscale ip -4
+# Example output: 100.110.227.25
+```
 
 **Test connection:**
 ```bash
-# From Linode, ping your Windows PC
+# From Linode, ping your local Ubuntu host
 ping 100.110.227.25
 
-# From Windows PowerShell, ping Linode
+# From local Ubuntu, ping Linode
 ping 100.66.61.51
 ```
 
 **Write down both IPs!**
 - Linode Tailscale IP: `100.66.61.51`
 - Local Tailscale IP: `100.110.227.25`
+
+> **Note:** You can also install Tailscale inside your Windows KVM VM for remote game streaming. See [Phase 5.5](#55-configure-sunshine-in-windows-vm) for details.
 
 ### 2.4 Dynamic DNS for Residential IP (If Applicable)
 
@@ -242,11 +253,11 @@ If you have a **residential internet connection** (like Spectrum, Comcast, AT&T)
 
 Use a Docker container to automatically update Cloudflare DNS when your IP changes:
 
-**On your Windows/local machine:**
+**On your local Ubuntu host:**
 
 1. Create a `ddclient.conf` file:
 ```ini
-# /path/to/ddclient.conf
+# /opt/homelab/ddclient/ddclient.conf
 daemon=300
 syslog=yes
 protocol=cloudflare
@@ -259,41 +270,45 @@ local.evindrake.net
 
 2. Run the DDNS container:
 ```bash
+sudo mkdir -p /opt/homelab/ddclient
+
 docker run -d \
   --name cloudflare-ddns \
   --restart=always \
-  -v /path/to/ddclient.conf:/etc/ddclient.conf:ro \
+  -v /opt/homelab/ddclient/ddclient.conf:/etc/ddclient.conf:ro \
   linuxserver/ddclient
 ```
 
 **Or use this simpler alternative script (no Docker):**
 
-```powershell
-# cloudflare-ddns.ps1 - Run as scheduled task every 5 minutes
-$email = "your-cloudflare-email@example.com"
-$apiToken = "YOUR_CLOUDFLARE_API_TOKEN"
-$zoneId = "YOUR_ZONE_ID"
-$recordName = "local.evindrake.net"
+```bash
+#!/bin/bash
+# /opt/homelab/scripts/cloudflare-ddns.sh
+# Add to crontab: */5 * * * * /opt/homelab/scripts/cloudflare-ddns.sh
 
-$currentIP = (Invoke-WebRequest -Uri "https://api.ipify.org").Content
-$headers = @{
-    "Authorization" = "Bearer $apiToken"
-    "Content-Type" = "application/json"
-}
+API_TOKEN="YOUR_CLOUDFLARE_API_TOKEN"
+ZONE_ID="YOUR_ZONE_ID"
+RECORD_NAME="local.evindrake.net"
 
-# Get record ID
-$records = Invoke-RestMethod -Uri "https://api.cloudflare.com/client/v4/zones/$zoneId/dns_records?name=$recordName" -Headers $headers
-$recordId = $records.result[0].id
+# Get current public IP
+CURRENT_IP=$(curl -s https://api.ipify.org)
 
-# Update if changed
-$body = @{
-    type = "A"
-    name = $recordName
-    content = $currentIP
-    ttl = 300
-} | ConvertTo-Json
+# Get existing record
+RECORD=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records?name=$RECORD_NAME" \
+  -H "Authorization: Bearer $API_TOKEN" \
+  -H "Content-Type: application/json")
 
-Invoke-RestMethod -Method Put -Uri "https://api.cloudflare.com/client/v4/zones/$zoneId/dns_records/$recordId" -Headers $headers -Body $body
+RECORD_ID=$(echo $RECORD | jq -r '.result[0].id')
+OLD_IP=$(echo $RECORD | jq -r '.result[0].content')
+
+# Update only if IP changed
+if [ "$CURRENT_IP" != "$OLD_IP" ]; then
+  curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records/$RECORD_ID" \
+    -H "Authorization: Bearer $API_TOKEN" \
+    -H "Content-Type: application/json" \
+    --data "{\"type\":\"A\",\"name\":\"$RECORD_NAME\",\"content\":\"$CURRENT_IP\",\"ttl\":300}"
+  echo "$(date): Updated IP from $OLD_IP to $CURRENT_IP" >> /var/log/ddns.log
+fi
 ```
 
 #### Option 2: DuckDNS (Free & Simple)
@@ -302,18 +317,15 @@ Invoke-RestMethod -Method Put -Uri "https://api.cloudflare.com/client/v4/zones/$
 2. Create a subdomain (e.g., `yourhomelab.duckdns.org`)
 3. Run the update script:
 
-**Windows (Task Scheduler):**
-```powershell
-# duckdns-update.ps1
-$domain = "yourhomelab"
-$token = "YOUR_DUCKDNS_TOKEN"
-Invoke-WebRequest -Uri "https://www.duckdns.org/update?domains=$domain&token=$token&ip="
-```
-
-**Linux (cron):**
 ```bash
-# Add to crontab: */5 * * * * /path/to/duck.sh
-echo url="https://www.duckdns.org/update?domains=yourhomelab&token=YOUR_TOKEN&ip=" | curl -k -o ~/duckdns.log -K -
+#!/bin/bash
+# /opt/homelab/scripts/duckdns-update.sh
+# Add to crontab: */5 * * * * /opt/homelab/scripts/duckdns-update.sh
+
+DOMAIN="yourhomelab"
+TOKEN="YOUR_DUCKDNS_TOKEN"
+
+echo url="https://www.duckdns.org/update?domains=$DOMAIN&token=$TOKEN&ip=" | curl -k -o /var/log/duckdns.log -K -
 ```
 
 #### Option 3: No-IP (Free tier available)
@@ -401,7 +413,7 @@ WEB_PASSWORD=your_secure_password_here
 # AI (from Phase 1)
 OPENAI_API_KEY=sk-proj-your-key-here
 
-# Cross-host routing (your LOCAL Windows PC's Tailscale IP)
+# Cross-host routing (your LOCAL Ubuntu host's Tailscale IP)
 LOCAL_TAILSCALE_IP=100.110.227.25
 
 # Code Server password
@@ -671,115 +683,294 @@ docker compose up -d
 
 ---
 
-## Phase 5: Local Deployment (Windows + Optional Linux Services)
+## Phase 5: Local Deployment (Ubuntu + Windows KVM)
 
-**Time: 30-45 minutes**
+**Time: 45-60 minutes**
 
-Your local machine runs Windows with:
-- **Sunshine** - Native Windows app for game streaming
+Your local Ubuntu 25.10 host runs:
+- **Docker services** - Plex, Home Assistant, MinIO (native Linux)
 - **Tailscale** - VPN connection to Linode
-- **Optional**: Plex, Home Assistant, MinIO via Docker Desktop or separate Linux VM
+- **KVM/QEMU** - Virtualization with GPU passthrough
+- **Windows 11 VM** - Runs Sunshine GameStream with passed-through RTX 3060
 
-### 5.1 Install Tailscale on Windows
+### 5.1 Prerequisites & Hardware Check
 
-1. Download from [tailscale.com/download/windows](https://tailscale.com/download/windows)
-2. Run installer
-3. Sign in with the same account used on Linode
-4. Verify connection:
-   ```powershell
-   tailscale status
-   # Should show your Linode node
-   
-   ping 100.66.61.51
-   # Should reach your Linode
+#### BIOS/UEFI Settings
+
+Before starting, enable these in your BIOS:
+- **Intel**: VT-x, VT-d (Intel Virtualization Technology for Directed I/O)
+- **AMD**: AMD-V, AMD-Vi (IOMMU)
+
+> **How to access BIOS:** Restart and press Del, F2, or F12 during boot (varies by motherboard).
+
+#### Verify IOMMU Support
+
+```bash
+# Check if IOMMU is enabled
+dmesg | grep -i iommu
+# Should show: "IOMMU enabled" or similar
+
+# If not enabled, add to GRUB
+sudo nano /etc/default/grub
+
+# For Intel, change GRUB_CMDLINE_LINUX_DEFAULT to:
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash intel_iommu=on iommu=pt"
+
+# For AMD, change to:
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash amd_iommu=on iommu=pt"
+
+# Apply changes
+sudo update-grub
+sudo reboot
+```
+
+#### Identify Your GPU
+
+```bash
+# List IOMMU groups - find your GPU
+#!/bin/bash
+for d in /sys/kernel/iommu_groups/*/devices/*; do
+  n=${d#*/iommu_groups/*}; n=${n%%/*}
+  printf 'IOMMU Group %s ' "$n"
+  lspci -nns "${d##*/}"
+done | sort -V
+
+# Example output - note your GPU's IDs:
+# IOMMU Group 14 0000:01:00.0 VGA compatible controller [0300]: NVIDIA Corporation GA106 [GeForce RTX 3060] [10de:2503] (rev a1)
+# IOMMU Group 14 0000:01:00.1 Audio device [0403]: NVIDIA Corporation GA106 High Definition Audio Controller [10de:228e] (rev a1)
+```
+
+**Write down:**
+- GPU Video ID: `10de:2503` (example)
+- GPU Audio ID: `10de:228e` (example)
+- IOMMU Group: `14` (example)
+
+### 5.2 Install Virtualization Packages
+
+```bash
+# Install KVM, QEMU, and virt-manager
+sudo apt update
+sudo apt install -y qemu-kvm libvirt-daemon-system libvirt-clients \
+  bridge-utils virt-manager ovmf cpu-checker
+
+# Verify KVM support
+kvm-ok
+# Should say: "KVM acceleration can be used"
+
+# Add yourself to libvirt groups
+sudo usermod -aG libvirt,kvm $USER
+
+# Start libvirtd
+sudo systemctl enable --now libvirtd
+
+# Log out and back in for group changes
+```
+
+### 5.3 Configure VFIO for GPU Passthrough
+
+Create VFIO configuration to isolate GPU from host:
+
+```bash
+# Create VFIO config with your GPU IDs
+echo "options vfio-pci ids=10de:2503,10de:228e" | sudo tee /etc/modprobe.d/vfio.conf
+
+# Ensure VFIO loads before GPU drivers
+sudo nano /etc/modules-load.d/vfio.conf
+```
+
+Add these lines:
+```
+vfio
+vfio_iommu_type1
+vfio_pci
+vfio_virqfd
+```
+
+```bash
+# Blacklist NVIDIA driver from loading on host (GPU goes to VM)
+echo "blacklist nouveau
+blacklist nvidia
+blacklist nvidia_drm
+blacklist nvidia_modeset" | sudo tee /etc/modprobe.d/blacklist-nvidia.conf
+
+# Rebuild initramfs
+sudo update-initramfs -u
+
+# Reboot
+sudo reboot
+```
+
+#### Verify GPU is Bound to VFIO
+
+```bash
+# Check if GPU is using vfio-pci driver
+lspci -nnk -s 01:00
+
+# Should show:
+# Kernel driver in use: vfio-pci
+```
+
+### 5.4 Create Windows 11 VM
+
+#### Download Required Files
+
+```bash
+# Create VM storage directory
+sudo mkdir -p /var/lib/libvirt/images
+
+# Download Windows 11 ISO (or transfer your own)
+# Get from: https://www.microsoft.com/software-download/windows11
+
+# Download VirtIO drivers ISO (required for Windows to see virtual disks)
+wget -O /var/lib/libvirt/images/virtio-win.iso \
+  https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/virtio-win.iso
+```
+
+#### Create VM with virt-manager (GUI)
+
+1. **Open virt-manager:**
+   ```bash
+   virt-manager
    ```
 
-**Your Windows Tailscale IP:** Note this down (e.g., `100.110.227.25`)
+2. **Create new VM:**
+   - File → New Virtual Machine
+   - Select "Local install media (ISO image)"
+   - Browse to your Windows 11 ISO
 
-### 5.2 Install Sunshine GameStream
+3. **Configure resources:**
+   - RAM: At least 8 GB (16 GB recommended)
+   - CPUs: At least 4 cores
+   - Check "Customize configuration before install"
 
-Sunshine is an open-source game streaming server (NVIDIA GameStream replacement).
+4. **Before clicking Finish, configure:**
+   - **Overview:** Change Firmware to "UEFI x86_64: /usr/share/OVMF/OVMF_CODE_4M.fd"
+   - **CPUs:** Check "Copy host CPU configuration"
+   - **Add Hardware → Storage:** Add VirtIO Win ISO as CDROM
+   - **Add Hardware → PCI Host Device:** Add your GPU (both video and audio)
+   - **Video → Model:** Change to "None" (GPU passthrough replaces this)
 
-#### Prerequisites
+5. **Begin Installation:**
+   - During Windows install, load VirtIO drivers when it can't find disks
+   - Browse to VirtIO CDROM → `viostor\w11\amd64`
 
-- **GPU**: NVIDIA (GTX 900+), AMD (RX 5000+), or Intel Arc
-- **Display**: At least one monitor connected (or dummy plug)
-- **Windows**: 10/11 64-bit
+#### Alternative: Create VM via CLI
 
-#### Installation
+```bash
+# Create disk image (100GB)
+sudo qemu-img create -f qcow2 /var/lib/libvirt/images/win11.qcow2 100G
+
+# Create VM (adjust paths and IDs as needed)
+virt-install \
+  --name win11-gaming \
+  --memory 16384 \
+  --vcpus 8 \
+  --os-variant win11 \
+  --cdrom /path/to/Win11.iso \
+  --disk /var/lib/libvirt/images/win11.qcow2,bus=virtio \
+  --disk /var/lib/libvirt/images/virtio-win.iso,device=cdrom \
+  --network bridge=virbr0 \
+  --graphics none \
+  --boot uefi \
+  --host-device 01:00.0 \
+  --host-device 01:00.1 \
+  --features kvm_hidden=on
+```
+
+### 5.5 Configure Sunshine in Windows VM
+
+After Windows 11 installation completes:
+
+#### Install GPU Drivers
+
+1. Download NVIDIA drivers from [nvidia.com/drivers](https://www.nvidia.com/Download/index.aspx)
+2. Install and restart VM
+
+#### Install Sunshine
 
 1. Download latest release from [github.com/LizardByte/Sunshine/releases](https://github.com/LizardByte/Sunshine/releases)
-   - Get the `.exe` installer (e.g., `sunshine-windows-installer.exe`)
+   - Get the `.exe` installer
 
 2. Run installer as Administrator
    - Allow firewall prompts
-   - Install Virtual Display Driver if prompted (for headless streaming)
+   - Install Virtual Display Driver when prompted
 
 3. Open browser to `https://localhost:47990`
    - Create admin username and password
-   - **Save these!** You'll need them for the web UI
+   - **Save these!**
 
 4. Configure settings:
-   - **Network** tab: Note the ports (default 47984-48010)
-   - **Audio/Video** tab: Set encoder (NVENC for NVIDIA, AMF for AMD)
-   - **General** tab: Set hostname to `homelab-local`
+   - **Network** tab: Note ports (47984-48010)
+   - **Audio/Video** tab: Select NVENC encoder
+   - **General** tab: Set hostname to `homelab-gaming`
 
-#### Firewall Rules (If Not Auto-Created)
+#### Configure Windows Firewall
 
 ```powershell
-# Run as Administrator
+# Run as Administrator in Windows VM
 netsh advfirewall firewall add rule name="Sunshine TCP" dir=in action=allow protocol=TCP localport=47984-47990
 netsh advfirewall firewall add rule name="Sunshine UDP" dir=in action=allow protocol=UDP localport=47998-48010
 ```
 
-### 5.3 Pair Moonlight Client
+#### Install Tailscale in Windows VM (For Remote Gaming)
 
-Moonlight is the client app for connecting to Sunshine.
+Installing Tailscale inside the Windows VM allows you to stream games from anywhere, not just your local network.
 
-1. Download Moonlight: [moonlight-stream.org](https://moonlight-stream.org/)
-   - Available for: Windows, macOS, Linux, iOS, Android, Raspberry Pi, etc.
+**Step 1: Install Tailscale**
+1. In your Windows VM, download from [tailscale.com/download/windows](https://tailscale.com/download/windows)
+2. Run installer and complete setup
+3. Click the Tailscale icon in system tray → Sign in
+4. **Important:** Use the **same Tailscale account** as your Ubuntu host and Linode
 
-2. Open Moonlight on your **client device** (phone, laptop, Steam Deck, etc.)
+**Step 2: Get Windows VM's Tailscale IP**
+```powershell
+# In Windows PowerShell
+tailscale ip -4
+# Example output: 100.115.92.47
+```
 
-3. Add computer manually:
-   - **From local network**: Enter your Windows PC's local IP (e.g., `192.168.1.100`)
-   - **Via Tailscale**: Enter your Windows Tailscale IP (e.g., `100.110.227.25`)
+**Write this down!** This is the IP you'll use for remote Moonlight connections.
 
-4. Click the computer icon → Enter the PIN shown in Sunshine web UI
+**Step 3: Verify Tailscale Connectivity**
+```powershell
+# Test connection to Linode
+ping 100.66.61.51
 
-5. Test streaming:
-   - Click "Desktop" to stream your desktop
-   - Or add games via Sunshine web UI
+# Test connection to Ubuntu host
+ping 100.110.227.25
 
-#### Remote Gaming via Tailscale
+# Check Tailscale status
+tailscale status
+# Should show all 3 nodes: linode, ubuntu host, this VM
+```
 
-For gaming from anywhere:
-1. Ensure Tailscale is running on both Windows PC and client device
-2. In Moonlight, add computer using Tailscale IP: `100.110.227.25`
-3. Pair and stream!
+**Step 4: Test Remote Sunshine Access**
+1. On your remote client device, ensure Tailscale is running
+2. Open Moonlight
+3. Add computer using **Windows VM's Tailscale IP** (e.g., `100.115.92.47`)
+4. Enter PIN from Sunshine web UI
+5. Stream!
 
-**Latency Tips:**
-- Use 5GHz WiFi or Ethernet
-- Set bitrate to match your connection (15-50 Mbps typical)
-- Enable hardware decoding on client
-- Tailscale adds ~2-5ms latency (barely noticeable)
+**Tailscale IP Summary:**
+| Device | Tailscale IP | Purpose |
+|--------|--------------|---------|
+| Linode | 100.66.61.51 | Cloud services |
+| Ubuntu Host | 100.110.227.25 | Plex, Home Assistant, MinIO |
+| Windows VM | 100.115.92.47 | Sunshine GameStream |
 
-### 5.4 Optional: Docker Desktop for Additional Services
+> **Tip:** If Moonlight can't connect over Tailscale, check Windows Firewall allows Sunshine ports (47984-48010) and that both devices show "connected" in Tailscale status.
 
-If you want to run Plex, Home Assistant, or MinIO on the same Windows machine:
+### 5.6 Docker Services on Ubuntu Host
 
-#### Install Docker Desktop
+Run Plex, Home Assistant, and MinIO directly on your Ubuntu host:
 
-1. Download from [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/)
-2. Enable WSL 2 backend during installation
-3. Restart computer
-4. Open Docker Desktop and complete setup
+```bash
+# Create directories
+sudo mkdir -p /opt/homelab/{plex/config,homeassistant/config,minio/data}
+sudo chown -R $USER:$USER /opt/homelab
+```
 
-#### Create Local Services Compose File
-
-Create `C:\HomeLabHub\docker-compose.local.yml`:
-
-> **Note:** Docker Desktop for Windows doesn't support `network_mode: host`, so we use explicit port mappings.
+Create `/opt/homelab/docker-compose.local.yml`:
 
 ```yaml
 version: '3.8'
@@ -788,10 +979,7 @@ services:
   plex:
     image: lscr.io/linuxserver/plex:latest
     container_name: plex
-    ports:
-      - "32400:32400"    # Plex Web UI
-      - "1900:1900/udp"  # DLNA
-      - "32469:32469"    # DLNA
+    network_mode: host  # Better device discovery on Linux
     environment:
       - PUID=1000
       - PGID=1000
@@ -799,41 +987,38 @@ services:
       - VERSION=docker
       - PLEX_CLAIM=${PLEX_CLAIM}
     volumes:
-      - C:/HomeLabHub/plex/config:/config
-      - D:/Media:/data/media  # Your media drive
+      - /opt/homelab/plex/config:/config
+      - /mnt/media:/data/media  # Adjust to your media path
     restart: unless-stopped
 
   homeassistant:
     image: ghcr.io/home-assistant/home-assistant:stable
     container_name: homeassistant
-    ports:
-      - "8123:8123"      # Home Assistant Web UI
+    network_mode: host  # Required for device discovery
     environment:
       - TZ=America/New_York
     volumes:
-      - C:/HomeLabHub/homeassistant/config:/config
+      - /opt/homelab/homeassistant/config:/config
+      - /run/dbus:/run/dbus:ro  # For Bluetooth support
+    privileged: true
     restart: unless-stopped
 
   minio:
     image: quay.io/minio/minio
     container_name: minio
     ports:
-      - "9000:9000"      # MinIO API
-      - "9001:9001"      # MinIO Console
+      - "9000:9000"
+      - "9001:9001"
     environment:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
     volumes:
-      - C:/HomeLabHub/minio/data:/data
+      - /opt/homelab/minio/data:/data
     command: server /data --console-address ":9001"
     restart: unless-stopped
 ```
 
-**Linux Note:** If running on Linux, you can optionally use `network_mode: host` for Plex and Home Assistant for better device discovery.
-
-#### Create .env file
-
-Create `C:\HomeLabHub\.env`:
+Create `/opt/homelab/.env`:
 ```env
 # Plex - get fresh claim at https://plex.tv/claim (expires in 4 min!)
 PLEX_CLAIM=claim-XXXXX
@@ -843,51 +1028,72 @@ MINIO_ROOT_USER=admin
 MINIO_ROOT_PASSWORD=your_secure_password_here
 ```
 
-#### Start Services
-
-```powershell
-cd C:\HomeLabHub
+Start services:
+```bash
+cd /opt/homelab
 docker compose -f docker-compose.local.yml up -d
 ```
 
-### 5.5 Alternative: Separate Linux Server
-
-If you prefer running containerized services on a separate Linux machine (Raspberry Pi, NUC, old laptop):
+### 5.7 VM Management Commands
 
 ```bash
-# On your Linux machine
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
+# List VMs
+virsh list --all
 
-# Install Tailscale
-curl -fsSL https://tailscale.com/install.sh | sh
-sudo tailscale up --authkey=tskey-auth-XXXXX --hostname=homelab-services
+# Start Windows VM
+virsh start win11-gaming
 
-# Clone and deploy
-git clone https://github.com/YOUR_USERNAME/HomeLabHub.git
-cd HomeLabHub
-cp .env.example .env
-nano .env  # Configure local services
-./deploy/scripts/bootstrap.sh --role local
+# Graceful shutdown
+virsh shutdown win11-gaming
+
+# Force stop (if unresponsive)
+virsh destroy win11-gaming
+
+# Auto-start VM on boot
+virsh autostart win11-gaming
+
+# Connect to VM console (for BIOS/boot issues)
+virt-viewer win11-gaming
 ```
 
-### 5.6 Verify Local Setup
+### 5.8 Pair Moonlight Client
+
+From your client device (phone, laptop, Steam Deck):
+
+1. Download Moonlight: [moonlight-stream.org](https://moonlight-stream.org/)
+
+2. Add computer:
+   - **Local network:** Windows VM's local IP (check via `ipconfig` in VM)
+   - **Via Tailscale:** Windows VM's Tailscale IP
+
+3. Enter PIN shown in Sunshine web UI
+
+4. Test streaming - click "Desktop"
+
+**Latency Tips:**
+- Use 5GHz WiFi or Ethernet
+- Set bitrate to 15-50 Mbps
+- Enable hardware decoding
+- Tailscale adds ~2-5ms (barely noticeable)
+
+### 5.9 Verify Local Setup
 
 | Component | Check | Expected |
 |-----------|-------|----------|
-| Tailscale | `tailscale status` | Shows Linode node |
-| Sunshine | `https://localhost:47990` | Web UI loads |
-| Moonlight | Add + pair | PIN accepted, streaming works |
-| Plex (if installed) | `http://localhost:32400/web` | Plex UI |
-| Home Assistant (if installed) | `http://localhost:8123` | HA onboarding |
-| MinIO (if installed) | `http://localhost:9001` | MinIO console |
+| IOMMU | `dmesg \| grep -i iommu` | "IOMMU enabled" |
+| GPU Passthrough | `lspci -nnk -s 01:00` | "vfio-pci" driver |
+| VM Running | `virsh list` | win11-gaming running |
+| Sunshine | `https://VM_IP:47990` | Web UI loads |
+| Moonlight | Pair from client | Streaming works |
+| Plex | `http://localhost:32400/web` | Plex UI |
+| Home Assistant | `http://localhost:8123` | HA onboarding |
+| MinIO | `http://localhost:9001` | MinIO console |
 
-### 5.7 Tell Linode About Local Services
+### 5.10 Tell Linode About Local Services
 
-Update your Linode's `.env` with your local Tailscale IP:
+Update Linode's `.env` with your local Tailscale IP:
 
 ```bash
-# SSH to Linode
 ssh root@YOUR_LINODE_IP
 cd /opt/homelab/HomeLabHub
 nano .env
@@ -900,6 +1106,27 @@ MINIO_ENDPOINT=100.110.227.25:9000
 
 # Restart services
 docker compose down && docker compose up -d
+```
+
+### 5.11 Troubleshooting GPU Passthrough
+
+| Issue | Solution |
+|-------|----------|
+| "GPU not in separate IOMMU group" | Need ACS override patch or different PCIe slot |
+| VM boots but no display | Check GPU is bound to vfio-pci, verify OVMF firmware |
+| Reset bug (VM can't restart without host reboot) | Add `<vendor_reset/>` quirk or use GPU reset script |
+| Windows BSOD with code 43 | Add `<hidden state='on'/>` to `<kvm>` section in VM XML |
+| Poor performance | Enable CPU pinning, use hugepages, check IOMMU isolation |
+
+**Edit VM XML for Error 43 fix:**
+```bash
+virsh edit win11-gaming
+```
+Add inside `<features>`:
+```xml
+<kvm>
+  <hidden state='on'/>
+</kvm>
 ```
 
 ---
@@ -1412,7 +1639,7 @@ All environment variables in one place. The bootstrap script generates most secr
 
 | Variable | Description | Role | Notes |
 |----------|-------------|------|-------|
-| `LOCAL_TAILSCALE_IP` | Local Windows PC's Tailscale IP | Cloud | Get from Tailscale system tray on Windows |
+| `LOCAL_TAILSCALE_IP` | Local Ubuntu host's Tailscale IP | Cloud | Run `tailscale ip -4` on Ubuntu host |
 | `TAILSCALE_LINODE_HOST` | Linode's Tailscale IP | Local | Get with `tailscale ip -4` on Linode |
 
 ### Local Services - Plex (Local Role)

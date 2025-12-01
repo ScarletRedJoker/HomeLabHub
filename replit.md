@@ -53,7 +53,7 @@ The core system relies on Docker Compose for orchestrating services across a spl
 - **Home Assistant:** Smart home hub (local Ubuntu host).
 - **Cloudflare API:** DNS automation.
 - **Tailscale:** VPN mesh connecting Linode and local host.
-- **Sunshine:** Game streaming server (local Ubuntu host).
+- **Sunshine:** Game streaming server (Windows 11 KVM VM with GPU passthrough on local Ubuntu host).
 
 ## Deployment
 
