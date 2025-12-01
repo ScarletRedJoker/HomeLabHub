@@ -1,5 +1,12 @@
 # Homelab Deployment Guide
 
+> **DEPRECATED**: This guide is outdated. Please use the comprehensive guide at:
+> **[docs/deploy/FULL_DEPLOYMENT_GUIDE.md](docs/deploy/FULL_DEPLOYMENT_GUIDE.md)**
+
+---
+
+*Legacy content below for reference only*
+
 Complete guide to deploy all 15 services to your Ubuntu 25.10 server at host.evindrake.net.
 
 ---
@@ -79,64 +86,33 @@ nano .env
 
 ### Required Variables:
 
+See `.env.example` for all available variables. Key ones to configure:
+
 ```bash
-# Web Dashboard Credentials
-WEB_USERNAME=evin
-WEB_PASSWORD=Brs=2729
+# Generate secure passwords with: openssl rand -hex 16
+POSTGRES_PASSWORD=YOUR_GENERATED_PASSWORD
+DISCORD_DB_PASSWORD=YOUR_GENERATED_PASSWORD
+STREAMBOT_DB_PASSWORD=YOUR_GENERATED_PASSWORD
+JARVIS_DB_PASSWORD=YOUR_GENERATED_PASSWORD
 
-# PostgreSQL Database
-POSTGRES_PASSWORD=Brs=2729
-POSTGRES_USER=postgres
+# Dashboard login
+WEB_USERNAME=admin
+WEB_PASSWORD=YOUR_SECURE_PASSWORD
 
-# Database Passwords (use strong passwords)
-DISCORD_DB_PASSWORD=qS4R8Wrl-Spz7-YEmyllIA
-STREAMBOT_DB_PASSWORD=qS4R8Wrl-Spz7-YEmyllIA
-JARVIS_DB_PASSWORD=qS4R8Wrl-Spz7-YEmyllIA
+# Session secrets (generate with: openssl rand -hex 32)
+SESSION_SECRET=YOUR_64_CHAR_HEX
+SECRET_KEY=YOUR_64_CHAR_HEX
 
-# OpenAI API
-OPENAI_API_KEY=sk-proj-YOUR_KEY_HERE
-STREAMBOT_OPENAI_API_KEY=sk-proj-YOUR_KEY_HERE
+# Get from platform.openai.com
+OPENAI_API_KEY=sk-proj-YOUR_KEY
 
-# Discord Bot
-DISCORD_BOT_TOKEN=your_discord_bot_token
-DISCORD_CLIENT_ID=your_discord_client_id
-DISCORD_CLIENT_SECRET=your_discord_client_secret
-DISCORD_APP_ID=your_discord_app_id
-VITE_DISCORD_CLIENT_ID=your_discord_client_id
+# Get from discord.com/developers
+DISCORD_BOT_TOKEN=YOUR_BOT_TOKEN
+DISCORD_CLIENT_ID=YOUR_CLIENT_ID
+DISCORD_CLIENT_SECRET=YOUR_SECRET
 
-# Session Secrets (generate random strings)
-DISCORD_SESSION_SECRET=$(openssl rand -hex 32)
-STREAMBOT_SESSION_SECRET=$(openssl rand -hex 32)
-
-# Twitch OAuth (for stream bot)
-TWITCH_CLIENT_ID=your_twitch_client_id
-TWITCH_CLIENT_SECRET=your_twitch_client_secret
-
-# YouTube OAuth (optional)
-YOUTUBE_CLIENT_ID=your_youtube_client_id
-YOUTUBE_CLIENT_SECRET=your_youtube_client_secret
-
-# Spotify OAuth (optional)
-SPOTIFY_CLIENT_ID=your_spotify_client_id
-SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
-
-# Plex Token (optional - for dashboard integration)
-PLEX_TOKEN=your_plex_token
-
-# Home Assistant Token (optional - for dashboard integration)
-HOME_ASSISTANT_URL=http://homeassistant:8123
-HOME_ASSISTANT_TOKEN=your_home_assistant_token
-HOME_ASSISTANT_VERIFY_SSL=False
-
-# MinIO S3 Storage
-MINIO_ROOT_USER=admin
-MINIO_ROOT_PASSWORD=$(openssl rand -hex 16)
-
-# VNC Desktop Password
-VNC_PASSWORD=Brs=2729
-
-# Code Server Password
-CODE_SERVER_PASSWORD=Brs=2729
+# For cross-host routing (your local host's Tailscale IP)
+LOCAL_TAILSCALE_IP=100.x.x.x
 ```
 
 Save the file (Ctrl+O, Enter, Ctrl+X).

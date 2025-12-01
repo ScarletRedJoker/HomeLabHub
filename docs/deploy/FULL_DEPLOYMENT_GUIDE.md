@@ -1,212 +1,248 @@
 # HomeLabHub Complete Deployment Guide
 
-A step-by-step walkthrough to deploy your homelab from zero to production.
+A step-by-step walkthrough to deploy your homelab from zero to production across Linode cloud and local Ubuntu host.
 
 ---
 
 ## Table of Contents
 
-1. [Prerequisites](#1-prerequisites)
-2. [Account Setup](#2-account-setup)
+1. [Architecture Overview](#1-architecture-overview)
+2. [Prerequisites & Accounts](#2-prerequisites--accounts)
 3. [Cloudflare DNS Configuration](#3-cloudflare-dns-configuration)
 4. [Tailscale VPN Setup](#4-tailscale-vpn-setup)
-5. [Linode Cloud Server Deployment](#5-linode-cloud-server-deployment)
-6. [Local Ubuntu Host Deployment](#6-local-ubuntu-host-deployment)
+5. [Linode Cloud Deployment](#5-linode-cloud-deployment)
+6. [Local Ubuntu Deployment](#6-local-ubuntu-deployment)
 7. [OAuth App Configuration](#7-oauth-app-configuration)
-8. [Database Initialization](#8-database-initialization)
-9. [Post-Deployment Verification](#9-post-deployment-verification)
-10. [Troubleshooting](#10-troubleshooting)
+8. [Email Setup (SendGrid)](#8-email-setup-sendgrid)
+9. [Database Initialization](#9-database-initialization)
+10. [Post-Deployment Verification](#10-post-deployment-verification)
+11. [Daily Management](#11-daily-management)
+12. [Troubleshooting](#12-troubleshooting)
 
 ---
 
-## 1. Prerequisites
+## 1. Architecture Overview
+
+```
+                         INTERNET
+                            |
+          +-----------------+------------------+
+          |                                    |
+          v                                    v
++---------------------+        +---------------------------+
+|   LINODE SERVER     |        |   LOCAL UBUNTU HOST       |
+|   ($24/month)       |<======>|   (Gaming Priority)       |
+|                     | TAIL-  |                           |
+| - Dashboard         | SCALE  | - Plex Media Server       |
+| - Discord Bot       |  VPN   | - Home Assistant          |
+| - Stream Bot        |        | - MinIO Storage           |
+| - PostgreSQL        |        | - Sunshine GameStream     |
+| - Redis             |        |                           |
+| - n8n Automation    |        | Resources freed:          |
+| - Code-Server       |        | ~6-8 GB RAM               |
+| - Caddy (SSL)       |        | 4-6 CPU cores             |
++---------------------+        +---------------------------+
+```
+
+**Why Split Architecture?**
+- Discord/Twitch webhooks need 24/7 cloud availability
+- Plex/GameStream need local GPU access
+- Your gaming PC stays fast (no background services)
+- Separate failure domains
+
+---
+
+## 2. Prerequisites & Accounts
 
 ### Required Accounts
 
-| Account | Purpose | Sign Up |
-|---------|---------|---------|
-| Cloudflare | DNS & domain management | https://cloudflare.com |
-| Linode/Akamai | Cloud server hosting | https://linode.com |
-| Tailscale | VPN mesh between servers | https://tailscale.com |
-| OpenAI | Jarvis AI assistant | https://platform.openai.com |
-| Discord | Discord bot | https://discord.com/developers |
-| Twitch | Stream bot integration | https://dev.twitch.tv |
-| Google Cloud | YouTube, Calendar, Gmail | https://console.cloud.google.com |
-| Spotify | Stream bot music | https://developer.spotify.com |
-| GitHub | Code repository | https://github.com |
+| Account | Purpose | URL | Cost |
+|---------|---------|-----|------|
+| Cloudflare | DNS management | https://cloudflare.com | Free |
+| Linode | Cloud server | https://linode.com | $24/mo |
+| Tailscale | VPN mesh | https://tailscale.com | Free |
+| OpenAI | Jarvis AI | https://platform.openai.com | Pay-as-you-go |
+| Discord | Bot hosting | https://discord.com/developers | Free |
+| Twitch | Stream bot | https://dev.twitch.tv | Free |
+| Google Cloud | YouTube/Calendar | https://console.cloud.google.com | Free |
+| Spotify | Music integration | https://developer.spotify.com | Free |
+| GitHub | Repository | https://github.com | Free |
 
 ### Hardware Requirements
 
-**Linode Cloud Server (Recommended: Linode 4GB)**
-- 2 CPU cores
-- 4GB RAM
-- 80GB SSD
+**Linode Server** (Shared CPU - Linode 4GB recommended)
+- 2 vCPU cores
+- 4 GB RAM
+- 80 GB SSD
 - Ubuntu 22.04 LTS
 
-**Local Ubuntu Host (Your gaming/streaming PC)**
-- Ubuntu 22.04+ or similar
-- GPU (NVIDIA recommended for Sunshine)
+**Local Ubuntu Host**
+- Ubuntu 22.04+ (or 24.04/25.10)
+- 16+ GB RAM recommended
+- NVIDIA GPU (for Plex transcoding & Sunshine)
 - Sufficient storage for media
-- Always-on or wake-on-LAN capable
 
-### Domain Names
+### Your Domains
 
-You'll need at least one domain. Example setup:
-- `evindrake.net` - Main domain for infrastructure
-- `rig-city.com` - Secondary domain for public-facing bots
-
----
-
-## 2. Account Setup
-
-### 2.1 Linode Server Creation
-
-1. Log into Linode Dashboard
-2. Click **Create Linode**
-3. Select:
-   - **Image**: Ubuntu 22.04 LTS
-   - **Region**: Closest to you (e.g., Newark, Atlanta)
-   - **Plan**: Shared CPU - Linode 4GB ($24/month)
-   - **Label**: `homelab-cloud`
-   - **Root Password**: Save this securely!
-4. Click **Create Linode**
-5. Note the **public IP address** (e.g., `172.234.x.x`)
-
-### 2.2 Cloudflare Domain Setup
-
-1. Log into Cloudflare
-2. Click **Add a Site**
-3. Enter your domain (e.g., `evindrake.net`)
-4. Select **Free** plan
-5. Cloudflare will scan existing DNS records
-6. Update nameservers at your registrar to Cloudflare's:
-   ```
-   ns1.cloudflare.com
-   ns2.cloudflare.com
-   ```
-7. Wait for nameserver propagation (up to 24 hours)
-
-### 2.3 Tailscale Setup
-
-1. Go to https://login.tailscale.com
-2. Sign up with Google, GitHub, or email
-3. Create or join a tailnet
-4. Go to **Settings > Keys** and create an auth key:
-   - **Reusable**: Yes
-   - **Ephemeral**: No
-   - **Tags**: (optional)
-5. Save this auth key - you'll use it on both servers
+Based on your Cloudflare setup, you have:
+- `evindrake.com` - General use
+- `evindrake.net` - Infrastructure services
+- `rig-city.com` - Bot and streaming services
+- `scarletredjoker.com` - Static website
 
 ---
 
 ## 3. Cloudflare DNS Configuration
 
-### 3.1 Add DNS Records
+### 3.1 Domain Overview
 
-Go to **DNS > Records** and add these A records pointing to your **Linode public IP**:
+| Domain | Primary Use |
+|--------|-------------|
+| `evindrake.net` | Dashboard, n8n, Code-Server, Plex, Home Assistant |
+| `rig-city.com` | Discord Bot, Stream Bot |
+| `scarletredjoker.com` | Static portfolio site |
+| `evindrake.com` | Email/SendGrid, general |
 
-| Type | Name | Content | Proxy | TTL |
-|------|------|---------|-------|-----|
-| A | `@` | `YOUR_LINODE_IP` | DNS only (gray) | Auto |
-| A | `dash` | `YOUR_LINODE_IP` | DNS only (gray) | Auto |
-| A | `bot` | `YOUR_LINODE_IP` | DNS only (gray) | Auto |
-| A | `stream` | `YOUR_LINODE_IP` | DNS only (gray) | Auto |
-| A | `n8n` | `YOUR_LINODE_IP` | DNS only (gray) | Auto |
-| A | `code` | `YOUR_LINODE_IP` | DNS only (gray) | Auto |
-| A | `plex` | `YOUR_LINODE_IP` | DNS only (gray) | Auto |
-| A | `home` | `YOUR_LINODE_IP` | DNS only (gray) | Auto |
+### 3.2 Required DNS Records
 
-**Important**: Keep proxy **OFF** (gray cloud) - Caddy handles SSL directly.
+Go to **Cloudflare > DNS > Records** for each domain.
 
-### 3.2 For Multiple Domains
+**IMPORTANT**: Set Proxy to **DNS only** (gray cloud) for all records - Caddy handles SSL directly.
 
-If using `rig-city.com` for bots:
+#### evindrake.net (Infrastructure)
 
-| Type | Name | Content | Proxy | TTL |
-|------|------|---------|-------|-----|
-| A | `bot` | `YOUR_LINODE_IP` | DNS only | Auto |
-| A | `stream` | `YOUR_LINODE_IP` | DNS only | Auto |
+| Type | Name | Content | Proxy |
+|------|------|---------|-------|
+| A | `@` | `YOUR_LINODE_IP` | DNS only |
+| A | `dash` | `YOUR_LINODE_IP` | DNS only |
+| A | `n8n` | `YOUR_LINODE_IP` | DNS only |
+| A | `code` | `YOUR_LINODE_IP` | DNS only |
+| A | `plex` | `YOUR_LINODE_IP` | DNS only |
+| A | `home` | `YOUR_LINODE_IP` | DNS only |
+| A | `vnc` | `YOUR_LINODE_IP` | DNS only |
 
-### 3.3 SSL/TLS Settings
+#### rig-city.com (Bots)
+
+| Type | Name | Content | Proxy |
+|------|------|---------|-------|
+| A | `@` | `YOUR_LINODE_IP` | DNS only |
+| A | `bot` | `YOUR_LINODE_IP` | DNS only |
+| A | `stream` | `YOUR_LINODE_IP` | DNS only |
+
+#### scarletredjoker.com (Static Site)
+
+| Type | Name | Content | Proxy |
+|------|------|---------|-------|
+| A | `@` | `YOUR_LINODE_IP` | DNS only |
+| A | `www` | `YOUR_LINODE_IP` | DNS only |
+
+### 3.3 SSL/TLS Settings (All Domains)
 
 1. Go to **SSL/TLS > Overview**
-2. Set mode to **Full (strict)**
-3. Go to **Edge Certificates**
+2. Set encryption mode to **Full** (not Full Strict, since Caddy generates its own certs)
+3. Go to **SSL/TLS > Edge Certificates**
 4. Enable **Always Use HTTPS**
 
-### 3.4 Verify DNS
+### 3.4 Verify DNS Propagation
 
 ```bash
 # Test from any computer
 nslookup dash.evindrake.net
 nslookup bot.rig-city.com
+nslookup scarletredjoker.com
 
-# Should return your Linode IP
+# All should return your Linode IP
 ```
 
 ---
 
 ## 4. Tailscale VPN Setup
 
-### 4.1 Install on Linode
+Tailscale creates a secure mesh VPN between your Linode and local host.
 
-SSH into your Linode:
+### 4.1 Create Tailscale Account
+
+1. Go to https://login.tailscale.com
+2. Sign up (Google, GitHub, or email)
+3. Go to **Settings > Keys**
+4. Click **Generate auth key**
+   - Reusable: Yes
+   - Ephemeral: No
+   - Expiration: 90 days
+5. **Copy and save this key** - you'll need it on both servers
+
+### 4.2 Install on Linode
+
 ```bash
 ssh root@YOUR_LINODE_IP
-```
 
-Install Tailscale:
-```bash
+# Install Tailscale
 curl -fsSL https://tailscale.com/install.sh | sh
-```
 
-Connect to your tailnet:
-```bash
-sudo tailscale up --authkey=tskey-auth-YOUR_KEY_HERE --hostname=linode-homelab
-```
+# Connect (replace with your auth key)
+sudo tailscale up --authkey=tskey-auth-XXXXX --hostname=homelab-linode
 
-Get the Tailscale IP:
-```bash
+# Get your Tailscale IP
 tailscale ip -4
-# Example output: 100.100.100.1
+# Example: 100.64.0.1
 ```
 
-### 4.2 Install on Local Ubuntu Host
+### 4.3 Install on Local Ubuntu
 
 ```bash
+# Install Tailscale
 curl -fsSL https://tailscale.com/install.sh | sh
-sudo tailscale up --authkey=tskey-auth-YOUR_KEY_HERE --hostname=local-homelab
-```
 
-Get the Tailscale IP:
-```bash
+# Connect
+sudo tailscale up --authkey=tskey-auth-XXXXX --hostname=homelab-local
+
+# Get your Tailscale IP
 tailscale ip -4
-# Example output: 100.100.100.2
+# Example: 100.64.0.2
 ```
 
-### 4.3 Verify Connection
+### 4.4 Verify Connection
 
-From Linode, ping local host:
 ```bash
-ping 100.100.100.2
+# From Linode, ping local host
+ping 100.64.0.2
+
+# From local, ping Linode
+ping 100.64.0.1
+
+# Check status
+tailscale status
 ```
 
-From local, ping Linode:
-```bash
-ping 100.100.100.1
-```
-
-Both should succeed. Note these IPs - you'll need them!
+**Note these IPs!**
+- Linode Tailscale IP: `100.64.0.1` (example)
+- Local Tailscale IP: `100.64.0.2` (example)
 
 ---
 
-## 5. Linode Cloud Server Deployment
+## 5. Linode Cloud Deployment
 
-### 5.1 Install Docker
+### 5.1 Create Linode Server
+
+1. Log into https://cloud.linode.com
+2. Click **Create Linode**
+3. Select:
+   - **Image**: Ubuntu 22.04 LTS
+   - **Region**: Closest to you (e.g., Newark, Atlanta)
+   - **Plan**: Shared CPU - Linode 4GB ($24/month)
+   - **Label**: `homelab-cloud`
+   - **Root Password**: Strong password (save it!)
+4. Click **Create Linode**
+5. Note the **public IP address**
+
+### 5.2 Initial Server Setup
 
 ```bash
 # SSH into Linode
 ssh root@YOUR_LINODE_IP
+
+# Update system
+apt update && apt upgrade -y
 
 # Install Docker
 curl -fsSL https://get.docker.com | sh
@@ -216,7 +252,7 @@ docker --version
 docker compose version
 ```
 
-### 5.2 Clone Repository
+### 5.3 Clone Repository
 
 ```bash
 mkdir -p /opt/homelab
@@ -225,88 +261,78 @@ git clone https://github.com/YOUR_USERNAME/HomeLabHub.git
 cd HomeLabHub
 ```
 
-### 5.3 Create Environment File
+### 5.4 Configure Environment
 
 ```bash
+# Create .env from template
 cp .env.example .env
 chmod 600 .env
+
+# Edit with your values
 nano .env
 ```
 
-### 5.4 Configure .env (Linode)
-
-Fill in these **required** values:
+**Required .env values for Linode:**
 
 ```bash
-# ═══════════════════════════════════════════════════════════════
-# CORE - Generate with: openssl rand -hex 16
-# ═══════════════════════════════════════════════════════════════
-POSTGRES_PASSWORD=GENERATE_NEW_PASSWORD
-DISCORD_DB_PASSWORD=GENERATE_NEW_PASSWORD
-STREAMBOT_DB_PASSWORD=GENERATE_NEW_PASSWORD
-JARVIS_DB_PASSWORD=GENERATE_NEW_PASSWORD
+# Core (generate with: openssl rand -hex 16)
+POSTGRES_PASSWORD=YOUR_GENERATED_PASSWORD
+DISCORD_DB_PASSWORD=YOUR_GENERATED_PASSWORD
+STREAMBOT_DB_PASSWORD=YOUR_GENERATED_PASSWORD
+JARVIS_DB_PASSWORD=YOUR_GENERATED_PASSWORD
 
 # Dashboard login
 WEB_USERNAME=admin
-WEB_PASSWORD=YOUR_DASHBOARD_PASSWORD
+WEB_PASSWORD=YOUR_SECURE_PASSWORD
 
 # Session secrets (generate with: openssl rand -hex 32)
-SESSION_SECRET=GENERATE_64_CHAR_HEX
-SECRET_KEY=GENERATE_64_CHAR_HEX
+SESSION_SECRET=YOUR_64_CHAR_HEX
+SECRET_KEY=YOUR_64_CHAR_HEX
 
-# ═══════════════════════════════════════════════════════════════
-# AI - Required for Jarvis
-# ═══════════════════════════════════════════════════════════════
-OPENAI_API_KEY=sk-proj-YOUR_OPENAI_KEY
+# AI (required for Jarvis)
+OPENAI_API_KEY=sk-proj-YOUR_KEY
 
-# ═══════════════════════════════════════════════════════════════
-# DISCORD BOT - From Discord Developer Portal
-# ═══════════════════════════════════════════════════════════════
+# Discord Bot (from Discord Developer Portal)
 DISCORD_BOT_TOKEN=YOUR_BOT_TOKEN
 DISCORD_CLIENT_ID=YOUR_CLIENT_ID
-DISCORD_CLIENT_SECRET=YOUR_CLIENT_SECRET
+DISCORD_CLIENT_SECRET=YOUR_SECRET
 
-# ═══════════════════════════════════════════════════════════════
-# CROSS-HOST ROUTING - Your LOCAL machine's Tailscale IP
-# ═══════════════════════════════════════════════════════════════
-LOCAL_TAILSCALE_IP=100.100.100.2
+# Cross-host routing (YOUR LOCAL HOST's Tailscale IP)
+LOCAL_TAILSCALE_IP=100.64.0.2
 
-# ═══════════════════════════════════════════════════════════════
-# CODE SERVER
-# ═══════════════════════════════════════════════════════════════
-CODE_SERVER_PASSWORD=YOUR_CODE_SERVER_PASSWORD
+# Code Server
+CODE_SERVER_PASSWORD=YOUR_PASSWORD
 ```
 
-### 5.5 Generate Missing Secrets
-
-Quick way to generate passwords:
+**Quick secret generation:**
 ```bash
-# Generate a 16-character password
+# Generate 16-char password
 openssl rand -hex 16
 
-# Generate a 32-character session secret
+# Generate 32-char session secret
 openssl rand -hex 32
 ```
 
-### 5.6 Run Bootstrap
+### 5.5 Run Bootstrap
 
 ```bash
+# Make executable and run
 chmod +x deploy/scripts/bootstrap.sh
 ./deploy/scripts/bootstrap.sh --role cloud --generate-secrets
 ```
 
-Or start manually:
+Or deploy manually:
 ```bash
 docker compose up -d
 ```
 
-### 5.7 Verify Cloud Services
+### 5.6 Verify Deployment
 
 ```bash
-# Check all containers
+# Check all containers are running
 docker compose ps
 
-# Should see these healthy:
+# Should show healthy:
 # - caddy
 # - homelab-postgres
 # - homelab-redis
@@ -316,31 +342,36 @@ docker compose ps
 # - n8n
 # - code-server
 
-# Check logs
-docker compose logs -f homelab-dashboard
+# Check logs for errors
+docker compose logs -f --tail=100
 ```
 
 ---
 
-## 6. Local Ubuntu Host Deployment
+## 6. Local Ubuntu Deployment
 
-### 6.1 Install Docker
+### 6.1 Install Prerequisites
 
 ```bash
+# Install Docker
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER
 newgrp docker
+
+# Verify
+docker --version
+docker compose version
 ```
 
 ### 6.2 Clone Repository
 
 ```bash
-cd /home/evin/contain
+cd /home/$USER/contain
 git clone https://github.com/YOUR_USERNAME/HomeLabHub.git
 cd HomeLabHub
 ```
 
-### 6.3 Create Environment File
+### 6.3 Configure Environment
 
 ```bash
 cp .env.example .env
@@ -348,64 +379,53 @@ chmod 600 .env
 nano .env
 ```
 
-### 6.4 Configure .env (Local)
-
-Fill in these values:
+**Required .env values for Local:**
 
 ```bash
-# ═══════════════════════════════════════════════════════════════
-# MINIO STORAGE
-# ═══════════════════════════════════════════════════════════════
+# MinIO Storage
 MINIO_ROOT_USER=admin
 MINIO_ROOT_PASSWORD=YOUR_MINIO_PASSWORD
 
-# ═══════════════════════════════════════════════════════════════
-# PLEX MEDIA SERVER
-# ═══════════════════════════════════════════════════════════════
-# Get claim token from: https://plex.tv/claim (expires in 4 minutes!)
-PLEX_CLAIM=claim-XXXXXX
+# Plex (get claim from https://plex.tv/claim - expires in 4 minutes!)
+PLEX_CLAIM=claim-XXXXX
 PLEX_MEDIA_PATH=/path/to/your/media
 
-# ═══════════════════════════════════════════════════════════════
-# SUNSHINE GAMESTREAM
-# ═══════════════════════════════════════════════════════════════
+# Sunshine GameStream
 SUNSHINE_USER=admin
 SUNSHINE_PASS=YOUR_SUNSHINE_PASSWORD
 
-# ═══════════════════════════════════════════════════════════════
-# LINODE CONNECTION
-# ═══════════════════════════════════════════════════════════════
-LINODE_TAILSCALE_IP=100.100.100.1
+# Linode's Tailscale IP (for cross-host connections)
+LINODE_TAILSCALE_IP=100.64.0.1
 ```
 
-### 6.5 Prepare Media Directories
+### 6.4 Prepare Directories
 
 ```bash
-# Create directories if needed
+# Create media directories
 sudo mkdir -p /data/plex/media
 sudo chown -R $USER:$USER /data/plex
 
-# If using NAS
+# NAS mount point (if using)
 sudo mkdir -p /mnt/nas
 ```
 
-### 6.6 Run Bootstrap
+### 6.5 Run Bootstrap
 
 ```bash
 ./deploy/scripts/bootstrap.sh --role local
 ```
 
-Or start manually:
+Or deploy manually:
 ```bash
 docker compose -f compose.local.yml up -d
 ```
 
-### 6.7 Verify Local Services
+### 6.6 Verify Deployment
 
 ```bash
 docker compose -f compose.local.yml ps
 
-# Should see:
+# Should show:
 # - homelab-minio
 # - plex-server
 # - homeassistant
@@ -419,17 +439,15 @@ docker compose -f compose.local.yml ps
 ### 7.1 Discord Application
 
 1. Go to https://discord.com/developers/applications
-2. Click **New Application** → Name it "HomeLabHub Bot"
-3. Go to **Bot** → Click **Add Bot**
-4. Copy the **Token** → `DISCORD_BOT_TOKEN`
-5. Go to **OAuth2 > General**:
+2. Click **New Application** → Name: "HomeLabHub Bot"
+3. Go to **Bot** section:
+   - Click **Add Bot**
+   - Copy **Token** → `DISCORD_BOT_TOKEN`
+   - Enable intents: Presence, Server Members, Message Content
+4. Go to **OAuth2 > General**:
    - Copy **Client ID** → `DISCORD_CLIENT_ID`
    - Copy **Client Secret** → `DISCORD_CLIENT_SECRET`
-6. Add **Redirect URL**: `https://bot.rig-city.com/auth/discord/callback`
-7. Go to **Bot** → Enable these intents:
-   - Presence Intent
-   - Server Members Intent
-   - Message Content Intent
+   - Add Redirect URL: `https://bot.rig-city.com/auth/discord/callback`
 
 ### 7.2 Twitch Application
 
@@ -440,30 +458,28 @@ docker compose -f compose.local.yml ps
    - **OAuth Redirect URL**: `https://stream.rig-city.com/api/auth/twitch/callback`
    - **Category**: Chat Bot
 4. Copy **Client ID** → `TWITCH_CLIENT_ID`
-5. Generate and copy **Client Secret** → `TWITCH_CLIENT_SECRET`
+5. Generate **Client Secret** → `TWITCH_CLIENT_SECRET`
 
-### 7.3 YouTube (Google Cloud)
+### 7.3 Google Cloud (YouTube/Calendar/Gmail)
 
 1. Go to https://console.cloud.google.com
-2. Create a new project: "HomeLabHub"
-3. Go to **APIs & Services > Library**
-4. Enable these APIs:
+2. Create new project: "HomeLabHub"
+3. **APIs & Services > Library** - Enable:
    - YouTube Data API v3
    - Google Calendar API
    - Gmail API
-5. Go to **APIs & Services > Credentials**
-6. Click **Create Credentials > OAuth client ID**
-7. Configure consent screen first:
+4. **APIs & Services > OAuth consent screen**:
    - User Type: External
    - App name: HomeLabHub
    - Add scopes for YouTube, Calendar, Gmail
-8. Create OAuth client:
-   - **Type**: Web application
-   - **Authorized redirect URIs**:
+5. **APIs & Services > Credentials**:
+   - Create OAuth 2.0 Client ID
+   - Type: Web application
+   - Redirect URIs:
      - `https://stream.rig-city.com/api/auth/youtube/callback`
      - `https://dash.evindrake.net/api/google/callback`
-9. Copy **Client ID** → `YOUTUBE_CLIENT_ID`
-10. Copy **Client Secret** → `YOUTUBE_CLIENT_SECRET`
+6. Copy **Client ID** → `YOUTUBE_CLIENT_ID`
+7. Copy **Client Secret** → `YOUTUBE_CLIENT_SECRET`
 
 ### 7.4 Spotify Application
 
@@ -475,41 +491,87 @@ docker compose -f compose.local.yml ps
 4. Copy **Client ID** → `SPOTIFY_CLIENT_ID`
 5. Copy **Client Secret** → `SPOTIFY_CLIENT_SECRET`
 
-### 7.5 Update .env with OAuth Credentials
+### 7.5 Update .env and Restart
 
-After creating all apps, update your Linode `.env`:
-
+After creating all OAuth apps:
 ```bash
 nano /opt/homelab/HomeLabHub/.env
+# Add all OAuth credentials
 
-# Add all the OAuth credentials you just created
-```
-
-Then restart services:
-```bash
-cd /opt/homelab/HomeLabHub
 docker compose down
 docker compose up -d
 ```
 
 ---
 
-## 8. Database Initialization
+## 8. Email Setup (SendGrid)
 
-### 8.1 Automatic Initialization
+If you want to send emails from the dashboard (notifications, alerts):
 
-The bootstrap script handles this automatically. Databases are created on first run via `config/postgres-init/` scripts.
+### 8.1 Create SendGrid Account
 
-### 8.2 Verify Databases
+1. Go to https://sendgrid.com and sign up
+2. Verify your email address
+
+### 8.2 Authenticate Your Domain
+
+1. Go to **Settings > Sender Authentication**
+2. Click **Authenticate Your Domain**
+3. Select DNS host: Cloudflare
+4. Enter domain: `evindrake.com`
+
+### 8.3 Add DNS Records in Cloudflare
+
+SendGrid will provide CNAME records. Add them to Cloudflare:
+
+**CRITICAL**: Set Proxy to **DNS only** (gray cloud) - SendGrid validation fails with proxied records!
+
+| Type | Name | Content | Proxy |
+|------|------|---------|-------|
+| CNAME | `em2867` | `u57667222.wl223.sendgrid.net` | **DNS only** |
+| CNAME | `s1._domainkey` | `s1.domainkey.u57667222.wl223.sendgrid.net` | **DNS only** |
+| CNAME | `s2._domainkey` | `s2.domainkey.u57667222.wl223.sendgrid.net` | **DNS only** |
+| CNAME | `url3286` | `sendgrid.net` | **DNS only** |
+| CNAME | `57667222` | `sendgrid.net` | **DNS only** |
+| TXT | `_dmarc` | `v=DMARC1; p=none;` | DNS only |
+
+### 8.4 Wait for Verification
+
+DNS propagation can take up to 48 hours. Check status in SendGrid dashboard.
+
+### 8.5 Get API Key
+
+1. Go to **Settings > API Keys**
+2. Click **Create API Key**
+3. Name: "HomeLabHub"
+4. Permissions: Full Access (or restricted to Mail Send)
+5. Copy the key → `SENDGRID_API_KEY`
+
+### 8.6 Update .env
 
 ```bash
-# Connect to PostgreSQL
+EMAIL_PROVIDER=sendgrid
+SENDGRID_API_KEY=SG.xxxxxxxxxxxx
+EMAIL_FROM=noreply@evindrake.com
+```
+
+---
+
+## 9. Database Initialization
+
+### 9.1 Automatic Initialization
+
+The bootstrap script creates databases automatically via `config/postgres-init/` scripts.
+
+### 9.2 Verify Databases
+
+```bash
 docker exec -it homelab-postgres psql -U postgres
 
 # List databases
 \l
 
-# You should see:
+# Expected databases:
 # - postgres (default)
 # - ticketbot (Discord bot)
 # - streambot (Stream bot)
@@ -519,23 +581,23 @@ docker exec -it homelab-postgres psql -U postgres
 \q
 ```
 
-### 8.3 Run Migrations (if needed)
+### 9.3 Run Migrations
 
 ```bash
 # Dashboard migrations
 docker exec homelab-dashboard flask db upgrade
 
-# Or use the homelab script
+# Or use homelab script
 ./homelab db migrate
 ```
 
 ---
 
-## 9. Post-Deployment Verification
+## 10. Post-Deployment Verification
 
-### 9.1 Service Access Checklist
+### 10.1 Service Access Checklist
 
-Test each service in your browser:
+Open each URL in your browser:
 
 | Service | URL | Expected |
 |---------|-----|----------|
@@ -546,208 +608,213 @@ Test each service in your browser:
 | Code Server | https://code.evindrake.net | VS Code |
 | Plex | https://plex.evindrake.net | Plex Web |
 | Home Assistant | https://home.evindrake.net | HA dashboard |
+| Static Site | https://scarletredjoker.com | Website |
 
-### 9.2 Cross-Host Routing Test
+### 10.2 Cross-Host Routing Test
 
+From Linode, verify local services are reachable:
 ```bash
-# From Linode, test local service access
-curl -I http://100.100.100.2:32400  # Plex
-curl -I http://100.100.100.2:8123   # Home Assistant
-curl -I http://100.100.100.2:47990  # Sunshine
+curl -I http://100.64.0.2:32400   # Plex
+curl -I http://100.64.0.2:8123    # Home Assistant
+curl -I http://100.64.0.2:47990   # Sunshine
 ```
 
-### 9.3 Discord Bot Test
+### 10.3 Discord Bot Test
 
-1. Invite bot to your server using:
+1. Generate invite URL:
    ```
    https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=8&scope=bot%20applications.commands
    ```
-2. In Discord, type `/ping` or `/ticket`
+2. Invite to your server
+3. Test commands: `/ping`, `/ticket`
 
-### 9.4 Health Check
+### 10.4 Health Check
 
 ```bash
-# On Linode
 cd /opt/homelab/HomeLabHub
 ./homelab health
 ./homelab status
 ```
 
-### 9.5 View Logs
+---
+
+## 11. Daily Management
+
+### Linode Commands
 
 ```bash
-# All logs
-./homelab logs
+cd /opt/homelab/HomeLabHub
 
-# Specific service
-./homelab logs dashboard
-./homelab logs discord-bot
+./homelab status          # Check all services
+./homelab health          # Health check
+./homelab logs            # View all logs
+./homelab logs dashboard  # Specific service logs
+./homelab restart         # Restart all
+./homelab restart caddy   # Restart one service
+./homelab db backup       # Backup database
+```
 
-# Follow logs in real-time
-docker compose logs -f
+### Local Ubuntu Commands
+
+```bash
+cd /home/$USER/contain/HomeLabHub
+
+docker compose -f compose.local.yml ps        # Status
+docker compose -f compose.local.yml logs -f   # Follow logs
+docker compose -f compose.local.yml restart   # Restart
+```
+
+### Update Deployment
+
+```bash
+# Pull latest code
+git pull origin main
+
+# Rebuild and restart
+docker compose down
+docker compose build --no-cache
+docker compose up -d
 ```
 
 ---
 
-## 10. Troubleshooting
+## 12. Troubleshooting
 
-### 10.1 Common Issues
+### Container Not Starting
 
-#### "Connection refused" errors
 ```bash
-# Check if containers are running
-docker compose ps
+# Check container logs
+docker logs container-name
 
-# Restart all services
-docker compose down && docker compose up -d
+# Check if port is in use
+netstat -tlnp | grep PORT
+
+# Restart specific container
+docker compose restart container-name
 ```
 
-#### SSL Certificate Issues
+### SSL Certificate Issues
+
 ```bash
 # Check Caddy logs
 docker logs caddy
 
-# Force certificate renewal
+# Common fixes:
+# 1. Verify DNS points to Linode IP
+# 2. Ensure ports 80/443 are open
+# 3. Wait for DNS propagation
+
+# Force renewal
 docker compose restart caddy
 ```
 
-#### Database Connection Errors
+### Cross-Host Routing Not Working
+
 ```bash
-# Check PostgreSQL is healthy
-docker logs homelab-postgres
-
-# Verify database exists
-docker exec homelab-postgres psql -U postgres -c "\l"
-
-# Reset a specific database
-docker exec homelab-postgres psql -U postgres -c "DROP DATABASE IF EXISTS ticketbot; CREATE DATABASE ticketbot OWNER ticketbot;"
-```
-
-#### Tailscale Not Connecting
-```bash
-# Check status
+# 1. Verify Tailscale connection
 tailscale status
 
-# Re-authenticate
-sudo tailscale up --reset
-```
+# 2. Check LOCAL_TAILSCALE_IP in .env
+grep LOCAL_TAILSCALE_IP .env
 
-#### Cross-Host Routing Not Working
-```bash
-# Verify LOCAL_TAILSCALE_IP in .env on Linode
-grep LOCAL_TAILSCALE_IP /opt/homelab/HomeLabHub/.env
+# 3. Test connectivity
+ping 100.64.0.2
 
-# Restart Caddy to pick up env changes
+# 4. Restart Caddy
 docker compose restart caddy
-
-# Check Caddy can reach local host
-docker exec caddy ping -c 3 100.100.100.2
 ```
 
-#### Empty Logs
+### Database Connection Errors
+
 ```bash
-# Make sure services are actually running
+# Check PostgreSQL status
+docker logs homelab-postgres
+
+# Verify databases exist
+docker exec homelab-postgres psql -U postgres -c "\l"
+
+# Check connection string
+grep DATABASE_URL .env
+```
+
+### Empty Logs
+
+```bash
+# Ensure containers are running
 docker compose ps
 
-# Check for startup errors
+# View recent logs
 docker compose logs --tail=100
 ```
 
-### 10.2 Reset Everything
+### SendGrid DNS Validation Failing
 
-If you need to start fresh:
+1. In Cloudflare, ensure all SendGrid CNAME records have **Proxy: DNS only** (gray cloud)
+2. Wait up to 48 hours for propagation
+3. Re-verify in SendGrid dashboard
+
+### Reset Everything
 
 ```bash
-# Stop everything
-docker compose down -v  # -v removes volumes!
-
-# Remove all containers and images
+# Nuclear option - removes all data!
+docker compose down -v
 docker system prune -a
 
-# Re-run bootstrap
+# Re-deploy
 ./deploy/scripts/bootstrap.sh --role cloud --generate-secrets
-```
-
-### 10.3 Useful Commands
-
-```bash
-# Check disk space
-df -h
-
-# Check memory
-free -h
-
-# Check Docker resource usage
-docker stats
-
-# Enter a container
-docker exec -it homelab-dashboard bash
-
-# View container logs
-docker logs -f container-name
-
-# Restart single service
-docker compose restart service-name
 ```
 
 ---
 
-## Quick Reference Card
-
-### Linode Commands
-```bash
-cd /opt/homelab/HomeLabHub
-./homelab status          # Check all services
-./homelab health          # Health check
-./homelab logs            # View logs
-./homelab restart         # Restart all
-./homelab restart caddy   # Restart one service
-```
-
-### Local Ubuntu Commands
-```bash
-cd /home/evin/contain/HomeLabHub
-docker compose -f compose.local.yml ps
-docker compose -f compose.local.yml logs -f
-docker compose -f compose.local.yml restart
-```
+## Quick Reference
 
 ### Generate Secrets
 ```bash
-openssl rand -hex 16   # Password
-openssl rand -hex 32   # Session secret
+openssl rand -hex 16   # 16-char password
+openssl rand -hex 32   # 32-char session secret
 ```
 
 ### Tailscale
 ```bash
-tailscale status       # Check connection
-tailscale ip -4        # Get your IP
+tailscale status       # Check connections
+tailscale ip -4        # Get Tailscale IP
 sudo tailscale up      # Reconnect
 ```
+
+### Service URLs
+
+| Service | URL |
+|---------|-----|
+| Dashboard | https://dash.evindrake.net |
+| Discord Bot | https://bot.rig-city.com |
+| Stream Bot | https://stream.rig-city.com |
+| n8n | https://n8n.evindrake.net |
+| Code Server | https://code.evindrake.net |
+| Plex | https://plex.evindrake.net |
+| Home Assistant | https://home.evindrake.net |
 
 ---
 
 ## Summary Checklist
 
-- [ ] Linode server created
-- [ ] Cloudflare account with domains added
-- [ ] DNS A records pointing to Linode IP
-- [ ] Tailscale installed on both servers
+- [ ] Linode server created with Ubuntu 22.04
+- [ ] Cloudflare DNS configured (all 4 domains)
+- [ ] DNS proxy OFF (gray cloud) for all records
+- [ ] Tailscale installed and connected on both servers
 - [ ] Tailscale IPs noted and added to .env
 - [ ] Linode .env configured with all secrets
 - [ ] Cloud services deployed and healthy
-- [ ] Local .env configured
+- [ ] Local .env configured  
 - [ ] Local services deployed and healthy
-- [ ] Discord app created with OAuth
-- [ ] Twitch app created with OAuth
-- [ ] Google Cloud project with YouTube/Calendar/Gmail APIs
-- [ ] Spotify app created with OAuth
+- [ ] Discord OAuth app created
+- [ ] Twitch OAuth app created
+- [ ] Google Cloud project with APIs enabled
+- [ ] Spotify OAuth app created
+- [ ] SendGrid domain verified (if using email)
 - [ ] All services accessible via HTTPS
-- [ ] Cross-host routing working (Plex, Home Assistant)
-- [ ] Discord bot responding to commands
+- [ ] Cross-host routing working
+- [ ] Discord bot responding
 
----
+**Your homelab is now fully operational!**
 
-**Congratulations!** Your homelab is now fully deployed and operational.
-
-For ongoing management, use the Dashboard at https://dash.evindrake.net
+Dashboard: https://dash.evindrake.net

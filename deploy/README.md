@@ -1,5 +1,10 @@
 # Nebula Command - Split Deployment Guide
 
+> **See Full Guide**: For complete step-by-step instructions, see:
+> **[docs/deploy/FULL_DEPLOYMENT_GUIDE.md](../docs/deploy/FULL_DEPLOYMENT_GUIDE.md)**
+
+---
+
 This guide explains how to split your homelab between your local Ubuntu gaming machine and a Linode cloud server for optimal game streaming performance.
 
 ## Architecture Overview

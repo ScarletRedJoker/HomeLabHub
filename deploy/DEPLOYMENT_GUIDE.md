@@ -1,5 +1,10 @@
 # Multi-Platform Deployment Guide
 
+> **See Full Guide**: For the latest step-by-step instructions, see:
+> **[docs/deploy/FULL_DEPLOYMENT_GUIDE.md](../docs/deploy/FULL_DEPLOYMENT_GUIDE.md)**
+
+---
+
 ## Nebula Command - Split Architecture Deployment
 
 This comprehensive guide covers deploying your homelab across two hosts: a Linode cloud server for always-on services and your local Ubuntu machine optimized for gaming and streaming.
