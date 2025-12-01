@@ -57,20 +57,12 @@ The core system relies on Docker Compose for orchestrating services across a spl
 
 ## Deployment
 
-**Full Deployment Guide**: See `docs/deploy/FULL_DEPLOYMENT_GUIDE.md` for complete step-by-step instructions covering:
-- Cloudflare DNS configuration
-- Tailscale VPN mesh setup
-- Linode cloud server deployment
-- Local Ubuntu host deployment
-- OAuth app configuration (Discord, Twitch, YouTube, Spotify)
-- Database initialization
-- Troubleshooting
+**See [`docs/deploy/FULL_DEPLOYMENT_GUIDE.md`](docs/deploy/FULL_DEPLOYMENT_GUIDE.md)** - the single source of truth for all deployment instructions.
 
-**Quick Start:**
 ```bash
-# Linode (cloud)
+# Cloud (Linode)
 ./deploy/scripts/bootstrap.sh --role cloud --generate-secrets
 
-# Local Ubuntu
+# Local (Ubuntu)
 ./deploy/scripts/bootstrap.sh --role local
 ```
