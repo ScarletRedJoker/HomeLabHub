@@ -210,7 +210,7 @@ You should see all 15 services running:
 Visit these URLs in your browser (Caddy will auto-generate SSL certificates):
 
 1. **Dashboard**: https://host.evindrake.net
-   - Login: evin / Brs=2729
+   - Login: Use credentials from your .env file (WEB_USERNAME / WEB_PASSWORD)
    - Should show Jarvis AI assistant
 
 2. **Discord Bot**: https://bot.rig-city.com

@@ -9,7 +9,7 @@ The Nebula Command Dashboard is a web-based interface designed to manage a homel
 - Project location: `/home/evin/contain/HomeLabHub`
 - Development: Edit in cloud IDE → Push to GitHub → Pull on Ubuntu server
 - All services use shared PostgreSQL (homelab-postgres) with individual databases
-- Main password: `Brs=2729` (used for most services)
+- Passwords: Stored securely in .env file (never commit to git)
 - Managed domains: rig-city.com, evindrake.net, scarletredjoker.com
 
 ## System Architecture

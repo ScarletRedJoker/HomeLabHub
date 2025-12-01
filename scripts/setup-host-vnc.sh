@@ -44,13 +44,17 @@ if [ ! -d "/opt/novnc" ]; then
 fi
 
 echo -e "\n${GREEN}[3/5] Configuring VNC Password...${NC}"
-# Set VNC password for user
-sudo -u "$VNC_USER" bash -c '
+# Set VNC password for user - read from env or prompt
+VNC_PASSWORD="${VNC_PASSWORD:-}"
+if [ -z "$VNC_PASSWORD" ]; then
+    read -sp "Enter VNC password: " VNC_PASSWORD
+    echo ""
+fi
+sudo -u "$VNC_USER" bash -c "
     mkdir -p ~/.vnc
-    # Use the standard homelab password
-    echo "Brs=2729" | vncpasswd -f > ~/.vnc/passwd
+    echo '$VNC_PASSWORD' | vncpasswd -f > ~/.vnc/passwd
     chmod 600 ~/.vnc/passwd
-'
+"
 
 echo -e "\n${GREEN}[4/5] Creating VNC Startup Script...${NC}"
 # Create xstartup script
@@ -132,7 +136,7 @@ echo -e "${GREEN}================================================${NC}"
 echo ""
 echo "  VNC Server: localhost:${VNC_PORT} (display ${VNC_DISPLAY})"
 echo "  noVNC Web:  http://localhost:${NOVNC_PORT}/vnc.html"
-echo "  Password:   Brs=2729"
+echo "  Password:   (the password you entered during setup)"
 echo ""
 echo "  Start services:"
 echo "    sudo systemctl start vncserver@1"
