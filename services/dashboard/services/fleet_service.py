@@ -33,7 +33,7 @@ class FleetManager:
             'role': 'local',
             'ssh_user': os.environ.get('FLEET_LOCAL_SSH_USER', 'evin'),
             'ssh_port': 22,
-            'description': 'Local gaming/media server with Plex, Home Assistant, MinIO',
+            'description': 'Local gaming/media server with Plex, Home Assistant, MinIO, Sunshine GameStream',
         },
     }
     
@@ -307,7 +307,7 @@ class FleetManager:
         
         return False, f'Command not in whitelist. Allowed commands: {", ".join(self.ALLOWED_COMMANDS[:10])}...'
     
-    def execute_command(self, host_id: str, command: str, timeout: int = None, bypass_whitelist: bool = False) -> Dict:
+    def execute_command(self, host_id: str, command: str, timeout: Optional[int] = None, bypass_whitelist: bool = False) -> Dict:
         """
         Execute a shell command on a remote host.
         

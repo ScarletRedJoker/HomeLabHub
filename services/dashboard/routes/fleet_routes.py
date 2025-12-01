@@ -131,7 +131,7 @@ def execute_command(host_id):
         
         logger.info(f"Executing command on {host_id}: {command[:50]}...")
         
-        result = fleet_manager.execute_command(host_id, command, timeout)
+        result = fleet_manager.execute_command(host_id, command, timeout or 60)
         
         if result.get('success'):
             return make_response(True, result)
