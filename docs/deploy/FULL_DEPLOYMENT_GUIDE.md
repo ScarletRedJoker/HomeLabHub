@@ -8,6 +8,7 @@
 
 | I need to... | Go to... |
 |-------------|----------|
+| **Prepare ALL env vars first** | [Complete Environment Variables](#complete-environment-variables-prepare-these-first) |
 | Deploy from scratch | [Start Here](#phase-1-accounts--prerequisites) |
 | Set up DNS/DDNS | [Phase 2: Infrastructure](#phase-2-infrastructure-setup) |
 | Set up OAuth apps | [Phase 4: OAuth Configuration](#phase-4-oauth-configuration) |
@@ -17,7 +18,7 @@
 | Set up automation | [Phase 7: Automation](#phase-7-operational-automation) |
 | Fix something | [Troubleshooting](#troubleshooting) |
 | Daily management | [Operations](#daily-operations) |
-| View all env vars | [Appendix A](#appendix-a-complete-env-reference) |
+| View all env vars | [Complete Environment Variables](#complete-environment-variables-prepare-these-first) |
 | DNS scripts | [Appendix C](#appendix-c-dns-automation--scripts) |
 
 ---
@@ -95,6 +96,291 @@ The bootstrap script generates these automatically:
 - Database passwords (POSTGRES_PASSWORD, DISCORD_DB_PASSWORD, etc.)
 - Session secrets (SESSION_SECRET, SECRET_KEY)
 - Service tokens (SERVICE_AUTH_TOKEN, DASHBOARD_API_KEY)
+
+---
+
+## Complete Environment Variables (Prepare These First!)
+
+**Stop hunting through the guide!** Fill out this checklist BEFORE you start. Copy everything you need into a text file, then paste into `.env` when you reach Phase 3.
+
+> **Time saver:** Open [.env.example](.env.example) in another tab while you gather these values.
+
+---
+
+### REQUIRED - Fill These Out Now
+
+These are **mandatory** - deployment will fail without them.
+
+#### Core Configuration
+```env
+# Your timezone (find yours: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
+TZ=America/New_York
+
+# Dashboard login - pick these now
+WEB_USERNAME=admin
+WEB_PASSWORD=________________________    # 16+ characters, mix of letters/numbers/symbols
+```
+
+#### OpenAI API (Jarvis AI, Stream Bot)
+```env
+# Get from: https://platform.openai.com/api-keys
+# Click "Create new secret key", copy immediately (you can't see it again!)
+OPENAI_API_KEY=sk-proj-____________________________________________
+```
+
+#### Discord Bot (Required for ticket system)
+```env
+# Get from: https://discord.com/developers/applications
+# 1. Create New Application → Name it (e.g., "HomeLabHub Bot")
+# 2. Go to "Bot" → "Reset Token" → Copy token
+DISCORD_BOT_TOKEN=_________________________________________________
+
+# 3. Go to "OAuth2" → Copy Client ID
+DISCORD_CLIENT_ID=__________________
+
+# 4. "OAuth2" → Click "Reset Secret" → Copy
+DISCORD_CLIENT_SECRET=______________________________________________
+```
+
+#### Tailscale (VPN Mesh)
+```env
+# Get from: https://login.tailscale.com/admin/settings/keys
+# Click "Generate auth key" → Reusable, Pre-approved
+# You'll use this during setup, not stored in .env permanently
+TAILSCALE_AUTH_KEY=tskey-auth-______________________________________
+```
+
+#### Code Server (VS Code in browser)
+```env
+# Pick a strong password for your browser-based VS Code
+CODE_SERVER_PASSWORD=________________________
+```
+
+---
+
+### OPTIONAL - Fill These If You Want The Feature
+
+Leave blank if you don't need the feature. You can add them later.
+
+#### Twitch Integration (Stream Bot)
+```env
+# Get from: https://dev.twitch.tv/console/apps
+# 1. Register Your Application
+# 2. Name: "HomeLabHub StreamBot", Category: Chat Bot
+# 3. OAuth Redirect: https://stream.yourdomain.com/api/auth/twitch/callback
+TWITCH_CLIENT_ID=_________________________
+TWITCH_CLIENT_SECRET=_____________________
+TWITCH_CHANNEL=your_twitch_username
+TWITCH_REDIRECT_URI=https://stream.rig-city.com/api/auth/twitch/callback
+```
+
+#### YouTube Integration (Stream Bot)
+```env
+# Get from: https://console.cloud.google.com/apis/credentials
+# 1. Create Project → APIs & Services → Credentials
+# 2. Create OAuth Client ID → Web Application
+# 3. Authorized redirect URI: https://stream.yourdomain.com/api/auth/youtube/callback
+YOUTUBE_CLIENT_ID=______________________.apps.googleusercontent.com
+YOUTUBE_CLIENT_SECRET=____________________
+YOUTUBE_REDIRECT_URI=https://stream.rig-city.com/api/auth/youtube/callback
+```
+
+#### Spotify Integration (Now Playing)
+```env
+# Get from: https://developer.spotify.com/dashboard
+# 1. Create App → Redirect URI: https://stream.yourdomain.com/api/auth/spotify/callback
+SPOTIFY_CLIENT_ID=________________________________
+SPOTIFY_CLIENT_SECRET=____________________________
+SPOTIFY_REDIRECT_URI=https://stream.rig-city.com/api/auth/spotify/callback
+```
+
+#### Kick Integration (Stream Bot)
+```env
+# Get from: Kick Developer Portal (if you have access)
+KICK_CLIENT_ID=___________________________________
+KICK_CLIENT_SECRET=_______________________________
+KICK_REDIRECT_URI=https://stream.rig-city.com/api/auth/kick/callback
+```
+
+#### Cloudflare (Dynamic DNS / DNS Automation)
+```env
+# Get from: https://dash.cloudflare.com/profile/api-tokens
+# 1. Create Token → Edit zone DNS template
+# 2. Permissions: Zone:Read, DNS:Edit for your domains
+CLOUDFLARE_API_TOKEN=_____________________________________________
+
+# Get Zone IDs from: Cloudflare Dashboard → Your Domain → Right sidebar "Zone ID"
+CLOUDFLARE_ZONE_ID_EVINDRAKE=________________________________
+CLOUDFLARE_ZONE_ID_RIGCITY=__________________________________
+CLOUDFLARE_ZONE_ID_SCARLETREDJOKER=__________________________
+```
+
+#### n8n Automation
+```env
+# For n8n.yourdomain.com - pick login credentials
+N8N_HOST=n8n.evindrake.net
+N8N_BASIC_AUTH_USER=admin
+N8N_BASIC_AUTH_PASSWORD=________________________
+```
+
+#### Email Notifications
+
+**Option A: SendGrid (Easiest)**
+```env
+# Get from: https://app.sendgrid.com/settings/api_keys
+EMAIL_PROVIDER=sendgrid
+SENDGRID_API_KEY=SG._____________________________________________
+EMAIL_FROM=noreply@yourdomain.com
+ADMIN_EMAIL=your.email@gmail.com
+```
+
+**Option B: SMTP (Gmail)**
+```env
+# For Gmail: Enable 2FA, then get App Password from:
+# https://myaccount.google.com/apppasswords
+EMAIL_PROVIDER=smtp
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your.email@gmail.com
+SMTP_PASSWORD=________________    # 16-char app password, no spaces
+SMTP_USE_TLS=true
+EMAIL_FROM=your.email@gmail.com
+ADMIN_EMAIL=your.email@gmail.com
+```
+
+---
+
+### LOCAL HOST ONLY (Ubuntu, not Linode)
+
+These go in `/opt/homelab/.env` on your **Ubuntu host**, not the Linode.
+
+#### Plex Media Server
+```env
+# Get fresh claim from: https://plex.tv/claim (expires in 4 minutes!)
+# Claim is only needed on first run - after that you can remove it
+PLEX_CLAIM=claim-____________________________________
+
+# Get token from: https://www.plex.tv/claim/ (while logged in)
+# Or: Plex Settings → General → View XML → Find X-Plex-Token
+PLEX_TOKEN=_________________________________________
+```
+
+#### MinIO (S3 Storage)
+```env
+# Pick credentials for your local MinIO instance
+MINIO_ROOT_USER=admin
+MINIO_ROOT_PASSWORD=________________________
+```
+
+#### Home Assistant
+```env
+# Get from: HA Settings → Long-Lived Access Tokens → Create Token
+HOME_ASSISTANT_TOKEN=_____________________________________________
+```
+
+#### Windows VM / Sunshine GameStream
+```env
+# Credentials for Sunshine web UI (https://VM_IP:47990)
+SUNSHINE_USER=admin
+SUNSHINE_PASS=________________________
+```
+
+---
+
+### Quick Copy Template
+
+Copy this entire block to a file, fill it out, then paste into `.env`:
+
+```env
+# ═══════════════════════════════════════════════════════════════════════════════
+# HOMELAB HUB - FILL BEFORE DEPLOYMENT
+# Copy to .env after filling out all values
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# --- REQUIRED: CORE ---
+TZ=America/New_York
+WEB_USERNAME=admin
+WEB_PASSWORD=
+CODE_SERVER_PASSWORD=
+
+# --- REQUIRED: AI ---
+OPENAI_API_KEY=
+
+# --- REQUIRED: DISCORD ---
+DISCORD_BOT_TOKEN=
+DISCORD_CLIENT_ID=
+DISCORD_CLIENT_SECRET=
+
+# --- OPTIONAL: STREAMING INTEGRATIONS ---
+TWITCH_CLIENT_ID=
+TWITCH_CLIENT_SECRET=
+TWITCH_CHANNEL=
+YOUTUBE_CLIENT_ID=
+YOUTUBE_CLIENT_SECRET=
+SPOTIFY_CLIENT_ID=
+SPOTIFY_CLIENT_SECRET=
+KICK_CLIENT_ID=
+KICK_CLIENT_SECRET=
+
+# --- OPTIONAL: CLOUDFLARE ---
+CLOUDFLARE_API_TOKEN=
+CLOUDFLARE_ZONE_ID_EVINDRAKE=
+CLOUDFLARE_ZONE_ID_RIGCITY=
+CLOUDFLARE_ZONE_ID_SCARLETREDJOKER=
+
+# --- OPTIONAL: EMAIL (pick one provider) ---
+EMAIL_PROVIDER=smtp
+SENDGRID_API_KEY=
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASSWORD=
+EMAIL_FROM=
+ADMIN_EMAIL=
+
+# --- OPTIONAL: N8N ---
+N8N_BASIC_AUTH_USER=admin
+N8N_BASIC_AUTH_PASSWORD=
+
+# --- LOCAL HOST ONLY (separate .env file) ---
+# PLEX_CLAIM=
+# PLEX_TOKEN=
+# MINIO_ROOT_USER=admin
+# MINIO_ROOT_PASSWORD=
+# HOME_ASSISTANT_TOKEN=
+# SUNSHINE_USER=admin
+# SUNSHINE_PASS=
+```
+
+---
+
+### Where Each Value Goes
+
+| Environment | File Location | Variables |
+|-------------|---------------|-----------|
+| **Linode (Cloud)** | `/opt/homelab/HomeLabHub/.env` | All REQUIRED, plus optional integrations |
+| **Ubuntu Host (Local)** | `/opt/homelab/.env` | PLEX_*, MINIO_*, HOME_ASSISTANT_*, SUNSHINE_* |
+| **Windows VM** | N/A | Sunshine has its own web UI for config |
+
+---
+
+### Checklist Before Starting Deployment
+
+Use this to verify you have everything:
+
+- [ ] **OpenAI API Key** - Have `sk-proj-...` ready
+- [ ] **Discord Bot Token** - Created application, copied bot token
+- [ ] **Discord Client ID/Secret** - From OAuth2 tab
+- [ ] **Cloudflare Account** - Domains added, can access dashboard
+- [ ] **Tailscale Account** - Can generate auth keys
+- [ ] **Decided on passwords** - WEB_PASSWORD, CODE_SERVER_PASSWORD, N8N password
+- [ ] **Email setup decided** - Know if using SendGrid, Gmail, or skipping
+
+**Optional (can add later):**
+- [ ] Twitch Client ID/Secret
+- [ ] YouTube Client ID/Secret  
+- [ ] Spotify Client ID/Secret
+- [ ] Cloudflare API Token + Zone IDs
 
 ---
 
