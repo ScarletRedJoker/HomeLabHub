@@ -2043,55 +2043,170 @@ tailscale status
 
 > **Tip:** If Moonlight can't connect over Tailscale, check Windows Firewall allows Sunshine ports (47984-48010) and that both devices show "connected" in Tailscale status.
 
-### 5.6 Docker Services on Ubuntu Host
+### 5.6 Docker Services on Ubuntu Host (Complete Guide)
 
-Run Plex, Home Assistant, and MinIO directly on your Ubuntu host:
+This section sets up Plex, Home Assistant, and MinIO on your local Ubuntu host.
+
+---
+
+#### Step 1: Install Docker on Ubuntu Host
+
+If Docker isn't installed yet:
 
 ```bash
-# Create directories
-sudo mkdir -p /opt/homelab/{plex/config,homeassistant/config,minio/data}
-sudo chown -R $USER:$USER /opt/homelab
+# Update packages
+sudo apt update && sudo apt upgrade -y
+
+# Install prerequisites
+sudo apt install -y \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release
+
+# Install Docker using official script
+curl -fsSL https://get.docker.com | sh
+
+# Add your user to the docker group (avoids needing sudo)
+sudo usermod -aG docker $USER
+
+# Log out and back in for group changes to take effect
+# Or run: newgrp docker
+
+# Verify installation
+docker --version
+# Expected: Docker version 27.x.x
+
+docker compose version
+# Expected: Docker Compose version v2.x.x
+
+# Enable Docker to start on boot
+sudo systemctl enable docker
+sudo systemctl start docker
+
+# Verify Docker is running
+sudo systemctl status docker
+# Should show: active (running)
+
+# Test Docker works
+docker run --rm hello-world
 ```
 
-Create `/opt/homelab/docker-compose.local.yml`:
+---
 
+#### Step 2: Create Directory Structure
+
+```bash
+# Create all required directories
+sudo mkdir -p /opt/homelab/plex/config
+sudo mkdir -p /opt/homelab/plex/transcode
+sudo mkdir -p /opt/homelab/homeassistant/config
+sudo mkdir -p /opt/homelab/minio/data
+
+# Set ownership to your user
+sudo chown -R $USER:$USER /opt/homelab
+
+# Verify permissions
+ls -la /opt/homelab/
+# All directories should be owned by your user
+
+# Get your user/group IDs (needed for Plex)
+id
+# Example: uid=1000(evin) gid=1000(evin)
+# Note the uid and gid values
+```
+
+---
+
+#### Step 3: Set Up Media Storage for Plex
+
+```bash
+# Create a media directory (or use an existing drive mount)
+sudo mkdir -p /mnt/media/{movies,tv,music}
+sudo chown -R $USER:$USER /mnt/media
+
+# If you have a separate drive for media, mount it:
+# Example for an external drive:
+# sudo mount /dev/sdb1 /mnt/media
+
+# To make the mount permanent, add to /etc/fstab:
+# sudo nano /etc/fstab
+# Add: /dev/sdb1 /mnt/media ext4 defaults 0 2
+```
+
+---
+
+#### Step 4: Create Docker Compose Configuration
+
+```bash
+# Create the compose file
+nano /opt/homelab/docker-compose.local.yml
+```
+
+**Paste this configuration:**
 ```yaml
+# /opt/homelab/docker-compose.local.yml
+# Local services: Plex, Home Assistant, MinIO
+
 version: '3.8'
 
 services:
+  # ============================================
+  # PLEX MEDIA SERVER
+  # ============================================
   plex:
     image: lscr.io/linuxserver/plex:latest
     container_name: plex
-    network_mode: host  # Better device discovery on Linux
+    network_mode: host  # Required for DLNA discovery and remote access
     environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=America/New_York
-      - VERSION=docker
-      - PLEX_CLAIM=${PLEX_CLAIM}
+      - PUID=1000              # Your user ID (from 'id' command)
+      - PGID=1000              # Your group ID
+      - TZ=America/New_York    # Your timezone
+      - VERSION=docker         # Use Docker version updates
+      - PLEX_CLAIM=${PLEX_CLAIM}  # From plex.tv/claim
     volumes:
       - /opt/homelab/plex/config:/config
-      - /mnt/media:/data/media  # Adjust to your media path
+      - /opt/homelab/plex/transcode:/transcode  # For temporary transcodes
+      - /mnt/media:/data/media:ro  # Read-only media (adjust path!)
+    devices:
+      - /dev/dri:/dev/dri      # Hardware transcoding (Intel QSV, AMD)
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:32400/web"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
+  # ============================================
+  # HOME ASSISTANT
+  # ============================================
   homeassistant:
     image: ghcr.io/home-assistant/home-assistant:stable
     container_name: homeassistant
-    network_mode: host  # Required for device discovery
+    network_mode: host  # Required for device/service discovery
     environment:
       - TZ=America/New_York
     volumes:
       - /opt/homelab/homeassistant/config:/config
-      - /run/dbus:/run/dbus:ro  # For Bluetooth support
-    privileged: true
+      - /run/dbus:/run/dbus:ro  # Required for Bluetooth support
+    privileged: true  # Required for USB devices, Bluetooth, etc.
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8123"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
+  # ============================================
+  # MINIO (S3-Compatible Object Storage)
+  # ============================================
   minio:
-    image: quay.io/minio/minio
+    image: quay.io/minio/minio:latest
     container_name: minio
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9000:9000"    # S3 API
+      - "9001:9001"    # Web Console
     environment:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
@@ -2099,22 +2214,277 @@ services:
       - /opt/homelab/minio/data:/data
     command: server /data --console-address ":9001"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 ```
 
-Create `/opt/homelab/.env`:
+---
+
+#### Step 5: Create Environment Variables
+
+```bash
+# Create the .env file
+nano /opt/homelab/.env
+```
+
+**Paste (and edit) these values:**
 ```env
-# Plex - get fresh claim at https://plex.tv/claim (expires in 4 min!)
-PLEX_CLAIM=claim-XXXXX
+# ═══════════════════════════════════════════════════════════════════════════════
+# LOCAL UBUNTU HOST ENVIRONMENT VARIABLES
+# ═══════════════════════════════════════════════════════════════════════════════
 
-# MinIO
+# --- PLEX ---
+# CRITICAL: Get a fresh claim token from https://plex.tv/claim
+# The token expires in 4 MINUTES! Get it right before starting Plex.
+# After first login, you can remove this line (it's only needed once)
+PLEX_CLAIM=claim-XXXXXXXXXXXXXXXX
+
+# --- MINIO ---
+# Choose a strong username and password
 MINIO_ROOT_USER=admin
-MINIO_ROOT_PASSWORD=your_secure_password_here
+MINIO_ROOT_PASSWORD=YourSecureMinIOPassword123!
+
+# --- TIMEZONE ---
+TZ=America/New_York
 ```
 
-Start services:
+**Get Plex Claim Token:**
+1. Go to [plex.tv/claim](https://plex.tv/claim)
+2. Log in to your Plex account
+3. Copy the `claim-xxxx...` token
+4. **IMMEDIATELY** paste it into `.env` and start Plex (it expires in 4 minutes!)
+
+---
+
+#### Step 6: Start the Services
+
 ```bash
 cd /opt/homelab
+
+# Pull the latest images
+docker compose -f docker-compose.local.yml pull
+
+# Start all services
 docker compose -f docker-compose.local.yml up -d
+
+# Watch the logs during first startup
+docker compose -f docker-compose.local.yml logs -f
+
+# Press Ctrl+C to stop watching logs (services keep running)
+```
+
+**Expected output:**
+```
+Creating network "homelab_default" with the default driver
+Creating minio         ... done
+Creating plex          ... done
+Creating homeassistant ... done
+```
+
+---
+
+#### Step 7: Verify Services Are Running
+
+```bash
+# Check container status
+docker compose -f docker-compose.local.yml ps
+
+# Expected output (all should show "Up" and "healthy"):
+# NAME            STATUS              PORTS
+# plex            Up (healthy)        
+# homeassistant   Up (healthy)        
+# minio           Up (healthy)        0.0.0.0:9000->9000/tcp, 0.0.0.0:9001->9001/tcp
+
+# If a service is "unhealthy", check its logs:
+docker compose -f docker-compose.local.yml logs plex --tail=50
+```
+
+---
+
+#### Step 8: Initial Service Configuration
+
+**Plex Initial Setup:**
+```bash
+# Access Plex web UI (from your Ubuntu host)
+# Open browser: http://localhost:32400/web
+
+# Or from another device on your network:
+# http://YOUR_UBUNTU_IP:32400/web
+```
+
+1. Sign in with your Plex account
+2. Give your server a name (e.g., "HomeLabHub Media")
+3. Add libraries:
+   - Movies: `/data/media/movies`
+   - TV Shows: `/data/media/tv`
+   - Music: `/data/media/music`
+4. Enable remote access in Settings → Remote Access
+
+**Home Assistant Initial Setup:**
+```bash
+# Access Home Assistant (from your Ubuntu host)
+# Open browser: http://localhost:8123
+
+# Or from another device on your network:
+# http://YOUR_UBUNTU_IP:8123
+```
+
+1. Create your admin account
+2. Name your home and set location
+3. Add any discovered integrations
+4. Complete the onboarding wizard
+
+**MinIO Initial Setup:**
+```bash
+# Access MinIO Console
+# Open browser: http://localhost:9001
+
+# Login with credentials from .env:
+# Username: admin (or your MINIO_ROOT_USER)
+# Password: YourSecureMinIOPassword123! (your MINIO_ROOT_PASSWORD)
+```
+
+1. Create your first bucket (e.g., "backups", "media")
+2. Note the S3 endpoint: `http://localhost:9000`
+3. Create access keys for applications: Access Keys → Create access key
+
+---
+
+#### Step 9: Health Check Commands
+
+Run these to verify everything is healthy:
+
+```bash
+# Check all container health status
+docker compose -f docker-compose.local.yml ps
+
+# Individual service tests
+# Plex:
+curl -s http://localhost:32400/identity | head -5
+# Expected: XML with server info
+
+# Home Assistant:
+curl -s http://localhost:8123/api/ | head -5
+# Expected: {"message": "API running."} or auth required
+
+# MinIO:
+curl -s http://localhost:9000/minio/health/live
+# Expected: empty response (200 OK)
+
+curl -s http://localhost:9000/minio/health/ready
+# Expected: empty response (200 OK)
+
+# Check from Tailscale (from Linode):
+ssh root@YOUR_LINODE_IP
+curl -s http://100.110.227.25:32400/identity    # Plex
+curl -s http://100.110.227.25:8123              # Home Assistant
+curl -s http://100.110.227.25:9000/minio/health/live  # MinIO
+```
+
+---
+
+#### Step 10: Enable Services to Start on Boot
+
+Docker containers with `restart: unless-stopped` will auto-start when Docker starts.
+
+Ensure Docker itself starts on boot:
+```bash
+# Enable Docker to start on boot (if not already)
+sudo systemctl enable docker
+
+# Verify
+sudo systemctl is-enabled docker
+# Expected: enabled
+
+# Test by rebooting
+sudo reboot
+
+# After reboot, verify services are running
+docker compose -f docker-compose.local.yml ps
+```
+
+---
+
+#### Troubleshooting Local Services
+
+**Plex Issues:**
+
+| Problem | Solution |
+|---------|----------|
+| "Not authorized" on first access | Make sure PLEX_CLAIM token is fresh (< 4 min old) |
+| Can't find media | Verify `/mnt/media` path is correct in compose file |
+| No hardware transcoding | Check `/dev/dri` exists and has correct permissions |
+| Remote access not working | Enable in Settings → Remote Access, check port 32400 |
+
+```bash
+# Check Plex logs
+docker logs plex --tail=100 | grep -i error
+
+# Verify media mount
+docker exec plex ls -la /data/media/
+
+# Check hardware transcoding
+docker exec plex ls -la /dev/dri/
+```
+
+**Home Assistant Issues:**
+
+| Problem | Solution |
+|---------|----------|
+| Can't discover devices | Ensure network_mode: host is set |
+| Bluetooth not working | Verify /run/dbus is mounted and privileged: true |
+| Slow startup | First boot can take 2-3 minutes |
+
+```bash
+# Check HA logs
+docker logs homeassistant --tail=100 | grep -i error
+
+# Check HA configuration is valid
+docker exec homeassistant python -m homeassistant --script check_config -c /config
+```
+
+**MinIO Issues:**
+
+| Problem | Solution |
+|---------|----------|
+| Can't login to console | Verify MINIO_ROOT_USER and PASSWORD match .env |
+| Out of space | Check /opt/homelab/minio/data has space |
+| Connection refused on port 9000 | Check firewall: `sudo ufw allow 9000/tcp` |
+
+```bash
+# Check MinIO logs
+docker logs minio --tail=100 | grep -i error
+
+# Test S3 API
+curl -I http://localhost:9000/minio/health/live
+# Expected: HTTP/1.1 200 OK
+```
+
+---
+
+#### Useful Commands Reference
+
+```bash
+# --- Service Management ---
+cd /opt/homelab
+docker compose -f docker-compose.local.yml ps          # Status
+docker compose -f docker-compose.local.yml up -d       # Start all
+docker compose -f docker-compose.local.yml down        # Stop all
+docker compose -f docker-compose.local.yml restart     # Restart all
+docker compose -f docker-compose.local.yml logs -f     # Follow logs
+docker compose -f docker-compose.local.yml pull        # Update images
+
+# --- Individual Service ---
+docker restart plex
+docker logs homeassistant --tail=50
+docker exec -it minio sh
+
+# --- Storage ---
+du -sh /opt/homelab/*/                  # Check space usage
+df -h /opt/homelab                      # Check available space
 ```
 
 ### 5.7 VM Management Commands
