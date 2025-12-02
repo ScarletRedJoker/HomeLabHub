@@ -1450,32 +1450,215 @@ docker compose logs -f
 
 ---
 
-### 3.9 Wait for SSL Certificates
+### 3.9 SSL/TLS Certificates (Complete Guide)
 
-Caddy automatically obtains SSL certificates from Let's Encrypt. This requires:
-1. DNS records pointing to your Linode IP (from Phase 2.2)
-2. Ports 80 and 443 open (configured in Phase 3.3)
-3. ~2-5 minutes for certificate issuance
+Caddy automatically provisions and renews SSL certificates from Let's Encrypt. This section covers how it works, verification, and troubleshooting.
 
-**Check Caddy certificate status:**
+---
+
+#### How Caddy SSL Works
+
+1. **Automatic Provisioning:** When Caddy starts and sees HTTPS domains in the Caddyfile, it automatically requests certificates from Let's Encrypt
+2. **HTTP-01 Challenge:** Let's Encrypt verifies domain ownership by making an HTTP request to `http://yourdomain.com/.well-known/acme-challenge/`
+3. **Auto-Renewal:** Caddy automatically renews certificates 30 days before expiry
+4. **No Configuration Needed:** Just use `https://` in your Caddyfile and Caddy handles everything
+
+---
+
+#### Prerequisites for SSL to Work
+
+Before SSL can succeed, verify these requirements:
+
+| Requirement | Check Command | Expected |
+|-------------|---------------|----------|
+| DNS resolves to your IP | `dig +short dash.evindrake.net` | Your Linode IP |
+| Port 80 is open | `nc -zv YOUR_LINODE_IP 80` | Connection succeeded |
+| Port 443 is open | `nc -zv YOUR_LINODE_IP 443` | Connection succeeded |
+| Caddy container running | `docker compose ps caddy` | Status: Up |
+| Valid email in Caddyfile | Check Caddyfile | Email set (optional) |
+
+**Important: DNS Propagation**
+- New DNS records can take 5-15 minutes to propagate worldwide
+- Let's Encrypt needs to reach your server from multiple locations
+- Use [dnschecker.org](https://dnschecker.org) to verify propagation
+
+---
+
+#### Check Certificate Status
+
 ```bash
-# View Caddy logs
-docker compose logs caddy --tail=50
+# View Caddy logs for certificate activity
+docker compose logs caddy --tail=100 | grep -i cert
 
-# Look for lines like:
-# successfully obtained certificate
-# certificate obtained successfully
-# or errors like:
-# failed to obtain certificate: ...
+# Look for success messages like:
+# "certificate obtained successfully"
+# "successfully obtained certificate"
+# "serving initial certificate"
 
-# Test HTTPS (after 5 minutes)
+# Look for error messages like:
+# "failed to obtain certificate"
+# "challenge failed"
+# "ACME challenge failed"
+
+# Full Caddy logs
+docker compose logs caddy --tail=100
+```
+
+**Test HTTPS is Working:**
+```bash
+# Simple test (after 5 minutes)
 curl -I https://dash.evindrake.net
-# Expected: HTTP/2 200 (or 302 redirect)
 
-# If you see certificate errors, check:
-# 1. DNS is resolving correctly: dig +short dash.evindrake.net
-# 2. Ports are open: nc -zv YOUR_LINODE_IP 443
-# 3. Caddy logs for specific errors
+# Expected response:
+# HTTP/2 200
+# or HTTP/2 302 (redirect)
+
+# Check certificate details
+echo | openssl s_client -connect dash.evindrake.net:443 2>/dev/null | openssl x509 -noout -dates
+
+# Expected output:
+# notBefore=Jan 15 00:00:00 2024 GMT
+# notAfter=Apr 14 23:59:59 2024 GMT
+
+# View full certificate info
+echo | openssl s_client -connect dash.evindrake.net:443 2>/dev/null | openssl x509 -noout -text | head -20
+```
+
+---
+
+#### Force Certificate Renewal
+
+Certificates are renewed automatically, but you can force renewal:
+
+```bash
+# Method 1: Restart Caddy (triggers certificate check)
+docker compose restart caddy
+
+# Wait 30 seconds, then check logs
+docker compose logs caddy --tail=50 | grep -i cert
+
+# Method 2: Clear certificate cache and restart
+# WARNING: This forces re-issuance of ALL certificates
+docker compose exec caddy rm -rf /data/caddy/certificates
+docker compose restart caddy
+
+# Method 3: Use Caddy's reload command
+docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
+```
+
+---
+
+#### SSL Troubleshooting
+
+**Problem: "Certificate has expired" or "NET::ERR_CERT_DATE_INVALID"**
+```bash
+# Check certificate dates
+echo | openssl s_client -connect dash.evindrake.net:443 2>/dev/null | openssl x509 -noout -dates
+
+# Force renewal
+docker compose restart caddy
+
+# If still failing, clear cache
+docker compose exec caddy rm -rf /data/caddy/certificates
+docker compose restart caddy
+```
+
+**Problem: "ACME challenge failed" in logs**
+```bash
+# Verify DNS is resolving correctly
+dig +short dash.evindrake.net
+# Must return YOUR_LINODE_IP
+
+# Verify port 80 is accessible from outside
+# Use external tool: https://www.yougetsignal.com/tools/open-ports/
+# Check port 80 on your Linode IP
+
+# Check firewall
+ufw status
+# Ports 80 and 443 must be ALLOW
+
+# Check Caddy can bind to ports
+docker compose logs caddy | grep -i "bind\|listen\|port"
+```
+
+**Problem: "Too many certificates already issued"**
+Let's Encrypt has rate limits: 5 duplicate certificates per week
+
+```bash
+# Wait 1 week before retrying, or
+# Use Let's Encrypt staging for testing:
+# Add to Caddyfile:
+# {
+#   acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+# }
+```
+
+**Problem: Certificate works but shows wrong domain**
+```bash
+# Check Caddyfile has correct domains
+cat Caddyfile | grep -E "^\w.*\.(com|net|org)"
+
+# Reload Caddy config
+docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
+```
+
+---
+
+#### Certificate Rate Limits
+
+Let's Encrypt has rate limits to prevent abuse:
+
+| Limit | Value | Applies To |
+|-------|-------|------------|
+| Certificates per domain | 50/week | Example: *.evindrake.net |
+| Duplicate certificates | 5/week | Same set of domains |
+| Failed validations | 5/hour | Per account |
+| New registrations | 500/3 hours | New accounts |
+
+**Best Practices:**
+- Don't repeatedly restart Caddy while debugging DNS issues
+- Use staging environment for testing: `acme_ca https://acme-staging-v02.api.letsencrypt.org/directory`
+- Fix DNS/firewall issues before retrying
+
+---
+
+#### View All Certificates
+
+```bash
+# List all certificates Caddy has obtained
+docker compose exec caddy ls -la /data/caddy/certificates/acme-v02.api.letsencrypt.org-directory/
+
+# Check a specific certificate
+docker compose exec caddy cat /data/caddy/certificates/acme-v02.api.letsencrypt.org-directory/dash.evindrake.net/dash.evindrake.net.crt | openssl x509 -noout -text | head -30
+
+# Certificate storage location
+# /data/caddy/certificates/acme-v02.api.letsencrypt.org-directory/
+#   └── domain.com/
+#       ├── domain.com.crt  (certificate)
+#       ├── domain.com.key  (private key)
+#       └── domain.com.json (metadata)
+```
+
+---
+
+#### Optional: Set Admin Email for Certificate Notifications
+
+Let's Encrypt can email you before certificates expire:
+
+```caddyfile
+# In your Caddyfile, add at the top:
+{
+    email your-email@example.com
+}
+
+dash.evindrake.net {
+    # ... your config
+}
+```
+
+```bash
+# Reload Caddy to apply
+docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
 ```
 
 ---
