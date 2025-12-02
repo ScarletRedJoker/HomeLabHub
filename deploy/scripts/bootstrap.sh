@@ -138,13 +138,19 @@ echo -e "\n${CYAN}[2/7] Checking Tailscale VPN...${NC}"
 
 TAILSCALE_IP=""
 if command -v tailscale &> /dev/null; then
-    TAILSCALE_STATUS=$(tailscale status --json 2>/dev/null || echo "{}")
-    if echo "$TAILSCALE_STATUS" | grep -q '"Online":true'; then
-        TAILSCALE_IP=$(tailscale ip -4 2>/dev/null || echo "")
+    # Try to get Tailscale IP - this only works when connected
+    TAILSCALE_IP=$(tailscale ip -4 2>/dev/null || echo "")
+    if [ -n "$TAILSCALE_IP" ]; then
         echo -e "${GREEN}✓ Tailscale connected: $TAILSCALE_IP${NC}"
     else
-        echo -e "${YELLOW}⚠ Tailscale installed but not connected${NC}"
-        echo "  Run: sudo tailscale up --authkey=YOUR_KEY"
+        # Double-check with status command
+        if tailscale status &>/dev/null; then
+            TAILSCALE_IP=$(tailscale ip -4 2>/dev/null || echo "")
+            echo -e "${GREEN}✓ Tailscale connected: $TAILSCALE_IP${NC}"
+        else
+            echo -e "${YELLOW}⚠ Tailscale installed but not connected${NC}"
+            echo "  Run: sudo tailscale up --authkey=YOUR_KEY"
+        fi
     fi
 else
     echo -e "${YELLOW}⚠ Tailscale not installed (optional for single-server)${NC}"
