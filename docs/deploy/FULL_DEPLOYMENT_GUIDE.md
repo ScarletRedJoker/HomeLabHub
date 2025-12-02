@@ -20,140 +20,6 @@
 | Daily management | [Operations](#daily-operations) |
 | View all env vars | [Complete Environment Variables](#complete-environment-variables-prepare-these-first) |
 | DNS scripts | [Appendix C](#appendix-c-dns-automation--scripts) |
-| **Fix existing Linode** | [Quick Fix](#quick-fix-existing-linode-deployment) |
-
----
-
-## Quick Fix: Existing Linode Deployment
-
-**If you already ran bootstrap but services are failing with database errors, follow these steps:**
-
-### Symptoms
-- `./homelab logs` shows "ERROR: .env file not found"
-- PostgreSQL logs show: `Role "streambot" does not exist`, `Role "ticketbot" does not exist`, `Role "jarvis" does not exist`
-- Dashboard shows: "PostgreSQL not ready after 60s"
-- stream-bot and discord-bot containers are in "Restarting" state
-- Domains show 502 Bad Gateway
-
-### Root Cause
-The bootstrap was run before `.env` existed, so PostgreSQL initialized without the service database users.
-
-### Fix in 5 Minutes
-
-**Step 1: Create and configure .env file**
-```bash
-cd /opt/homelab/HomeLabHub
-
-# Copy the example
-cp .env.example .env
-
-# Generate random passwords for all required fields
-POSTGRES_PASS=$(openssl rand -hex 16)
-DISCORD_DB_PASS=$(openssl rand -hex 16)
-STREAMBOT_DB_PASS=$(openssl rand -hex 16)
-JARVIS_DB_PASS=$(openssl rand -hex 16)
-SESSION_SECRET=$(openssl rand -hex 32)
-SECRET_KEY=$(openssl rand -hex 32)
-DASHBOARD_API_KEY=$(openssl rand -hex 32)
-
-# Show passwords to copy
-echo "=== SAVE THESE PASSWORDS ==="
-echo "POSTGRES_PASSWORD=$POSTGRES_PASS"
-echo "DISCORD_DB_PASSWORD=$DISCORD_DB_PASS"
-echo "STREAMBOT_DB_PASSWORD=$STREAMBOT_DB_PASS"
-echo "JARVIS_DB_PASSWORD=$JARVIS_DB_PASS"
-echo "SESSION_SECRET=$SESSION_SECRET"
-echo "SECRET_KEY=$SECRET_KEY"
-echo "DASHBOARD_API_KEY=$DASHBOARD_API_KEY"
-echo "=== END PASSWORDS ==="
-
-# Now edit .env and paste the values above
-nano .env
-```
-
-**Step 2: Create missing PostgreSQL roles**
-
-```bash
-# First, get the passwords you just set in .env
-source .env
-
-# Connect to PostgreSQL and create the missing roles and databases
-docker exec -i homelab-postgres psql -U postgres << EOF
--- Create jarvis user and database
-CREATE USER jarvis WITH PASSWORD '$JARVIS_DB_PASSWORD';
-CREATE DATABASE homelab_jarvis OWNER jarvis;
-GRANT ALL PRIVILEGES ON DATABASE homelab_jarvis TO jarvis;
-
--- Create streambot user and database
-CREATE USER streambot WITH PASSWORD '$STREAMBOT_DB_PASSWORD';
-CREATE DATABASE streambot OWNER streambot;
-GRANT ALL PRIVILEGES ON DATABASE streambot TO streambot;
-
--- Create ticketbot user and database (for discord-bot)
-CREATE USER ticketbot WITH PASSWORD '$DISCORD_DB_PASSWORD';
-CREATE DATABASE ticketbot OWNER ticketbot;
-GRANT ALL PRIVILEGES ON DATABASE ticketbot TO ticketbot;
-
--- Verify creation
-\du
-\l
-EOF
-```
-
-**Expected output:**
-```
-CREATE ROLE
-CREATE DATABASE
-GRANT
-(repeated 3 times)
-
-             List of roles
- Role name |  Attributes
------------+---------------
- jarvis    |
- postgres  | Superuser, Create role, Create DB, Replication, Bypass RLS
- streambot |
- ticketbot |
-```
-
-**Step 3: Restart affected containers**
-
-```bash
-# Force recreate containers to pick up new env vars
-docker compose up -d --force-recreate homelab-dashboard homelab-celery-worker discord-bot stream-bot caddy
-
-# Wait 30 seconds for health checks
-sleep 30
-
-# Check status - all should be "healthy" or "Up"
-docker ps --format "table {{.Names}}\t{{.Status}}"
-```
-
-**Step 4: Verify everything works**
-
-```bash
-# Check dashboard logs (should show successful DB connection)
-docker logs homelab-dashboard --tail 50
-
-# Check Caddy health
-docker logs caddy --tail 20
-
-# Test domains
-curl -I https://dash.evindrake.net
-curl -I https://bot.rig-city.com
-curl -I https://stream.rig-city.com
-```
-
-**If discord-bot or stream-bot still restart:** They need additional credentials. Check their logs:
-```bash
-docker logs discord-bot --tail 30
-docker logs stream-bot --tail 30
-```
-
-Common missing values:
-- `DISCORD_BOT_TOKEN` - Required for discord-bot to connect
-- `DISCORD_CLIENT_ID` - Required for discord-bot OAuth
-- Stream integrations (Twitch/YouTube/Spotify) - Optional, bot will work without them
 
 ---
 
@@ -2192,6 +2058,132 @@ docker compose exec homelab-postgres psql -U homelab -d homelab_dashboard -c '\d
 docker compose logs homelab-postgres --tail=30
 ```
 
+#### Step 2b: Validate and Create Service Database Roles
+
+**All three services require their own database users.** Verify they exist:
+
+```bash
+# Check which roles exist
+docker compose exec homelab-postgres psql -U postgres -c '\du'
+```
+
+**Required roles (you should see all 4):**
+```
+             List of roles
+ Role name |  Attributes
+-----------+---------------
+ homelab   | Superuser, Create role, Create DB
+ jarvis    |
+ postgres  | Superuser, Create role, Create DB, Replication, Bypass RLS
+ streambot |
+ ticketbot |
+```
+
+**If any role is MISSING, create them now:**
+
+```bash
+# Load your .env file to get the passwords
+source .env
+
+# Create missing roles and databases
+docker exec -i homelab-postgres psql -U postgres << 'ENDSQL'
+-- Create jarvis user and database (if missing)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'jarvis') THEN
+        CREATE USER jarvis WITH PASSWORD '${JARVIS_DB_PASSWORD}';
+    END IF;
+END
+$$;
+CREATE DATABASE IF NOT EXISTS homelab_jarvis OWNER jarvis;
+GRANT ALL PRIVILEGES ON DATABASE homelab_jarvis TO jarvis;
+
+-- Create streambot user and database (if missing)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'streambot') THEN
+        CREATE USER streambot WITH PASSWORD '${STREAMBOT_DB_PASSWORD}';
+    END IF;
+END
+$$;
+CREATE DATABASE IF NOT EXISTS streambot OWNER streambot;
+GRANT ALL PRIVILEGES ON DATABASE streambot TO streambot;
+
+-- Create ticketbot user and database (if missing)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'ticketbot') THEN
+        CREATE USER ticketbot WITH PASSWORD '${DISCORD_DB_PASSWORD}';
+    END IF;
+END
+$$;
+CREATE DATABASE IF NOT EXISTS ticketbot OWNER ticketbot;
+GRANT ALL PRIVILEGES ON DATABASE ticketbot TO ticketbot;
+
+-- Verify
+\du
+\l
+ENDSQL
+```
+
+**Simpler alternative - use direct SQL if roles don't exist:**
+
+```bash
+# Load passwords
+source .env
+
+# Create roles (these commands are safe - they'll error if role exists, which is fine)
+docker exec -i homelab-postgres psql -U postgres << EOF
+CREATE USER jarvis WITH PASSWORD '$JARVIS_DB_PASSWORD';
+CREATE DATABASE homelab_jarvis OWNER jarvis;
+GRANT ALL PRIVILEGES ON DATABASE homelab_jarvis TO jarvis;
+
+CREATE USER streambot WITH PASSWORD '$STREAMBOT_DB_PASSWORD';
+CREATE DATABASE streambot OWNER streambot;
+GRANT ALL PRIVILEGES ON DATABASE streambot TO streambot;
+
+CREATE USER ticketbot WITH PASSWORD '$DISCORD_DB_PASSWORD';
+CREATE DATABASE ticketbot OWNER ticketbot;
+GRANT ALL PRIVILEGES ON DATABASE ticketbot TO ticketbot;
+EOF
+
+# Verify all roles exist now
+docker compose exec homelab-postgres psql -U postgres -c '\du'
+docker compose exec homelab-postgres psql -U postgres -c '\l'
+```
+
+**Expected output after role creation:**
+```
+CREATE ROLE
+CREATE DATABASE
+GRANT
+(repeated for each user)
+
+             List of roles
+ Role name |  Attributes
+-----------+---------------
+ homelab   | Superuser, Create role, Create DB
+ jarvis    |
+ postgres  | Superuser, Create role, Create DB, Replication, Bypass RLS
+ streambot |
+ ticketbot |
+```
+
+**After creating roles, restart the dependent services:**
+```bash
+docker compose up -d --force-recreate homelab-dashboard homelab-celery-worker discord-bot stream-bot
+
+# Wait for services to start
+sleep 30
+
+# Verify all are running (not restarting)
+docker compose ps
+```
+
+> **STOP:** Do not proceed until `docker compose ps` shows all services as "Up" (not "Restarting").
+
+---
+
 #### Step 3: Verify Redis
 
 ```bash
@@ -3315,60 +3307,64 @@ After Windows 11 installation completes:
 
 3. **Restart Windows VM** after installation
 
-#### Fix "Failed to locate an output device" Error
+#### Step 3: Install Virtual Display Driver (Required for Headless VMs)
 
-If Sunshine logs show this error:
+**Your VM has no physical monitor. Windows needs a virtual display for Sunshine to capture.**
+
+This is NOT optional. Without a display, Sunshine will fail with:
 ```
 Currently available display devices: []
 Failed to locate an output device
 Unable to find display or encoder during startup
 ```
 
-**This means Windows has no display configured.** Follow these steps:
+**Install IddSampleDriver (Virtual Display):**
 
-**Option A: Enable Sunshine Virtual Display (Recommended)**
+1. **Download IddSampleDriver:**
+   - In your Windows VM, open Edge browser
+   - Go to: `https://github.com/roshkins/IddSampleDriver/releases`
+   - Download the latest `IddSampleDriver-x64-Release.zip`
 
-1. Open Sunshine web UI: `https://localhost:47990`
-2. Go to **Configuration** tab
-3. Under **Video**, find "Output Name" and set it to your GPU adapter name
-4. Go to **Audio/Video** tab → set Adapter Name to "NVIDIA RTX 3060"
-5. **Click Save and restart Sunshine**
-
-If that doesn't work:
-
-**Option B: Create Virtual Display via Sunshine Settings**
-
-1. Open Sunshine web UI: `https://localhost:47990`
-2. Go to **Configuration** → **Video** section
-3. Set these values:
+2. **Extract and install:**
    ```
-   Adapter Name: NVIDIA RTX 3060
-   Output Name: (leave blank or set to 0)
+   - Right-click the downloaded zip → Extract All
+   - Open the extracted folder
+   - Right-click installCert.bat → Run as administrator
+   - When prompted, click Yes to install the certificate
+   - Right-click install.bat → Run as administrator
+   - Wait for "Driver installed successfully" message
    ```
-4. Under **Advanced** settings, enable "Capture Method: DXGI Desktop Duplication"
-5. Save and restart Sunshine
 
-**Option C: Install IddSampleDriver (Headless Virtual Monitor)**
+3. **Restart Windows VM:**
+   ```powershell
+   shutdown /r /t 0
+   ```
 
-If Sunshine's built-in virtual display doesn't work:
+4. **Verify virtual display is active:**
+   - After restart, right-click desktop → Display Settings
+   - You should see "Display 1" listed (even without physical monitor)
+   - If you see "No display connected", the driver didn't install correctly
 
-1. Download IddSampleDriver: [github.com/roshkins/IddSampleDriver/releases](https://github.com/roshkins/IddSampleDriver/releases)
-2. Extract and run `installCert.bat` as Administrator
-3. Run `install.bat` as Administrator
-4. Restart Windows
-5. Open Display Settings → You should see a new virtual display
-6. Set resolution to 1920x1080 or 2560x1440
-7. Restart Sunshine
+5. **Configure resolution:**
+   - In Display Settings, set resolution to **1920x1080** or **2560x1440**
+   - Set refresh rate to **60Hz** (or 120Hz if supported)
 
-**Option D: Use Dummy HDMI Plug (Hardware Solution)**
+**After IddSampleDriver is installed, restart Sunshine:**
 
-Buy a $5 dummy HDMI plug from Amazon. Plug it into your GPU's HDMI port.
-- This tricks Windows into thinking a monitor is connected
-- Most reliable but requires physical hardware
+1. Open Windows Services (Win+R → services.msc)
+2. Find "Sunshine" service
+3. Right-click → Restart
 
-#### Verify Sunshine is Working
+Or restart via PowerShell:
+```powershell
+Restart-Service Sunshine
+```
 
-After applying one of the fixes above:
+---
+
+#### Step 4: Verify Sunshine is Working
+
+**Check Sunshine logs for success:**
 
 1. **Check Sunshine logs:**
    - Open Sunshine web UI → Logs
@@ -3588,6 +3584,87 @@ sudo chown -R $USER:$USER /mnt/media
 # sudo nano /etc/fstab
 # Add: /dev/sdb1 /mnt/media ext4 defaults 0 2
 ```
+
+---
+
+#### Step 3b: Port Conflict Check (DO NOT SKIP)
+
+**Before starting any containers, verify no services are already using the required ports.**
+
+Local services need these ports:
+| Service | Port | Purpose |
+|---------|------|---------|
+| Plex | 32400 | Media streaming |
+| Home Assistant | 8123 | Web UI |
+| MinIO | 9000 | S3 API |
+| MinIO | 9001 | Web Console |
+
+**Run this port check:**
+
+```bash
+# Check ALL required ports at once
+echo "Checking ports for local services..."
+
+check_port() {
+    if ss -tuln | grep -q ":$1 "; then
+        echo "❌ Port $1 is IN USE"
+        ss -tuln | grep ":$1 " | head -1
+        return 1
+    else
+        echo "✅ Port $1 is available"
+        return 0
+    fi
+}
+
+check_port 32400  # Plex
+check_port 8123   # Home Assistant
+check_port 9000   # MinIO S3
+check_port 9001   # MinIO Console
+```
+
+**If any port shows "IN USE":**
+
+```bash
+# Find what's using the port (example: port 9000)
+sudo lsof -i :9000
+# or
+sudo netstat -tlnp | grep :9000
+
+# Common conflicts and solutions:
+
+# 1. Old Docker containers from previous attempts
+docker ps -a --format "{{.Names}} {{.Ports}}" | grep 9000
+docker rm -f container_name_here
+
+# 2. Portainer or other tools using port 9000
+# Option A: Stop the conflicting service
+sudo systemctl stop portainer
+
+# Option B: Change MinIO to different ports (edit docker-compose.local.yml)
+# Change: "9000:9000" to "9002:9000"
+# Change: "9001:9001" to "9003:9001"
+# Then access MinIO at: http://localhost:9002 and http://localhost:9003
+
+# 3. Home Assistant running natively (not in Docker)
+sudo systemctl stop home-assistant@homeassistant
+sudo systemctl disable home-assistant@homeassistant
+```
+
+**Handling existing containers from previous attempts:**
+
+```bash
+# Remove ALL homelab-related containers (safe - no data loss, configs are in volumes)
+docker rm -f homeassistant plex minio 2>/dev/null
+
+# Remove any orphaned containers
+docker container prune -f
+
+# Verify ports are now free
+ss -tuln | grep -E ':32400|:8123|:9000|:9001'
+# (should show nothing if all ports are free)
+```
+
+> **STOP:** Do not proceed until ALL ports show "available". Running docker-compose with port conflicts will fail.
 
 ---
 
