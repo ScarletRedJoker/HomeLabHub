@@ -35,7 +35,7 @@ class DeploymentQueue(Base):
     category = Column(String(50), nullable=True)
     app_name = Column(String(100), nullable=False)
     
-    status = Column(SQLEnum(DeploymentStatus), default=DeploymentStatus.PENDING, nullable=False, index=True)
+    status = Column(SQLEnum(DeploymentStatus, name='queuedeploymentstatus', create_type=False), default=DeploymentStatus.PENDING, nullable=False, index=True)
     progress = Column(Float, default=0.0)
     current_step = Column(String(200), nullable=True)
     total_steps = Column(Integer, default=5)

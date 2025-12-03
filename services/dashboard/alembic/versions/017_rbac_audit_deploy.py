@@ -42,19 +42,20 @@ def upgrade():
     if not enum_exists('userrole'):
         connection.execute(sa.text("CREATE TYPE userrole AS ENUM ('admin', 'operator', 'viewer')"))
     
-    if not enum_exists('deploymentstatus'):
+    # Use unique name 'queuedeploymentstatus' to avoid conflict with 'deploymentstatus' from migration 001
+    if not enum_exists('queuedeploymentstatus'):
         connection.execute(sa.text("""
-            CREATE TYPE deploymentstatus AS ENUM (
+            CREATE TYPE queuedeploymentstatus AS ENUM (
                 'pending', 'queued', 'pulling_image', 'creating_container', 'configuring',
                 'starting', 'running', 'completed', 'failed', 'rolling_back', 'rolled_back', 'cancelled'
             )
         """))
     
     user_role_enum = postgresql.ENUM('admin', 'operator', 'viewer', name='userrole', create_type=False)
-    deployment_status_enum = postgresql.ENUM(
+    queue_deployment_status_enum = postgresql.ENUM(
         'pending', 'queued', 'pulling_image', 'creating_container', 'configuring',
         'starting', 'running', 'completed', 'failed', 'rolling_back', 'rolled_back', 'cancelled',
-        name='deploymentstatus', create_type=False
+        name='queuedeploymentstatus', create_type=False
     )
     
     if not table_exists('users'):
@@ -147,7 +148,7 @@ def upgrade():
             sa.Column('template_id', sa.String(100), nullable=False),
             sa.Column('category', sa.String(50), nullable=True),
             sa.Column('app_name', sa.String(100), nullable=False),
-            sa.Column('status', deployment_status_enum, nullable=False, server_default='pending'),
+            sa.Column('status', queue_deployment_status_enum, nullable=False, server_default='pending'),
             sa.Column('progress', sa.Float(), server_default='0.0'),
             sa.Column('current_step', sa.String(200), nullable=True),
             sa.Column('total_steps', sa.Integer(), server_default='5'),
@@ -198,5 +199,5 @@ def downgrade():
     op.drop_table('users')
     
     connection = op.get_bind()
-    connection.execute(sa.text("DROP TYPE IF EXISTS deploymentstatus"))
+    connection.execute(sa.text("DROP TYPE IF EXISTS queuedeploymentstatus"))
     connection.execute(sa.text("DROP TYPE IF EXISTS userrole"))
