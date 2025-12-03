@@ -86,4 +86,10 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "ticketbot" -c "GRA
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "streambot" -c "GRANT ALL ON SCHEMA public TO streambot;"
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "homelab_jarvis" -c "GRANT ALL ON SCHEMA public TO jarvis;"
 
+# Enable pgcrypto extension for UUID support in all databases
+echo "Enabling pgcrypto extension..."
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "ticketbot" -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "streambot" -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "homelab_jarvis" -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+
 echo "=== Database initialization complete! ==="

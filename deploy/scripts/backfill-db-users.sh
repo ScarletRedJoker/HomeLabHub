@@ -106,6 +106,19 @@ GRANT ALL PRIVILEGES ON DATABASE ticketbot TO ticketbot;
 GRANT ALL PRIVILEGES ON DATABASE streambot TO streambot;
 GRANT ALL PRIVILEGES ON DATABASE homelab_jarvis TO jarvis;
 
+-- Grant schema permissions for each database
+\c ticketbot postgres
+GRANT ALL ON SCHEMA public TO ticketbot;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+\c streambot postgres
+GRANT ALL ON SCHEMA public TO streambot;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+\c homelab_jarvis postgres
+GRANT ALL ON SCHEMA public TO jarvis;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- Show results
 \echo ''
 \echo '============================================================'

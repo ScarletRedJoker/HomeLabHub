@@ -101,7 +101,7 @@ services:
     environment:
       - FLASK_ENV=${FLASK_ENV:-production}
       - PYTHONUNBUFFERED=1
-      - RUN_MIGRATIONS=false
+      - RUN_MIGRATIONS=true
       - DOCKER_CONTAINER=true
       - HOMELAB_PROJECT_ROOT=/project
       - MARKETPLACE_DIR=/marketplace
