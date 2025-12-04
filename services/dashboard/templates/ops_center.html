@@ -1,0 +1,723 @@
+{% extends "base.html" %}
+
+{% block title %}Ops Center - Nebula Command{% endblock %}
+{% block page_title %}Ops Center{% endblock %}
+
+{% block extra_css %}
+<style>
+.host-card {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+.host-card:hover {
+    border-color: rgba(99, 102, 241, 0.6);
+    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.2);
+}
+.host-card.selected {
+    border-color: #6366f1;
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+}
+.host-card.offline {
+    opacity: 0.6;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+.status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+}
+.status-indicator.online { background: #10b981; box-shadow: 0 0 8px #10b981; }
+.status-indicator.offline { background: #ef4444; }
+.env-editor {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 15px;
+    white-space: pre-wrap;
+    min-height: 300px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+.env-var-row {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    margin: 4px 0;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+.env-var-row:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+.env-key {
+    font-weight: 600;
+    color: #60a5fa;
+    min-width: 200px;
+    font-family: monospace;
+}
+.env-value {
+    flex: 1;
+    color: #fbbf24;
+    font-family: monospace;
+    word-break: break-all;
+}
+.env-value.masked {
+    color: #9ca3af;
+}
+.env-sensitive {
+    margin-left: 8px;
+    font-size: 0.7rem;
+    color: #f87171;
+}
+.deploy-btn {
+    padding: 20px 40px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+.deploy-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
+}
+.log-output {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.8rem;
+    background: #0a0e1a;
+    color: #d1d5db;
+    padding: 15px;
+    border-radius: 8px;
+    min-height: 200px;
+    max-height: 400px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.service-health-row {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    margin: 4px 0;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+}
+.service-name {
+    flex: 1;
+    font-weight: 500;
+}
+.validation-result {
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 15px;
+}
+.validation-result.valid {
+    background: rgba(16, 185, 129, 0.2);
+    border: 1px solid rgba(16, 185, 129, 0.5);
+}
+.validation-result.invalid {
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.5);
+}
+.tab-content-section {
+    min-height: 400px;
+}
+.resource-bar {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 5px;
+}
+.resource-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+}
+.resource-bar-fill.cpu { background: linear-gradient(90deg, #6366f1, #8b5cf6); }
+.resource-bar-fill.ram { background: linear-gradient(90deg, #10b981, #34d399); }
+.resource-bar-fill.disk { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card cosmic cosmic-fade-in mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-hdd-rack"></i> Remote Hosts</span>
+                <button class="btn btn-sm btn-primary" onclick="refreshHosts()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="hosts-container" class="row">
+                    <div class="loading">
+                        <div class="spinner-border"></div>
+                        <p style="margin-top: 20px; color: var(--text-secondary);">Loading hosts...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card cosmic cosmic-fade-in mb-4">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#env-tab" type="button">
+                            <i class="bi bi-file-earmark-lock"></i> Environment Secrets
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#deploy-tab" type="button">
+                            <i class="bi bi-rocket-takeoff"></i> Deployment
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#health-tab" type="button">
+                            <i class="bi bi-heart-pulse"></i> Service Health
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content tab-content-section">
+                    <div class="tab-pane fade show active" id="env-tab">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-primary" onclick="loadEnvFile()" id="btn-load-env" disabled>
+                                        <i class="bi bi-download"></i> Load .env
+                                    </button>
+                                    <button class="btn btn-success" onclick="saveEnvFile()" id="btn-save-env" disabled>
+                                        <i class="bi bi-upload"></i> Save Changes
+                                    </button>
+                                    <button class="btn btn-info" onclick="validateEnvFile()" id="btn-validate-env" disabled>
+                                        <i class="bi bi-check-circle"></i> Validate
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <div class="form-check form-switch d-inline-block">
+                                    <input class="form-check-input" type="checkbox" id="show-secrets" onchange="toggleSecrets()">
+                                    <label class="form-check-label" for="show-secrets">Show Secret Values</label>
+                                </div>
+                                <button class="btn btn-outline-secondary btn-sm ms-2" onclick="toggleEditMode()">
+                                    <i class="bi bi-pencil"></i> Edit Raw
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="env-display" class="env-editor">
+                            <p class="text-secondary text-center py-5">Select a host and click "Load .env" to view environment variables</p>
+                        </div>
+                        
+                        <div id="env-raw-editor" class="d-none">
+                            <textarea id="env-raw-content" class="form-control env-editor" rows="15" placeholder="KEY=value&#10;ANOTHER_KEY=another_value"></textarea>
+                        </div>
+                        
+                        <div id="validation-result"></div>
+                    </div>
+                    
+                    <div class="tab-pane fade" id="deploy-tab">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="text-center py-4">
+                                    <h5 class="mb-4">Deploy to Remote Server</h5>
+                                    <p class="text-secondary mb-4">Run the bootstrap script on the selected host to deploy or update the homelab stack.</p>
+                                    <button class="btn btn-success deploy-btn" onclick="runDeployment()" id="btn-deploy" disabled>
+                                        <i class="bi bi-rocket-takeoff me-2"></i> Run Deployment
+                                    </button>
+                                    <button class="btn btn-info deploy-btn ms-3" onclick="verifyDeployment()" id="btn-verify" disabled>
+                                        <i class="bi bi-patch-check me-2"></i> Verify
+                                    </button>
+                                </div>
+                                <div class="mt-4">
+                                    <h6>Deployment Info</h6>
+                                    <ul class="list-unstyled text-secondary small">
+                                        <li><i class="bi bi-file-code me-2"></i> Bootstrap: <code>/opt/homelab/HomeLabHub/deploy/scripts/bootstrap.sh</code></li>
+                                        <li><i class="bi bi-check2-circle me-2"></i> Verify: <code>/opt/homelab/HomeLabHub/deploy/scripts/verify-deployment.sh</code></li>
+                                        <li><i class="bi bi-folder me-2"></i> Env Path: <code>/opt/homelab/HomeLabHub/.env</code></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="mb-0">Deployment Logs</h6>
+                                    <span id="deploy-status" class="badge bg-secondary">Idle</span>
+                                </div>
+                                <div id="deploy-logs" class="log-output">
+                                    Deployment logs will appear here...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-pane fade" id="health-tab">
+                        <div class="row mb-3">
+                            <div class="col">
+                                <button class="btn btn-primary" onclick="loadServiceHealth()" id="btn-health" disabled>
+                                    <i class="bi bi-arrow-clockwise"></i> Refresh Health Status
+                                </button>
+                            </div>
+                        </div>
+                        <div id="health-container">
+                            <p class="text-secondary text-center py-5">Select a host and click "Refresh Health Status" to view service health</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let selectedHost = null;
+let envData = null;
+let showSecrets = false;
+let editMode = false;
+
+async function refreshHosts() {
+    const container = document.getElementById('hosts-container');
+    container.innerHTML = '<div class="col-12 text-center"><div class="spinner-border"></div></div>';
+    
+    try {
+        const response = await fetch('/api/ops/hosts', { credentials: 'include' });
+        const result = await response.json();
+        
+        if (!result.success) {
+            container.innerHTML = `<div class="col-12"><div class="alert alert-danger">${result.message}</div></div>`;
+            return;
+        }
+        
+        const hosts = result.data?.hosts || [];
+        
+        if (hosts.length === 0) {
+            container.innerHTML = `
+                <div class="col-12 text-center py-4">
+                    <i class="bi bi-hdd-rack display-4 text-secondary"></i>
+                    <p class="text-secondary mt-3">No hosts configured. Set TAILSCALE_LINODE_HOST or TAILSCALE_LOCAL_HOST environment variables.</p>
+                </div>`;
+            return;
+        }
+        
+        let html = '';
+        for (const host of hosts) {
+            const isOnline = host.online;
+            const statusClass = isOnline ? 'online' : 'offline';
+            const roleIcon = host.role === 'cloud' ? 'bi-cloud' : 'bi-pc-display';
+            
+            html += `
+                <div class="col-md-6 mb-3">
+                    <div class="host-card ${isOnline ? '' : 'offline'}" id="host-${host.host_id}" 
+                         onclick="${isOnline ? `selectHost('${host.host_id}')` : ''}" 
+                         style="${isOnline ? 'cursor: pointer;' : ''}">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="mb-0">
+                                <i class="bi ${roleIcon} me-2"></i>${host.name}
+                            </h5>
+                            <span>
+                                <span class="status-indicator ${statusClass}"></span>
+                                <span class="badge bg-${isOnline ? 'success' : 'danger'}">${isOnline ? 'Online' : 'Offline'}</span>
+                            </span>
+                        </div>
+                        <p class="text-secondary small mb-3">${host.description || ''}</p>
+                        ${isOnline ? `
+                        <div class="row">
+                            <div class="col-4">
+                                <small class="text-secondary">CPU</small>
+                                <div class="resource-bar"><div class="resource-bar-fill cpu" style="width: ${host.cpu_percent || 0}%"></div></div>
+                                <small>${host.cpu_percent || 0}%</small>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-secondary">RAM</small>
+                                <div class="resource-bar"><div class="resource-bar-fill ram" style="width: ${host.memory_percent || 0}%"></div></div>
+                                <small>${host.memory_percent || 0}%</small>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-secondary">Disk</small>
+                                <div class="resource-bar"><div class="resource-bar-fill disk" style="width: ${host.disk_percent || 0}%"></div></div>
+                                <small>${host.disk_percent || 0}%</small>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-secondary small">
+                            <i class="bi bi-box-seam me-1"></i> ${host.containers_running || 0} / ${host.container_count || 0} containers running
+                        </div>
+                        ` : '<p class="text-danger small mb-0"><i class="bi bi-exclamation-triangle me-1"></i>Host is offline</p>'}
+                    </div>
+                </div>`;
+        }
+        
+        container.innerHTML = html;
+        
+        if (selectedHost) {
+            const hostCard = document.getElementById(`host-${selectedHost}`);
+            if (hostCard) {
+                hostCard.classList.add('selected');
+            }
+        }
+        
+    } catch (error) {
+        console.error('Failed to load hosts:', error);
+        container.innerHTML = '<div class="col-12"><div class="alert alert-danger">Failed to load hosts</div></div>';
+    }
+}
+
+function selectHost(hostId) {
+    document.querySelectorAll('.host-card').forEach(card => card.classList.remove('selected'));
+    document.getElementById(`host-${hostId}`).classList.add('selected');
+    selectedHost = hostId;
+    
+    document.getElementById('btn-load-env').disabled = false;
+    document.getElementById('btn-save-env').disabled = false;
+    document.getElementById('btn-validate-env').disabled = false;
+    document.getElementById('btn-deploy').disabled = false;
+    document.getElementById('btn-verify').disabled = false;
+    document.getElementById('btn-health').disabled = false;
+    
+    envData = null;
+    document.getElementById('env-display').innerHTML = '<p class="text-secondary text-center py-5">Click "Load .env" to view environment variables</p>';
+    document.getElementById('validation-result').innerHTML = '';
+}
+
+async function loadEnvFile() {
+    if (!selectedHost) return;
+    
+    const display = document.getElementById('env-display');
+    display.innerHTML = '<div class="text-center"><div class="spinner-border"></div></div>';
+    
+    try {
+        const maskSecrets = !showSecrets;
+        const response = await fetch(`/api/ops/remote-env/${selectedHost}?mask_secrets=${maskSecrets}`, { 
+            credentials: 'include' 
+        });
+        const result = await response.json();
+        
+        if (!result.success) {
+            display.innerHTML = `<div class="alert alert-danger">${result.message}</div>`;
+            return;
+        }
+        
+        envData = result.data;
+        renderEnvVariables();
+        
+    } catch (error) {
+        console.error('Failed to load env:', error);
+        display.innerHTML = `<div class="alert alert-danger">Failed to load environment file: ${error.message}</div>`;
+    }
+}
+
+function renderEnvVariables() {
+    if (!envData) return;
+    
+    const display = document.getElementById('env-display');
+    const variables = envData.variables || {};
+    
+    if (Object.keys(variables).length === 0) {
+        display.innerHTML = '<p class="text-secondary text-center py-5">No environment variables found</p>';
+        return;
+    }
+    
+    const sortedKeys = Object.keys(variables).sort();
+    let html = '';
+    
+    for (const key of sortedKeys) {
+        const varInfo = variables[key];
+        const value = varInfo.value;
+        const isSensitive = varInfo.is_sensitive;
+        const isMasked = varInfo.masked;
+        
+        html += `
+            <div class="env-var-row">
+                <span class="env-key">${key}</span>
+                <span class="env-value ${isMasked ? 'masked' : ''}">${escapeHtml(value)}</span>
+                ${isSensitive ? '<span class="env-sensitive"><i class="bi bi-shield-lock"></i> Sensitive</span>' : ''}
+            </div>`;
+    }
+    
+    display.innerHTML = html;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function toggleSecrets() {
+    showSecrets = document.getElementById('show-secrets').checked;
+    if (selectedHost && envData) {
+        loadEnvFile();
+    }
+}
+
+function toggleEditMode() {
+    editMode = !editMode;
+    const display = document.getElementById('env-display');
+    const editor = document.getElementById('env-raw-editor');
+    
+    if (editMode) {
+        display.classList.add('d-none');
+        editor.classList.remove('d-none');
+        
+        if (envData && envData.raw_content) {
+            document.getElementById('env-raw-content').value = envData.raw_content;
+        } else {
+            if (!showSecrets) {
+                alert('Enable "Show Secret Values" to edit the raw content');
+                document.getElementById('show-secrets').checked = true;
+                showSecrets = true;
+                loadEnvFile().then(() => {
+                    if (envData && envData.raw_content) {
+                        document.getElementById('env-raw-content').value = envData.raw_content;
+                    }
+                });
+            }
+        }
+    } else {
+        display.classList.remove('d-none');
+        editor.classList.add('d-none');
+    }
+}
+
+async function saveEnvFile() {
+    if (!selectedHost) return;
+    
+    let content;
+    if (editMode) {
+        content = document.getElementById('env-raw-content').value;
+    } else {
+        if (!envData || !envData.raw_content) {
+            alert('Please enable "Show Secret Values" and load the env file first to save changes');
+            return;
+        }
+        content = envData.raw_content;
+    }
+    
+    if (!confirm(`Are you sure you want to update the .env file on ${selectedHost}? A backup will be created.`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/ops/remote-env/${selectedHost}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ content: content })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Environment file saved successfully!');
+            loadEnvFile();
+        } else {
+            alert('Failed to save: ' + result.message);
+        }
+        
+    } catch (error) {
+        console.error('Failed to save env:', error);
+        alert('Failed to save environment file: ' + error.message);
+    }
+}
+
+async function validateEnvFile() {
+    if (!selectedHost) return;
+    
+    const resultDiv = document.getElementById('validation-result');
+    resultDiv.innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm"></div> Validating...</div>';
+    
+    try {
+        const response = await fetch(`/api/ops/remote-env/${selectedHost}/validate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include'
+        });
+        
+        const result = await response.json();
+        const data = result.data || {};
+        const isValid = data.valid;
+        
+        let html = `<div class="validation-result ${isValid ? 'valid' : 'invalid'}">`;
+        
+        if (isValid) {
+            html += `<h6 class="text-success"><i class="bi bi-check-circle me-2"></i>Validation Passed</h6>`;
+            html += `<p class="mb-0 small">All ${data.present_count} required variables are present.</p>`;
+        } else {
+            html += `<h6 class="text-danger"><i class="bi bi-x-circle me-2"></i>Validation Failed</h6>`;
+            if (data.missing && data.missing.length > 0) {
+                html += `<p class="mb-1"><strong>Missing:</strong> ${data.missing.join(', ')}</p>`;
+            }
+            if (data.empty && data.empty.length > 0) {
+                html += `<p class="mb-0"><strong>Empty:</strong> ${data.empty.join(', ')}</p>`;
+            }
+        }
+        
+        html += `<p class="mt-2 mb-0 small text-secondary">Total variables in file: ${data.total_vars || 0}</p>`;
+        html += '</div>';
+        
+        resultDiv.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Failed to validate:', error);
+        resultDiv.innerHTML = `<div class="alert alert-danger">Validation failed: ${error.message}</div>`;
+    }
+}
+
+async function runDeployment() {
+    if (!selectedHost) return;
+    
+    if (!confirm(`Run deployment on ${selectedHost}? This will execute the bootstrap script.`)) {
+        return;
+    }
+    
+    const statusBadge = document.getElementById('deploy-status');
+    const logsDiv = document.getElementById('deploy-logs');
+    
+    statusBadge.className = 'badge bg-warning';
+    statusBadge.textContent = 'Running...';
+    logsDiv.textContent = 'Starting deployment...\n';
+    
+    document.getElementById('btn-deploy').disabled = true;
+    
+    try {
+        const response = await fetch(`/api/ops/deploy/${selectedHost}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include'
+        });
+        
+        const result = await response.json();
+        const data = result.data || {};
+        
+        if (result.success) {
+            statusBadge.className = 'badge bg-success';
+            statusBadge.textContent = 'Completed';
+            logsDiv.textContent = data.logs || 'Deployment completed successfully.';
+        } else {
+            statusBadge.className = 'badge bg-danger';
+            statusBadge.textContent = 'Failed';
+            logsDiv.textContent = `Error: ${result.message}\n\n${data.logs || ''}`;
+        }
+        
+    } catch (error) {
+        console.error('Deployment failed:', error);
+        statusBadge.className = 'badge bg-danger';
+        statusBadge.textContent = 'Error';
+        logsDiv.textContent = `Deployment error: ${error.message}`;
+    } finally {
+        document.getElementById('btn-deploy').disabled = false;
+    }
+}
+
+async function verifyDeployment() {
+    if (!selectedHost) return;
+    
+    const statusBadge = document.getElementById('deploy-status');
+    const logsDiv = document.getElementById('deploy-logs');
+    
+    statusBadge.className = 'badge bg-info';
+    statusBadge.textContent = 'Verifying...';
+    logsDiv.textContent = 'Running verification...\n';
+    
+    try {
+        const response = await fetch(`/api/ops/deploy/${selectedHost}/verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include'
+        });
+        
+        const result = await response.json();
+        const data = result.data || {};
+        
+        if (result.success && data.verified) {
+            statusBadge.className = 'badge bg-success';
+            statusBadge.textContent = 'Verified';
+            logsDiv.textContent = data.output || 'Verification passed.';
+        } else {
+            statusBadge.className = 'badge bg-warning';
+            statusBadge.textContent = 'Issues Found';
+            logsDiv.textContent = `Verification output:\n${data.output || ''}\n\n${data.error || ''}`;
+        }
+        
+    } catch (error) {
+        console.error('Verification failed:', error);
+        statusBadge.className = 'badge bg-danger';
+        statusBadge.textContent = 'Error';
+        logsDiv.textContent = `Verification error: ${error.message}`;
+    }
+}
+
+async function loadServiceHealth() {
+    if (!selectedHost) return;
+    
+    const container = document.getElementById('health-container');
+    container.innerHTML = '<div class="text-center"><div class="spinner-border"></div></div>';
+    
+    try {
+        const response = await fetch(`/api/ops/health/${selectedHost}`, { credentials: 'include' });
+        const result = await response.json();
+        
+        if (!result.success) {
+            container.innerHTML = `<div class="alert alert-danger">${result.message}</div>`;
+            return;
+        }
+        
+        const data = result.data;
+        const services = data.services || [];
+        
+        if (services.length === 0) {
+            container.innerHTML = '<p class="text-secondary text-center py-5">No services found</p>';
+            return;
+        }
+        
+        let html = `
+            <div class="mb-3">
+                <span class="badge bg-success me-2"><i class="bi bi-check-circle"></i> ${data.healthy} Healthy</span>
+                <span class="badge bg-danger"><i class="bi bi-x-circle"></i> ${data.unhealthy} Unhealthy</span>
+            </div>
+            <div class="row">`;
+        
+        services.sort((a, b) => a.name.localeCompare(b.name));
+        
+        for (const service of services) {
+            const isHealthy = service.healthy;
+            html += `
+                <div class="col-md-6 col-lg-4">
+                    <div class="service-health-row">
+                        <span class="status-indicator ${isHealthy ? 'online' : 'offline'}"></span>
+                        <span class="service-name">${service.name}</span>
+                        <span class="badge bg-${isHealthy ? 'success' : 'danger'}">${service.state}</span>
+                    </div>
+                </div>`;
+        }
+        
+        html += '</div>';
+        container.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Failed to load health:', error);
+        container.innerHTML = `<div class="alert alert-danger">Failed to load service health: ${error.message}</div>`;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    refreshHosts();
+});
+</script>
+{% endblock %}
