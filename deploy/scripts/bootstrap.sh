@@ -930,7 +930,7 @@ setup_cron() {
 # ═══════════════════════════════════════════════════════════════════════════════
 
 run_functional_verification() {
-    local verify_script="$SCRIPT_DIR/verify-deployment.sh"
+    local verify_script="$PROJECT_ROOT/deploy/scripts/verify-deployment.sh"
     
     if [ ! -f "$verify_script" ]; then
         log_warning "Verification script not found at $verify_script"
@@ -944,7 +944,7 @@ run_functional_verification() {
             # Check PostgreSQL
             if docker exec homelab-postgres pg_isready -U postgres &>/dev/null; then
                 log_success "PostgreSQL is ready"
-                ((checks_passed++))
+                checks_passed=$((checks_passed + 1))
             else
                 log_error "PostgreSQL not responding"
             fi
@@ -952,7 +952,7 @@ run_functional_verification() {
             # Check Redis
             if docker exec homelab-redis redis-cli ping 2>/dev/null | grep -q "PONG"; then
                 log_success "Redis is ready"
-                ((checks_passed++))
+                checks_passed=$((checks_passed + 1))
             else
                 log_error "Redis not responding"
             fi
@@ -960,7 +960,7 @@ run_functional_verification() {
             # Check Dashboard
             if curl -sf http://localhost:5000/health &>/dev/null; then
                 log_success "Dashboard is healthy"
-                ((checks_passed++))
+                checks_passed=$((checks_passed + 1))
             else
                 log_error "Dashboard not responding"
             fi
