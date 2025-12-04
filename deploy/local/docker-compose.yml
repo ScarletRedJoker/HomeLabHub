@@ -45,37 +45,43 @@ services:
       timeout: 20s
       retries: 3
 
-  plex:
-    image: lscr.io/linuxserver/plex:latest
-    container_name: plex-server
-    restart: unless-stopped
-    networks:
-      - homelab
-    ports:
-      - "32400:32400"
-      - "3005:3005"
-      - "8324:8324"
-      - "32469:32469"
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=America/New_York
-      - VERSION=docker
-      - PLEX_CLAIM=${PLEX_CLAIM:-}
-      - ADVERTISE_IP=https://plex.evindrake.net:443
-    volumes:
-      - ./services/plex/config:/config
-      - ./services/plex/transcode:/transcode
-      - ./services/plex/media:/media
-      - /mnt/nas:/nas:ro
-    devices:
-      - /dev/dri:/dev/dri
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:32400/identity || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+  # NOTE: Plex runs natively on the Ubuntu host (not in Docker) to avoid port conflicts
+  # Native Plex is already accessible at plex.evindrake.net via Caddy reverse proxy
+  # If you want to switch to Docker Plex, stop the native service first:
+  #   sudo systemctl stop plexmediaserver
+  #   sudo systemctl disable plexmediaserver
+  #
+  # plex:
+  #   image: lscr.io/linuxserver/plex:latest
+  #   container_name: plex-server
+  #   restart: unless-stopped
+  #   networks:
+  #     - homelab
+  #   ports:
+  #     - "32400:32400"
+  #     - "3005:3005"
+  #     - "8324:8324"
+  #     - "32469:32469"
+  #   environment:
+  #     - PUID=1000
+  #     - PGID=1000
+  #     - TZ=America/New_York
+  #     - VERSION=docker
+  #     - PLEX_CLAIM=${PLEX_CLAIM:-}
+  #     - ADVERTISE_IP=https://plex.evindrake.net:443
+  #   volumes:
+  #     - ./services/plex/config:/config
+  #     - ./services/plex/transcode:/transcode
+  #     - ./services/plex/media:/media
+  #     - /mnt/nas:/nas:ro
+  #   devices:
+  #     - /dev/dri:/dev/dri
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "curl -f http://localhost:32400/identity || exit 1"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 60s
 
   homeassistant:
     image: ghcr.io/home-assistant/home-assistant:stable

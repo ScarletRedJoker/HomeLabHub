@@ -13,10 +13,11 @@ The Nebula Command Dashboard homelab deployment consists of:
 
 ## 1. Sunshine GameStream Status
 
-### Current Issue
-- **Resolution**: 1024x768 (needs 1920x1080)
-- **Refresh Rate**: 32Hz (needs 60Hz)
-- **Cause**: Virtual display driver not configured for higher resolution
+### Status: WORKING ✅
+- **Resolution**: 1920x1080 @ 60Hz (FIXED)
+- **Streaming Quality**: High quality achieved
+- **Moonlight Pairing**: Complete
+- **Port Forwarding**: Configured via iptables on Ubuntu host
 
 ### Fix: Configure SudoVDA for 1080p@60Hz
 
@@ -213,10 +214,13 @@ sunshine_name = RDPWindows
 ## 8. Action Items
 
 ### Immediate (Before Production)
-1. [ ] Fix Sunshine virtual display resolution to 1080p@60Hz
-2. [ ] Set YOUTUBE_API_KEY for Discord Bot YouTube notifications
-3. [ ] Set CLOUDFLARE_API_TOKEN for DNS automation
-4. [ ] Verify WireGuard tunnel connectivity between hosts
+1. [x] Fix Sunshine virtual display resolution to 1080p@60Hz ✅ (December 4, 2025)
+2. [x] Verify WireGuard tunnel connectivity between hosts ✅ (~34ms latency)
+3. [x] Configure iptables port forwarding for Sunshine ✅
+4. [x] Pair Moonlight with Sunshine ✅
+5. [ ] Set YOUTUBE_API_KEY for Discord Bot YouTube notifications
+6. [ ] Set CLOUDFLARE_API_TOKEN for DNS automation
+7. [ ] Make iptables rules persistent on Ubuntu host
 
 ### Short-term
 1. [ ] Configure Home Assistant integration (set URL and TOKEN)
