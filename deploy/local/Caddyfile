@@ -3,11 +3,17 @@
 }
 
 plex.evindrake.net {
-    reverse_proxy plex-server:32400 {
+    reverse_proxy 172.17.0.1:32400 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
+        header_up X-Plex-Client-Identifier {http.request.header.X-Plex-Client-Identifier}
+        header_up X-Plex-Token {http.request.header.X-Plex-Token}
         header_up Upgrade {http.request.header.Upgrade}
         header_up Connection {http.request.header.Connection}
+        transport http {
+            read_timeout 120s
+            write_timeout 120s
+        }
     }
 }
 
