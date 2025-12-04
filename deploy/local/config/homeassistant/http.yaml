@@ -1,0 +1,16 @@
+# Home Assistant HTTP Configuration
+# Add this to your Home Assistant configuration.yaml under 'http:'
+# Or include it with: http: !include http.yaml
+
+# Required for reverse proxy through Caddy on Linode
+use_x_forwarded_for: true
+trusted_proxies:
+  # Linode WireGuard IP
+  - 10.200.0.1
+  # Docker bridge network
+  - 172.16.0.0/12
+  - 172.17.0.0/16
+  - 172.18.0.0/16
+  # Localhost
+  - 127.0.0.1
+  - ::1

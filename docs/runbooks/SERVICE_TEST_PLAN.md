@@ -158,21 +158,61 @@ curl -I http://localhost:9001
 
 ## Windows VM / GameStream
 
-### Sunshine
+### Sunshine (game.evindrake.net)
 | Test | Method | Expected | Fix |
 |------|--------|----------|-----|
 | Web UI | https://192.168.122.250:47990 | Sunshine admin | Check Windows firewall |
-| Moonlight | Connect from client | Stream starts | Check GPU passthrough |
-| Quality | 1080p60 test | Smooth video | Adjust virtual display |
+| Port Forward | Test from Linode via WireGuard | Connection succeeds | Check iptables rules |
+| Moonlight Pair | Connect from Moonlight client | Pairing succeeds | Check Sunshine PIN |
+| Stream Quality | 1080p@60Hz test | Smooth video, <50ms latency | Adjust encoder/bitrate |
+
+#### Functional Verification Steps
 
 ```bash
-# From Ubuntu host - test port forwarding
-nc -zv 192.168.122.250 47990
-# Expected: Connection succeeded
+# 1. From Ubuntu host - verify VM is running
+virsh list --all | grep win11
+# Expected: win11 running
 
-# Test from WireGuard
-nc -zv 10.200.0.2 47990
+# 2. Test direct VM connectivity (from Ubuntu host)
+nc -zv 192.168.122.250 47984  # Control port
+nc -zv 192.168.122.250 47989  # HTTPS web
+nc -zv 192.168.122.250 47990  # HTTP web
+# Expected: All connections succeeded
+
+# 3. Test port forwarding via WireGuard (from Linode)
+nc -zv 10.200.0.2 47984
+nc -zv 10.200.0.2 47989
+# Expected: Connection succeeded (forwarded through iptables)
+
+# 4. Verify iptables rules are persistent (on Ubuntu host)
+sudo iptables -t nat -L PREROUTING -n | grep 47984
+# Expected: DNAT rule for 47984->192.168.122.250:47984
+
+# 5. Check GPU passthrough (from Ubuntu host)
+virsh dumpxml win11 | grep -A10 "hostdev mode='subsystem' type='pci'"
+# Expected: RTX 3060 PCI device attached
 ```
+
+#### Moonlight Functional Test
+1. Open Moonlight on client device (PC, phone, or Steam Deck)
+2. Add host: `game.evindrake.net` or local IP `192.168.122.250`
+3. Enter PIN shown on Sunshine web UI (https://192.168.122.250:47990)
+4. Select "Desktop" application
+5. **Verify:** Stream starts within 5 seconds
+6. **Verify:** Resolution is 1920x1080 @ 60fps
+7. **Verify:** Input latency is acceptable (<50ms for local, <100ms for remote)
+8. **Verify:** Audio streams correctly
+
+#### Common GameStream Issues
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| Black screen | Virtual display not configured | Set Sunshine to use virtual display (1920x1080) |
+| "Host not found" | Port forwarding not working | Check iptables PREROUTING rules |
+| Pairing fails | Firewall blocking | Open ports 47984-47990 UDP/TCP on VM |
+| Choppy video | Encoder issues | Use NVENC, reduce bitrate to 20Mbps |
+| High latency | Network path | Use WireGuard (faster) over Tailscale |
+| No GPU detected | Passthrough failed | Check VFIO driver binding, IOMMU enabled |
 
 ---
 
@@ -185,7 +225,7 @@ Run this on Linode after deployment:
 echo "=== Infrastructure Test ==="
 
 echo -e "\n[1] Docker Services"
-docker compose ps
+docker compose ps --format "table {{.Name}}\t{{.Status}}"
 
 echo -e "\n[2] WireGuard"
 wg show | head -10
@@ -220,6 +260,43 @@ curl -s -o /dev/null -w "%{http_code}" https://home.evindrake.net
 echo -e "\n[12] Static Sites"
 curl -s -o /dev/null -w "%{http_code}" https://rig-city.com
 curl -s -o /dev/null -w "%{http_code}" https://scarletredjoker.com
+
+echo -e "\n[13] GameStream (via WireGuard)"
+nc -zv 10.200.0.2 47984 2>&1 | grep -q "succeeded" && echo "47984: OK" || echo "47984: FAIL"
+
+echo -e "\n=== Test Complete ==="
+```
+
+### Full Test Script (Local Ubuntu)
+
+Run this on the local Ubuntu host:
+
+```bash
+#!/bin/bash
+echo "=== Local Services Test ==="
+
+echo -e "\n[1] Plex"
+curl -s -o /dev/null -w "%{http_code}" http://localhost:32400/identity
+
+echo -e "\n[2] Home Assistant"
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8123
+
+echo -e "\n[3] MinIO"
+curl -s -o /dev/null -w "%{http_code}" http://localhost:9000/minio/health/ready
+
+echo -e "\n[4] WireGuard"
+wg show | head -10
+
+echo -e "\n[5] Windows VM"
+virsh list --all | grep win11
+
+echo -e "\n[6] Sunshine Ports"
+nc -zv 192.168.122.250 47984 2>&1 | grep -q "succeeded" && echo "47984: OK" || echo "47984: FAIL"
+nc -zv 192.168.122.250 47989 2>&1 | grep -q "succeeded" && echo "47989: OK" || echo "47989: FAIL"
+nc -zv 192.168.122.250 47990 2>&1 | grep -q "succeeded" && echo "47990: OK" || echo "47990: FAIL"
+
+echo -e "\n[7] iptables Persistence"
+sudo iptables -t nat -L PREROUTING -n | grep -c 47984 && echo "Rules: OK" || echo "Rules: MISSING"
 
 echo -e "\n=== Test Complete ==="
 ```

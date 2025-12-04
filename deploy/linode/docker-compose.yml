@@ -105,6 +105,8 @@ services:
       dockerfile: Dockerfile
     container_name: homelab-celery-worker
     restart: unless-stopped
+    env_file:
+      - .env
     command: celery -A celery_app.celery_app worker --loglevel=info --concurrency=4
     networks:
       - homelab
@@ -121,8 +123,17 @@ services:
       - PYTHONUNBUFFERED=1
       - AI_PROVIDER=openai
       - AI_MODEL=gpt-4o
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - WEB_USERNAME=${WEB_USERNAME}
+      - WEB_PASSWORD=${WEB_PASSWORD}
       - PLEX_URL=${TAILSCALE_LOCAL_HOST}:32400
       - PLEX_TOKEN=${PLEX_TOKEN}
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A celery_app.celery_app inspect ping -d celery@$$HOSTNAME || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     volumes:
       - ./services/dashboard/logs:/app/logs
 
