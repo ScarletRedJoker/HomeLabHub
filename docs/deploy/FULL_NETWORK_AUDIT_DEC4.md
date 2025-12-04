@@ -229,6 +229,28 @@ curl -sI https://home.evindrake.net | head -2
 
 ---
 
+## Section 8: External Access (Friends Without VPN)
+
+### Recommended: Cloudflare Tunnel
+No router ports to open, automatic SSL, DDoS protection included.
+
+| Service | External URL | Security |
+|---------|--------------|----------|
+| Plex | plex.evindrake.net | Plex authentication |
+| Home Assistant | home.evindrake.net | Cloudflare Access (Zero Trust) |
+| MinIO | minio.evindrake.net | Cloudflare Access (Zero Trust) |
+
+### Alternative: Router Port Forward (Plex Only)
+For best streaming performance:
+1. BE9300 Router → Port Forwarding → Add Rule
+2. External Port: 32400 → Internal: 192.168.0.228:32400 (TCP)
+3. Enable Plex Remote Access in Settings
+
+### Setup Guide
+See [`EXTERNAL_ACCESS_GUIDE.md`](EXTERNAL_ACCESS_GUIDE.md) for full instructions.
+
+---
+
 ## Quick Reference
 
 ### Connection IPs

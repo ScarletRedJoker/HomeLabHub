@@ -95,6 +95,26 @@ The core system relies on Docker Compose for orchestrating services across a spl
 | Cloudflare API | Not set | Add CLOUDFLARE_API_TOKEN for DNS automation |
 | Home Assistant | Not configured | Set HOME_ASSISTANT_URL and HOME_ASSISTANT_TOKEN in production |
 
+## External Access (Friends Without VPN)
+
+### Recommended Approach: Cloudflare Tunnel
+The safest way to expose local services externally without opening router ports:
+
+| Service | External URL | Access Method | Security |
+|---------|--------------|---------------|----------|
+| **Plex** | plex.evindrake.net | Cloudflare Tunnel | Plex authentication |
+| **Home Assistant** | home.evindrake.net | Cloudflare Tunnel + Access | Zero Trust (invite-only) |
+| **MinIO Console** | minio.evindrake.net | Cloudflare Tunnel + Access | Zero Trust (invite-only) |
+
+### Alternative: Router Port Forwarding (Plex Only)
+For best Plex streaming performance, consider direct port forwarding:
+- Forward TCP 32400 on BE9300 router to 192.168.0.228
+- Enable "Remote Access" in Plex settings
+- Friends access via app.plex.tv (Plex handles authentication)
+
+### Setup Guide
+See [`docs/deploy/EXTERNAL_ACCESS_GUIDE.md`](docs/deploy/EXTERNAL_ACCESS_GUIDE.md) for full instructions.
+
 ## Deployment
 
 **See [`docs/deploy/FULL_DEPLOYMENT_GUIDE.md`](docs/deploy/FULL_DEPLOYMENT_GUIDE.md)** - the single source of truth for all deployment instructions.
