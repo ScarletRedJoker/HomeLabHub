@@ -97,10 +97,50 @@ start_docker_services() {
     log_info "Pulling latest images..."
     docker compose pull
     
-    log_info "Starting containers..."
+    log_info "Starting local containers (MinIO, Home Assistant)..."
     docker compose up -d
     
-    log_success "Docker services started"
+    log_success "Local Docker services started"
+}
+
+start_plex() {
+    log_step "Starting Plex Media Server"
+    
+    local plex_dir="${PROJECT_ROOT}/services/plex"
+    
+    if [ ! -f "${plex_dir}/docker-compose.yml" ]; then
+        log_warn "Plex docker-compose not found at ${plex_dir}"
+        return 1
+    fi
+    
+    cd "${plex_dir}"
+    
+    # Create .env if it doesn't exist
+    if [ ! -f ".env" ]; then
+        log_info "Creating Plex .env file..."
+        cat > .env << 'EOF'
+# Get claim token from https://www.plex.tv/claim/ (valid for 4 minutes)
+# Only needed for initial setup, can be removed after
+PLEX_CLAIM_TOKEN=
+EOF
+    fi
+    
+    # Stop existing container if running
+    docker stop plex 2>/dev/null || true
+    docker rm plex 2>/dev/null || true
+    
+    log_info "Starting Plex with NAS mounts..."
+    docker compose up -d plex
+    
+    # Verify NAS is accessible
+    sleep 5
+    if docker exec plex ls /nas/video &>/dev/null; then
+        log_success "Plex started with NAS media accessible"
+        log_info "NAS video contents:"
+        docker exec plex ls /nas/video
+    else
+        log_warn "Plex started but NAS may not be accessible"
+    fi
 }
 
 check_plex() {
@@ -159,10 +199,13 @@ show_summary() {
     echo "    MinIO Console:  http://localhost:9001"
     echo "    Home Assistant: http://localhost:8123"
     echo ""
-    echo "  NAS Media Paths (add to Plex):"
-    echo "    Video:  /mnt/nas/video"
-    echo "    Music:  /mnt/nas/music"
-    echo "    Photos: /mnt/nas/photo"
+    echo "  Plex Library Paths (INSIDE container):"
+    echo "    Movies:    /nas/video/Movies"
+    echo "    TV Shows:  /nas/video/Shows"  
+    echo "    Music:     /nas/music"
+    echo "    Photos:    /nas/photo"
+    echo ""
+    echo "  IMPORTANT: In Plex, add libraries using /nas/... paths, NOT /mnt/nas/..."
     echo ""
     echo "  Useful Commands:"
     echo "    Check NAS:       ./scripts/check-nas-health.sh"
@@ -183,6 +226,7 @@ main() {
     setup_nas "$@"
     setup_env
     start_docker_services
+    start_plex
     
     sleep 10
     
