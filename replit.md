@@ -107,6 +107,34 @@ The core system relies on Docker Compose for orchestrating services across a spl
 | Cloudflare API | Not set | Add CLOUDFLARE_API_TOKEN for DNS automation |
 | Home Assistant | Not configured | Set HOME_ASSISTANT_URL and HOME_ASSISTANT_TOKEN in production |
 
+## GameStream (Sunshine) Configuration
+
+### Windows VM Details
+- **VM Name**: RDPWindows
+- **VM IP**: 192.168.122.250 (KVM NAT)
+- **GPU**: NVIDIA RTX 3060 (passthrough)
+- **Capture**: NVFBC at 2560x1440
+
+### Management Commands (on Ubuntu host)
+```bash
+# Start/stop Sunshine VM
+./deploy/local/scripts/start-sunshine-vm.sh start
+./deploy/local/scripts/start-sunshine-vm.sh stop
+./deploy/local/scripts/start-sunshine-vm.sh status
+
+# Apply optimal settings (on Windows VM)
+.\setup-sunshine-optimal.ps1
+```
+
+### Optimal Sunshine Settings
+- **Encoder**: NVENC (H.264/HEVC)
+- **Capture**: NVFBC
+- **Resolution**: 1920x1080 @ 60fps (WAN) or 2560x1440 (LAN)
+- **Bitrate**: 40-60 Mbps (LAN), 15-25 Mbps (WAN)
+- **Codec**: HEVC preferred
+
+See [`docs/deploy/SUNSHINE_SETUP.md`](docs/deploy/SUNSHINE_SETUP.md) for detailed configuration.
+
 ## External Access (Friends Without VPN)
 
 ### Recommended Approach: Cloudflare Tunnel
