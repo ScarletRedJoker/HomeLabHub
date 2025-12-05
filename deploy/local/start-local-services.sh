@@ -4,7 +4,23 @@
 
 set -e
 
-echo "=== Starting Local Homelab Services ==="
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+echo "═══════════════════════════════════════════════════════════════"
+echo "  Starting Local Homelab Services"
+echo "═══════════════════════════════════════════════════════════════"
+echo ""
+
+# Check NAS mounts first
+if [ -f "${SCRIPT_DIR}/scripts/check-nas-health.sh" ]; then
+    echo "Checking NAS connectivity..."
+    if ! "${SCRIPT_DIR}/scripts/check-nas-health.sh" 2>/dev/null; then
+        echo ""
+        echo "[WARN] NAS not mounted. To set up NAS media for Plex:"
+        echo "       sudo ${SCRIPT_DIR}/scripts/setup-nas-mounts.sh"
+        echo ""
+    fi
+fi
 
 # Check if .env exists
 if [ ! -f ".env" ]; then
@@ -64,12 +80,31 @@ else
 fi
 
 echo ""
-echo "=== Access URLs ==="
-echo "Plex:           http://localhost:32400/web"
-echo "MinIO Console:  http://localhost:9001"
-echo "Home Assistant: http://localhost:8123"
+echo "═══════════════════════════════════════════════════════════════"
+echo "  Access URLs"
+echo "═══════════════════════════════════════════════════════════════"
+echo ""
+echo "Local Access:"
+echo "  Plex:           http://localhost:32400/web"
+echo "  MinIO Console:  http://localhost:9001"
+echo "  Home Assistant: http://localhost:8123"
 echo ""
 echo "Via WireGuard from Linode:"
-echo "Plex:           http://10.200.0.2:32400"
-echo "MinIO:          http://10.200.0.2:9000"
-echo "Home Assistant: http://10.200.0.2:8123"
+echo "  Plex:           http://10.200.0.2:32400"
+echo "  MinIO:          http://10.200.0.2:9000"
+echo "  Home Assistant: http://10.200.0.2:8123"
+echo ""
+echo "═══════════════════════════════════════════════════════════════"
+echo "  NAS Media Paths (for Plex libraries)"
+echo "═══════════════════════════════════════════════════════════════"
+echo ""
+if mountpoint -q /mnt/nas/all 2>/dev/null; then
+    echo "  Video:  /mnt/nas/video"
+    echo "  Music:  /mnt/nas/music"
+    echo "  Photos: /mnt/nas/photo"
+    echo "  Games:  /mnt/nas/games"
+else
+    echo "  [NAS not mounted]"
+    echo "  Run: sudo ./scripts/setup-nas-mounts.sh"
+fi
+echo ""
