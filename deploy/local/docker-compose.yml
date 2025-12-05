@@ -7,6 +7,8 @@ volumes:
   caddy_config:
   minio_data:
   homeassistant_config:
+  plex_config:
+  plex_transcode:
 
 services:
   caddy:
@@ -45,11 +47,17 @@ services:
       timeout: 20s
       retries: 3
 
-  # NOTE: Plex runs natively on the Ubuntu host (not in Docker) to avoid port conflicts
-  # Native Plex is already accessible at plex.evindrake.net via Caddy reverse proxy
-  # If you want to switch to Docker Plex, stop the native service first:
-  #   sudo systemctl stop plexmediaserver
-  #   sudo systemctl disable plexmediaserver
+  # NOTE: Plex runs natively on the Ubuntu host (port 32400) for best performance
+  # Native Plex is accessible at plex.evindrake.net via Caddy reverse proxy
+  #
+  # NAS Media Setup:
+  #   1. Run: sudo ./scripts/setup-nas-mounts.sh
+  #   2. Add libraries in Plex pointing to /mnt/nas/video, /mnt/nas/music, etc.
+  #
+  # If you want to switch to Docker Plex instead:
+  #   1. sudo systemctl stop plexmediaserver
+  #   2. sudo systemctl disable plexmediaserver
+  #   3. Uncomment the plex service below
   #
   # plex:
   #   image: lscr.io/linuxserver/plex:latest
@@ -62,6 +70,11 @@ services:
   #     - "3005:3005"
   #     - "8324:8324"
   #     - "32469:32469"
+  #     - "1900:1900/udp"
+  #     - "32410:32410/udp"
+  #     - "32412:32412/udp"
+  #     - "32413:32413/udp"
+  #     - "32414:32414/udp"
   #   environment:
   #     - PUID=1000
   #     - PGID=1000
@@ -70,12 +83,15 @@ services:
   #     - PLEX_CLAIM=${PLEX_CLAIM:-}
   #     - ADVERTISE_IP=https://plex.evindrake.net:443
   #   volumes:
-  #     - ./services/plex/config:/config
-  #     - ./services/plex/transcode:/transcode
-  #     - ./services/plex/media:/media
-  #     - /mnt/nas:/nas:ro
+  #     - plex_config:/config
+  #     - plex_transcode:/transcode
+  #     # NAS mounts (set up with ./scripts/setup-nas-mounts.sh)
+  #     - /mnt/nas/video:/data/video:ro
+  #     - /mnt/nas/music:/data/music:ro
+  #     - /mnt/nas/photo:/data/photo:ro
+  #     - /mnt/nas/games:/data/games:ro
   #   devices:
-  #     - /dev/dri:/dev/dri
+  #     - /dev/dri:/dev/dri  # Hardware transcoding
   #   healthcheck:
   #     test: ["CMD-SHELL", "curl -f http://localhost:32400/identity || exit 1"]
   #     interval: 30s
