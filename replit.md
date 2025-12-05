@@ -65,6 +65,15 @@ The core system relies on Docker Compose for orchestrating services across a spl
 - **WireGuard Tunnel**: 10.200.0.2 (local) ↔ 10.200.0.1 (Linode), ~34ms latency
 - **GameStream Port Forwarding**: iptables configured on Ubuntu host
 
+### NAS Media Storage
+- **NAS Model**: Zyxel NAS326
+- **Hostname**: NAS326.local
+- **Protocol**: NFS (via /nfs/networkshare)
+- **Media Folders**: video, music, photo, games
+- **Mount Base**: /mnt/nas on Ubuntu host
+- **Setup Script**: `sudo ./deploy/local/scripts/setup-nas-mounts.sh`
+- **Plex Library Paths**: /mnt/nas/video, /mnt/nas/music, /mnt/nas/photo
+
 ### Replit Development Environment
 - **Dashboard**: Running on port 5000 (Flask)
 - **Discord Bot**: Running on port 4000 (Connected to 2 servers: Rig City + Joker's HQ)
@@ -86,6 +95,9 @@ The core system relies on Docker Compose for orchestrating services across a spl
 | Plex Native | Running on port 32400 | Dec 4, 2025 |
 | Home Assistant Docker | Running on port 8123 | Dec 4, 2025 |
 | MinIO Storage | Running on ports 9000/9001 | Dec 4, 2025 |
+| NAS Mount Scripts | Created setup-nas-mounts.sh | Dec 5, 2025 |
+| Local Bootstrap | Created bootstrap-local.sh | Dec 5, 2025 |
+| Deployment Pipeline | GitHub Actions CI/CD ready | Dec 5, 2025 |
 
 ### Outstanding Items
 | Item | Status | Action |
@@ -173,6 +185,22 @@ cp deploy/local/.env.example deploy/local/.env
 - `deploy/scripts/verify-deployment.sh` - Functional verification testing actual service behavior, not just HTTP codes
 - `deploy/linode/.env.example` - Template for all cloud environment variables
 - `deploy/local/.env.example` - Template for all local environment variables
+
+### Local Ubuntu Setup (with NAS)
+
+```bash
+# On local Ubuntu server:
+cd /opt/homelab/HomeLabHub
+
+# Complete bootstrap (NAS + Docker services)
+sudo ./deploy/local/scripts/bootstrap-local.sh
+
+# Or step by step:
+sudo ./deploy/local/scripts/setup-nas-mounts.sh  # Mount NAS
+./deploy/local/start-local-services.sh           # Start Docker
+```
+
+See [`docs/deploy/LOCAL_UBUNTU_SETUP.md`](docs/deploy/LOCAL_UBUNTU_SETUP.md) for detailed instructions.
 
 ### Auto-Migration
 All services automatically run database migrations on startup:
