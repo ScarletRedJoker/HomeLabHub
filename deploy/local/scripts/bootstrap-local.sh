@@ -94,11 +94,16 @@ start_docker_services() {
     
     cd "${DEPLOY_LOCAL}"
     
+    # Clean up any conflicting containers
+    log_info "Cleaning up old containers..."
+    docker stop homelab-minio homeassistant caddy-local plex-server 2>/dev/null || true
+    docker rm homelab-minio homeassistant caddy-local plex-server 2>/dev/null || true
+    
     log_info "Pulling latest images..."
     docker compose pull
     
-    log_info "Starting local containers (MinIO, Home Assistant)..."
-    docker compose up -d
+    log_info "Starting local containers (MinIO, Home Assistant, Caddy)..."
+    docker compose up -d --remove-orphans
     
     log_success "Local Docker services started"
 }
