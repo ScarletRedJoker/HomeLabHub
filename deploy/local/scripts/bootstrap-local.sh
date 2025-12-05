@@ -76,11 +76,13 @@ setup_env() {
             log_success "Generated secure passwords"
         else
             log_warn "No .env.example found, creating minimal .env"
-            cat > .env << 'EOF'
+            local minio_pass=$(openssl rand -base64 24)
+            cat > .env << EOF
 MINIO_ROOT_USER=admin
-MINIO_ROOT_PASSWORD=$(openssl rand -base64 24)
+MINIO_ROOT_PASSWORD=${minio_pass}
 TZ=America/New_York
 EOF
+            log_info "Generated MinIO password: ${minio_pass:0:8}..."
         fi
     else
         log_info ".env already exists"
