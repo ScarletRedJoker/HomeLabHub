@@ -191,6 +191,29 @@ npm run env:pull        # Pull from production
 npm run env:push        # Push to production
 ```
 
+### Interactive TUI Installer (Linode/Headless)
+
+For new Linode servers or any headless Linux system, use the interactive installer:
+
+```bash
+# One-liner install (downloads and runs TUI installer)
+curl -fsSL https://raw.githubusercontent.com/ScarletRedJoker/HomeLabHub/main/deploy/installer/homelab-installer.sh | sudo bash
+
+# Or download and run manually
+curl -fsSL https://raw.githubusercontent.com/ScarletRedJoker/HomeLabHub/main/deploy/installer/homelab-installer.sh -o homelab-installer.sh
+chmod +x homelab-installer.sh
+sudo ./homelab-installer.sh
+```
+
+Features:
+- ASCII art interface with keyboard navigation
+- Interactive service selector (arrow keys + space/enter)
+- Environment configuration wizard with auto-generated secrets
+- Progress bars and health monitoring
+- Linode StackScript variant: `deploy/installer/linode-userdata.sh`
+
+See [`deploy/installer/README.md`](deploy/installer/README.md) for full documentation.
+
 ### Automated Zero-Touch Deployment
 
 ```bash
