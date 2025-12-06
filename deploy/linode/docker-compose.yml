@@ -425,7 +425,7 @@ services:
       - homelab
     environment:
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
-      - CLOUDFLARE_ZONE_ID=${CLOUDFLARE_ZONE_ID}
+      - MANAGED_DOMAINS=evindrake.net,rig-city.com,scarletredjoker.com
       - SERVICE_CATALOG_PATH=/config/services.yaml
       - SYNC_INTERVAL=300
     volumes:
