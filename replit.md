@@ -98,6 +98,9 @@ The core system relies on Docker Compose for orchestrating services across a spl
 | NAS Mount Scripts | Created setup-nas-mounts.sh | Dec 5, 2025 |
 | Local Bootstrap | Created bootstrap-local.sh | Dec 5, 2025 |
 | Deployment Pipeline | GitHub Actions CI/CD ready | Dec 5, 2025 |
+| Observability Stack | Prometheus/Grafana/Loki added to Linode | Dec 6, 2025 |
+| DNS Manager | Cloudflare automation service ready | Dec 6, 2025 |
+| Windows Partition Docs | Resize guide created | Dec 6, 2025 |
 
 ### Outstanding Items
 | Item | Status | Action |
