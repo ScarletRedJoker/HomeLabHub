@@ -24,6 +24,8 @@ services:
       - "80:80"
       - "443:443"
       - "443:443/udp"
+    extra_hosts:
+      - "dockerhost:host-gateway"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
