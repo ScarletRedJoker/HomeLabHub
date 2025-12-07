@@ -73,20 +73,36 @@ sudo ./deploy/local/scripts/setup-nas-mounts.sh --unmount
 
 ## Plex Media Server
 
-Plex runs **natively** on the Ubuntu host (not in Docker) for best performance.
+Plex runs in Docker with access to your NAS media folders.
+
+### Claim Your Plex Server
+
+If your Plex server shows "Not Claimed" (claimed="0"), use the helper script:
+
+```bash
+./deploy/local/scripts/plex-claim.sh
+```
+
+This script will:
+1. Check your current Plex server status
+2. Guide you through getting a claim token from https://www.plex.tv/claim/
+3. Update your .env file automatically
+4. Restart Plex with the new claim
+
+**Note:** Claim tokens expire in 4 minutes, so be ready to paste it quickly!
 
 ### Add Libraries in Plex
 
 1. Open Plex: http://localhost:32400/web
 2. Go to **Settings → Libraries → Add Library**
-3. Add these paths:
+3. Add these paths (inside the container):
 
 | Library Type | Path |
 |--------------|------|
-| Movies | /mnt/nas/video |
-| TV Shows | /mnt/nas/video |
-| Music | /mnt/nas/music |
-| Photos | /mnt/nas/photo |
+| Movies | /nas/video |
+| TV Shows | /nas/video |
+| Music | /nas/music |
+| Photos | /nas/photo |
 
 ### Remote Access
 
