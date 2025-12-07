@@ -25,11 +25,13 @@ services:
       - ./config:/config
       - ./transcode:/transcode
       - ./media:/media
-      # NAS Media Mounts (Zyxel NAS326)
-      - /mnt/nas/all/networkshare/video:/nas/video:ro
-      - /mnt/nas/all/networkshare/music:/nas/music:ro
-      - /mnt/nas/all/networkshare/photo:/nas/photo:ro
-      - /mnt/nas/all/networkshare/games:/nas/games:ro
+      # NAS Media Mounts (Zyxel NAS326 at 192.168.0.176)
+      # The NAS exports /nfs/networkshare which is mounted at /mnt/nas/networkshare on host
+      # Symlinks exist at /mnt/nas/video -> /mnt/nas/networkshare/video, etc.
+      - /mnt/nas/networkshare/video:/nas/video:ro
+      - /mnt/nas/networkshare/music:/nas/music:ro
+      - /mnt/nas/networkshare/photo:/nas/photo:ro
+      - /mnt/nas/networkshare/games:/nas/games:ro
     devices:
       - /dev/dri:/dev/dri
     restart: unless-stopped

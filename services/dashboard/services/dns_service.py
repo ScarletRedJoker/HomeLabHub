@@ -208,7 +208,7 @@ class CloudflareDNSService:
             logger.error(f"Zone {zone_id} not found")
             return []
         
-        params = {
+        params: Dict[str, Any] = {
             "page": page,
             "per_page": per_page
         }
@@ -513,7 +513,7 @@ class CloudflareDNSService:
             "checked_at": datetime.now().isoformat()
         }
     
-    def sync_from_services_catalog(self, catalog_path: str = None) -> Dict[str, Any]:
+    def sync_from_services_catalog(self, catalog_path: Optional[str] = None) -> Dict[str, Any]:
         try:
             import yaml
         except ImportError:
@@ -524,19 +524,18 @@ class CloudflareDNSService:
                 "failed": 0
             }
         
-        if catalog_path is None:
-            catalog_path = os.environ.get('SERVICE_CATALOG_PATH', '/config/services.yaml')
+        resolved_path: str = catalog_path if catalog_path is not None else os.environ.get('SERVICE_CATALOG_PATH', '/config/services.yaml')
         
-        if not os.path.exists(catalog_path):
+        if not os.path.exists(resolved_path):
             return {
                 "success": False,
-                "error": f"Catalog file not found: {catalog_path}",
+                "error": f"Catalog file not found: {resolved_path}",
                 "synced": 0,
                 "failed": 0
             }
         
         try:
-            with open(catalog_path, 'r') as f:
+            with open(resolved_path, 'r') as f:
                 catalog = yaml.safe_load(f)
         except Exception as e:
             return {
@@ -620,7 +619,7 @@ class CloudflareDNSService:
         self._log_audit(
             "sync",
             "catalog",
-            catalog_path,
+            resolved_path,
             f"synced={stats['synced']}, failed={stats['failed']}, skipped={stats['skipped']}"
         )
         

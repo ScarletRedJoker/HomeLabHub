@@ -47,57 +47,38 @@ services:
       timeout: 20s
       retries: 3
 
-  # NOTE: Plex runs natively on the Ubuntu host (port 32400) for best performance
-  # Native Plex is accessible at plex.evindrake.net via Caddy reverse proxy
-  #
-  # NAS Media Setup:
-  #   1. Run: sudo ./scripts/setup-nas-mounts.sh
-  #   2. Add libraries in Plex pointing to /mnt/nas/video, /mnt/nas/music, etc.
-  #
-  # If you want to switch to Docker Plex instead:
-  #   1. sudo systemctl stop plexmediaserver
-  #   2. sudo systemctl disable plexmediaserver
-  #   3. Uncomment the plex service below
-  #
-  # plex:
-  #   image: lscr.io/linuxserver/plex:latest
-  #   container_name: plex-server
-  #   restart: unless-stopped
-  #   networks:
-  #     - homelab
-  #   ports:
-  #     - "32400:32400"
-  #     - "3005:3005"
-  #     - "8324:8324"
-  #     - "32469:32469"
-  #     - "1900:1900/udp"
-  #     - "32410:32410/udp"
-  #     - "32412:32412/udp"
-  #     - "32413:32413/udp"
-  #     - "32414:32414/udp"
-  #   environment:
-  #     - PUID=1000
-  #     - PGID=1000
-  #     - TZ=America/New_York
-  #     - VERSION=docker
-  #     - PLEX_CLAIM=${PLEX_CLAIM:-}
-  #     - ADVERTISE_IP=https://plex.evindrake.net:443
-  #   volumes:
-  #     - plex_config:/config
-  #     - plex_transcode:/transcode
-  #     # NAS mounts (set up with ./scripts/setup-nas-mounts.sh)
-  #     - /mnt/nas/video:/data/video:ro
-  #     - /mnt/nas/music:/data/music:ro
-  #     - /mnt/nas/photo:/data/photo:ro
-  #     - /mnt/nas/games:/data/games:ro
-  #   devices:
-  #     - /dev/dri:/dev/dri  # Hardware transcoding
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "curl -f http://localhost:32400/identity || exit 1"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
-  #     start_period: 60s
+  # Plex Media Server
+  # Uses Docker for isolation and consistent deployments
+  # NAS must be mounted first: sudo ./scripts/setup-nas-mounts.sh
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: plex
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+      - VERSION=docker
+      - PLEX_CLAIM=${PLEX_CLAIM:-}
+    volumes:
+      - plex_config:/config
+      - plex_transcode:/transcode
+      # NAS Media Mounts (Zyxel NAS326 at 192.168.0.176)
+      # The NAS exports /nfs/networkshare mounted at /mnt/nas/networkshare on host
+      # Plex libraries should point to /nas/video, /nas/music, /nas/photo
+      - /mnt/nas/networkshare/video:/nas/video:ro
+      - /mnt/nas/networkshare/music:/nas/music:ro
+      - /mnt/nas/networkshare/photo:/nas/photo:ro
+      - /mnt/nas/networkshare/games:/nas/games:ro
+    devices:
+      - /dev/dri:/dev/dri
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:32400/identity || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   homeassistant:
     image: ghcr.io/home-assistant/home-assistant:stable
