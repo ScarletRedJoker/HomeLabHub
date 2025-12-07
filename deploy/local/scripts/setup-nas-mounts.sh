@@ -21,6 +21,8 @@ log_error() { echo -e "${RED}[ERROR]${NC} $*"; }
 NAS_HOST="${NAS_HOST:-NAS326.local}"
 NAS_IP="${NAS_IP:-}"
 NFS_SHARE="${NFS_SHARE:-}"  # Auto-detected from showmount
+SMB_SHARE="${SMB_SHARE:-}"  # For direct SMB mounting
+MOUNT_TYPE="${MOUNT_TYPE:-auto}"  # auto, nfs, or smb
 MOUNT_BASE="/mnt/nas"
 
 # Media mount points (matching NAS folders)
@@ -156,9 +158,19 @@ configure_fstab() {
     cp /etc/fstab "$backup"
     log_info "Backed up fstab to: $backup"
     
-    sed -i '/# NAS326 NFS Mounts/,/# End NAS326/d' /etc/fstab
+    sed -i '/# NAS326.*Mounts/,/# End NAS326/d' /etc/fstab
     
-    cat >> /etc/fstab << EOF
+    if [ "$MOUNT_TYPE" = "smb" ] || [ -n "$SMB_SHARE" ]; then
+        cat >> /etc/fstab << EOF
+
+# NAS326 SMB Mounts (auto-generated)
+# Zyxel NAS326 at $NAS_HOST ($NAS_IP)
+//${NAS_IP}/${SMB_SHARE}  ${MOUNT_BASE}/all  cifs  guest,vers=3.0,_netdev,noauto,x-systemd.automount  0  0
+# End NAS326
+
+EOF
+    else
+        cat >> /etc/fstab << EOF
 
 # NAS326 NFS Mounts (auto-generated)
 # Zyxel NAS326 at $NAS_HOST ($NAS_IP)
@@ -166,47 +178,96 @@ ${NAS_IP}:${NFS_SHARE}  ${MOUNT_BASE}/all  nfs  nfsvers=3,proto=tcp,soft,timeo=1
 # End NAS326
 
 EOF
+    fi
     
     log_success "Updated /etc/fstab"
 }
 
+mount_smb_share() {
+    log_info "Mounting SMB share..."
+    
+    apt-get install -y cifs-utils 2>/dev/null || true
+    
+    local share_name="${SMB_SHARE}"
+    
+    log_info "Attempting SMB mount: //${NAS_IP}/${share_name}"
+    
+    if mount -t cifs "//${NAS_IP}/${share_name}" "${MOUNT_BASE}/all" -o guest,vers=3.0 2>/dev/null; then
+        log_success "Mounted via SMB 3.0: ${MOUNT_BASE}/all"
+        return 0
+    elif mount -t cifs "//${NAS_IP}/${share_name}" "${MOUNT_BASE}/all" -o guest,vers=2.1 2>/dev/null; then
+        log_success "Mounted via SMB 2.1: ${MOUNT_BASE}/all"
+        return 0
+    elif mount -t cifs "//${NAS_IP}/${share_name}" "${MOUNT_BASE}/all" -o guest 2>/dev/null; then
+        log_success "Mounted via SMB (auto): ${MOUNT_BASE}/all"
+        return 0
+    else
+        log_error "SMB mount failed for //${NAS_IP}/${share_name}"
+        return 1
+    fi
+}
+
+mount_nfs_share() {
+    log_info "Mounting NFS share..."
+    
+    log_info "Attempting NFS mount: ${NAS_IP}:${NFS_SHARE}"
+    
+    if mount -t nfs -o nfsvers=3,proto=tcp,soft,timeo=150,retrans=3 "${NAS_IP}:${NFS_SHARE}" "${MOUNT_BASE}/all" 2>/dev/null; then
+        log_success "Mounted via NFS v3: ${MOUNT_BASE}/all"
+        return 0
+    elif mount -t nfs -o nfsvers=4,proto=tcp,soft,timeo=150 "${NAS_IP}:${NFS_SHARE}" "${MOUNT_BASE}/all" 2>/dev/null; then
+        log_success "Mounted via NFS v4: ${MOUNT_BASE}/all"
+        return 0
+    elif mount -t nfs "${NAS_IP}:${NFS_SHARE}" "${MOUNT_BASE}/all" 2>/dev/null; then
+        log_success "Mounted via NFS (auto): ${MOUNT_BASE}/all"
+        return 0
+    else
+        log_error "NFS mount failed for ${NAS_IP}:${NFS_SHARE}"
+        return 1
+    fi
+}
+
 mount_shares() {
-    log_info "Mounting NFS shares..."
+    log_info "Mounting shares (type: ${MOUNT_TYPE})..."
     
     systemctl daemon-reload
     
-    # Try NFS v3 first (most compatible with Zyxel)
-    log_info "Attempting NFS mount..."
-    if mount -t nfs -o nfsvers=3,proto=tcp,soft,timeo=150,retrans=3 "${NAS_IP}:${NFS_SHARE}" "${MOUNT_BASE}/all" 2>/dev/null; then
-        log_success "Mounted via NFS v3: ${MOUNT_BASE}/all"
-    elif mount -t nfs -o nfsvers=4,proto=tcp,soft,timeo=150 "${NAS_IP}:${NFS_SHARE}" "${MOUNT_BASE}/all" 2>/dev/null; then
-        log_success "Mounted via NFS v4: ${MOUNT_BASE}/all"
-    elif mount -t nfs "${NAS_IP}:${NFS_SHARE}" "${MOUNT_BASE}/all" 2>/dev/null; then
-        log_success "Mounted via NFS (auto): ${MOUNT_BASE}/all"
+    local mount_success=false
+    
+    if [ "$MOUNT_TYPE" = "smb" ]; then
+        if mount_smb_share; then
+            mount_success=true
+        fi
+    elif [ "$MOUNT_TYPE" = "nfs" ]; then
+        if mount_nfs_share; then
+            mount_success=true
+        fi
     else
-        log_error "NFS mount failed"
-        log_info "Checking if SMB/CIFS is available..."
-        
-        if nc -z -w2 "$NAS_IP" 445 2>/dev/null; then
-            log_info "SMB port is open, trying CIFS mount..."
-            apt-get install -y cifs-utils 2>/dev/null || true
-            
-            if mount -t cifs "//${NAS_IP}/nfs" "${MOUNT_BASE}/all" -o guest,vers=3.0 2>/dev/null; then
-                log_success "Mounted via SMB/CIFS: ${MOUNT_BASE}/all"
-            else
-                log_error "CIFS mount also failed"
-                echo ""
-                echo "Please run the diagnostic script:"
-                echo "  ./scripts/diagnose-nas.sh"
-                exit 1
+        if mount_nfs_share; then
+            mount_success=true
+        elif [ -n "$SMB_SHARE" ]; then
+            log_info "NFS failed, trying SMB fallback..."
+            if mount_smb_share; then
+                mount_success=true
             fi
         else
-            log_error "Mount failed. NFS and SMB ports not accessible."
-            echo ""
-            echo "Please run the diagnostic script:"
-            echo "  ./scripts/diagnose-nas.sh ${NAS_IP}"
-            exit 1
+            log_info "Checking if SMB/CIFS is available..."
+            if nc -z -w2 "$NAS_IP" 445 2>/dev/null; then
+                log_info "SMB port is open, trying CIFS mount..."
+                SMB_SHARE="nfs"
+                if mount_smb_share; then
+                    mount_success=true
+                fi
+            fi
         fi
+    fi
+    
+    if [ "$mount_success" = false ]; then
+        log_error "All mount attempts failed"
+        echo ""
+        echo "Please run the diagnostic script:"
+        echo "  ./scripts/diagnose-nas.sh ${NAS_IP}"
+        exit 1
     fi
     
     # Create symlinks to media folders
@@ -285,6 +346,11 @@ parse_args() {
                 ;;
             --nfs-share=*)
                 NFS_SHARE="${arg#*=}"
+                MOUNT_TYPE="nfs"
+                ;;
+            --smb-share=*)
+                SMB_SHARE="${arg#*=}"
+                MOUNT_TYPE="smb"
                 ;;
             --unmount)
                 unmount_shares
@@ -364,15 +430,25 @@ show_help() {
     echo "Options:"
     echo "  --nas-ip=IP       Specify NAS IP address directly"
     echo "  --nas-host=HOST   Specify NAS hostname (default: NAS326.local)"
+    echo "  --nfs-share=PATH  Specify NFS export path (e.g., /nfs/networkshare)"
+    echo "  --smb-share=NAME  Specify SMB share name for direct CIFS mount (e.g., media)"
     echo "  --unmount         Unmount all NAS shares"
     echo "  --status          Show current mount status"
+    echo "  --clean-fstab     Remove old NAS entries from fstab"
     echo "  --help            Show this help message"
     echo ""
+    echo "Mount Types:"
+    echo "  By default, NFS is tried first, then SMB as fallback."
+    echo "  Use --nfs-share to force NFS mount."
+    echo "  Use --smb-share to force SMB/CIFS mount."
+    echo ""
     echo "Examples:"
-    echo "  sudo $0                           # Auto-detect NAS"
-    echo "  sudo $0 --nas-ip=192.168.0.100   # Use specific IP"
-    echo "  sudo $0 --status                  # Check if mounted"
-    echo "  sudo $0 --unmount                 # Unmount shares"
+    echo "  sudo $0                                    # Auto-detect NAS and mount"
+    echo "  sudo $0 --nas-ip=192.168.0.100            # Use specific IP"
+    echo "  sudo $0 --nas-ip=192.168.0.100 --nfs-share=/nfs/media   # Force NFS"
+    echo "  sudo $0 --nas-ip=192.168.0.100 --smb-share=public       # Force SMB"
+    echo "  sudo $0 --status                          # Check if mounted"
+    echo "  sudo $0 --unmount                         # Unmount shares"
 }
 
 main() {
@@ -385,7 +461,13 @@ main() {
     check_root
     install_nfs_utils
     resolve_nas_ip
-    test_nfs_connection
+    
+    if [ "$MOUNT_TYPE" != "smb" ]; then
+        test_nfs_connection
+    else
+        log_info "Using SMB mount type, skipping NFS detection"
+    fi
+    
     create_mount_points
     configure_fstab
     mount_shares

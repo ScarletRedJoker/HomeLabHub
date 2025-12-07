@@ -52,8 +52,49 @@ check_prerequisites() {
 setup_nas() {
     log_step "Setting Up NAS Media Mounts"
     
+    local nas_args=()
+    local auto_discover=true
+    
+    # Check if user provided NAS IP/host
+    for arg in "$@"; do
+        case $arg in
+            --nas-ip=*|--nas-host=*|--nfs-share=*|--smb-share=*)
+                auto_discover=false
+                nas_args+=("$arg")
+                ;;
+            --skip-nas)
+                log_info "Skipping NAS setup (--skip-nas)"
+                return 0
+                ;;
+        esac
+    done
+    
+    # Auto-discover NAS if no explicit config provided
+    if [ "$auto_discover" = true ]; then
+        log_info "No NAS configuration provided, running auto-discovery..."
+        
+        if [ -f "${SCRIPT_DIR}/discover-nas.sh" ]; then
+            # Run discovery and capture results
+            "${SCRIPT_DIR}/discover-nas.sh" --auto-mount && return 0
+            
+            # If auto-mount failed, show manual options
+            log_warn "Auto-discovery couldn't mount NAS automatically"
+            log_info "You can:"
+            log_info "  1. Run discovery manually: sudo ./discover-nas.sh"
+            log_info "  2. Specify NAS directly: sudo ./bootstrap-local.sh --nas-ip=192.168.x.x"
+            log_info "  3. Skip NAS setup: sudo ./bootstrap-local.sh --skip-nas"
+            echo ""
+            read -p "Continue without NAS? [y/N]: " response
+            if [[ ! "$response" =~ ^[Yy]$ ]]; then
+                exit 1
+            fi
+            return 0
+        fi
+    fi
+    
+    # Use setup-nas-mounts.sh with provided args
     if [ -f "${SCRIPT_DIR}/setup-nas-mounts.sh" ]; then
-        "${SCRIPT_DIR}/setup-nas-mounts.sh" "$@"
+        "${SCRIPT_DIR}/setup-nas-mounts.sh" "${nas_args[@]}"
     else
         log_error "NAS setup script not found"
         exit 1
@@ -241,18 +282,37 @@ main() {
 }
 
 case "${1:-}" in
-    --help)
-        echo "Usage: sudo $0 [NAS_OPTIONS]"
+    --help|-h)
+        echo "Usage: sudo $0 [OPTIONS]"
         echo ""
         echo "Bootstrap the local Ubuntu homelab server with NAS mounts and Docker services."
         echo ""
-        echo "NAS Options (passed to setup-nas-mounts.sh):"
-        echo "  --nas-ip=IP       Specify NAS IP address"
+        echo "By default, the script will automatically discover NAS devices on your network"
+        echo "and configure the best available share for media access."
+        echo ""
+        echo "Options:"
+        echo "  --nas-ip=IP       Specify NAS IP address (skips auto-discovery)"
         echo "  --nas-host=HOST   Specify NAS hostname (default: NAS326.local)"
+        echo "  --nfs-share=PATH  Specify NFS export path (e.g., /nfs/networkshare)"
+        echo "  --smb-share=NAME  Specify SMB share name (e.g., media)"
+        echo "  --skip-nas        Skip NAS setup entirely"
+        echo "  --help, -h        Show this help message"
+        echo ""
+        echo "Auto-Discovery Features:"
+        echo "  - Scans for NAS devices via mDNS/Bonjour (.local hostnames)"
+        echo "  - Probes network for NFS (port 2049) and SMB (port 445) servers"
+        echo "  - Automatically detects available shares"
+        echo "  - Selects and mounts the best media share"
         echo ""
         echo "Examples:"
-        echo "  sudo $0                           # Auto-detect everything"
-        echo "  sudo $0 --nas-ip=192.168.0.100   # Use specific NAS IP"
+        echo "  sudo $0                             # Auto-discover and configure NAS"
+        echo "  sudo $0 --nas-ip=192.168.0.100     # Use specific NAS IP"
+        echo "  sudo $0 --skip-nas                  # Setup without NAS"
+        echo ""
+        echo "Standalone NAS Commands:"
+        echo "  sudo ./discover-nas.sh              # Scan network for NAS devices"
+        echo "  sudo ./discover-nas.sh --json       # Output discovery as JSON"
+        echo "  sudo ./setup-nas-mounts.sh --status # Check current mount status"
         ;;
     *)
         main "$@"
