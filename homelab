@@ -23,12 +23,17 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 # Auto-detect project root
-if [ -d "/home/evin/contain/HomeLabHub" ]; then
-    PROJECT_ROOT="/home/evin/contain/HomeLabHub"
-elif [ -d "/opt/homelab/HomeLabHub" ]; then
+# Priority: 1) Script directory, 2) /opt/homelab, 3) /home/evin, 4) pwd
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+if [ -f "$SCRIPT_DIR/.env" ] || [ -f "$SCRIPT_DIR/docker-compose.yml" ] || [ -f "$SCRIPT_DIR/compose.local.yml" ]; then
+    PROJECT_ROOT="$SCRIPT_DIR"
+elif [ -d "/opt/homelab/HomeLabHub" ] && [ -f "/opt/homelab/HomeLabHub/.env" -o -f "/opt/homelab/HomeLabHub/docker-compose.yml" ]; then
     PROJECT_ROOT="/opt/homelab/HomeLabHub"
+elif [ -d "/home/evin/contain/HomeLabHub" ] && [ -f "/home/evin/contain/HomeLabHub/.env" -o -f "/home/evin/contain/HomeLabHub/compose.local.yml" ]; then
+    PROJECT_ROOT="/home/evin/contain/HomeLabHub"
 else
-    PROJECT_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+    PROJECT_ROOT="$SCRIPT_DIR"
 fi
 
 # Auto-detect role: local (Ubuntu host) vs cloud (Linode)

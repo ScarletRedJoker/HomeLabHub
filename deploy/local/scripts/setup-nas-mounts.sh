@@ -245,24 +245,22 @@ mount_smb_share() {
 
 mount_nfs_share() {
     log_info "Mounting NFS share..."
-    
     log_info "Attempting NFS mount: ${NAS_IP}:${NFS_SHARE}"
     
-    # Mount with read-write access (rw) explicitly set
-    # Use soft mounts with reasonable timeouts to prevent hangs
-    if mount -t nfs -o rw,nfsvers=3,proto=tcp,soft,timeo=150,retrans=3 "${NAS_IP}:${NFS_SHARE}" "${MOUNT_BASE}/all" 2>/dev/null; then
+    # Use timeout to prevent hanging (30 seconds max)
+    if timeout 30 mount -t nfs -o rw,nfsvers=3,proto=tcp,soft,timeo=150,retrans=3 "${NAS_IP}:${NFS_SHARE}" "${MOUNT_BASE}/all" 2>/dev/null; then
         log_success "Mounted via NFS v3 (read-write): ${MOUNT_BASE}/all"
         return 0
-    elif mount -t nfs -o rw,nfsvers=4,proto=tcp,soft,timeo=150 "${NAS_IP}:${NFS_SHARE}" "${MOUNT_BASE}/all" 2>/dev/null; then
+    elif timeout 30 mount -t nfs -o rw,nfsvers=4,proto=tcp,soft,timeo=150 "${NAS_IP}:${NFS_SHARE}" "${MOUNT_BASE}/all" 2>/dev/null; then
         log_success "Mounted via NFS v4 (read-write): ${MOUNT_BASE}/all"
         return 0
-    elif mount -t nfs -o rw "${NAS_IP}:${NFS_SHARE}" "${MOUNT_BASE}/all" 2>/dev/null; then
+    elif timeout 30 mount -t nfs -o rw "${NAS_IP}:${NFS_SHARE}" "${MOUNT_BASE}/all" 2>/dev/null; then
         log_success "Mounted via NFS (auto, read-write): ${MOUNT_BASE}/all"
         return 0
     else
-        log_error "NFS mount failed for ${NAS_IP}:${NFS_SHARE}"
-        log_info "If this is a permission issue, ensure NAS exports allow write access"
-        log_info "Check NAS admin panel: NFS settings -> Export permissions -> Allow rw"
+        log_error "NFS mount failed or timed out for ${NAS_IP}:${NFS_SHARE}"
+        log_info "The NFS server may be slow or misconfigured."
+        log_info "Try SMB instead: sudo $0 --smb-share=nfs --nas-ip=${NAS_IP}"
         return 1
     fi
 }
