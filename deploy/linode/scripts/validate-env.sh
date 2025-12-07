@@ -78,13 +78,27 @@ fi
 source "$ENV_FILE"
 
 # Auto-derive Discord App ID from Client ID (they're the same in Discord)
+# Also persist to .env file so docker-compose can read them
+DERIVED_ADDED=false
 if [[ -z "${DISCORD_APP_ID:-}" && -n "${DISCORD_CLIENT_ID:-}" ]]; then
     export DISCORD_APP_ID="$DISCORD_CLIENT_ID"
+    if ! grep -q "^DISCORD_APP_ID=" "$ENV_FILE" 2>/dev/null; then
+        echo "DISCORD_APP_ID=$DISCORD_CLIENT_ID" >> "$ENV_FILE"
+        DERIVED_ADDED=true
+    fi
 fi
 
 # Auto-derive VITE_DISCORD_CLIENT_ID from DISCORD_CLIENT_ID
 if [[ -z "${VITE_DISCORD_CLIENT_ID:-}" && -n "${DISCORD_CLIENT_ID:-}" ]]; then
     export VITE_DISCORD_CLIENT_ID="$DISCORD_CLIENT_ID"
+    if ! grep -q "^VITE_DISCORD_CLIENT_ID=" "$ENV_FILE" 2>/dev/null; then
+        echo "VITE_DISCORD_CLIENT_ID=$DISCORD_CLIENT_ID" >> "$ENV_FILE"
+        DERIVED_ADDED=true
+    fi
+fi
+
+if [[ "$DERIVED_ADDED" == "true" ]]; then
+    echo -e "  ${GREEN}[AUTO]${NC} Added derived Discord variables to .env"
 fi
 
 print_section "Core Infrastructure (REQUIRED)"
