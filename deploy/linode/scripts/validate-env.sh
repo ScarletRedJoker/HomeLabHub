@@ -77,6 +77,16 @@ fi
 
 source "$ENV_FILE"
 
+# Auto-derive Discord App ID from Client ID (they're the same in Discord)
+if [[ -z "${DISCORD_APP_ID:-}" && -n "${DISCORD_CLIENT_ID:-}" ]]; then
+    export DISCORD_APP_ID="$DISCORD_CLIENT_ID"
+fi
+
+# Auto-derive VITE_DISCORD_CLIENT_ID from DISCORD_CLIENT_ID
+if [[ -z "${VITE_DISCORD_CLIENT_ID:-}" && -n "${DISCORD_CLIENT_ID:-}" ]]; then
+    export VITE_DISCORD_CLIENT_ID="$DISCORD_CLIENT_ID"
+fi
+
 print_section "Core Infrastructure (REQUIRED)"
 check_required "POSTGRES_PASSWORD" "PostgreSQL root password"
 check_required "DISCORD_DB_PASSWORD" "Discord bot database password"
