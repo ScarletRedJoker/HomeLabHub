@@ -10,7 +10,6 @@ volumes:
   plex_config:
   plex_transcode:
   novnc_data:
-  sunshine_config:
 
 services:
   caddy:
@@ -133,33 +132,3 @@ services:
       retries: 3
       start_period: 30s
 
-  sunshine:
-    image: lizardbyte/sunshine:latest-ubuntu-24.04
-    container_name: sunshine
-    restart: unless-stopped
-    profiles:
-      - gamestream
-    network_mode: host
-    privileged: true
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=${TZ:-America/New_York}
-      - SUNSHINE_LOG_LEVEL=info
-    volumes:
-      - sunshine_config:/config
-      - /dev/dri:/dev/dri
-      - /dev/uinput:/dev/uinput
-      - /run/udev:/run/udev:ro
-      - /tmp/.X11-unix:/tmp/.X11-unix:ro
-    devices:
-      - /dev/dri:/dev/dri
-    cap_add:
-      - SYS_ADMIN
-      - NET_ADMIN
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f -k https://localhost:47990/api/apps || exit 1"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 120s
