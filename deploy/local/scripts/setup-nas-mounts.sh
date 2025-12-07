@@ -132,8 +132,33 @@ test_nfs_connection() {
     fi
 }
 
+cleanup_stale_mounts() {
+    log_info "Checking for stale mounts..."
+    
+    if mount | grep -q "$MOUNT_BASE"; then
+        log_warn "Found existing mount at $MOUNT_BASE, unmounting..."
+        umount -l "$MOUNT_BASE/all" 2>/dev/null || true
+        umount -f "$MOUNT_BASE/all" 2>/dev/null || true
+        umount -l "$MOUNT_BASE" 2>/dev/null || true
+        umount -f "$MOUNT_BASE" 2>/dev/null || true
+        sleep 1
+        log_success "Cleaned up stale mounts"
+    fi
+    
+    if timeout 5 ls "$MOUNT_BASE" &>/dev/null; then
+        log_info "Mount base is accessible"
+    else
+        log_warn "Mount base appears stale, forcing cleanup..."
+        umount -l "$MOUNT_BASE/all" 2>/dev/null || true
+        umount -l "$MOUNT_BASE" 2>/dev/null || true
+        rm -rf "$MOUNT_BASE" 2>/dev/null || true
+    fi
+}
+
 create_mount_points() {
     log_info "Creating mount points..."
+    
+    cleanup_stale_mounts
     
     mkdir -p "$MOUNT_BASE" 2>/dev/null || true
     
