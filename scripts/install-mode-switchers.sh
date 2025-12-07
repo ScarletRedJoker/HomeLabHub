@@ -39,6 +39,14 @@ if command -v update-desktop-database &> /dev/null; then
 fi
 
 echo ""
+echo "━━━ Installing NAS Desktop Integration ━━━"
+if [ -x "$SCRIPT_DIR/setup-nas-desktop.sh" ]; then
+    "$SCRIPT_DIR/setup-nas-desktop.sh" || echo "NAS setup skipped (NAS may not be mounted)"
+else
+    echo "NAS desktop setup script not found, skipping..."
+fi
+
+echo ""
 echo "=== Installation Complete ==="
 echo ""
 echo "Available commands:"
@@ -48,5 +56,7 @@ echo "  gaming-mode         - Switch to Gaming Mode (Sunshine)"
 echo "  productivity-mode   - Switch to Productivity Mode (RDP)"
 echo ""
 echo "Desktop shortcuts installed to ~/.local/share/applications/"
+echo ""
+echo "NAS folders available in Files sidebar for drag-and-drop!"
 echo ""
 echo "Reload your shell or run: source ~/.bashrc"

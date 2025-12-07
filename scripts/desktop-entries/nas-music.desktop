@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=NAS Music
+Comment=Open NAS music library
+Exec=xdg-open /mnt/nas/networkshare/music
+Icon=folder-music
+Terminal=false
+Categories=FileManager;Utility;Audio;
+Keywords=nas;music;audio;library;
+StartupNotify=true

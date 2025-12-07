@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=NAS Games
+Comment=Open NAS games storage
+Exec=xdg-open /mnt/nas/networkshare/games
+Icon=applications-games
+Terminal=false
+Categories=FileManager;Utility;Game;
+Keywords=nas;games;gaming;storage;
+StartupNotify=true

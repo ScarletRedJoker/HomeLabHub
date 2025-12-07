@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=NAS Media
+Comment=Open NAS media storage for drag-and-drop file management
+Exec=xdg-open /mnt/nas/networkshare
+Icon=folder-remote
+Terminal=false
+Categories=FileManager;Utility;
+Keywords=nas;media;storage;files;plex;video;music;photo;
+StartupNotify=true

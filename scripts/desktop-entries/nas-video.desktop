@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=NAS Video
+Comment=Open NAS video folder for Plex movies and shows
+Exec=xdg-open /mnt/nas/networkshare/video
+Icon=folder-videos
+Terminal=false
+Categories=FileManager;Utility;AudioVideo;
+Keywords=nas;video;movies;plex;tv;shows;
+StartupNotify=true

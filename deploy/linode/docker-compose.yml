@@ -295,7 +295,7 @@ services:
     networks:
       - homelab
     volumes:
-      - ./services/static-site:/usr/share/nginx/html:ro
+      - ../../services/static-site:/usr/share/nginx/html:ro
 
   rig-city-site:
     image: nginx:alpine
@@ -304,7 +304,7 @@ services:
     networks:
       - homelab
     volumes:
-      - ./services/rig-city-site:/usr/share/nginx/html:ro
+      - ../../services/rig-city-site:/usr/share/nginx/html:ro
 
   homelab-prometheus:
     image: prom/prometheus:v2.47.0

@@ -156,3 +156,52 @@ sudo ./deploy/local/scripts/setup-nas-mounts.sh        # Mount NAS
 ```
 
 See `docs/deploy/LOCAL_UBUNTU_SETUP.md` for detailed instructions.
+
+### Desktop Integration (Gaming & Media)
+
+The Ubuntu desktop provides seamless integration for gaming and media management:
+
+#### NAS File Manager Integration
+```bash
+# One-time setup - adds NAS folders to Files sidebar
+./scripts/setup-nas-desktop.sh
+
+# Or install everything (gaming + NAS + WinApps)
+./scripts/install-mode-switchers.sh
+```
+
+Desktop shortcuts for NAS:
+- `scripts/desktop-entries/nas-media.desktop` - Main NAS folder
+- `scripts/desktop-entries/nas-video.desktop` - Plex videos (drag-drop movies here)
+- `scripts/desktop-entries/nas-music.desktop` - Music library
+- `scripts/desktop-entries/nas-games.desktop` - Game storage
+
+#### GameStream via Sunshine
+- **VM**: Windows 11 KVM with RTX 3060 GPU passthrough
+- **VM IP**: 192.168.122.250
+- **Streaming Port**: 47989 (TCP/UDP)
+- **Documentation**: `docs/deploy/SUNSHINE_SETUP.md`
+
+```bash
+# Check GameStream readiness
+./deploy/local/scripts/check-gamestream.sh
+
+# Switch to gaming mode (disconnects RDP, enables Sunshine)
+gaming-mode
+
+# Launch Moonlight client
+moonlight-gaming
+```
+
+#### Mode Switching
+- `gaming-mode` - Switch VM to console for Sunshine streaming
+- `productivity-mode` - Enable RDP for WinApps
+- `winapps-mode <app>` - Launch Windows apps (word, excel, etc.)
+
+Full guide: `docs/deploy/ULTIMATE_GAMING_MEDIA_SETUP.md`
+
+### Static Sites
+- **rig-city.com**: Gaming community site (services/rig-city-site/)
+- **scarletredjoker.com**: Digital creator portfolio (services/static-site/)
+- Served via Nginx containers on Linode
+- Docker path: `deploy/linode/docker-compose.yml` → `../../services/rig-city-site`
