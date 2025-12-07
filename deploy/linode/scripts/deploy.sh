@@ -425,6 +425,24 @@ else
     log_info "[DRY RUN] Would run health checks"
 fi
 
+print_step "Running post-deployment smoke test..."
+
+SMOKE_TEST_PASSED=true
+if [[ "$DRY_RUN" != "true" ]]; then
+    if [[ -x "$SCRIPT_DIR/smoke-test.sh" ]]; then
+        if "$SCRIPT_DIR/smoke-test.sh" --quiet; then
+            log_success "Smoke test passed"
+        else
+            log_warn "Smoke test detected issues (non-blocking)"
+            SMOKE_TEST_PASSED=false
+        fi
+    else
+        log_info "Smoke test script not found - skipping"
+    fi
+else
+    log_info "[DRY RUN] Would run smoke test"
+fi
+
 print_header "Deployment Summary"
 
 if [[ "$DRY_RUN" == "true" ]]; then
@@ -438,8 +456,11 @@ else
     if [[ ${UNHEALTHY:-0} -gt 0 ]]; then
         echo -e "  ${YELLOW}[WARNING] $UNHEALTHY service(s) may have issues${NC}"
         echo "  Check logs with: docker compose logs <service-name>"
+    elif [[ "$SMOKE_TEST_PASSED" == "false" ]]; then
+        echo -e "  ${YELLOW}[WARNING] Smoke test detected some issues${NC}"
+        echo "  Run: $SCRIPT_DIR/smoke-test.sh --auto-fix"
     else
-        echo -e "  ${GREEN}All services deployed successfully!${NC}"
+        echo -e "  ${GREEN}All services deployed and verified!${NC}"
     fi
     
     echo ""
@@ -450,6 +471,8 @@ else
     echo "    docker compose ps                    # Check status"
     echo "    docker compose logs -f <service>     # View logs"
     echo "    docker compose restart <service>     # Restart service"
+    echo "    $SCRIPT_DIR/smoke-test.sh            # Re-run smoke test"
+    echo "    $SCRIPT_DIR/smoke-test.sh --auto-fix # Auto-fix failures"
 fi
 
 exit 0

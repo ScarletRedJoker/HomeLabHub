@@ -352,6 +352,33 @@ cd /opt/homelab/HomeLabHub
 ./homelab pipeline
 ```
 
+### Post-Deployment Smoke Test
+```bash
+# Quick validation after deployment (< 30 seconds)
+./deploy/linode/scripts/smoke-test.sh
+
+# Auto-restart failed services
+./deploy/linode/scripts/smoke-test.sh --auto-fix
+
+# JSON output for CI/CD integration
+./deploy/linode/scripts/smoke-test.sh --json
+
+# Minimal output (pass/fail only)
+./deploy/linode/scripts/smoke-test.sh --quiet
+```
+
+The smoke test validates:
+- **Infrastructure**: PostgreSQL, Redis, Caddy
+- **Core Services**: Dashboard, Grafana, n8n, Code Server  
+- **Bots**: Discord Bot, Stream Bot
+- **Static Sites**: rig-city.com, scarletredjoker.com
+- **Utilities**: DNS Manager, Prometheus, Loki
+
+Exit codes:
+- `0` - All tests passed
+- `1` - One or more tests failed
+- `2` - Critical infrastructure failure
+
 ---
 
 ## 9. MONITORING & OBSERVABILITY

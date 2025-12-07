@@ -189,6 +189,39 @@ nano deploy/linode/.env  # Fill in any new variables
 
 See `docs/runbooks/LINODE_DEPLOYMENT.md` for complete deployment runbook.
 
+#### Post-Deployment Smoke Test
+
+After deployment, an automated smoke test validates all services:
+
+```bash
+# Run smoke test manually
+./deploy/linode/scripts/smoke-test.sh
+
+# Auto-fix failed services
+./deploy/linode/scripts/smoke-test.sh --auto-fix
+
+# JSON output for CI/CD automation
+./deploy/linode/scripts/smoke-test.sh --json
+
+# Quiet mode (pass/fail only)
+./deploy/linode/scripts/smoke-test.sh --quiet
+```
+
+The smoke test validates:
+- **Infrastructure**: PostgreSQL, Redis, Caddy
+- **Core Services**: Dashboard, Grafana, n8n, Code Server
+- **Bots**: Discord Bot, Stream Bot
+- **Static Sites**: rig-city.com, scarletredjoker.com
+- **Utilities**: DNS Manager, Prometheus, Loki
+
+The smoke test is automatically run at the end of `deploy.sh` (non-blocking with warnings) and provides:
+- Quick validation (< 30 seconds)
+- Pass/fail exit codes for CI/CD when run standalone
+- Optional auto-restart of failed services with `--auto-fix`
+- JSON output for automation with `--json`
+
+Note: During `deploy.sh`, smoke test failures trigger warnings but don't abort deployment. Run standalone with `--auto-fix` for automatic remediation.
+
 #### Unified Deployment Pipeline
 
 The `./homelab pipeline` command provides a "one script to rule them all" deployment experience:
@@ -210,9 +243,11 @@ The `./homelab pipeline` command provides a "one script to rule them all" deploy
 The pipeline runs 5 steps automatically:
 1. Environment validation
 2. Pre-flight checks
-3. Deploy services
+3. Deploy services (includes smoke test on Linode)
 4. Health checks
 5. Log summary
+
+Note: On Linode, the deploy.sh script automatically runs a smoke test at the end. Run `./deploy/linode/scripts/smoke-test.sh --auto-fix` separately to auto-fix any issues.
 
 ### Desktop Integration (Gaming & Media)
 
