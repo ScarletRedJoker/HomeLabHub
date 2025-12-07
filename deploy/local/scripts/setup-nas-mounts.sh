@@ -25,6 +25,10 @@ SMB_SHARE="${SMB_SHARE:-}"  # For direct SMB mounting
 MOUNT_TYPE="${MOUNT_TYPE:-auto}"  # auto, nfs, or smb
 MOUNT_BASE="/mnt/nas"
 
+# UID/GID for file ownership (default: current user or 1000)
+MOUNT_UID="${MOUNT_UID:-${SUDO_UID:-1000}}"
+MOUNT_GID="${MOUNT_GID:-${SUDO_GID:-1000}}"
+
 # Media mount points (matching NAS folders)
 declare -A MOUNTS=(
     ["video"]="video"
@@ -190,8 +194,8 @@ configure_fstab() {
 
 # NAS326 SMB Mounts (auto-generated)
 # Zyxel NAS326 at $NAS_HOST ($NAS_IP)
-# rw = read-write access enabled for uploads
-//${NAS_IP}/${SMB_SHARE}  ${MOUNT_BASE}/all  cifs  guest,vers=3.0,rw,_netdev,noauto,x-systemd.automount  0  0
+# UID/GID mapping enables write access for local user
+//${NAS_IP}/${SMB_SHARE}  ${MOUNT_BASE}/all  cifs  guest,uid=${MOUNT_UID},gid=${MOUNT_GID},file_mode=0775,dir_mode=0775,vers=3.0,_netdev,noauto,x-systemd.automount  0  0
 # End NAS326
 
 EOF
@@ -200,7 +204,7 @@ EOF
 
 # NAS326 NFS Mounts (auto-generated)
 # Zyxel NAS326 at $NAS_HOST ($NAS_IP)
-# rw = read-write access enabled for uploads
+# Note: Write access depends on NAS export settings (rw,no_root_squash or all_squash with anonuid/anongid)
 ${NAS_IP}:${NFS_SHARE}  ${MOUNT_BASE}/all  nfs  rw,nfsvers=3,proto=tcp,soft,timeo=150,retrans=3,_netdev,noauto,x-systemd.automount  0  0
 # End NAS326
 
@@ -218,18 +222,23 @@ mount_smb_share() {
     local share_name="${SMB_SHARE}"
     
     log_info "Attempting SMB mount: //${NAS_IP}/${share_name}"
+    log_info "Using UID=${MOUNT_UID}, GID=${MOUNT_GID} for file ownership"
     
-    if mount -t cifs "//${NAS_IP}/${share_name}" "${MOUNT_BASE}/all" -o guest,vers=3.0 2>/dev/null; then
-        log_success "Mounted via SMB 3.0: ${MOUNT_BASE}/all"
+    # SMB mount options with UID/GID mapping for write access
+    local smb_opts="guest,uid=${MOUNT_UID},gid=${MOUNT_GID},file_mode=0775,dir_mode=0775"
+    
+    if mount -t cifs "//${NAS_IP}/${share_name}" "${MOUNT_BASE}/all" -o "${smb_opts},vers=3.0" 2>/dev/null; then
+        log_success "Mounted via SMB 3.0 (rw): ${MOUNT_BASE}/all"
         return 0
-    elif mount -t cifs "//${NAS_IP}/${share_name}" "${MOUNT_BASE}/all" -o guest,vers=2.1 2>/dev/null; then
-        log_success "Mounted via SMB 2.1: ${MOUNT_BASE}/all"
+    elif mount -t cifs "//${NAS_IP}/${share_name}" "${MOUNT_BASE}/all" -o "${smb_opts},vers=2.1" 2>/dev/null; then
+        log_success "Mounted via SMB 2.1 (rw): ${MOUNT_BASE}/all"
         return 0
-    elif mount -t cifs "//${NAS_IP}/${share_name}" "${MOUNT_BASE}/all" -o guest 2>/dev/null; then
-        log_success "Mounted via SMB (auto): ${MOUNT_BASE}/all"
+    elif mount -t cifs "//${NAS_IP}/${share_name}" "${MOUNT_BASE}/all" -o "${smb_opts}" 2>/dev/null; then
+        log_success "Mounted via SMB (auto, rw): ${MOUNT_BASE}/all"
         return 0
     else
         log_error "SMB mount failed for //${NAS_IP}/${share_name}"
+        log_info "Try running: mount -t cifs //${NAS_IP}/${share_name} ${MOUNT_BASE}/all -o ${smb_opts},vers=3.0"
         return 1
     fi
 }
@@ -337,11 +346,50 @@ mount_shares() {
     done
 }
 
+test_write_access() {
+    log_info "Testing write access to NAS..."
+    
+    if ! mountpoint -q "${MOUNT_BASE}/all" 2>/dev/null; then
+        log_error "NAS is not mounted. Run: sudo $0"
+        return 1
+    fi
+    
+    local test_file="${MOUNT_BASE}/all/.write_test_$(date +%s)"
+    
+    if touch "$test_file" 2>/dev/null; then
+        rm -f "$test_file" 2>/dev/null || true
+        log_success "Write access confirmed! You can upload files to the NAS."
+        echo ""
+        echo "Upload example:"
+        echo "  cp movie.mkv ${MOUNT_BASE}/video/"
+        echo "  cp song.mp3 ${MOUNT_BASE}/music/"
+        return 0
+    else
+        log_error "Cannot write to NAS!"
+        echo ""
+        echo "Possible solutions:"
+        echo ""
+        echo "1. For SMB: Remount with UID/GID mapping:"
+        echo "   sudo $0 --smb-share=nfs --uid=$(id -u) --gid=$(id -g)"
+        echo ""
+        echo "2. For NFS: Check NAS export settings:"
+        echo "   - Log into NAS admin panel (http://${NAS_IP:-NAS326.local})"
+        echo "   - Go to: Control Panel -> NFS"
+        echo "   - Edit export and set:"
+        echo "     * Squash: 'Map all users to admin' or 'No Squash'"
+        echo "     * Access: 'Read/Write'"
+        echo ""
+        echo "3. Run diagnostics:"
+        echo "   ./deploy/local/scripts/diagnose-nas.sh"
+        return 1
+    fi
+}
+
 verify_mounts() {
     log_info "Verifying mounts..."
     
     if mountpoint -q "${MOUNT_BASE}/all"; then
-        log_success "NFS share is mounted"
+        log_success "NAS share is mounted"
         
         echo ""
         log_info "Contents of ${MOUNT_BASE}/all:"
@@ -350,6 +398,21 @@ verify_mounts() {
         echo ""
         log_info "Symlinks:"
         ls -la "${MOUNT_BASE}" | grep "^l" || true
+        
+        # Test write access
+        echo ""
+        local test_file="${MOUNT_BASE}/all/.write_test_$$"
+        if touch "$test_file" 2>/dev/null; then
+            rm -f "$test_file" 2>/dev/null || true
+            log_success "Write access: ENABLED (uploads will work)"
+        else
+            log_warn "Write access: DISABLED (read-only)"
+            echo ""
+            echo "To enable write access, try one of these:"
+            echo "  1. Use SMB instead: sudo $0 --smb-share=nfs"
+            echo "  2. Check NAS export settings (must allow rw access)"
+            echo "  3. Run: $0 --test-write for detailed diagnostics"
+        fi
     else
         log_error "Mount verification failed"
         exit 1
@@ -395,6 +458,12 @@ parse_args() {
                 SMB_SHARE="${arg#*=}"
                 MOUNT_TYPE="smb"
                 ;;
+            --uid=*)
+                MOUNT_UID="${arg#*=}"
+                ;;
+            --gid=*)
+                MOUNT_GID="${arg#*=}"
+                ;;
             --unmount)
                 unmount_shares
                 exit 0
@@ -409,6 +478,10 @@ parse_args() {
                 ;;
             --clean-fstab)
                 clean_old_fstab
+                exit 0
+                ;;
+            --test-write)
+                test_write_access
                 exit 0
                 ;;
         esac
@@ -475,22 +548,31 @@ show_help() {
     echo "  --nas-host=HOST   Specify NAS hostname (default: NAS326.local)"
     echo "  --nfs-share=PATH  Specify NFS export path (e.g., /nfs/networkshare)"
     echo "  --smb-share=NAME  Specify SMB share name for direct CIFS mount (e.g., media)"
+    echo "  --uid=UID         Set UID for file ownership (default: current user or 1000)"
+    echo "  --gid=GID         Set GID for file ownership (default: current group or 1000)"
     echo "  --unmount         Unmount all NAS shares"
     echo "  --status          Show current mount status"
+    echo "  --test-write      Test write access to NAS"
     echo "  --clean-fstab     Remove old NAS entries from fstab"
     echo "  --help            Show this help message"
     echo ""
     echo "Mount Types:"
     echo "  By default, NFS is tried first, then SMB as fallback."
     echo "  Use --nfs-share to force NFS mount."
-    echo "  Use --smb-share to force SMB/CIFS mount."
+    echo "  Use --smb-share to force SMB/CIFS mount (recommended for write access)."
+    echo ""
+    echo "Write Access:"
+    echo "  SMB: UID/GID mapping is applied automatically for write access."
+    echo "  NFS: Write access depends on NAS export settings. Check NAS admin panel."
     echo ""
     echo "Examples:"
     echo "  sudo $0                                    # Auto-detect NAS and mount"
     echo "  sudo $0 --nas-ip=192.168.0.100            # Use specific IP"
     echo "  sudo $0 --nas-ip=192.168.0.100 --nfs-share=/nfs/media   # Force NFS"
-    echo "  sudo $0 --nas-ip=192.168.0.100 --smb-share=public       # Force SMB"
+    echo "  sudo $0 --nas-ip=192.168.0.100 --smb-share=nfs          # Force SMB (best for write access)"
+    echo "  sudo $0 --smb-share=nfs --uid=1000 --gid=1000           # SMB with custom UID/GID"
     echo "  sudo $0 --status                          # Check if mounted"
+    echo "  sudo $0 --test-write                      # Test write access"
     echo "  sudo $0 --unmount                         # Unmount shares"
 }
 
