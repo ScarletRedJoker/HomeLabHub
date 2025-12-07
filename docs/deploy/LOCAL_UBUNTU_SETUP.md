@@ -83,13 +83,14 @@ If your Plex server shows "Not Claimed" (claimed="0"), use the helper script:
 ./deploy/local/scripts/plex-claim.sh
 ```
 
-This script will:
-1. Check your current Plex server status
-2. Guide you through getting a claim token from https://www.plex.tv/claim/
-3. Update your .env file automatically
-4. Restart Plex with the new claim
+This script **automatically fetches both tokens** using your Plex credentials:
+1. Prompts for your Plex email/username and password
+2. Fetches X-Plex-Token via Plex API
+3. Fetches claim token via Plex API
+4. Updates your .env file with both tokens
+5. Restarts Plex with the claim applied
 
-**Note:** Claim tokens expire in 4 minutes, so be ready to paste it quickly!
+**2FA Support:** If you have two-factor authentication enabled, append your 6-digit code to your password (e.g., `mypassword123456`).
 
 ### Add Libraries in Plex
 
