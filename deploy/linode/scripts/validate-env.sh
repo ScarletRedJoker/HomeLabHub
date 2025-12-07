@@ -32,7 +32,7 @@ check_required() {
     
     if [[ -z "${!var_name:-}" ]]; then
         echo -e "  ${RED}[MISSING]${NC} $var_name - $description"
-        ((ERRORS++))
+        ERRORS=$((ERRORS + 1))
         return 1
     else
         local value="${!var_name}"
@@ -51,7 +51,7 @@ check_optional() {
     
     if [[ -z "${!var_name:-}" ]]; then
         echo -e "  ${YELLOW}[OPTIONAL]${NC} $var_name - $description (not set)"
-        ((WARNINGS++))
+        WARNINGS=$((WARNINGS + 1))
         return 1
     else
         local value="${!var_name}"

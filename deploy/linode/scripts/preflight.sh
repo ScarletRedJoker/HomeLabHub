@@ -31,12 +31,12 @@ check_pass() {
 
 check_fail() {
     echo -e "  ${RED}[FAIL]${NC} $1"
-    ((ERRORS++))
+    ERRORS=$((ERRORS + 1))
 }
 
 check_warn() {
     echo -e "  ${YELLOW}[WARN]${NC} $1"
-    ((WARNINGS++))
+    WARNINGS=$((WARNINGS + 1))
 }
 
 print_header "Pre-Flight Checks - Homelab Deployment"
