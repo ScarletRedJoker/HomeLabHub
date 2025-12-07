@@ -253,6 +253,72 @@ deploy_tier() {
 }
 
 deploy_tier "Infrastructure Layer" caddy redis homelab-postgres
+
+print_step "Verifying database initialization..."
+if [[ "$DRY_RUN" != "true" ]]; then
+    if docker ps --format '{{.Names}}' | grep -q "homelab-postgres"; then
+        log_info "Waiting for PostgreSQL to be ready..."
+        sleep 5
+        
+        REQUIRED_DBS=("homelab_jarvis" "ticketbot" "streambot" "dashboard")
+        
+        check_databases() {
+            local missing=0
+            for db in "${REQUIRED_DBS[@]}"; do
+                if docker exec homelab-postgres psql -U postgres -lqt 2>/dev/null | cut -d \| -f 1 | grep -qw "$db"; then
+                    log_success "Database ready: $db"
+                else
+                    log_warn "Database not found: $db"
+                    ((missing++))
+                fi
+            done
+            return $missing
+        }
+        
+        if ! check_databases; then
+            log_info "Some databases missing - triggering initialization..."
+            
+            if docker exec homelab-postgres bash -c 'test -f /docker-entrypoint-initdb.d/init-databases.sh'; then
+                log_info "Running database initialization script..."
+                if docker exec homelab-postgres bash -c 'cd /docker-entrypoint-initdb.d && bash init-databases.sh' 2>&1; then
+                    log_success "Database initialization script completed"
+                else
+                    log_error "Database initialization script failed"
+                fi
+            else
+                log_warn "Init script not found in container - databases may need manual setup"
+            fi
+            
+            sleep 3
+            log_info "Re-checking databases after initialization..."
+            
+            STILL_MISSING=0
+            for db in "${REQUIRED_DBS[@]}"; do
+                if ! docker exec homelab-postgres psql -U postgres -lqt 2>/dev/null | cut -d \| -f 1 | grep -qw "$db"; then
+                    log_error "Database still missing: $db"
+                    ((STILL_MISSING++))
+                fi
+            done
+            
+            if [[ $STILL_MISSING -gt 0 ]]; then
+                log_error "Database initialization failed - $STILL_MISSING database(s) missing"
+                log_error "Dependent services (discord-bot, stream-bot) will likely fail"
+                log_error "Run: docker exec homelab-postgres bash /docker-entrypoint-initdb.d/init-databases.sh"
+                exit 1
+            fi
+            
+            log_success "All databases initialized successfully"
+        else
+            log_success "All required databases present"
+        fi
+    else
+        log_error "PostgreSQL not running - cannot verify databases"
+        exit 1
+    fi
+else
+    log_info "[DRY RUN] Would verify database initialization"
+fi
+
 deploy_tier "Observability Stack" homelab-loki homelab-prometheus homelab-grafana homelab-node-exporter homelab-cadvisor
 deploy_tier "Core Services" homelab-dashboard homelab-celery-worker
 deploy_tier "Bot Services" discord-bot stream-bot
@@ -298,23 +364,62 @@ if [[ "$DRY_RUN" != "true" ]]; then
         fi
     done
     
-    print_section "Endpoint Verification"
+    print_section "Container Health Verification"
     
-    check_endpoint() {
-        local name=$1
-        local url=$2
+    verify_container_health() {
+        local container=$1
+        local max_attempts=6
+        local attempt=1
         
-        if curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 "$url" 2>/dev/null | grep -qE "^(200|301|302|401|403)$"; then
-            log_success "$name: responding"
-        else
-            log_warn "$name: not responding (may still be starting)"
-        fi
+        while [[ $attempt -le $max_attempts ]]; do
+            local health=$(docker inspect --format='{{.State.Health.Status}}' "$container" 2>/dev/null || echo "none")
+            local running=$(docker inspect --format='{{.State.Running}}' "$container" 2>/dev/null || echo "false")
+            
+            if [[ "$health" == "healthy" ]]; then
+                log_success "$container: healthy"
+                return 0
+            elif [[ "$running" == "true" && "$health" == "none" ]]; then
+                log_success "$container: running (no health check configured)"
+                return 0
+            elif [[ "$running" == "true" ]]; then
+                if [[ $attempt -lt $max_attempts ]]; then
+                    log_info "$container: waiting for health check ($attempt/$max_attempts)..."
+                    sleep 10
+                    ((attempt++))
+                else
+                    log_warn "$container: running but health check not passing after $max_attempts attempts"
+                    return 1
+                fi
+            else
+                log_error "$container: not running"
+                return 1
+            fi
+        done
     }
     
-    check_endpoint "Dashboard" "http://localhost:5000/health" || true
-    check_endpoint "Discord Bot" "http://localhost:4000/health" || true
-    check_endpoint "Stream Bot" "http://localhost:5000/health" || true
-    check_endpoint "Grafana" "http://localhost:3000/api/health" || true
+    CRITICAL_SERVICES=("homelab-postgres" "caddy" "redis")
+    CRITICAL_FAILED=0
+    
+    for svc in "${CRITICAL_SERVICES[@]}"; do
+        if ! verify_container_health "$svc"; then
+            ((CRITICAL_FAILED++))
+        fi
+    done
+    
+    if [[ $CRITICAL_FAILED -gt 0 ]]; then
+        log_error "Critical infrastructure services failed health checks!"
+        log_error "Deployment ABORTED. Fix issues before retrying."
+        log_error "Check logs with: docker compose logs"
+        exit 1
+    fi
+    
+    APPLICATION_SERVICES=("homelab-dashboard" "discord-bot" "stream-bot")
+    
+    for svc in "${APPLICATION_SERVICES[@]}"; do
+        if docker ps --format '{{.Names}}' | grep -q "^${svc}$"; then
+            verify_container_health "$svc" || true
+        fi
+    done
     
 else
     log_info "[DRY RUN] Would run health checks"

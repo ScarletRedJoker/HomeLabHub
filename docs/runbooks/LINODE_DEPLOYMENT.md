@@ -91,9 +91,18 @@ This automatically:
 2. Creates backups (.env, images list, database dump)
 3. Pulls latest images
 4. Builds custom images
-5. Deploys services in dependency order
-6. Runs health checks
-7. Reports status
+5. Deploys infrastructure services first (Caddy, Redis, PostgreSQL)
+6. Verifies database initialization (creates users/databases if missing)
+   - **FAILS** deployment if databases cannot be created
+7. Deploys remaining services in dependency order
+8. Runs container health verification with retry logic
+   - **FAILS** deployment if critical services (postgres, caddy, redis) remain unhealthy
+9. Reports status and any issues
+
+**Important:** The deployment script will exit with error code 1 and stop if:
+- Critical infrastructure services fail health checks
+- Required databases cannot be initialized
+- PostgreSQL is not running after infrastructure deployment
 
 ### Deployment Order
 
@@ -351,5 +360,5 @@ For planned maintenance:
 
 ---
 
-*Last Updated: December 2024*
-*Runbook Version: 1.0*
+*Last Updated: December 2025*
+*Runbook Version: 1.1*

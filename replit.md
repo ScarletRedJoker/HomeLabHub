@@ -157,6 +157,34 @@ sudo ./deploy/local/scripts/setup-nas-mounts.sh        # Mount NAS
 
 See `docs/deploy/LOCAL_UBUNTU_SETUP.md` for detailed instructions.
 
+#### Linode Cloud Deployment
+
+```bash
+# On Linode server:
+cd /opt/homelab/HomeLabHub/deploy/linode
+
+# First time setup
+cp .env.example .env
+nano .env  # Fill in all required secrets
+
+# Validate environment
+./scripts/validate-env.sh
+
+# Run pre-flight checks
+./scripts/preflight.sh
+
+# Deploy (with all safety checks)
+./scripts/deploy.sh
+
+# Or preview first
+./scripts/deploy.sh --dry-run
+
+# Rollback if needed
+./scripts/rollback.sh
+```
+
+See `docs/runbooks/LINODE_DEPLOYMENT.md` for complete deployment runbook.
+
 ### Desktop Integration (Gaming & Media)
 
 The Ubuntu desktop provides seamless integration for gaming and media management:
