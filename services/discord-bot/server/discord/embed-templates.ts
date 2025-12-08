@@ -475,3 +475,323 @@ export function createPlexInviteButton(): ActionRowBuilder<ButtonBuilder> {
         .setURL('https://www.plex.tv/sign-up/')
     );
 }
+
+/**
+ * Bot Manual / Help System Embeds
+ */
+
+// Help embed colors
+export const HELP_COLORS = {
+  MAIN: 0x5865F2,      // Discord blurple - main help
+  TICKETS: 0x43B581,   // Green - ticket system
+  STREAMS: 0x9146FF,   // Twitch purple - stream features
+  PLEX: 0xE5A00D,      // Plex orange
+  ADMIN: 0xF04747,     // Red - admin commands
+  INFO: 0x3498DB,      // Blue - info/utility
+};
+
+/**
+ * Create the main help menu embed
+ */
+export function createMainHelpEmbed(): EmbedBuilder {
+  return new EmbedBuilder()
+    .setTitle('📖 Rig City Bot - Help & Commands')
+    .setDescription(
+      'Welcome to the Rig City Bot! I help manage tickets, stream notifications, and server utilities.\n\n' +
+      'Use the buttons below to explore different feature categories, or type any command to get started.'
+    )
+    .addFields(
+      {
+        name: '🎫 Ticket System',
+        value: 'Create and manage support tickets with priority levels, categories, and staff assignment.',
+        inline: true
+      },
+      {
+        name: '📺 Stream Notifications',
+        value: 'Get notified when tracked members go live on Twitch, YouTube, or Kick.',
+        inline: true
+      },
+      {
+        name: '🎬 Plex Server',
+        value: 'Access Evin\'s personal Plex media server with movies, TV shows, and more.',
+        inline: true
+      },
+      {
+        name: '📋 Custom Panels',
+        value: 'Create and send custom embed panels for rules, info, and announcements.',
+        inline: true
+      },
+      {
+        name: '🛠️ Utilities',
+        value: 'Bot status, latency checks, and server configuration tools.',
+        inline: true
+      },
+      {
+        name: '🔧 Admin Tools',
+        value: 'Server management and configuration commands for staff.',
+        inline: true
+      }
+    )
+    .setColor(HELP_COLORS.MAIN)
+    .setThumbnail('https://cdn.discordapp.com/icons/692850100795473920/a_1234567890abcdef.gif')
+    .setFooter({ text: 'Rig City Bot • Use /help <category> for detailed info' })
+    .setTimestamp();
+}
+
+/**
+ * Create ticket help embed
+ */
+export function createTicketHelpEmbed(): EmbedBuilder {
+  return new EmbedBuilder()
+    .setTitle('🎫 Ticket System Commands')
+    .setDescription(
+      'The ticket system allows you to create support requests that staff can track and respond to.\n\n' +
+      '**How it works:**\n' +
+      '1. Create a ticket using `/ticket create` or a ticket panel button\n' +
+      '2. Staff will be notified and can claim your ticket\n' +
+      '3. Communicate through the ticket until resolved\n' +
+      '4. Close the ticket when your issue is solved'
+    )
+    .addFields(
+      {
+        name: '`/ticket create`',
+        value: '**Create a new ticket**\n• `title` - Brief summary of your issue\n• `description` - Detailed explanation\n• `category` - Type of issue (General, Bug, Feature, Account)\n• `urgent` - Mark as urgent if critical',
+        inline: false
+      },
+      {
+        name: '`/ticket list`',
+        value: '**View your open tickets**\nSee all tickets you\'ve created and their current status.',
+        inline: true
+      },
+      {
+        name: '`/ticket view <id>`',
+        value: '**View ticket details**\nSee full info and recent messages for a specific ticket.',
+        inline: true
+      },
+      {
+        name: '`/ticket close <id>`',
+        value: '**Close a ticket**\nMark a ticket as resolved. Staff can also close tickets.',
+        inline: true
+      },
+      {
+        name: '📊 Ticket Priorities',
+        value: '🟢 **Normal** - Standard response time\n🟠 **High** - Faster response\n🔴 **Urgent** - Immediate attention needed',
+        inline: false
+      },
+      {
+        name: '⚠️ Rate Limits',
+        value: 'You can create up to **5 tickets per hour** to prevent spam.',
+        inline: false
+      }
+    )
+    .setColor(HELP_COLORS.TICKETS)
+    .setFooter({ text: 'Ticket System • Need help? Create a ticket!' })
+    .setTimestamp();
+}
+
+/**
+ * Create stream notifications help embed
+ */
+export function createStreamHelpEmbed(): EmbedBuilder {
+  return new EmbedBuilder()
+    .setTitle('📺 Stream Notification Commands')
+    .setDescription(
+      'Get notified when your favorite streamers go live! The bot detects Discord streaming activities and can track specific users.\n\n' +
+      '**Supported Platforms:** Twitch, YouTube, Kick'
+    )
+    .addFields(
+      {
+        name: '`/stream-setup`',
+        value: '**Configure notifications** *(Admin)*\n• `channel` - Where to post notifications\n• `message` - Custom announcement text\n• `enabled` - Turn on/off notifications',
+        inline: false
+      },
+      {
+        name: '`/stream-track <user>`',
+        value: '**Add a user to tracking** *(Admin)*\nTrack a Discord member for go-live notifications.',
+        inline: true
+      },
+      {
+        name: '`/stream-untrack <user>`',
+        value: '**Remove from tracking** *(Admin)*\nStop notifications for a specific user.',
+        inline: true
+      },
+      {
+        name: '`/stream-list`',
+        value: '**View tracked users** *(Admin)*\nSee all users being monitored and current settings.',
+        inline: true
+      },
+      {
+        name: '`/stream-scan`',
+        value: '**Scan for streamers** *(Admin)*\nManually scan server members for connected streaming accounts.',
+        inline: true
+      },
+      {
+        name: '📝 Message Tokens',
+        value: 'Use these in custom messages:\n• `{user}` - Streamer\'s name\n• `{game}` - Game being played\n• `{platform}` - Streaming platform',
+        inline: false
+      }
+    )
+    .setColor(HELP_COLORS.STREAMS)
+    .setFooter({ text: 'Stream Notifications • Never miss a stream!' })
+    .setTimestamp();
+}
+
+/**
+ * Create Plex help embed
+ */
+export function createPlexHelpEmbed(): EmbedBuilder {
+  return new EmbedBuilder()
+    .setTitle('🎬 Plex Server Commands')
+    .setDescription(
+      'Access Evin\'s Plex media server with thousands of movies, TV shows, and more!\n\n' +
+      '**Server URL:** [plex.evindrake.net](https://plex.evindrake.net)\n\n' +
+      '**Free Access:** Thanks to Evin\'s Plex Pass, all invited users can stream for free on any device - no subscription required!'
+    )
+    .addFields(
+      {
+        name: '`/plex invite [user]`',
+        value: '**Send an invite**\nShare the Plex server invite with a user or the channel.\n• `user` - (Optional) Mention a specific person',
+        inline: false
+      },
+      {
+        name: '📱 Supported Devices',
+        value: '• iOS & Android phones/tablets\n• Smart TVs (Samsung, LG, etc.)\n• Streaming devices (Roku, Fire TV, Apple TV)\n• Web browser at app.plex.tv\n• Gaming consoles (PlayStation, Xbox)',
+        inline: true
+      },
+      {
+        name: '🚀 Getting Started',
+        value: '1. Create a free Plex account\n2. Tell Evin your Plex username\n3. Accept the server invite\n4. Download the Plex app\n5. Start streaming!',
+        inline: true
+      }
+    )
+    .setColor(HELP_COLORS.PLEX)
+    .setThumbnail('https://www.plex.tv/wp-content/uploads/2018/01/pmp-icon-1.png')
+    .setFooter({ text: 'Plex Server • Unlimited streaming for friends!' })
+    .setTimestamp();
+}
+
+/**
+ * Create panels help embed
+ */
+export function createPanelsHelpEmbed(): EmbedBuilder {
+  return new EmbedBuilder()
+    .setTitle('📋 Panel Commands')
+    .setDescription(
+      'Create and send custom embed panels for announcements, rules, information, and interactive buttons.\n\n' +
+      'Panels are designed in the web dashboard and can be sent to any channel.'
+    )
+    .addFields(
+      {
+        name: '`/panels list`',
+        value: '**View available templates** *(Manage Channels)*\nSee all panel templates created for this server.',
+        inline: true
+      },
+      {
+        name: '`/panels send <template>`',
+        value: '**Send a panel** *(Manage Channels)*\nPost a panel template to the current channel.',
+        inline: true
+      },
+      {
+        name: '`/setup-ticket-panel`',
+        value: '**Create ticket panel** *(Admin)*\nSet up an interactive ticket creation panel with category buttons.',
+        inline: false
+      },
+      {
+        name: '💡 Tips',
+        value: '• Create panels in the web dashboard for full customization\n• Panels can have up to 25 buttons\n• Use link buttons for external URLs\n• Ticket panels auto-create support tickets when clicked',
+        inline: false
+      }
+    )
+    .setColor(HELP_COLORS.INFO)
+    .setFooter({ text: 'Panels • Create beautiful embeds easily!' })
+    .setTimestamp();
+}
+
+/**
+ * Create admin/utility help embed
+ */
+export function createAdminHelpEmbed(): EmbedBuilder {
+  return new EmbedBuilder()
+    .setTitle('🛠️ Utility & Admin Commands')
+    .setDescription(
+      'Bot status, health checks, and server configuration commands.'
+    )
+    .addFields(
+      {
+        name: '`/ping`',
+        value: '**Check bot latency**\nView response time and API latency.',
+        inline: true
+      },
+      {
+        name: '`/heartbeat`',
+        value: '**Bot health check**\nDetailed status including uptime and memory usage.',
+        inline: true
+      },
+      {
+        name: '`/help [category]`',
+        value: '**Show help menu**\nView this help menu or get info on a specific category.',
+        inline: true
+      },
+      {
+        name: '🔐 Permission Levels',
+        value: '• **Everyone** - `/ticket`, `/plex`, `/ping`, `/help`\n• **Manage Channels** - `/panels`\n• **Manage Server** - `/stream-scan`\n• **Administrator** - `/stream-setup`, `/stream-track`, `/setup-ticket-panel`',
+        inline: false
+      },
+      {
+        name: '🌐 Web Dashboard',
+        value: 'For advanced configuration, visit the web dashboard at:\n**bot.rig-city.com**',
+        inline: false
+      }
+    )
+    .setColor(HELP_COLORS.ADMIN)
+    .setFooter({ text: 'Admin Tools • Keep the server running smoothly!' })
+    .setTimestamp();
+}
+
+/**
+ * Create help navigation buttons
+ */
+export function createHelpNavigationButtons(): ActionRowBuilder<ButtonBuilder> {
+  return new ActionRowBuilder<ButtonBuilder>()
+    .addComponents(
+      new ButtonBuilder()
+        .setCustomId('help_tickets')
+        .setLabel('Tickets')
+        .setEmoji('🎫')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('help_streams')
+        .setLabel('Streams')
+        .setEmoji('📺')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('help_plex')
+        .setLabel('Plex')
+        .setEmoji('🎬')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('help_panels')
+        .setLabel('Panels')
+        .setEmoji('📋')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('help_admin')
+        .setLabel('Admin')
+        .setEmoji('🛠️')
+        .setStyle(ButtonStyle.Secondary)
+    );
+}
+
+/**
+ * Create back to main help button
+ */
+export function createHelpBackButton(): ActionRowBuilder<ButtonBuilder> {
+  return new ActionRowBuilder<ButtonBuilder>()
+    .addComponents(
+      new ButtonBuilder()
+        .setCustomId('help_main')
+        .setLabel('Back to Main Menu')
+        .setEmoji('🏠')
+        .setStyle(ButtonStyle.Secondary)
+    );
+}

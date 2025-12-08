@@ -31,7 +31,15 @@ import {
   createTicketActionButtons,
   createClosedTicketActionButtons,
   createPlexInviteEmbed,
-  createPlexInviteButton
+  createPlexInviteButton,
+  createMainHelpEmbed,
+  createTicketHelpEmbed,
+  createStreamHelpEmbed,
+  createPlexHelpEmbed,
+  createPanelsHelpEmbed,
+  createAdminHelpEmbed,
+  createHelpNavigationButtons,
+  createHelpBackButton
 } from './embed-templates';
 
 // Extended PanelTemplate type with fields and buttons
@@ -1521,6 +1529,83 @@ const plexCommand: Command = {
 commands.set('plex', plexCommand);
 console.log('[Discord] Registered Plex command');
 
+// /help command - Bot manual and command reference
+const helpCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('help')
+    .setDescription('View bot commands and features')
+    .addStringOption(option =>
+      option.setName('category')
+        .setDescription('View help for a specific category')
+        .setRequired(false)
+        .addChoices(
+          { name: '🎫 Tickets', value: 'tickets' },
+          { name: '📺 Streams', value: 'streams' },
+          { name: '🎬 Plex', value: 'plex' },
+          { name: '📋 Panels', value: 'panels' },
+          { name: '🛠️ Admin', value: 'admin' }
+        )
+    ),
+  execute: async (interaction, { storage }) => {
+    if (!interaction.isCommand()) return;
+    
+    try {
+      await interaction.deferReply();
+    } catch (error) {
+      console.error('Failed to defer help command interaction:', error);
+      return;
+    }
+    
+    const category = interaction.options.getString('category');
+    
+    try {
+      let embed;
+      let components;
+      
+      switch (category) {
+        case 'tickets':
+          embed = createTicketHelpEmbed();
+          components = [createHelpBackButton()];
+          break;
+        case 'streams':
+          embed = createStreamHelpEmbed();
+          components = [createHelpBackButton()];
+          break;
+        case 'plex':
+          embed = createPlexHelpEmbed();
+          components = [createHelpBackButton()];
+          break;
+        case 'panels':
+          embed = createPanelsHelpEmbed();
+          components = [createHelpBackButton()];
+          break;
+        case 'admin':
+          embed = createAdminHelpEmbed();
+          components = [createHelpBackButton()];
+          break;
+        default:
+          embed = createMainHelpEmbed();
+          components = [createHelpNavigationButtons()];
+          break;
+      }
+      
+      await interaction.editReply({
+        embeds: [embed],
+        components: components
+      });
+      
+      console.log(`[Discord] Help command used by ${interaction.user.username}${category ? ` (category: ${category})` : ''}`);
+      
+    } catch (error) {
+      console.error('Error sending help:', error);
+      await interaction.editReply('❌ Failed to load help. Please try again.');
+    }
+  }
+};
+
+commands.set('help', helpCommand);
+console.log('[Discord] Registered Help command');
+
 // Register developer commands (imported in bot.ts and registered there)
 // Developer commands will be imported and added to the collection in bot.ts
 
@@ -1782,6 +1867,52 @@ export function registerCommands(client: Client, storage: IStorage, broadcast: (
             console.error('Failed to send error message:', editError);
           }
         }
+      }
+    } else if (interaction.customId.startsWith('help_')) {
+      // Handle help navigation buttons
+      try {
+        await interaction.deferUpdate();
+        
+        const helpCategory = interaction.customId.replace('help_', '');
+        let embed;
+        let components;
+        
+        switch (helpCategory) {
+          case 'tickets':
+            embed = createTicketHelpEmbed();
+            components = [createHelpBackButton()];
+            break;
+          case 'streams':
+            embed = createStreamHelpEmbed();
+            components = [createHelpBackButton()];
+            break;
+          case 'plex':
+            embed = createPlexHelpEmbed();
+            components = [createHelpBackButton()];
+            break;
+          case 'panels':
+            embed = createPanelsHelpEmbed();
+            components = [createHelpBackButton()];
+            break;
+          case 'admin':
+            embed = createAdminHelpEmbed();
+            components = [createHelpBackButton()];
+            break;
+          case 'main':
+          default:
+            embed = createMainHelpEmbed();
+            components = [createHelpNavigationButtons()];
+            break;
+        }
+        
+        await interaction.editReply({
+          embeds: [embed],
+          components: components
+        });
+        
+        console.log(`[Discord] Help navigation: ${helpCategory} by ${interaction.user.username}`);
+      } catch (error) {
+        console.error('Error handling help button:', error);
       }
     }
     } else if (interaction.isModalSubmit()) {
