@@ -78,9 +78,9 @@ www.scarletredjoker.com {
 }
 
 plex.evindrake.net {
-    # Proxy through Tailscale to home Plex server
-    # Home server Tailscale IP: 100.110.227.25
-    reverse_proxy 100.110.227.25:32400 {
+    # Proxy through WireGuard tunnel to home Plex server
+    # Home server WireGuard IP: 10.200.0.2
+    reverse_proxy 10.200.0.2:32400 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}
