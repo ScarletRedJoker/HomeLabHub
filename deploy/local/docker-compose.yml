@@ -8,7 +8,6 @@ volumes:
   minio_data:
   homeassistant_config:
   plex_config:
-  plex_transcode:
   novnc_data:
 
 services:
@@ -66,11 +65,12 @@ services:
       - PLEX_CLAIM=${PLEX_CLAIM:-}
     volumes:
       - plex_config:/config
-      - plex_transcode:/transcode
       - /mnt/nas/networkshare/video:/nas/video:ro
       - /mnt/nas/networkshare/music:/nas/music:ro
       - /mnt/nas/networkshare/photo:/nas/photo:ro
       - /mnt/nas/networkshare/games:/nas/games:ro
+    tmpfs:
+      - /transcode:size=4G
     devices:
       - /dev/dri:/dev/dri
     healthcheck:

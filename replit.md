@@ -154,6 +154,29 @@ docker compose --profile gamestream up -d # Start Sunshine
 docker compose --profile vnc --profile gamestream up -d  # Start both
 ```
 
+## Server Update Commands
+
+**Update both servers (pull code + restart services):**
+```bash
+./scripts/update-servers.sh all
+```
+
+**Update specific server:**
+```bash
+./scripts/update-servers.sh local    # Local Ubuntu only
+./scripts/update-servers.sh linode   # Linode cloud only
+```
+
+**Update with fresh Docker images:**
+```bash
+./scripts/update-servers.sh all --images
+```
+
+**Plex optimization (buffering fixes):**
+```bash
+./deploy/local/scripts/optimize-plex.sh --all
+```
+
 ## Documentation Reference
 
 - `docs/deploy/FULL_INFRASTRUCTURE_STATUS.md` - Complete infrastructure audit and service matrix
@@ -161,3 +184,4 @@ docker compose --profile vnc --profile gamestream up -d  # Start both
 - `docs/runbooks/LINODE_DEPLOYMENT.md` - Linode deployment runbook
 - `docs/deploy/SUNSHINE_SETUP.md` - GameStream/Sunshine configuration
 - `docs/deploy/SECRETS_MANAGEMENT.md` - Secrets encryption guide
+- `docs/troubleshooting/PLEX_BUFFERING.md` - Plex buffering diagnosis and fixes
