@@ -177,6 +177,18 @@ docker compose --profile vnc --profile gamestream up -d  # Start both
 ./deploy/local/scripts/optimize-plex.sh --all
 ```
 
+**Plex Cache (for slow NAS - speeds below 80 MB/s):**
+```bash
+sudo ./deploy/local/scripts/plex-cache.sh setup          # Initial setup
+./deploy/local/scripts/plex-cache.sh search "movie"      # Search NAS
+sudo ./deploy/local/scripts/plex-cache.sh add movie "Title"   # Cache movie
+sudo ./deploy/local/scripts/plex-cache.sh add show "Title"    # Cache TV show
+sudo ./deploy/local/scripts/plex-cache.sh add music "Artist"  # Cache music
+./deploy/local/scripts/plex-cache.sh list                # Show cached
+./deploy/local/scripts/plex-cache.sh status              # Show disk usage
+```
+Cache location: `/opt/plex-cache/{movies,shows,music}` - Add to Plex as libraries for prioritized playback.
+
 ## Documentation Reference
 
 - `docs/deploy/FULL_INFRASTRUCTURE_STATUS.md` - Complete infrastructure audit and service matrix

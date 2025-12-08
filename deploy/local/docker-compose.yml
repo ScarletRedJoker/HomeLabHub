@@ -65,6 +65,11 @@ services:
       - PLEX_CLAIM=${PLEX_CLAIM:-}
     volumes:
       - plex_config:/config
+      # Local cache (fast SSD) - Plex prioritizes these
+      - /opt/plex-cache/movies:/cache/movies:ro
+      - /opt/plex-cache/shows:/cache/shows:ro
+      - /opt/plex-cache/music:/cache/music:ro
+      # NAS storage (slower, but complete library)
       - /mnt/nas/networkshare/video:/nas/video:ro
       - /mnt/nas/networkshare/music:/nas/music:ro
       - /mnt/nas/networkshare/photo:/nas/photo:ro

@@ -26,8 +26,7 @@ This stores transcode files in RAM (4GB), dramatically faster than disk.
 **To apply:**
 ```bash
 cd /opt/homelab/HomeLabHub/deploy/local
-docker compose down plex
-docker compose up -d plex
+docker compose up -d --force-recreate plex
 ```
 
 ### 2. Enable Direct Play (Best Solution)
@@ -106,6 +105,58 @@ iperf3 -c <plex-server-ip>
 | <100 Mbps LAN | 100Mbps port/cable | Check switch ports, use Cat6 cables |
 | Intermittent buffering | WiFi congestion | Use Ethernet for Plex client |
 | Only 4K buffers | NAS read speed | Copy 4K to local SSD |
+
+## Plex Cache System (Recommended for Slow NAS)
+
+If your NAS read speeds are below 80 MB/s, use the Plex Cache system to store frequently-watched content on fast local storage.
+
+### Quick Setup
+
+```bash
+# 1. Run initial setup
+sudo ./deploy/local/scripts/plex-cache.sh setup
+
+# 2. Search for content to cache
+./deploy/local/scripts/plex-cache.sh search "john wick"
+
+# 3. Add content to cache
+sudo ./deploy/local/scripts/plex-cache.sh add movie "John.Wick.2014"
+sudo ./deploy/local/scripts/plex-cache.sh add show "Breaking Bad"
+sudo ./deploy/local/scripts/plex-cache.sh add music "Pink Floyd"
+
+# 4. Restart Plex to pick up cache mounts
+cd /opt/homelab/HomeLabHub/deploy/local
+docker compose up -d --force-recreate plex
+```
+
+### Cache Commands
+
+| Command | Description |
+|---------|-------------|
+| `setup` | Create cache directories |
+| `add <type> <name>` | Cache content (type: movie, show, music) |
+| `remove <type> <name>` | Remove from cache |
+| `list` | Show cached content |
+| `status` | Show cache disk usage |
+| `search <query>` | Find content on NAS |
+| `sync` | Re-sync cached content |
+| `clear` | Clear cache |
+
+### Adding Cache Libraries to Plex
+
+After caching content, you have two options:
+
+**Option A: Add as separate libraries (recommended for testing)**
+1. Add `/cache/movies` as a new Movies library
+2. Add `/cache/shows` as a new TV Shows library  
+3. Add `/cache/music` as a new Music library
+
+**Option B: Add cache folders to existing libraries (cleaner)**
+1. Edit your existing Movies library → Add folder → `/cache/movies`
+2. Edit your existing TV Shows library → Add folder → `/cache/shows`
+3. Edit your existing Music library → Add folder → `/cache/music`
+
+With either option, Plex automatically prefers local cache over NAS when both contain the same file (faster reads = smoother playback).
 
 ## Advanced Fixes
 
