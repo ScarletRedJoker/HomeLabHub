@@ -492,6 +492,403 @@ def verify_deployment(host_id):
         return make_response(False, message=str(e), status_code=500)
 
 
+@ops_center_bp.route('/api/ops/deploy/<host_id>/preflight', methods=['POST'])
+@require_auth
+@require_permission(Permission.VIEW_DOCKER)
+def preflight_check(host_id):
+    """
+    POST /api/ops/deploy/<host_id>/preflight
+    Run pre-flight checks before deployment
+    
+    Checks:
+        - Environment variables are valid
+        - Docker is running
+        - Disk space is available
+        - Required ports are not in use
+        - Network connectivity
+    
+    Returns:
+        JSON object with preflight check results
+    """
+    valid, error = validate_host_id(host_id)
+    if not valid:
+        return make_response(False, message=error, status_code=400)
+    
+    checks = []
+    all_passed = True
+    
+    try:
+        env_result = fleet_manager.execute_command(
+            host_id,
+            f'cat {ENV_PATH}',
+            timeout=30,
+            bypass_whitelist=True
+        )
+        
+        if env_result.get('success'):
+            content = env_result.get('output', '')
+            variables = parse_env_content(content)
+            
+            missing = [var for var in REQUIRED_ENV_VARS if var not in variables]
+            empty = [var for var in REQUIRED_ENV_VARS if var in variables and not variables[var].strip()]
+            
+            if missing or empty:
+                checks.append({
+                    'name': 'Environment Variables',
+                    'status': 'failed',
+                    'message': f'Missing: {", ".join(missing)}' if missing else f'Empty: {", ".join(empty)}',
+                    'severity': 'critical'
+                })
+                all_passed = False
+            else:
+                checks.append({
+                    'name': 'Environment Variables',
+                    'status': 'passed',
+                    'message': f'All {len(REQUIRED_ENV_VARS)} required variables present'
+                })
+        else:
+            checks.append({
+                'name': 'Environment Variables',
+                'status': 'failed',
+                'message': f'.env file not found or unreadable at {ENV_PATH}',
+                'severity': 'critical'
+            })
+            all_passed = False
+        
+        docker_result = fleet_manager.execute_command(
+            host_id,
+            'docker info --format "{{.ServerVersion}}"',
+            timeout=30,
+            bypass_whitelist=True
+        )
+        
+        if docker_result.get('success') and docker_result.get('output', '').strip():
+            docker_version = docker_result.get('output', '').strip()
+            checks.append({
+                'name': 'Docker Daemon',
+                'status': 'passed',
+                'message': f'Docker version {docker_version} is running'
+            })
+        else:
+            checks.append({
+                'name': 'Docker Daemon',
+                'status': 'failed',
+                'message': 'Docker daemon is not running or not accessible',
+                'severity': 'critical'
+            })
+            all_passed = False
+        
+        disk_result = fleet_manager.execute_command(
+            host_id,
+            "df -h / | awk 'NR==2 {print $5}' | tr -d '%'",
+            timeout=30,
+            bypass_whitelist=True
+        )
+        
+        if disk_result.get('success'):
+            try:
+                disk_usage = int(disk_result.get('output', '0').strip())
+                if disk_usage >= 95:
+                    checks.append({
+                        'name': 'Disk Space',
+                        'status': 'failed',
+                        'message': f'Disk usage at {disk_usage}% - critical',
+                        'severity': 'critical'
+                    })
+                    all_passed = False
+                elif disk_usage >= 85:
+                    checks.append({
+                        'name': 'Disk Space',
+                        'status': 'warning',
+                        'message': f'Disk usage at {disk_usage}% - consider cleanup'
+                    })
+                else:
+                    checks.append({
+                        'name': 'Disk Space',
+                        'status': 'passed',
+                        'message': f'Disk usage at {disk_usage}% - OK'
+                    })
+            except ValueError:
+                checks.append({
+                    'name': 'Disk Space',
+                    'status': 'warning',
+                    'message': 'Could not parse disk usage'
+                })
+        else:
+            checks.append({
+                'name': 'Disk Space',
+                'status': 'warning',
+                'message': 'Could not check disk space'
+            })
+        
+        mem_result = fleet_manager.execute_command(
+            host_id,
+            "free | awk '/Mem:/ {printf \"%.0f\", $3/$2 * 100}'",
+            timeout=30,
+            bypass_whitelist=True
+        )
+        
+        if mem_result.get('success'):
+            try:
+                mem_usage = int(mem_result.get('output', '0').strip())
+                if mem_usage >= 95:
+                    checks.append({
+                        'name': 'Memory',
+                        'status': 'warning',
+                        'message': f'Memory usage at {mem_usage}% - consider freeing memory'
+                    })
+                else:
+                    checks.append({
+                        'name': 'Memory',
+                        'status': 'passed',
+                        'message': f'Memory usage at {mem_usage}% - OK'
+                    })
+            except ValueError:
+                checks.append({
+                    'name': 'Memory',
+                    'status': 'warning',
+                    'message': 'Could not parse memory usage'
+                })
+        else:
+            checks.append({
+                'name': 'Memory',
+                'status': 'warning',
+                'message': 'Could not check memory usage'
+            })
+        
+        script_result = fleet_manager.execute_command(
+            host_id,
+            f'test -f {BOOTSTRAP_SCRIPT} && test -x {BOOTSTRAP_SCRIPT} && echo "ready"',
+            timeout=10,
+            bypass_whitelist=True
+        )
+        
+        if 'ready' in script_result.get('output', ''):
+            checks.append({
+                'name': 'Bootstrap Script',
+                'status': 'passed',
+                'message': 'Bootstrap script exists and is executable'
+            })
+        else:
+            perm_result = fleet_manager.execute_command(
+                host_id,
+                f'test -f {BOOTSTRAP_SCRIPT} && echo "exists"',
+                timeout=10,
+                bypass_whitelist=True
+            )
+            if 'exists' in perm_result.get('output', ''):
+                checks.append({
+                    'name': 'Bootstrap Script',
+                    'status': 'warning',
+                    'message': 'Bootstrap script exists but may not be executable'
+                })
+            else:
+                checks.append({
+                    'name': 'Bootstrap Script',
+                    'status': 'failed',
+                    'message': f'Bootstrap script not found at {BOOTSTRAP_SCRIPT}',
+                    'severity': 'critical'
+                })
+                all_passed = False
+        
+        net_result = fleet_manager.execute_command(
+            host_id,
+            'curl -s --connect-timeout 5 -o /dev/null -w "%{http_code}" https://github.com',
+            timeout=15,
+            bypass_whitelist=True
+        )
+        
+        if net_result.get('success'):
+            status_code = net_result.get('output', '').strip()
+            if status_code.startswith('2') or status_code.startswith('3'):
+                checks.append({
+                    'name': 'Network Connectivity',
+                    'status': 'passed',
+                    'message': 'External network access available'
+                })
+            else:
+                checks.append({
+                    'name': 'Network Connectivity',
+                    'status': 'warning',
+                    'message': f'Network check returned status {status_code}'
+                })
+        else:
+            checks.append({
+                'name': 'Network Connectivity',
+                'status': 'warning',
+                'message': 'Could not verify external network access'
+            })
+        
+        passed_count = sum(1 for c in checks if c['status'] == 'passed')
+        warning_count = sum(1 for c in checks if c['status'] == 'warning')
+        failed_count = sum(1 for c in checks if c['status'] == 'failed')
+        
+        logger.info(f"Pre-flight checks on {host_id}: {passed_count} passed, {warning_count} warnings, {failed_count} failed")
+        
+        return make_response(all_passed, {
+            'host_id': host_id,
+            'ready': all_passed,
+            'checks': checks,
+            'summary': {
+                'passed': passed_count,
+                'warning': warning_count,
+                'failed': failed_count,
+                'total': len(checks)
+            }
+        }, message='Pre-flight checks completed' if all_passed else 'Some pre-flight checks failed')
+        
+    except Exception as e:
+        logger.error(f"Error running pre-flight checks on {host_id}: {e}")
+        return make_response(False, message=str(e), status_code=500)
+
+
+@ops_center_bp.route('/api/ops/deploy/<host_id>/rollback', methods=['POST'])
+@require_auth
+@require_permission(Permission.MANAGE_DOCKER)
+def rollback_deployment(host_id):
+    """
+    POST /api/ops/deploy/<host_id>/rollback
+    Rollback to previous deployment by restoring .env backup and restarting services
+    
+    Request body (optional):
+        {
+            "backup_file": "specific_backup_file_name"  // Use specific backup
+        }
+    
+    Returns:
+        JSON object with rollback result
+    """
+    valid, error = validate_host_id(host_id)
+    if not valid:
+        return make_response(False, message=error, status_code=400)
+    
+    try:
+        data = request.get_json() or {}
+        specific_backup = data.get('backup_file')
+        
+        if specific_backup:
+            backup_file = f"{ENV_PATH}.{specific_backup}"
+        else:
+            list_result = fleet_manager.execute_command(
+                host_id,
+                f'ls -t {ENV_PATH}.backup.* 2>/dev/null | head -1',
+                timeout=30,
+                bypass_whitelist=True
+            )
+            
+            if not list_result.get('success') or not list_result.get('output', '').strip():
+                return make_response(False, message='No backup files found to rollback to', status_code=404)
+            
+            backup_file = list_result.get('output', '').strip()
+        
+        check_result = fleet_manager.execute_command(
+            host_id,
+            f'test -f {backup_file} && echo "exists"',
+            timeout=10,
+            bypass_whitelist=True
+        )
+        
+        if 'exists' not in check_result.get('output', ''):
+            return make_response(False, message=f'Backup file not found: {backup_file}', status_code=404)
+        
+        pre_backup_result = fleet_manager.execute_command(
+            host_id,
+            f'cp {ENV_PATH} {ENV_PATH}.pre-rollback.$(date +%Y%m%d_%H%M%S)',
+            timeout=30,
+            bypass_whitelist=True
+        )
+        
+        if not pre_backup_result.get('success'):
+            logger.warning(f"Failed to create pre-rollback backup on {host_id}")
+        
+        restore_result = fleet_manager.execute_command(
+            host_id,
+            f'cp {backup_file} {ENV_PATH}',
+            timeout=30,
+            bypass_whitelist=True
+        )
+        
+        if not restore_result.get('success'):
+            return make_response(False, message=f"Failed to restore backup: {restore_result.get('error')}", status_code=500)
+        
+        restart_result = fleet_manager.execute_command(
+            host_id,
+            'cd /opt/homelab/HomeLabHub && docker compose down && docker compose up -d',
+            timeout=300,
+            bypass_whitelist=True
+        )
+        
+        restart_success = restart_result.get('success', False)
+        restart_output = restart_result.get('output', '')
+        
+        logger.info(f"Rollback completed on {host_id} using backup: {backup_file}")
+        
+        return make_response(True, {
+            'host_id': host_id,
+            'rolled_back': True,
+            'backup_used': backup_file,
+            'pre_rollback_backup': pre_backup_result.get('success', False),
+            'services_restarted': restart_success,
+            'restart_output': restart_output[:2000] if restart_output else ''
+        }, message=f'Rollback completed successfully using {backup_file}')
+        
+    except Exception as e:
+        logger.error(f"Error rolling back deployment on {host_id}: {e}")
+        return make_response(False, message=str(e), status_code=500)
+
+
+@ops_center_bp.route('/api/ops/deploy/<host_id>/backups', methods=['GET'])
+@require_auth
+@require_permission(Permission.VIEW_DOCKER)
+def list_backups(host_id):
+    """
+    GET /api/ops/deploy/<host_id>/backups
+    List available .env backup files for rollback
+    
+    Returns:
+        JSON object with list of backup files
+    """
+    valid, error = validate_host_id(host_id)
+    if not valid:
+        return make_response(False, message=error, status_code=400)
+    
+    try:
+        list_result = fleet_manager.execute_command(
+            host_id,
+            f'ls -lt {ENV_PATH}.backup.* {ENV_PATH}.pre-rollback.* 2>/dev/null | head -20',
+            timeout=30,
+            bypass_whitelist=True
+        )
+        
+        backups = []
+        if list_result.get('success') and list_result.get('output', '').strip():
+            for line in list_result.get('output', '').strip().split('\n'):
+                parts = line.split()
+                if len(parts) >= 9:
+                    filename = parts[-1]
+                    date_str = ' '.join(parts[5:8])
+                    size = parts[4]
+                    
+                    backup_type = 'pre-rollback' if 'pre-rollback' in filename else 'backup'
+                    
+                    backups.append({
+                        'filename': filename,
+                        'date': date_str,
+                        'size': size,
+                        'type': backup_type
+                    })
+        
+        return make_response(True, {
+            'host_id': host_id,
+            'backups': backups,
+            'count': len(backups)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error listing backups on {host_id}: {e}")
+        return make_response(False, message=str(e), status_code=500)
+
+
 @ops_center_bp.route('/api/ops/hosts', methods=['GET'])
 @require_auth
 @require_permission(Permission.VIEW_DOCKER)

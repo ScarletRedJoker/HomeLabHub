@@ -485,34 +485,82 @@
                     </div>
                     
                     <div class="tab-pane fade" id="deploy-tab">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="text-center py-4">
-                                    <h5 class="mb-4">Deploy to Remote Server</h5>
-                                    <p class="text-secondary mb-4">Run the bootstrap script on the selected host to deploy or update the homelab stack.</p>
-                                    <button class="btn btn-success deploy-btn" onclick="runDeployment()" id="btn-deploy" disabled>
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="d-flex gap-2 flex-wrap align-items-center mb-3">
+                                    <button class="btn btn-warning" onclick="runPreflightChecks()" id="btn-preflight" disabled>
+                                        <i class="bi bi-clipboard-check me-2"></i> Pre-flight Checks
+                                    </button>
+                                    <button class="btn btn-success" onclick="runDeployment()" id="btn-deploy" disabled>
                                         <i class="bi bi-rocket-takeoff me-2"></i> Run Deployment
                                     </button>
-                                    <button class="btn btn-info deploy-btn ms-3" onclick="verifyDeployment()" id="btn-verify" disabled>
+                                    <button class="btn btn-info" onclick="verifyDeployment()" id="btn-verify" disabled>
                                         <i class="bi bi-patch-check me-2"></i> Verify
                                     </button>
-                                </div>
-                                <div class="mt-4">
-                                    <h6>Deployment Info</h6>
-                                    <ul class="list-unstyled text-secondary small">
-                                        <li><i class="bi bi-file-code me-2"></i> Bootstrap: <code>/opt/homelab/HomeLabHub/deploy/scripts/bootstrap.sh</code></li>
-                                        <li><i class="bi bi-check2-circle me-2"></i> Verify: <code>/opt/homelab/HomeLabHub/deploy/scripts/verify-deployment.sh</code></li>
-                                        <li><i class="bi bi-folder me-2"></i> Env Path: <code>/opt/homelab/HomeLabHub/.env</code></li>
-                                    </ul>
+                                    <div class="vr mx-2"></div>
+                                    <button class="btn btn-outline-danger" onclick="showRollbackModal()" id="btn-rollback" disabled>
+                                        <i class="bi bi-arrow-counterclockwise me-2"></i> Rollback
+                                    </button>
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <h6 class="mb-0">Deployment Logs</h6>
-                                    <span id="deploy-status" class="badge bg-secondary">Idle</span>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-lg-6 mb-4">
+                                <div class="card bg-dark border-secondary">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <span><i class="bi bi-clipboard-check me-2"></i>Pre-flight Checks</span>
+                                        <span id="preflight-status" class="badge bg-secondary">Not Run</span>
+                                    </div>
+                                    <div class="card-body" id="preflight-container">
+                                        <p class="text-secondary text-center py-3 mb-0">
+                                            Run pre-flight checks before deployment to ensure the system is ready.
+                                        </p>
+                                    </div>
                                 </div>
-                                <div id="deploy-logs" class="log-output">
-                                    Deployment logs will appear here...
+                            </div>
+                            
+                            <div class="col-lg-6 mb-4">
+                                <div class="card bg-dark border-secondary">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <span><i class="bi bi-terminal me-2"></i>Deployment Logs</span>
+                                        <span id="deploy-status" class="badge bg-secondary">Idle</span>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="deploy-logs" class="log-output">
+Deployment logs will appear here...
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="card bg-dark border-secondary">
+                                    <div class="card-header">
+                                        <i class="bi bi-info-circle me-2"></i>Deployment Info
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <ul class="list-unstyled text-secondary small mb-0">
+                                                    <li class="mb-2"><i class="bi bi-file-code me-2"></i> Bootstrap: <code>/opt/homelab/HomeLabHub/deploy/scripts/bootstrap.sh</code></li>
+                                                    <li class="mb-2"><i class="bi bi-check2-circle me-2"></i> Verify: <code>/opt/homelab/HomeLabHub/deploy/scripts/verify-deployment.sh</code></li>
+                                                    <li><i class="bi bi-folder me-2"></i> Env Path: <code>/opt/homelab/HomeLabHub/.env</code></li>
+                                                </ul>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <p class="text-secondary small mb-2"><strong>Deployment Workflow:</strong></p>
+                                                <ol class="text-secondary small mb-0">
+                                                    <li>Run Pre-flight Checks to validate system readiness</li>
+                                                    <li>Run Deployment to execute the bootstrap script</li>
+                                                    <li>Verify the deployment to ensure services are running</li>
+                                                    <li>If issues occur, use Rollback to restore previous state</li>
+                                                </ol>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -646,6 +694,38 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade cosmic-modal" id="rollbackModal" tabindex="-1" aria-labelledby="rollbackModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="rollbackModalLabel">
+                    <i class="bi bi-arrow-counterclockwise me-2"></i>Rollback Deployment
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Warning:</strong> Rolling back will restore the .env file to a previous state and restart all Docker services. This may cause brief downtime.
+                </div>
+                <h6 class="mb-3">Available Backups</h6>
+                <div id="backups-list">
+                    <div class="text-center py-4">
+                        <div class="spinner-border"></div>
+                        <p class="mt-2 text-secondary">Loading backups...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="btn-confirm-rollback" onclick="executeRollback()" disabled>
+                    <i class="bi bi-arrow-counterclockwise"></i> Rollback to Selected
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -658,6 +738,7 @@ let currentLogsContainer = null;
 let currentDiagnosisService = null;
 let currentPlanService = null;
 let currentPlanData = null;
+let selectedBackupFile = null;
 
 async function refreshHosts() {
     const container = document.getElementById('hosts-container');
@@ -756,10 +837,15 @@ function selectHost(hostId) {
     document.getElementById('btn-deploy').disabled = false;
     document.getElementById('btn-verify').disabled = false;
     document.getElementById('btn-health').disabled = false;
+    document.getElementById('btn-preflight').disabled = false;
+    document.getElementById('btn-rollback').disabled = false;
     
     envData = null;
     document.getElementById('env-display').innerHTML = '<p class="text-secondary text-center py-5">Click "Load .env" to view environment variables</p>';
     document.getElementById('validation-result').innerHTML = '';
+    document.getElementById('preflight-container').innerHTML = '<p class="text-secondary text-center py-3 mb-0">Run pre-flight checks before deployment to ensure the system is ready.</p>';
+    document.getElementById('preflight-status').className = 'badge bg-secondary';
+    document.getElementById('preflight-status').textContent = 'Not Run';
 }
 
 async function loadEnvFile() {
@@ -1027,6 +1113,205 @@ async function verifyDeployment() {
         statusBadge.className = 'badge bg-danger';
         statusBadge.textContent = 'Error';
         logsDiv.textContent = `Verification error: ${error.message}`;
+    }
+}
+
+async function runPreflightChecks() {
+    if (!selectedHost) return;
+    
+    const container = document.getElementById('preflight-container');
+    const statusBadge = document.getElementById('preflight-status');
+    
+    statusBadge.className = 'badge bg-info';
+    statusBadge.textContent = 'Running...';
+    container.innerHTML = '<div class="text-center py-4"><div class="spinner-border"></div><p class="mt-2 text-secondary">Running pre-flight checks...</p></div>';
+    
+    document.getElementById('btn-preflight').disabled = true;
+    
+    try {
+        const response = await fetch(`/api/ops/deploy/${selectedHost}/preflight`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include'
+        });
+        
+        const result = await response.json();
+        const data = result.data || {};
+        const checks = data.checks || [];
+        const summary = data.summary || {};
+        
+        let html = `
+            <div class="d-flex gap-2 mb-3 flex-wrap">
+                <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>${summary.passed || 0} Passed</span>
+                <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle me-1"></i>${summary.warning || 0} Warnings</span>
+                <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>${summary.failed || 0} Failed</span>
+            </div>
+            <div class="list-group list-group-flush">`;
+        
+        for (const check of checks) {
+            const statusIcon = check.status === 'passed' ? 'bi-check-circle-fill text-success' :
+                              check.status === 'warning' ? 'bi-exclamation-triangle-fill text-warning' :
+                              'bi-x-circle-fill text-danger';
+            const bgClass = check.status === 'passed' ? '' :
+                           check.status === 'warning' ? 'bg-warning bg-opacity-10' :
+                           'bg-danger bg-opacity-10';
+            
+            html += `
+                <div class="list-group-item bg-transparent border-secondary ${bgClass}">
+                    <div class="d-flex align-items-center">
+                        <i class="bi ${statusIcon} me-3"></i>
+                        <div>
+                            <strong>${check.name}</strong>
+                            <p class="mb-0 small text-secondary">${check.message}</p>
+                        </div>
+                    </div>
+                </div>`;
+        }
+        
+        html += '</div>';
+        container.innerHTML = html;
+        
+        if (data.ready) {
+            statusBadge.className = 'badge bg-success';
+            statusBadge.textContent = 'Ready';
+        } else if (summary.failed > 0) {
+            statusBadge.className = 'badge bg-danger';
+            statusBadge.textContent = 'Failed';
+        } else {
+            statusBadge.className = 'badge bg-warning';
+            statusBadge.textContent = 'Warnings';
+        }
+        
+    } catch (error) {
+        console.error('Pre-flight checks failed:', error);
+        statusBadge.className = 'badge bg-danger';
+        statusBadge.textContent = 'Error';
+        container.innerHTML = `<div class="alert alert-danger">Pre-flight check error: ${error.message}</div>`;
+    } finally {
+        document.getElementById('btn-preflight').disabled = false;
+    }
+}
+
+async function showRollbackModal() {
+    if (!selectedHost) return;
+    
+    selectedBackupFile = null;
+    document.getElementById('btn-confirm-rollback').disabled = true;
+    
+    const modal = new bootstrap.Modal(document.getElementById('rollbackModal'));
+    document.getElementById('backups-list').innerHTML = '<div class="text-center py-4"><div class="spinner-border"></div><p class="mt-2 text-secondary">Loading backups...</p></div>';
+    modal.show();
+    
+    try {
+        const response = await fetch(`/api/ops/deploy/${selectedHost}/backups`, {
+            credentials: 'include'
+        });
+        
+        const result = await response.json();
+        const backups = result.data?.backups || [];
+        
+        if (backups.length === 0) {
+            document.getElementById('backups-list').innerHTML = '<p class="text-secondary text-center py-4">No backup files found. Backups are created automatically when you save environment changes.</p>';
+            return;
+        }
+        
+        let html = '<div class="list-group">';
+        for (const backup of backups) {
+            const typeIcon = backup.type === 'pre-rollback' ? 'bi-arrow-counterclockwise' : 'bi-archive';
+            const typeBadge = backup.type === 'pre-rollback' ? 
+                '<span class="badge bg-info ms-2">Pre-rollback</span>' : 
+                '<span class="badge bg-secondary ms-2">Backup</span>';
+            
+            html += `
+                <button type="button" class="list-group-item list-group-item-action bg-dark text-light border-secondary backup-item" 
+                        onclick="selectBackup('${backup.filename}')" data-filename="${backup.filename}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="bi ${typeIcon} me-2"></i>
+                            <span class="small font-monospace">${backup.filename.split('/').pop()}</span>
+                            ${typeBadge}
+                        </div>
+                        <div class="text-secondary small">
+                            ${backup.date} (${backup.size})
+                        </div>
+                    </div>
+                </button>`;
+        }
+        html += '</div>';
+        
+        document.getElementById('backups-list').innerHTML = html;
+        
+    } catch (error) {
+        console.error('Failed to load backups:', error);
+        document.getElementById('backups-list').innerHTML = `<div class="alert alert-danger">Failed to load backups: ${error.message}</div>`;
+    }
+}
+
+function selectBackup(filename) {
+    selectedBackupFile = filename;
+    
+    document.querySelectorAll('.backup-item').forEach(item => {
+        item.classList.remove('active');
+        if (item.dataset.filename === filename) {
+            item.classList.add('active');
+        }
+    });
+    
+    document.getElementById('btn-confirm-rollback').disabled = false;
+}
+
+async function executeRollback() {
+    if (!selectedHost || !selectedBackupFile) return;
+    
+    if (!confirm(`Are you sure you want to rollback to ${selectedBackupFile.split('/').pop()}?\n\nThis will:\n1. Create a pre-rollback backup of current .env\n2. Restore the selected backup\n3. Restart all Docker services\n\nThis may cause brief downtime.`)) {
+        return;
+    }
+    
+    const confirmBtn = document.getElementById('btn-confirm-rollback');
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<span class="loading-spinner me-2"></span>Rolling back...';
+    
+    const statusBadge = document.getElementById('deploy-status');
+    const logsDiv = document.getElementById('deploy-logs');
+    
+    statusBadge.className = 'badge bg-warning';
+    statusBadge.textContent = 'Rolling back...';
+    logsDiv.textContent = `Starting rollback to ${selectedBackupFile.split('/').pop()}...\n`;
+    
+    try {
+        const response = await fetch(`/api/ops/deploy/${selectedHost}/rollback`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ backup_file: selectedBackupFile.split('/').pop().replace('.env.', '') })
+        });
+        
+        const result = await response.json();
+        const data = result.data || {};
+        
+        bootstrap.Modal.getInstance(document.getElementById('rollbackModal')).hide();
+        
+        if (result.success) {
+            statusBadge.className = 'badge bg-success';
+            statusBadge.textContent = 'Rolled Back';
+            logsDiv.textContent = `Rollback completed successfully!\n\nBackup used: ${data.backup_used}\nPre-rollback backup created: ${data.pre_rollback_backup ? 'Yes' : 'No'}\nServices restarted: ${data.services_restarted ? 'Yes' : 'No'}\n\n${data.restart_output || ''}`;
+            alert('Rollback completed successfully! Services have been restarted.');
+        } else {
+            statusBadge.className = 'badge bg-danger';
+            statusBadge.textContent = 'Rollback Failed';
+            logsDiv.textContent = `Rollback failed: ${result.message}`;
+            alert(`Rollback failed: ${result.message}`);
+        }
+        
+    } catch (error) {
+        console.error('Rollback failed:', error);
+        statusBadge.className = 'badge bg-danger';
+        statusBadge.textContent = 'Error';
+        logsDiv.textContent = `Rollback error: ${error.message}`;
+        alert(`Rollback error: ${error.message}`);
+    } finally {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i> Rollback to Selected';
     }
 }
 
