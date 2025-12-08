@@ -472,6 +472,60 @@ def health():
     return jsonify({"status": "healthy", "timestamp": datetime.now().isoformat()})
 
 
+@app.route("/test-webhook", methods=["GET", "POST"])
+def test_webhook():
+    """Test endpoint to verify webhook connectivity."""
+    app.logger.info(f"Test webhook received! Method: {request.method}")
+    return jsonify({
+        "status": "ok",
+        "message": "Webhook endpoint is reachable!",
+        "method": request.method,
+        "timestamp": datetime.now().isoformat()
+    })
+
+
+@app.route("/register-existing", methods=["POST"])
+def register_existing():
+    """Register existing cached content that wasn't tracked in the database."""
+    registered = []
+    errors = []
+    
+    for media_type, cache_dir in [("movie", "movies"), ("show", "shows"), ("music", "music")]:
+        cache_path = Path(CACHE_BASE) / cache_dir
+        if not cache_path.exists():
+            continue
+            
+        for item in cache_path.iterdir():
+            folder_name = item.name
+            if folder_name.startswith('.'):
+                continue
+                
+            try:
+                size_bytes = get_folder_size_bytes(item) if item.is_dir() else item.stat().st_size
+                
+                conn = get_db()
+                c = conn.cursor()
+                c.execute("""
+                    INSERT OR IGNORE INTO media_items 
+                    (plex_key, title, media_type, folder_name, size_bytes, is_cached, cached_at, last_watched)
+                    VALUES (?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """, (f"existing-{folder_name}", folder_name, media_type, folder_name, size_bytes))
+                
+                if c.rowcount > 0:
+                    registered.append({"name": folder_name, "type": media_type, "size_gb": round(size_bytes / (1024**3), 2)})
+                conn.commit()
+                conn.close()
+            except Exception as e:
+                errors.append({"name": folder_name, "error": str(e)})
+    
+    return jsonify({
+        "status": "ok",
+        "registered": registered,
+        "errors": errors,
+        "message": f"Registered {len(registered)} existing cached items"
+    })
+
+
 @app.route("/status", methods=["GET"])
 def status():
     """Get cache status and statistics."""
