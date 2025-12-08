@@ -349,12 +349,25 @@ def update_job_status(plex_key, status, error=None):
 
 def cache_worker():
     """Background worker that processes cache queue."""
+    import logging
+    logger = logging.getLogger('cache_worker')
+    logger.setLevel(logging.INFO)
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter('%(asctime)s - CACHE_WORKER - %(message)s'))
+        logger.addHandler(handler)
+    
+    logger.info("Cache worker thread STARTED - waiting for jobs...")
+    heartbeat_counter = 0
+    
     while True:
         try:
-            job = cache_queue.get(timeout=5)
+            job = cache_queue.get(timeout=10)
+            logger.info(f"Processing job: {job.title} ({job.media_type}) - folder: {job.folder_name}")
             
             with queue_lock:
                 if job.plex_key in active_jobs:
+                    logger.info(f"Skipping duplicate job: {job.title}")
                     cache_queue.task_done()
                     continue
                 active_jobs.add(job.plex_key)
@@ -363,26 +376,33 @@ def cache_worker():
             
             try:
                 if is_already_cached(job.folder_name, job.media_type):
+                    logger.info(f"Already cached: {job.title}")
                     update_job_status(job.plex_key, 'completed', 'Already cached')
                 else:
+                    logger.info(f"Starting rsync for: {job.title}")
                     success = cache_content(job.folder_name, job.media_type, job.plex_key, job.title)
                     if success:
+                        logger.info(f"Successfully cached: {job.title}")
                         update_job_status(job.plex_key, 'completed')
                     else:
+                        logger.error(f"Failed to cache: {job.title}")
                         update_job_status(job.plex_key, 'failed', 'Cache operation failed')
             except Exception as e:
+                logger.error(f"Cache worker error for {job.title}: {e}")
                 update_job_status(job.plex_key, 'failed', str(e))
-                app.logger.error(f"Cache worker error: {e}")
             finally:
                 with queue_lock:
                     active_jobs.discard(job.plex_key)
                 cache_queue.task_done()
                 
         except Exception:
-            pass
+            heartbeat_counter += 1
+            if heartbeat_counter >= 6:
+                logger.info(f"Cache worker alive - queue size: {cache_queue.qsize()}")
+                heartbeat_counter = 0
 
 
-worker_thread = threading.Thread(target=cache_worker, daemon=True)
+worker_thread = None
 worker_started = False
 init_lock = threading.Lock()
 
@@ -423,7 +443,7 @@ def reload_pending_jobs():
 
 def ensure_initialized():
     """Ensure database and worker are initialized (safe to call multiple times)."""
-    global worker_started
+    global worker_started, worker_thread
     if worker_started:
         return
     
@@ -431,9 +451,10 @@ def ensure_initialized():
         if not worker_started:
             init_db()
             reload_pending_jobs()
+            worker_thread = threading.Thread(target=cache_worker, daemon=True, name="CacheWorker")
             worker_thread.start()
             worker_started = True
-            app.logger.info("Plex Auto-Cache service initialized")
+            app.logger.info(f"Plex Auto-Cache service initialized - worker thread: {worker_thread.name} (alive={worker_thread.is_alive()})")
 
 
 def queue_cache_job(plex_key, folder_name, media_type, title, priority=5):
@@ -470,6 +491,22 @@ def before_request():
 def health():
     """Health check endpoint."""
     return jsonify({"status": "healthy", "timestamp": datetime.now().isoformat()})
+
+
+@app.route("/debug/worker", methods=["GET"])
+def debug_worker():
+    """Debug endpoint to check worker thread status."""
+    global worker_thread, worker_started
+    thread_info = {
+        "worker_started_flag": worker_started,
+        "thread_exists": worker_thread is not None,
+        "thread_alive": worker_thread.is_alive() if worker_thread else False,
+        "thread_name": worker_thread.name if worker_thread else None,
+        "queue_size": cache_queue.qsize(),
+        "active_jobs_count": len(active_jobs),
+        "active_jobs": list(active_jobs)[:10]
+    }
+    return jsonify(thread_info)
 
 
 @app.route("/test-webhook", methods=["GET", "POST"])
