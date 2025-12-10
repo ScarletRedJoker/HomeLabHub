@@ -84,12 +84,13 @@ services:
       - PLEX_CLAIM=${PLEX_CLAIM:-}
     volumes:
       - plex_config:/config
-      # Direct NAS paths - Plex handles missing gracefully when NAS offline
-      # Using rw for video/music to allow Plex optimized versions and metadata
-      - /mnt/nas/all/video:/media/video:rw
-      - /mnt/nas/all/music:/media/music:rw
-      - /mnt/nas/all/photo:/media/photo:ro
-      - /mnt/nas/all/games:/media/games:ro
+      # Use /srv/media - local directories that always exist
+      # When NAS is online, these are bind-mounted to NAS shares
+      # When NAS is offline, these are empty but Docker never hangs
+      - /srv/media/video:/media/video:rw
+      - /srv/media/music:/media/music:rw
+      - /srv/media/photo:/media/photo:ro
+      - /srv/media/games:/media/games:ro
       # Local storage for Plex optimized versions (faster than NAS)
       - /opt/plex-optimized:/optimized:rw
     tmpfs:

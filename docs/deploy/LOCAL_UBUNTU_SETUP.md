@@ -9,11 +9,19 @@ SSH into your local Ubuntu server and run:
 ```bash
 cd /opt/homelab/HomeLabHub
 
-# 1. Set up NAS media mounts
-sudo ./deploy/local/scripts/setup-nas-mounts.sh
+# 1. Set up NAS media mounts (resilient - system works when NAS is offline)
+sudo ./deploy/local/scripts/setup-nas-resilient.sh
 
 # 2. Start all services
 ./deploy/local/start-local-services.sh
+```
+
+### Emergency: Docker Hanging?
+
+If Docker commands hang due to NAS issues:
+
+```bash
+./deploy/local/scripts/nas-emergency-unmount.sh
 ```
 
 ---
@@ -47,20 +55,37 @@ sudo ./deploy/local/scripts/setup-nas-mounts.sh
 | photo | Photos | /mnt/nas/photo |
 | games | Game files | /mnt/nas/games |
 
-### Set Up NAS Mounts
+### Set Up NAS Mounts (Resilient)
+
+The resilient mount system ensures Docker never hangs when NAS goes offline:
 
 ```bash
-# Auto-detect NAS and mount shares
+# Install fail-fast NAS mounts with watchdog
+sudo ./deploy/local/scripts/setup-nas-resilient.sh
+
+# This creates:
+# - Systemd automount with 30-second timeout (not infinite hang)
+# - Local /srv/media directories that always exist
+# - Watchdog that auto-recovers stale mounts every 2 minutes
+```
+
+**How it works:**
+- Docker containers mount `/srv/media/*` (local directories)
+- When NAS is online, those directories are bind-mounted to NAS shares
+- When NAS is offline, directories are empty but Docker commands never hang
+- Watchdog auto-detects stale mounts and force-unmounts them
+
+**Emergency unmount (if Docker is hanging):**
+
+```bash
+./deploy/local/scripts/nas-emergency-unmount.sh
+```
+
+### Legacy Mount Script (not recommended)
+
+```bash
+# Old method - can hang if NAS goes offline
 sudo ./deploy/local/scripts/setup-nas-mounts.sh
-
-# Or specify NAS IP directly
-sudo ./deploy/local/scripts/setup-nas-mounts.sh --nas-ip=192.168.0.100
-
-# Check mount status
-sudo ./deploy/local/scripts/setup-nas-mounts.sh --status
-
-# Unmount shares
-sudo ./deploy/local/scripts/setup-nas-mounts.sh --unmount
 ```
 
 ### Verify NAS Health

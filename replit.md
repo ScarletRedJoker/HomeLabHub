@@ -38,7 +38,7 @@ The core system uses Docker Compose for orchestrating services across a split de
 - **Environment Management:** Centralized configuration via a single `.env` file.
 - **Modular Architecture:** Designed for scalability and easy service expansion.
 - **Deployment Automation:** Enhanced automation scripts for Tailscale, SSH key management, cross-host health checks, and a unified `./homelab pipeline` command for automated deployment across local and cloud environments.
-- **NAS Integration:** Automatic NAS discovery and mounting with read-write access for NFS and SMB shares; Plex has read-write access to video/music for optimized versions and metadata.
+- **NAS Integration:** Resilient NAS mounts that never hang when NAS is offline. Uses systemd automount with fail-fast timeouts + local /srv/media directories. Docker containers mount local paths that are bind-mounted to NAS when available. Watchdog auto-recovers stale mounts. Setup: `sudo ./deploy/local/scripts/setup-nas-resilient.sh`. Emergency unmount: `./deploy/local/scripts/nas-emergency-unmount.sh`.
 - **Secrets Management:** Age-based encryption for centralized secrets using `scripts/secrets-manager.sh`.
 - **Desktop Integration:** Scripts for integrating NAS folders into the Ubuntu desktop and mode switching for gaming (Sunshine) and productivity (RDP for WinApps).
 
