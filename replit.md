@@ -41,6 +41,7 @@ The core system uses Docker Compose for orchestrating services across a split de
 - **NAS Integration:** Resilient NAS mounts that never hang when NAS is offline. Uses systemd automount with fail-fast timeouts + local /srv/media directories. Docker containers mount local paths that are bind-mounted to NAS when available. Watchdog auto-recovers stale mounts. Setup: `sudo ./deploy/local/scripts/setup-nas-resilient.sh`. Emergency unmount: `./deploy/local/scripts/nas-emergency-unmount.sh`.
 - **Secrets Management:** Age-based encryption for centralized secrets using `scripts/secrets-manager.sh`.
 - **Desktop Integration:** Scripts for integrating NAS folders into the Ubuntu desktop and mode switching for gaming (Sunshine) and productivity (RDP for WinApps).
+- **Gamestream Forwarding:** Windows KVM VM (192.168.122.250) with RTX 3060 GPU passthrough. Sunshine streams to Moonlight clients via iptables forwarding through Ubuntu host. Setup: `sudo ./deploy/local/scripts/setup-gamestream-forwarding.sh`. Clients connect to Ubuntu LAN IP (192.168.0.177) and traffic forwards to VM.
 
 ## External Dependencies
 - **PostgreSQL 16 Alpine:** Shared database.
