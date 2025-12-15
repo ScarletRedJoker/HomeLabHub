@@ -125,9 +125,29 @@ run_windows_script() {
     fi
     
     if nc -z -w 2 "$VM_IP" 5985 2>/dev/null; then
-        if command -v pwsh &>/dev/null; then
-            log "Using PowerShell remoting..."
-            pwsh -Command "Invoke-Command -ComputerName ${VM_IP} -ScriptBlock { powershell -ExecutionPolicy Bypass -File C:\\Scripts\\set-mode.ps1 -Mode $mode }" 2>/dev/null && return 0
+        log "Using WinRM to run PowerShell script..."
+        
+        local cred_file="/etc/winrm-creds"
+        if [ -f "$cred_file" ]; then
+            source "$cred_file"
+            if command -v curl &>/dev/null; then
+                local script_cmd="powershell -ExecutionPolicy Bypass -File C:\\Scripts\\set-mode.ps1 -Mode $mode"
+                local payload="<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsa=\"http://schemas.xmlsoap.org/ws/2004/08/addressing\" xmlns:wsman=\"http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd\"><s:Header><wsa:To>http://${VM_IP}:5985/wsman</wsa:To><wsman:ResourceURI>http://schemas.microsoft.com/wbem/wsman/1/windows/shell/cmd</wsman:ResourceURI><wsa:Action>http://schemas.microsoft.com/wbem/wsman/1/windows/shell/Command</wsa:Action></s:Header><s:Body><CommandLine><Command>$script_cmd</Command></CommandLine></s:Body></s:Envelope>"
+                curl -s -u "${WINRM_USER}:${WINRM_PASS}" --ntlm \
+                    -H "Content-Type: application/soap+xml;charset=UTF-8" \
+                    -d "$payload" \
+                    "http://${VM_IP}:5985/wsman" &>/dev/null && { success "Mode switch command sent"; return 0; }
+            fi
+        fi
+        
+        if command -v smbclient &>/dev/null && [ -f "$cred_file" ]; then
+            source "$cred_file"
+            log "Using SMB trigger file method..."
+            echo "$mode" > /tmp/kvm-mode-trigger
+            smbclient "\\\\${VM_IP}\\C\$" -U "${WINRM_USER}%${WINRM_PASS}" -c "put /tmp/kvm-mode-trigger Scripts\\mode-trigger.txt" 2>/dev/null && {
+                success "Mode trigger file sent - Windows scheduled task will pick it up"
+                return 0
+            }
         fi
     fi
     
