@@ -143,6 +143,60 @@ To allow the Ubuntu host to automatically switch modes:
 | `switch-kvm-mode.sh` | Ubuntu: `deploy/local/scripts/` | Host orchestrator |
 | `set-mode.ps1` | Windows: `C:\Scripts\` | Windows mode switcher |
 | `setup-gamestream-forwarding.sh` | Ubuntu: `deploy/local/scripts/` | Initial port forwarding setup |
+| `setup-autologin.ps1` | Windows: `C:\Scripts\` | Configure Windows autologin |
+| `setup-ssh-server.ps1` | Windows: `C:\Scripts\` | Enable SSH for automation |
+| `setup-startup-mode.ps1` | Windows: `C:\Scripts\` | Auto-enter mode on boot |
+| `create-mode-shortcuts.ps1` | Windows: `C:\Scripts\` | Desktop shortcuts |
+
+## Automation Setup
+
+### 1. Fix Autologin
+
+Windows must auto-login for Sunshine to work properly:
+
+```powershell
+# Run as Administrator
+powershell -ExecutionPolicy Bypass -File C:\Scripts\setup-autologin.ps1 -Username "YourUsername" -Password "YourPassword"
+```
+
+### 2. Enable SSH (Recommended)
+
+Allows Ubuntu to remotely switch modes:
+
+```powershell
+# Run as Administrator
+powershell -ExecutionPolicy Bypass -File C:\Scripts\setup-ssh-server.ps1
+```
+
+Then test from Ubuntu:
+```bash
+ssh Evin@192.168.122.250
+```
+
+### 3. Auto-Enter Mode on Boot
+
+Set Windows to automatically enter gaming or productivity mode after login:
+
+```powershell
+# Gaming mode on startup (for dedicated gaming VM)
+powershell -ExecutionPolicy Bypass -File C:\Scripts\setup-startup-mode.ps1 -Mode gaming
+
+# Or productivity mode on startup
+powershell -ExecutionPolicy Bypass -File C:\Scripts\setup-startup-mode.ps1 -Mode productivity
+
+# Disable auto-mode
+powershell -ExecutionPolicy Bypass -File C:\Scripts\setup-startup-mode.ps1 -Mode disable
+```
+
+### 4. Desktop Shortcuts
+
+Create one-click shortcuts:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File C:\Scripts\create-mode-shortcuts.ps1
+```
+
+Right-click the shortcuts and set "Run as administrator" in Properties -> Advanced.
 
 ## What Each Mode Does
 

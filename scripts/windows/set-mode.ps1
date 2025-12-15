@@ -65,6 +65,26 @@ function Set-HighPerformancePower {
     }
 }
 
+function Disable-HDR {
+    Write-Status "Disabling HDR and Auto HDR..."
+    
+    $GraphicsPath = "HKLM:\SYSTEM\CurrentControlSet\Control\GraphicsDrivers"
+    if (Test-Path $GraphicsPath) {
+        Set-ItemProperty -Path $GraphicsPath -Name "AutoHDREnabled" -Value 0 -Type DWord -ErrorAction SilentlyContinue
+    }
+    
+    $DirectXPath = "HKCU:\Software\Microsoft\DirectX\UserGpuPreferences"
+    if (Test-Path $DirectXPath) {
+        $currentValue = Get-ItemProperty -Path $DirectXPath -Name "DirectXUserGlobalSettings" -ErrorAction SilentlyContinue
+        if ($currentValue -and $currentValue.DirectXUserGlobalSettings) {
+            $newValue = $currentValue.DirectXUserGlobalSettings -replace "AutoHDREnable=1", "AutoHDREnable=0"
+            Set-ItemProperty -Path $DirectXPath -Name "DirectXUserGlobalSettings" -Value $newValue -ErrorAction SilentlyContinue
+        }
+    }
+    
+    Write-Status "HDR disabled" -Color Green
+}
+
 function Disable-RDPService {
     Write-Status "Disabling Remote Desktop service..."
     Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 1
@@ -95,6 +115,7 @@ function Enter-GamingMode {
     Disconnect-RDPSessions
     Disable-RDPService
     Set-HighPerformancePower
+    Disable-HDR
     Set-GamingFirewall
     Start-SunshineService
     
