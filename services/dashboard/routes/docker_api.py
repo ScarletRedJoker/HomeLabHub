@@ -694,6 +694,9 @@ def get_unified_containers():
                 logger.error(f"Error fetching containers from {host_id}: {e}")
                 return host_id, [], {'online': False, 'error': str(e)}
         
+        # Log hosts for debugging
+        logger.info(f"Unified containers - hosts available: {[(h.get('host_id'), h.get('name')) for h in hosts]}")
+        
         with ThreadPoolExecutor(max_workers=5) as executor:
             if host_filter == 'all':
                 futures = {executor.submit(fetch_host_containers, host): host for host in hosts}
@@ -704,9 +707,11 @@ def get_unified_containers():
             for future in as_completed(futures):
                 host_id, containers, status = future.result()
                 host_status[host_id] = status
+                host_name = next((h['name'] for h in hosts if h['host_id'] == host_id), host_id)
+                logger.info(f"Processing {len(containers)} containers from host_id={host_id}, host_name={host_name}")
                 for container in containers:
                     container['host_id'] = host_id
-                    container['host_name'] = next((h['name'] for h in hosts if h['host_id'] == host_id), host_id)
+                    container['host_name'] = host_name
                     all_containers.append(container)
         
         running = sum(1 for c in all_containers if c.get('state', '').lower() == 'running')
