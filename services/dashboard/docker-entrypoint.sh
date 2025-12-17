@@ -55,6 +55,18 @@ fi
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Network Auto-Discovery"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Run network discovery and export discovered IPs as environment variables
+# This uses hints from NAS_IP, TAILSCALE_LOCAL_HOST, etc. but validates them
+python -c "
+from services.network_discovery import run_startup_discovery
+config = run_startup_discovery()
+" 2>&1 || echo "⚠ Network discovery completed with warnings (non-fatal)"
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  Starting Gunicorn Server"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 

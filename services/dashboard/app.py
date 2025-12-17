@@ -53,6 +53,7 @@ from routes.storage_dashboard_routes import storage_dashboard_bp
 from routes.kvm_routes import kvm_bp
 from routes.notification_routes import notification_bp
 from routes.organization_routes import org_bp
+from routes.network_routes import network_bp
 # DISABLED: Subscription/licensing features removed per user request - "Remove subscriptions and don't block access. I never wanted that."
 # from routes.subscription_api import subscription_bp
 from services.activity_service import activity_service
@@ -115,6 +116,7 @@ csrf.exempt(remediation_bp)  # Remediation API (AI-powered service remediation)
 csrf.exempt(kvm_bp)  # KVM Gaming API (Windows VM control)
 csrf.exempt(notification_bp)  # Notification Center API
 csrf.exempt(org_bp)  # Organization API (multi-tenant management)
+csrf.exempt(network_bp)  # Network Discovery API
 
 limiter.init_app(app)
 logger.info("✓ CSRF Protection and Rate Limiting initialized")
@@ -224,6 +226,7 @@ app.register_blueprint(storage_dashboard_bp)
 app.register_blueprint(kvm_bp)
 app.register_blueprint(notification_bp)
 app.register_blueprint(org_bp)
+app.register_blueprint(network_bp)
 # DISABLED: Subscription blueprint disabled - no subscription/licensing checks
 # app.register_blueprint(subscription_bp)
 

@@ -50,6 +50,7 @@ from .builder_project import (
 from .settings import SystemSetting
 from .notification import Alert, AlertSeverity, NotificationSettings
 from .organization import Organization, OrganizationMember, APIKey, OrganizationTier, MemberRole, ROLE_HIERARCHY
+from .network_resource import NetworkResource, NetworkDiscoveryLog, ResourceType, HealthStatus
 
 __all__ = [
     'Base',
@@ -133,5 +134,9 @@ __all__ = [
     'APIKey',
     'OrganizationTier',
     'MemberRole',
-    'ROLE_HIERARCHY'
+    'ROLE_HIERARCHY',
+    'NetworkResource',
+    'NetworkDiscoveryLog',
+    'ResourceType',
+    'HealthStatus'
 ]
