@@ -31,8 +31,36 @@ class NotificationService:
         # Lazy-load Gmail service to avoid circular imports
         self._gmail_service = None
         
+        # Lazy-load integration orchestrator for auto-provisioning
+        self._orchestrator = None
+        
         # Log configuration status
         self._log_config_status()
+    
+    def _get_orchestrator(self):
+        """Lazy-load the integration orchestrator"""
+        if self._orchestrator is None:
+            try:
+                from services.integration_orchestrator import integration_orchestrator
+                self._orchestrator = integration_orchestrator
+            except ImportError:
+                pass
+        return self._orchestrator
+    
+    def get_discord_webhook_url(self) -> Optional[str]:
+        """Get Discord webhook URL, auto-provisioning if needed"""
+        if self.discord_webhook_url:
+            return self.discord_webhook_url
+        
+        orchestrator = self._get_orchestrator()
+        if orchestrator:
+            url = orchestrator.get_discord_webhook_url()
+            if url:
+                self.discord_webhook_url = url
+                logger.info("Discord webhook auto-provisioned via integration orchestrator")
+                return url
+        
+        return None
     
     def _log_config_status(self):
         """Log which notification channels are configured"""
@@ -195,7 +223,7 @@ class NotificationService:
     def _get_available_channels(self) -> List[str]:
         """Get list of configured notification channels"""
         channels = []
-        if self.discord_webhook_url:
+        if self.get_discord_webhook_url():
             channels.append('discord')
         if self.notification_email:
             channels.append('email')
@@ -213,8 +241,9 @@ class NotificationService:
         timestamp: str
     ) -> Dict[str, Any]:
         """Send storage alert to Discord webhook"""
-        if not self.discord_webhook_url:
-            logger.warning("Discord webhook URL not configured")
+        webhook_url = self.get_discord_webhook_url()
+        if not webhook_url:
+            logger.debug("Discord webhook URL not available")
             return {'success': False, 'error': 'Discord webhook not configured'}
         
         try:
@@ -265,7 +294,7 @@ class NotificationService:
             }
             
             response = requests.post(
-                self.discord_webhook_url,
+                webhook_url,
                 json=payload,
                 timeout=10
             )
@@ -397,8 +426,9 @@ class NotificationService:
         expires_in_days: Optional[int]
     ) -> Dict[str, Any]:
         """Send token expiry alert to Discord"""
-        if not self.discord_webhook_url:
-            logger.warning("Discord webhook URL not configured")
+        webhook_url = self.get_discord_webhook_url()
+        if not webhook_url:
+            logger.debug("Discord webhook URL not available")
             return {'success': False, 'error': 'Discord webhook not configured'}
         
         try:
@@ -452,7 +482,7 @@ class NotificationService:
             }
             
             response = requests.post(
-                self.discord_webhook_url,
+                webhook_url,
                 json=payload,
                 timeout=10
             )
@@ -648,8 +678,9 @@ class NotificationService:
         failure_data: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Send service failure alert to Discord webhook"""
-        if not self.discord_webhook_url:
-            logger.warning("Discord webhook URL not configured")
+        webhook_url = self.get_discord_webhook_url()
+        if not webhook_url:
+            logger.debug("Discord webhook URL not available")
             return {'success': False, 'error': 'Discord webhook not configured'}
         
         try:
@@ -714,7 +745,7 @@ class NotificationService:
             }
             
             response = requests.post(
-                self.discord_webhook_url,
+                webhook_url,
                 json=payload,
                 timeout=10
             )
@@ -906,8 +937,9 @@ class NotificationService:
         remediation_result: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Send remediation alert to Discord webhook"""
-        if not self.discord_webhook_url:
-            logger.warning("Discord webhook URL not configured")
+        webhook_url = self.get_discord_webhook_url()
+        if not webhook_url:
+            logger.debug("Discord webhook URL not available")
             return {'success': False, 'error': 'Discord webhook not configured'}
         
         try:
@@ -972,7 +1004,7 @@ class NotificationService:
             }
             
             response = requests.post(
-                self.discord_webhook_url,
+                webhook_url,
                 json=payload,
                 timeout=10
             )
@@ -1167,8 +1199,9 @@ class NotificationService:
         health_summary: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Send system health alert to Discord webhook"""
-        if not self.discord_webhook_url:
-            logger.warning("Discord webhook URL not configured")
+        webhook_url = self.get_discord_webhook_url()
+        if not webhook_url:
+            logger.debug("Discord webhook URL not available")
             return {'success': False, 'error': 'Discord webhook not configured'}
         
         try:
@@ -1247,7 +1280,7 @@ class NotificationService:
             }
             
             response = requests.post(
-                self.discord_webhook_url,
+                webhook_url,
                 json=payload,
                 timeout=10
             )
@@ -1426,7 +1459,7 @@ class NotificationService:
         channels = channels or ['discord', 'web']
         results = {}
         
-        if 'discord' in channels and self.discord_webhook_url:
+        if 'discord' in channels and self.get_discord_webhook_url():
             results['discord'] = self._send_discord_generic(title, message, severity)
         if 'email' in channels:
             results['email'] = self._send_email_generic(title, message, severity)
@@ -1440,7 +1473,8 @@ class NotificationService:
     
     def _send_discord_generic(self, title: str, message: str, severity: str) -> Dict[str, Any]:
         """Send generic Discord webhook notification"""
-        if not self.discord_webhook_url:
+        webhook_url = self.get_discord_webhook_url()
+        if not webhook_url:
             return {'success': False, 'error': 'Discord webhook not configured'}
         
         color_map = {
@@ -1471,7 +1505,7 @@ class NotificationService:
         }
         
         try:
-            response = requests.post(self.discord_webhook_url, json=payload, timeout=10)
+            response = requests.post(webhook_url, json=payload, timeout=10)
             return {'success': response.status_code in [200, 204], 'status_code': response.status_code}
         except Exception as e:
             logger.error(f"Discord notification failed: {e}")

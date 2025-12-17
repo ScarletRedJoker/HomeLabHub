@@ -110,6 +110,8 @@ services:
       - FLEET_COMMAND_TIMEOUT=120
       - HOMELAB_PROJECT_ROOT=/app
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      - DISCORD_BOT_URL=http://discord-bot:5000
+      - HOMELABHUB_API_KEY=${SERVICE_AUTH_TOKEN}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://100.110.227.25:11434}
       - SESSION_SECRET=${SESSION_SECRET:-NebulaCommandDash2024SecureSessionKey}
     volumes:

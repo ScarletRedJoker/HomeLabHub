@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import { getDiscordClient } from "../discord/bot";
+import { ChannelType, PermissionFlagsBits, TextChannel } from "discord.js";
 import os from "os";
 
 const router = Router();
@@ -180,6 +181,203 @@ router.get("/status", validateHomelabhub, (req: Request, res: Response) => {
   } catch (error: any) {
     res.status(500).json({ 
       status: "error",
+      message: error.message 
+    });
+  }
+});
+
+// Available channels endpoint - lists channels the bot can create webhooks in
+router.get("/available-channels", validateHomelabhub, async (req: Request, res: Response) => {
+  try {
+    const client = getDiscordClient();
+    if (!client) {
+      return res.status(503).json({ 
+        error: "Discord bot not initialized",
+        status: "offline" 
+      });
+    }
+
+    if (!client.isReady()) {
+      return res.status(503).json({ 
+        error: "Discord bot not ready",
+        status: "starting" 
+      });
+    }
+
+    const availableChannels: Array<{
+      id: string;
+      name: string;
+      type: string;
+      guild: { id: string; name: string };
+      canCreateWebhook: boolean;
+    }> = [];
+
+    for (const [guildId, guild] of client.guilds.cache) {
+      for (const [channelId, channel] of guild.channels.cache) {
+        if (channel.type === ChannelType.GuildText || channel.type === ChannelType.GuildAnnouncement) {
+          const textChannel = channel as TextChannel;
+          const botMember = guild.members.me;
+          const canManageWebhooks = botMember?.permissionsIn(textChannel).has(PermissionFlagsBits.ManageWebhooks) ?? false;
+          
+          availableChannels.push({
+            id: channel.id,
+            name: channel.name,
+            type: channel.type === ChannelType.GuildText ? 'text' : 'announcement',
+            guild: {
+              id: guild.id,
+              name: guild.name
+            },
+            canCreateWebhook: canManageWebhooks
+          });
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      channels: availableChannels,
+      total: availableChannels.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error("[Homelabhub] Failed to list available channels:", error);
+    res.status(500).json({ 
+      error: "Failed to list channels",
+      message: error.message 
+    });
+  }
+});
+
+// Provision webhook endpoint - creates a webhook in the specified channel
+router.post("/provision-webhook", validateHomelabhub, async (req: Request, res: Response) => {
+  try {
+    const client = getDiscordClient();
+    if (!client) {
+      return res.status(503).json({ 
+        error: "Discord bot not initialized",
+        status: "offline" 
+      });
+    }
+
+    if (!client.isReady()) {
+      return res.status(503).json({ 
+        error: "Discord bot not ready",
+        status: "starting" 
+      });
+    }
+
+    const { channelId, guildId, channelName, name } = req.body;
+    const webhookName = name || 'Homelab Alerts';
+
+    if (!channelId && (!guildId || !channelName)) {
+      return res.status(400).json({ 
+        error: "Invalid request",
+        message: "Either 'channelId' or both 'guildId' and 'channelName' are required"
+      });
+    }
+
+    let targetChannel: TextChannel | null = null;
+
+    if (channelId) {
+      const channel = client.channels.cache.get(channelId);
+      if (!channel) {
+        return res.status(404).json({ 
+          error: "Channel not found",
+          message: `No channel found with ID: ${channelId}`
+        });
+      }
+      
+      if (channel.type !== ChannelType.GuildText && channel.type !== ChannelType.GuildAnnouncement) {
+        return res.status(400).json({ 
+          error: "Invalid channel type",
+          message: "Webhooks can only be created in text or announcement channels"
+        });
+      }
+      
+      targetChannel = channel as TextChannel;
+    } else if (guildId && channelName) {
+      const guild = client.guilds.cache.get(guildId);
+      if (!guild) {
+        return res.status(404).json({ 
+          error: "Guild not found",
+          message: `No guild found with ID: ${guildId}`
+        });
+      }
+      
+      const channel = guild.channels.cache.find(
+        ch => ch.name.toLowerCase() === channelName.toLowerCase() && 
+             (ch.type === ChannelType.GuildText || ch.type === ChannelType.GuildAnnouncement)
+      );
+      
+      if (!channel) {
+        return res.status(404).json({ 
+          error: "Channel not found",
+          message: `No text channel found with name '${channelName}' in guild '${guild.name}'`
+        });
+      }
+      
+      targetChannel = channel as TextChannel;
+    }
+
+    if (!targetChannel) {
+      return res.status(404).json({ 
+        error: "Channel not found",
+        message: "Unable to locate the specified channel"
+      });
+    }
+
+    const guild = targetChannel.guild;
+    const botMember = guild.members.me;
+    
+    if (!botMember?.permissionsIn(targetChannel).has(PermissionFlagsBits.ManageWebhooks)) {
+      return res.status(403).json({ 
+        error: "Missing permissions",
+        message: `Bot lacks 'Manage Webhooks' permission in channel #${targetChannel.name}`
+      });
+    }
+
+    console.log(`[Homelabhub] Creating webhook '${webhookName}' in channel #${targetChannel.name} (${targetChannel.id})`);
+    
+    const webhook = await targetChannel.createWebhook({
+      name: webhookName,
+      reason: 'Provisioned by Homelabhub dashboard for system notifications'
+    });
+
+    console.log(`[Homelabhub] ✅ Webhook created successfully: ${webhook.id}`);
+
+    res.json({
+      success: true,
+      webhookUrl: webhook.url,
+      webhookId: webhook.id,
+      channel: {
+        id: targetChannel.id,
+        name: targetChannel.name
+      },
+      guild: {
+        id: guild.id,
+        name: guild.name
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error("[Homelabhub] Failed to provision webhook:", error);
+    
+    if (error.code === 50013) {
+      return res.status(403).json({ 
+        error: "Missing permissions",
+        message: "Bot lacks required permissions to create webhooks in this channel"
+      });
+    }
+    
+    if (error.code === 30007) {
+      return res.status(429).json({ 
+        error: "Webhook limit reached",
+        message: "This channel has reached the maximum number of webhooks (10)"
+      });
+    }
+    
+    res.status(500).json({ 
+      error: "Failed to create webhook",
       message: error.message 
     });
   }
