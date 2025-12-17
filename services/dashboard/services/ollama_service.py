@@ -1,3 +1,4 @@
+import os
 import requests
 import logging
 from typing import List, Dict, Optional, Generator
@@ -6,8 +7,8 @@ import json
 logger = logging.getLogger(__name__)
 
 class OllamaService:
-    def __init__(self, base_url: str = "http://ollama:11434"):
-        self.base_url = base_url
+    def __init__(self, base_url: str = None):
+        self.base_url = base_url or os.environ.get('OLLAMA_BASE_URL', 'http://ollama:11434')
         self.enabled = self._check_connection()
     
     def _check_connection(self) -> bool:
