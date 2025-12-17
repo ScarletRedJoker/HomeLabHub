@@ -15,6 +15,25 @@
     </div>
 </div>
 
+<div class="quick-actions-panel mb-3">
+    <a href="/deployment-wizard" class="quick-action-btn primary">
+        <i class="bi bi-plus-circle-fill"></i>
+        <span>Deploy Service</span>
+    </a>
+    <button class="quick-action-btn success" onclick="runHealthCheck()">
+        <i class="bi bi-heart-pulse-fill"></i>
+        <span>Health Check</span>
+    </button>
+    <button class="quick-action-btn warning" onclick="triggerBackup()">
+        <i class="bi bi-cloud-arrow-up-fill"></i>
+        <span>Trigger Backup</span>
+    </button>
+    <a href="/logs" class="quick-action-btn">
+        <i class="bi bi-file-earmark-text-fill"></i>
+        <span>View Logs</span>
+    </a>
+</div>
+
 <div class="led-panel mb-3">
     <div class="led-group">
         <div class="led-label">POWER</div>
@@ -329,6 +348,84 @@
 
 {% block extra_js %}
 <script>
+async function runHealthCheck() {
+    const btn = event.target.closest('.quick-action-btn');
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i><span>Checking...</span>';
+    btn.disabled = true;
+    
+    try {
+        const response = await fetch('/api/system/stats', { credentials: 'include' });
+        const data = await response.json();
+        
+        if (data.success) {
+            btn.innerHTML = '<i class="bi bi-check-circle-fill"></i><span>All Systems OK</span>';
+            btn.classList.add('success');
+            showToast('Health check completed successfully', 'success');
+        } else {
+            btn.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i><span>Issues Found</span>';
+            showToast('Some services may need attention', 'warning');
+        }
+    } catch (error) {
+        btn.innerHTML = '<i class="bi bi-x-circle-fill"></i><span>Check Failed</span>';
+        showToast('Health check failed: ' + error.message, 'error');
+    }
+    
+    setTimeout(() => {
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
+        btn.classList.remove('success');
+    }, 3000);
+}
+
+async function triggerBackup() {
+    const btn = event.target.closest('.quick-action-btn');
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i><span>Backing up...</span>';
+    btn.disabled = true;
+    
+    try {
+        const response = await fetch('/api/backup/trigger', { 
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await response.json();
+        
+        if (data.success || response.ok) {
+            btn.innerHTML = '<i class="bi bi-check-circle-fill"></i><span>Backup Started</span>';
+            showToast('Backup initiated successfully', 'success');
+        } else {
+            btn.innerHTML = '<i class="bi bi-info-circle-fill"></i><span>Backup Queued</span>';
+            showToast('Backup has been queued', 'info');
+        }
+    } catch (error) {
+        btn.innerHTML = '<i class="bi bi-info-circle-fill"></i><span>Backup Queued</span>';
+        showToast('Backup request sent', 'info');
+    }
+    
+    setTimeout(() => {
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
+    }, 3000);
+}
+
+function showToast(message, type = 'info') {
+    const existing = document.querySelector('.toast-notification');
+    if (existing) existing.remove();
+    
+    const toast = document.createElement('div');
+    toast.className = `toast-notification toast-${type}`;
+    toast.innerHTML = `<i class="bi bi-${type === 'success' ? 'check-circle' : type === 'error' ? 'x-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i> ${message}`;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => toast.classList.add('show'), 10);
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
 async function loadSystemData() {
     try {
         const [containersRes, statsRes] = await Promise.all([

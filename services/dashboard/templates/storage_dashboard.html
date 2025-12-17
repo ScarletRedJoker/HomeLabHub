@@ -1,0 +1,674 @@
+{% extends "base.html" %}
+
+{% block title %}Storage Dashboard - Nebula Command{% endblock %}
+{% block page_title %}<i class="bi bi-hdd-stack"></i> Storage Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .storage-overview {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    
+    .storage-stat-card {
+        background: linear-gradient(145deg, rgba(31, 41, 55, 0.6) 0%, rgba(17, 24, 39, 0.9) 100%);
+        border: 1px solid rgba(139, 92, 246, 0.3);
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+    
+    .storage-stat-card:hover {
+        transform: translateY(-4px);
+        border-color: rgba(139, 92, 246, 0.5);
+        box-shadow: 0 8px 24px rgba(139, 92, 246, 0.2);
+    }
+    
+    .storage-stat-card.nas { border-color: rgba(34, 197, 94, 0.4); }
+    .storage-stat-card.local { border-color: rgba(59, 130, 246, 0.4); }
+    .storage-stat-card.cloud { border-color: rgba(168, 85, 247, 0.4); }
+    
+    .stat-icon {
+        font-size: 2rem;
+        margin-bottom: 8px;
+    }
+    
+    .stat-icon.nas { color: #22C55E; }
+    .stat-icon.local { color: #3B82F6; }
+    .stat-icon.cloud { color: #A855F7; }
+    
+    .stat-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 50%, #3B82F6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .stat-label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-top: 4px;
+    }
+    
+    .storage-section {
+        background: linear-gradient(145deg, rgba(31, 41, 55, 0.6) 0%, rgba(17, 24, 39, 0.9) 100%);
+        border: 1px solid rgba(139, 92, 246, 0.3);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 24px;
+        backdrop-filter: blur(16px);
+    }
+    
+    .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid rgba(96, 165, 250, 0.2);
+    }
+    
+    .section-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .section-actions {
+        display: flex;
+        gap: 8px;
+    }
+    
+    .action-btn {
+        background: rgba(96, 165, 250, 0.1);
+        border: 1px solid rgba(96, 165, 250, 0.3);
+        color: var(--text-primary);
+        padding: 8px 14px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.875rem;
+    }
+    
+    .action-btn:hover {
+        background: rgba(96, 165, 250, 0.2);
+        border-color: rgba(96, 165, 250, 0.5);
+    }
+    
+    .action-btn.primary {
+        background: linear-gradient(135deg, #8B5CF6, #EC4899);
+        border: none;
+        color: white;
+    }
+    
+    .action-btn.primary:hover {
+        box-shadow: 0 4px 16px rgba(139, 92, 246, 0.4);
+    }
+    
+    .mount-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    
+    .mount-table th {
+        background: rgba(31, 41, 55, 0.5);
+        padding: 12px 16px;
+        text-align: left;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-secondary);
+        border-bottom: 1px solid rgba(96, 165, 250, 0.2);
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    
+    .mount-table th:hover {
+        background: rgba(96, 165, 250, 0.1);
+    }
+    
+    .mount-table th.sorted-asc::after { content: ' ↑'; }
+    .mount-table th.sorted-desc::after { content: ' ↓'; }
+    
+    .mount-table td {
+        padding: 14px 16px;
+        border-bottom: 1px solid rgba(96, 165, 250, 0.1);
+        transition: background 0.2s;
+    }
+    
+    .mount-table tr:hover td {
+        background: rgba(31, 41, 55, 0.5);
+    }
+    
+    .mount-type-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .mount-type-badge.nas {
+        background: rgba(34, 197, 94, 0.2);
+        color: #22C55E;
+        border: 1px solid rgba(34, 197, 94, 0.4);
+    }
+    
+    .mount-type-badge.local {
+        background: rgba(59, 130, 246, 0.2);
+        color: #3B82F6;
+        border: 1px solid rgba(59, 130, 246, 0.4);
+    }
+    
+    .mount-type-badge.cloud {
+        background: rgba(168, 85, 247, 0.2);
+        color: #A855F7;
+        border: 1px solid rgba(168, 85, 247, 0.4);
+    }
+    
+    .status-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.85rem;
+    }
+    
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+    
+    .status-dot.online { background: #22C55E; }
+    .status-dot.offline { background: #EF4444; }
+    .status-dot.warning { background: #FBBF24; }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    
+    .capacity-bar {
+        width: 100%;
+        height: 8px;
+        background: rgba(96, 165, 250, 0.2);
+        border-radius: 4px;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .capacity-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.5s ease;
+    }
+    
+    .capacity-fill.low { background: linear-gradient(90deg, #22C55E, #34D399); }
+    .capacity-fill.medium { background: linear-gradient(90deg, #FBBF24, #F59E0B); }
+    .capacity-fill.high { background: linear-gradient(90deg, #EF4444, #DC2626); }
+    
+    .capacity-text {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-top: 4px;
+    }
+    
+    .quick-actions {
+        display: flex;
+        gap: 4px;
+    }
+    
+    .quick-action-btn {
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(96, 165, 250, 0.1);
+        border: 1px solid rgba(96, 165, 250, 0.2);
+        border-radius: 6px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.85rem;
+    }
+    
+    .quick-action-btn:hover {
+        background: rgba(96, 165, 250, 0.2);
+        color: var(--text-primary);
+    }
+    
+    .quick-action-btn.danger:hover {
+        background: rgba(239, 68, 68, 0.2);
+        border-color: rgba(239, 68, 68, 0.4);
+        color: #EF4444;
+    }
+    
+    .backup-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 16px;
+    }
+    
+    .backup-card {
+        background: rgba(31, 41, 55, 0.5);
+        border: 1px solid rgba(96, 165, 250, 0.2);
+        border-radius: 12px;
+        padding: 16px;
+        transition: all 0.2s ease;
+    }
+    
+    .backup-card:hover {
+        border-color: rgba(96, 165, 250, 0.4);
+    }
+    
+    .backup-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+    }
+    
+    .backup-name {
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .backup-icon {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(96, 165, 250, 0.1);
+        border-radius: 8px;
+        font-size: 1.2rem;
+    }
+    
+    .backup-icon.nas { color: #22C55E; }
+    .backup-icon.minio { color: #F59E0B; }
+    .backup-icon.s3 { color: #FF9900; }
+    
+    .backup-meta {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+    
+    .backup-meta-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 4px 0;
+    }
+    
+    .alert-section {
+        margin-bottom: 24px;
+    }
+    
+    .alert-card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        border-radius: 10px;
+        margin-bottom: 8px;
+        animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .alert-card.warning {
+        background: rgba(251, 191, 36, 0.1);
+        border: 1px solid rgba(251, 191, 36, 0.4);
+    }
+    
+    .alert-card.critical {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+    
+    .alert-icon {
+        font-size: 1.2rem;
+    }
+    
+    .alert-card.warning .alert-icon { color: #FBBF24; }
+    .alert-card.critical .alert-icon { color: #EF4444; }
+    
+    .alert-message {
+        flex: 1;
+        font-size: 0.9rem;
+    }
+    
+    .nas-status-card {
+        background: linear-gradient(145deg, rgba(34, 197, 94, 0.1) 0%, rgba(17, 24, 39, 0.9) 100%);
+        border: 1px solid rgba(34, 197, 94, 0.3);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+    
+    .nas-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+    
+    .nas-icon {
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(34, 197, 94, 0.2);
+        border-radius: 12px;
+        font-size: 2rem;
+        color: #22C55E;
+    }
+    
+    .nas-title h3 {
+        font-size: 1.3rem;
+        margin-bottom: 4px;
+    }
+    
+    .nas-title p {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+    }
+    
+    .nas-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 16px;
+    }
+    
+    .nas-stat {
+        text-align: center;
+        padding: 12px;
+        background: rgba(31, 41, 55, 0.5);
+        border-radius: 8px;
+    }
+    
+    .nas-stat-value {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #22C55E;
+    }
+    
+    .nas-stat-label {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-top: 4px;
+    }
+    
+    .loading-spinner {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+    }
+    
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(139, 92, 246, 0.2);
+        border-top-color: #8B5CF6;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 40px;
+        color: var(--text-secondary);
+    }
+    
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+    
+    .refresh-indicator {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: rgba(31, 41, 55, 0.95);
+        border: 1px solid rgba(139, 92, 246, 0.4);
+        border-radius: 10px;
+        padding: 10px 16px;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        z-index: 1000;
+        opacity: 0;
+        transform: translateY(20px);
+        transition: all 0.3s ease;
+    }
+    
+    .refresh-indicator.show {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    
+    .toast-container {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 2000;
+    }
+    
+    .toast {
+        background: rgba(31, 41, 55, 0.95);
+        border: 1px solid rgba(139, 92, 246, 0.4);
+        border-radius: 10px;
+        padding: 14px 20px;
+        margin-top: 10px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        animation: slideIn 0.3s ease;
+    }
+    
+    .toast.success { border-color: rgba(34, 197, 94, 0.5); }
+    .toast.error { border-color: rgba(239, 68, 68, 0.5); }
+    
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div id="alertSection" class="alert-section"></div>
+    
+    <div class="storage-overview" id="storageOverview">
+        <div class="storage-stat-card">
+            <div class="stat-icon"><i class="bi bi-hdd-stack"></i></div>
+            <div class="stat-value" id="totalCapacity">--</div>
+            <div class="stat-label">Total Capacity</div>
+        </div>
+        <div class="storage-stat-card">
+            <div class="stat-icon"><i class="bi bi-pie-chart-fill"></i></div>
+            <div class="stat-value" id="totalUsed">--</div>
+            <div class="stat-label">Used Storage</div>
+        </div>
+        <div class="storage-stat-card">
+            <div class="stat-icon"><i class="bi bi-box"></i></div>
+            <div class="stat-value" id="totalAvailable">--</div>
+            <div class="stat-label">Available</div>
+        </div>
+        <div class="storage-stat-card nas">
+            <div class="stat-icon nas"><i class="bi bi-hdd-network"></i></div>
+            <div class="stat-value" id="nasMounts">--</div>
+            <div class="stat-label">NAS Mounts</div>
+        </div>
+        <div class="storage-stat-card local">
+            <div class="stat-icon local"><i class="bi bi-hdd"></i></div>
+            <div class="stat-value" id="localMounts">--</div>
+            <div class="stat-label">Local Volumes</div>
+        </div>
+        <div class="storage-stat-card cloud">
+            <div class="stat-icon cloud"><i class="bi bi-cloud"></i></div>
+            <div class="stat-value" id="cloudBuckets">--</div>
+            <div class="stat-label">Cloud Buckets</div>
+        </div>
+    </div>
+    
+    <div id="nasStatusCard" class="nas-status-card" style="display: none;">
+        <div class="nas-header">
+            <div class="nas-icon">
+                <i class="bi bi-hdd-network-fill"></i>
+            </div>
+            <div class="nas-title">
+                <h3>Zyxel NAS326</h3>
+                <p id="nasHostname">--</p>
+            </div>
+            <span class="status-indicator" id="nasStatus">
+                <span class="status-dot"></span>
+                <span>Checking...</span>
+            </span>
+        </div>
+        <div class="nas-stats">
+            <div class="nas-stat">
+                <div class="nas-stat-value" id="nasActiveMounts">0</div>
+                <div class="nas-stat-label">Active Mounts</div>
+            </div>
+            <div class="nas-stat">
+                <div class="nas-stat-value" id="nasBackupShare">--</div>
+                <div class="nas-stat-label">Backup Share</div>
+            </div>
+            <div class="nas-stat">
+                <div class="nas-stat-value" id="nasMediaShare">--</div>
+                <div class="nas-stat-label">Media Share</div>
+            </div>
+            <div class="nas-stat">
+                <div class="nas-stat-value" id="nasIpAddress">--</div>
+                <div class="nas-stat-label">IP Address</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="storage-section">
+        <div class="section-header">
+            <div class="section-title">
+                <i class="bi bi-collection"></i>
+                Mount Catalog
+            </div>
+            <div class="section-actions">
+                <button class="action-btn" onclick="refreshMounts()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+                <button class="action-btn primary" onclick="triggerScan()">
+                    <i class="bi bi-search"></i> Scan All
+                </button>
+            </div>
+        </div>
+        
+        <div id="mountsLoading" class="loading-spinner">
+            <div class="spinner"></div>
+        </div>
+        
+        <div id="mountsEmpty" class="empty-state" style="display: none;">
+            <i class="bi bi-hdd"></i>
+            <p>No storage mounts found</p>
+        </div>
+        
+        <table class="mount-table" id="mountTable" style="display: none;">
+            <thead>
+                <tr>
+                    <th data-sort="mount_point">Mount Point</th>
+                    <th data-sort="type">Type</th>
+                    <th data-sort="status">Status</th>
+                    <th data-sort="usage_percent">Capacity</th>
+                    <th>Last Scan</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="mountTableBody"></tbody>
+        </table>
+    </div>
+    
+    <div class="storage-section">
+        <div class="section-header">
+            <div class="section-title">
+                <i class="bi bi-cloud-arrow-up"></i>
+                Backup Destinations
+            </div>
+            <div class="section-actions">
+                <button class="action-btn" onclick="refreshBackupDestinations()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+        </div>
+        
+        <div id="backupsLoading" class="loading-spinner">
+            <div class="spinner"></div>
+        </div>
+        
+        <div id="backupsEmpty" class="empty-state" style="display: none;">
+            <i class="bi bi-cloud-slash"></i>
+            <p>No backup destinations configured</p>
+        </div>
+        
+        <div class="backup-grid" id="backupGrid"></div>
+    </div>
+    
+    <div class="storage-section">
+        <div class="section-header">
+            <div class="section-title">
+                <i class="bi bi-heart-pulse"></i>
+                Storage Health
+            </div>
+            <div class="section-actions">
+                <button class="action-btn" onclick="checkStorageHealth()">
+                    <i class="bi bi-arrow-clockwise"></i> Check Health
+                </button>
+            </div>
+        </div>
+        
+        <div id="healthLoading" class="loading-spinner" style="display: none;">
+            <div class="spinner"></div>
+        </div>
+        
+        <div id="healthChecks"></div>
+    </div>
+</div>
+
+<div class="refresh-indicator" id="refreshIndicator">
+    <div class="spinner" style="width: 16px; height: 16px; border-width: 2px;"></div>
+    <span>Refreshing...</span>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="{{ url_for('static', filename='js/storage_dashboard.js') }}"></script>
+{% endblock %}

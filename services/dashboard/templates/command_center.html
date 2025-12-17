@@ -1,0 +1,857 @@
+{% extends "base.html" %}
+
+{% block title %}Command Center - Nebula Command{% endblock %}
+
+{% block extra_css %}
+<style>
+    .command-center-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+    }
+    
+    .env-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+        gap: 24px;
+        margin-bottom: 32px;
+    }
+    
+    .env-card {
+        background: linear-gradient(145deg, rgba(31, 41, 55, 0.8) 0%, rgba(17, 24, 39, 0.95) 100%);
+        border: 1px solid rgba(139, 92, 246, 0.2);
+        border-radius: 16px;
+        padding: 24px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .env-card:hover {
+        border-color: rgba(139, 92, 246, 0.4);
+        box-shadow: 0 12px 40px rgba(139, 92, 246, 0.2);
+        transform: translateY(-4px);
+    }
+    
+    .env-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 20px;
+    }
+    
+    .env-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .env-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+    
+    .env-icon.local {
+        background: linear-gradient(135deg, rgba(52, 211, 153, 0.2), rgba(52, 211, 153, 0.1));
+        color: var(--accent-green);
+    }
+    
+    .env-icon.cloud {
+        background: linear-gradient(135deg, rgba(96, 165, 250, 0.2), rgba(96, 165, 250, 0.1));
+        color: var(--accent-blue);
+    }
+    
+    .env-name {
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin: 0;
+    }
+    
+    .env-hostname {
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        margin-top: 4px;
+    }
+    
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
+    .status-badge.healthy {
+        background: rgba(52, 211, 153, 0.15);
+        color: var(--accent-green);
+    }
+    
+    .status-badge.degraded {
+        background: rgba(251, 191, 36, 0.15);
+        color: var(--accent-yellow);
+    }
+    
+    .status-badge.unhealthy {
+        background: rgba(248, 113, 113, 0.15);
+        color: var(--accent-red);
+    }
+    
+    .status-badge.unknown {
+        background: rgba(156, 163, 175, 0.15);
+        color: var(--text-secondary);
+    }
+    
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+    
+    .status-dot.healthy {
+        background: var(--accent-green);
+    }
+    
+    .status-dot.degraded {
+        background: var(--accent-yellow);
+    }
+    
+    .status-dot.unhealthy {
+        background: var(--accent-red);
+    }
+    
+    .status-dot.unknown {
+        background: var(--text-secondary);
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+    
+    .metric-item {
+        text-align: center;
+        padding: 12px;
+        background: rgba(17, 24, 39, 0.5);
+        border-radius: 10px;
+    }
+    
+    .metric-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 4px;
+    }
+    
+    .metric-label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .progress-bar {
+        height: 6px;
+        background: rgba(55, 65, 81, 0.5);
+        border-radius: 3px;
+        overflow: hidden;
+        margin-top: 8px;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.5s ease;
+    }
+    
+    .progress-fill.good {
+        background: linear-gradient(90deg, var(--accent-green), #10b981);
+    }
+    
+    .progress-fill.warning {
+        background: linear-gradient(90deg, var(--accent-yellow), #f59e0b);
+    }
+    
+    .progress-fill.danger {
+        background: linear-gradient(90deg, var(--accent-red), #ef4444);
+    }
+    
+    .services-section {
+        margin-bottom: 20px;
+    }
+    
+    .services-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+    
+    .services-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+    
+    .services-count {
+        display: flex;
+        gap: 12px;
+    }
+    
+    .count-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.8rem;
+    }
+    
+    .count-badge.running {
+        color: var(--accent-green);
+    }
+    
+    .count-badge.stopped {
+        color: var(--accent-red);
+    }
+    
+    .services-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .service-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        background: rgba(55, 65, 81, 0.5);
+        border-radius: 6px;
+        font-size: 0.8rem;
+    }
+    
+    .service-tag .status-indicator {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+    }
+    
+    .service-tag .status-indicator.running {
+        background: var(--accent-green);
+    }
+    
+    .service-tag .status-indicator.stopped {
+        background: var(--accent-red);
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    
+    .action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: none;
+    }
+    
+    .action-btn.primary {
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(59, 130, 246, 0.3));
+        color: var(--text-primary);
+        border: 1px solid rgba(139, 92, 246, 0.3);
+    }
+    
+    .action-btn.primary:hover {
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.5), rgba(59, 130, 246, 0.5));
+        transform: translateY(-2px);
+    }
+    
+    .action-btn.secondary {
+        background: rgba(55, 65, 81, 0.5);
+        color: var(--text-secondary);
+        border: 1px solid rgba(55, 65, 81, 0.5);
+    }
+    
+    .action-btn.secondary:hover {
+        background: rgba(55, 65, 81, 0.8);
+        color: var(--text-primary);
+    }
+    
+    .action-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    .activity-section {
+        background: linear-gradient(145deg, rgba(31, 41, 55, 0.6) 0%, rgba(17, 24, 39, 0.9) 100%);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 24px;
+    }
+    
+    .activity-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    
+    .activity-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .activity-list {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    
+    .activity-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        background: rgba(17, 24, 39, 0.5);
+    }
+    
+    .activity-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    .activity-icon.success {
+        background: rgba(52, 211, 153, 0.15);
+        color: var(--accent-green);
+    }
+    
+    .activity-icon.error {
+        background: rgba(248, 113, 113, 0.15);
+        color: var(--accent-red);
+    }
+    
+    .activity-icon.info {
+        background: rgba(96, 165, 250, 0.15);
+        color: var(--accent-blue);
+    }
+    
+    .activity-content {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .activity-message {
+        font-size: 0.9rem;
+        margin-bottom: 4px;
+        word-break: break-word;
+    }
+    
+    .activity-meta {
+        display: flex;
+        gap: 12px;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+    
+    .refresh-btn {
+        background: rgba(55, 65, 81, 0.5);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        padding: 10px 20px;
+        border-radius: 10px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+    }
+    
+    .refresh-btn:hover {
+        background: rgba(55, 65, 81, 0.8);
+        border-color: rgba(139, 92, 246, 0.3);
+    }
+    
+    .refresh-btn.loading i {
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        100% { transform: rotate(360deg); }
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 40px;
+        color: var(--text-secondary);
+    }
+    
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+    }
+    
+    .modal-overlay.show {
+        display: flex;
+    }
+    
+    .modal-content {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 24px;
+        max-width: 600px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+    
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    
+    .modal-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+    }
+    
+    .modal-close {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 1.5rem;
+        cursor: pointer;
+    }
+    
+    .logs-container {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 8px;
+        padding: 16px;
+        font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        font-size: 0.8rem;
+        line-height: 1.5;
+        max-height: 400px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="command-center-header">
+    <div>
+        <h2 style="margin-bottom: 8px;"><i class="bi bi-command"></i> Command Center</h2>
+        <p style="color: var(--text-secondary); margin: 0;">Unified control plane for all environments</p>
+    </div>
+    <button class="refresh-btn" onclick="refreshAll()" id="refreshBtn">
+        <i class="bi bi-arrow-clockwise"></i>
+        <span>Refresh</span>
+    </button>
+</div>
+
+<div class="env-grid" id="envGrid">
+    <div class="loading">
+        <div class="spinner-border"></div>
+        <p style="margin-top: 16px;">Loading environments...</p>
+    </div>
+</div>
+
+<div class="activity-section">
+    <div class="activity-header">
+        <h3 class="activity-title">
+            <i class="bi bi-activity"></i>
+            Recent Activity
+        </h3>
+    </div>
+    <div class="activity-list" id="activityList">
+        <div class="empty-state">
+            <i class="bi bi-clock-history" style="font-size: 2rem; margin-bottom: 12px;"></i>
+            <p>Loading activity...</p>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="logsModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title" id="logsModalTitle">Service Logs</h3>
+            <button class="modal-close" onclick="closeLogsModal()">&times;</button>
+        </div>
+        <div class="logs-container" id="logsContent">
+            Loading logs...
+        </div>
+    </div>
+</div>
+
+<script>
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+async function fetchWithAuth(url, options = {}) {
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers
+    };
+    if (csrfToken && options.method && options.method !== 'GET') {
+        headers['X-CSRFToken'] = csrfToken;
+    }
+    const response = await fetch(url, { ...options, headers, credentials: 'same-origin' });
+    return response.json();
+}
+
+async function loadEnvironments() {
+    try {
+        const result = await fetchWithAuth('/api/environments');
+        if (result.success && result.data.environments) {
+            renderEnvironments(result.data.environments);
+            
+            for (const env of result.data.environments) {
+                loadEnvironmentStatus(env.env_id);
+            }
+        }
+    } catch (error) {
+        console.error('Error loading environments:', error);
+        document.getElementById('envGrid').innerHTML = `
+            <div class="empty-state">
+                <i class="bi bi-exclamation-triangle" style="font-size: 2rem; color: var(--accent-red);"></i>
+                <p>Failed to load environments</p>
+            </div>
+        `;
+    }
+}
+
+function renderEnvironments(environments) {
+    const grid = document.getElementById('envGrid');
+    grid.innerHTML = environments.map(env => `
+        <div class="env-card" id="env-${env.env_id}">
+            <div class="env-card-header">
+                <div class="env-title">
+                    <div class="env-icon ${env.env_type}">
+                        <i class="bi bi-${env.env_type === 'local' ? 'house-door' : 'cloud'}"></i>
+                    </div>
+                    <div>
+                        <h3 class="env-name">${env.name}</h3>
+                        <div class="env-hostname">${env.hostname}</div>
+                    </div>
+                </div>
+                <div class="status-badge ${env.status}" id="status-${env.env_id}">
+                    <div class="status-dot ${env.status}"></div>
+                    <span>${capitalizeFirst(env.status)}</span>
+                </div>
+            </div>
+            
+            <div class="metrics-grid" id="metrics-${env.env_id}">
+                <div class="metric-item">
+                    <div class="metric-value" id="cpu-${env.env_id}">--</div>
+                    <div class="metric-label">CPU</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill good" id="cpu-bar-${env.env_id}" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="memory-${env.env_id}">--</div>
+                    <div class="metric-label">Memory</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill good" id="memory-bar-${env.env_id}" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="disk-${env.env_id}">--</div>
+                    <div class="metric-label">Disk</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill good" id="disk-bar-${env.env_id}" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="services-section">
+                <div class="services-header">
+                    <span class="services-title">Services</span>
+                    <div class="services-count" id="svc-count-${env.env_id}">
+                        <span class="count-badge running"><i class="bi bi-check-circle"></i> --</span>
+                        <span class="count-badge stopped"><i class="bi bi-x-circle"></i> --</span>
+                    </div>
+                </div>
+                <div class="services-list" id="svc-list-${env.env_id}">
+                    <span style="color: var(--text-secondary); font-size: 0.85rem;">Loading...</span>
+                </div>
+            </div>
+            
+            <div class="action-buttons">
+                <button class="action-btn primary" onclick="runHealthCheck('${env.env_id}')">
+                    <i class="bi bi-heart-pulse"></i> Health Check
+                </button>
+                <button class="action-btn secondary" onclick="triggerDeploy('${env.env_id}')">
+                    <i class="bi bi-rocket"></i> Deploy
+                </button>
+                <button class="action-btn secondary" onclick="viewLogs('${env.env_id}')">
+                    <i class="bi bi-terminal"></i> Logs
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function loadEnvironmentStatus(envId) {
+    try {
+        const result = await fetchWithAuth(`/api/environments/${envId}/status`);
+        if (result.success && result.data) {
+            updateEnvironmentCard(envId, result.data);
+        }
+    } catch (error) {
+        console.error(`Error loading status for ${envId}:`, error);
+    }
+}
+
+function updateEnvironmentCard(envId, status) {
+    const statusBadge = document.getElementById(`status-${envId}`);
+    if (statusBadge) {
+        const health = status.overall_health || 'unknown';
+        statusBadge.className = `status-badge ${health}`;
+        statusBadge.innerHTML = `<div class="status-dot ${health}"></div><span>${capitalizeFirst(health)}</span>`;
+    }
+    
+    const host = status.host || {};
+    updateMetric(envId, 'cpu', host.cpu_percent);
+    updateMetric(envId, 'memory', host.memory_percent);
+    updateMetric(envId, 'disk', host.disk_percent);
+    
+    const services = status.services || {};
+    const svcCount = document.getElementById(`svc-count-${envId}`);
+    if (svcCount) {
+        svcCount.innerHTML = `
+            <span class="count-badge running"><i class="bi bi-check-circle"></i> ${services.running || 0}</span>
+            <span class="count-badge stopped"><i class="bi bi-x-circle"></i> ${services.stopped || 0}</span>
+        `;
+    }
+    
+    const svcList = document.getElementById(`svc-list-${envId}`);
+    if (svcList && services.services) {
+        svcList.innerHTML = services.services.slice(0, 8).map(svc => `
+            <div class="service-tag">
+                <div class="status-indicator ${svc.state === 'running' ? 'running' : 'stopped'}"></div>
+                ${svc.name}
+            </div>
+        `).join('') + (services.services.length > 8 ? `<span style="color: var(--text-secondary);">+${services.services.length - 8} more</span>` : '');
+    }
+}
+
+function updateMetric(envId, type, value) {
+    const valueEl = document.getElementById(`${type}-${envId}`);
+    const barEl = document.getElementById(`${type}-bar-${envId}`);
+    
+    if (valueEl && value !== undefined) {
+        valueEl.textContent = `${Math.round(value)}%`;
+    }
+    
+    if (barEl && value !== undefined) {
+        barEl.style.width = `${value}%`;
+        barEl.className = `progress-fill ${value < 70 ? 'good' : value < 85 ? 'warning' : 'danger'}`;
+    }
+}
+
+async function loadActivity() {
+    try {
+        const result = await fetchWithAuth('/api/environments/activity?limit=10');
+        if (result.success && result.data.activities) {
+            renderActivity(result.data.activities);
+        }
+    } catch (error) {
+        console.error('Error loading activity:', error);
+    }
+}
+
+function renderActivity(activities) {
+    const list = document.getElementById('activityList');
+    
+    if (!activities.length) {
+        list.innerHTML = `
+            <div class="empty-state">
+                <i class="bi bi-clock-history" style="font-size: 2rem; margin-bottom: 12px;"></i>
+                <p>No recent activity</p>
+            </div>
+        `;
+        return;
+    }
+    
+    list.innerHTML = activities.map(act => `
+        <div class="activity-item">
+            <div class="activity-icon ${act.success ? 'success' : 'error'}">
+                <i class="bi bi-${act.success ? 'check-lg' : 'x-lg'}"></i>
+            </div>
+            <div class="activity-content">
+                <div class="activity-message">${escapeHtml(act.command)}</div>
+                <div class="activity-meta">
+                    <span><i class="bi bi-server"></i> ${act.env_id}</span>
+                    <span><i class="bi bi-clock"></i> ${act.duration_ms}ms</span>
+                    <span>${formatTime(act.timestamp)}</span>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function runHealthCheck(envId) {
+    const btn = event.target.closest('button');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Checking...';
+    
+    try {
+        const result = await fetchWithAuth(`/api/environments/${envId}/health`);
+        if (result.success && result.data) {
+            alert(`Health Check: ${result.data.overall}\n\n` +
+                  `Passed: ${result.data.summary.passed}\n` +
+                  `Warnings: ${result.data.summary.warnings}\n` +
+                  `Failed: ${result.data.summary.failed}`);
+            loadEnvironmentStatus(envId);
+        } else {
+            alert('Health check failed: ' + (result.message || 'Unknown error'));
+        }
+    } catch (error) {
+        alert('Error running health check: ' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-heart-pulse"></i> Health Check';
+    }
+}
+
+async function triggerDeploy(envId) {
+    if (!confirm(`Are you sure you want to trigger deployment on ${envId}?`)) return;
+    
+    const btn = event.target.closest('button');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Deploying...';
+    
+    try {
+        const result = await fetchWithAuth(`/api/environments/${envId}/deploy`, {
+            method: 'POST',
+            body: JSON.stringify({})
+        });
+        
+        if (result.success) {
+            alert('Deployment completed successfully!');
+        } else {
+            alert('Deployment failed: ' + (result.message || 'Unknown error'));
+        }
+    } catch (error) {
+        alert('Error triggering deployment: ' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-rocket"></i> Deploy';
+    }
+}
+
+async function viewLogs(envId) {
+    document.getElementById('logsModalTitle').textContent = `Logs - ${envId}`;
+    document.getElementById('logsContent').textContent = 'Select a service to view logs...';
+    document.getElementById('logsModal').classList.add('show');
+    
+    try {
+        const result = await fetchWithAuth(`/api/environments/${envId}/services`);
+        if (result.success && result.data.services) {
+            const services = result.data.services;
+            if (services.length > 0) {
+                const serviceSelect = services.map(s => s.name).join(', ');
+                const selectedService = prompt(`Enter service name to view logs:\n\nAvailable: ${serviceSelect}`, services[0].name);
+                
+                if (selectedService) {
+                    document.getElementById('logsContent').textContent = 'Loading logs...';
+                    const logsResult = await fetchWithAuth(`/api/environments/${envId}/logs?service=${selectedService}&lines=100`);
+                    if (logsResult.success) {
+                        document.getElementById('logsContent').textContent = logsResult.data.logs || 'No logs available';
+                    } else {
+                        document.getElementById('logsContent').textContent = 'Failed to load logs: ' + (logsResult.message || 'Unknown error');
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        document.getElementById('logsContent').textContent = 'Error loading logs: ' + error.message;
+    }
+}
+
+function closeLogsModal() {
+    document.getElementById('logsModal').classList.remove('show');
+}
+
+async function refreshAll() {
+    const btn = document.getElementById('refreshBtn');
+    btn.classList.add('loading');
+    btn.disabled = true;
+    
+    await Promise.all([
+        loadEnvironments(),
+        loadActivity()
+    ]);
+    
+    btn.classList.remove('loading');
+    btn.disabled = false;
+}
+
+function capitalizeFirst(str) {
+    return str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatTime(isoString) {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    return date.toLocaleString();
+}
+
+document.getElementById('logsModal').addEventListener('click', function(e) {
+    if (e.target === this) closeLogsModal();
+});
+
+loadEnvironments();
+loadActivity();
+
+setInterval(() => {
+    loadEnvironments();
+    loadActivity();
+}, 60000);
+</script>
+{% endblock %}

@@ -934,6 +934,101 @@ button {
 }
 
 /* ===========================================
+   SIDEBAR SECTIONS MOBILE
+   =========================================== */
+
+.nav-section-header {
+    font-size: 0.65rem;
+    padding: 10px 12px 4px;
+}
+
+/* ===========================================
+   QUICK ACTIONS RESPONSIVE
+   =========================================== */
+
+.quick-actions-panel {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-sm);
+}
+
+.quick-action-btn {
+    padding: var(--spacing-md) var(--spacing-sm);
+    font-size: 0.8rem;
+}
+
+.quick-action-btn i {
+    font-size: 1.3rem;
+}
+
+/* ===========================================
+   TOAST NOTIFICATIONS
+   =========================================== */
+
+.toast-notification {
+    position: fixed;
+    bottom: calc(var(--mobile-nav-height) + 20px);
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    padding: 12px 20px;
+    background: rgba(17, 24, 39, 0.95);
+    border: 1px solid rgba(96, 165, 250, 0.3);
+    border-radius: 12px;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 9999;
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(12px);
+}
+
+.toast-notification.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.toast-success {
+    border-color: rgba(52, 211, 153, 0.5);
+}
+
+.toast-success i {
+    color: var(--accent-green);
+}
+
+.toast-error {
+    border-color: rgba(248, 113, 113, 0.5);
+}
+
+.toast-error i {
+    color: var(--accent-red);
+}
+
+.toast-warning {
+    border-color: rgba(251, 191, 36, 0.5);
+}
+
+.toast-warning i {
+    color: var(--accent-yellow);
+}
+
+.toast-info i {
+    color: var(--accent-blue);
+}
+
+/* Spin animation for loading */
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* ===========================================
    SMALL MOBILE (< 375px)
    =========================================== */
 

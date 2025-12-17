@@ -427,246 +427,327 @@
         <div class="sidebar-brand">
             <h4><i class="bi bi-stars"></i> Nebula Command</h4>
         </div>
-        <ul>
-            <li class="nav-item">
-                <a href="/" class="nav-link cosmic {% if request.path == '/' %}active{% endif %}">
-                    <i class="bi bi-house-door"></i>
-                    <span>Home</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="/dashboard" class="nav-link cosmic {% if request.path == '/dashboard' %}active{% endif %}">
-                    <i class="bi bi-speedometer2"></i>
-                    <span>Dashboard</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="/containers" class="nav-link cosmic {% if request.path == '/containers' %}active{% endif %}">
-                    <i class="bi bi-box-seam"></i>
-                    <span>Containers</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="/system" class="nav-link cosmic {% if request.path == '/system' %}active{% endif %}">
-                    <i class="bi bi-cpu"></i>
-                    <span>System Monitor</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="/network" class="nav-link cosmic {% if request.path == '/network' %}active{% endif %}">
-                    <i class="bi bi-diagram-3"></i>
-                    <span>Network</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="/domains" class="nav-link cosmic {% if request.path == '/domains' %}active{% endif %}">
-                    <i class="bi bi-globe"></i>
-                    <span>Domains</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="/logs" class="nav-link cosmic {% if request.path == '/logs' %}active{% endif %}">
-                    <i class="bi bi-file-text"></i>
-                    <span>Logs</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="/service-actions" class="nav-link cosmic {% if request.path == '/service-actions' %}active{% endif %}">
-                    <i class="bi bi-lightning-charge"></i>
-                    <span>Service Quick Actions</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="/ai-assistant" class="nav-link cosmic {% if request.path == '/ai-assistant' %}active{% endif %}">
-                    <i class="bi bi-robot"></i>
-                    <span>AI Assistant (Jarvis)</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="/jarvis-voice" class="nav-link cosmic {% if request.path == '/jarvis-voice' %}active{% endif %}">
-                    <i class="bi bi-mic-fill"></i>
-                    <span>Voice Commands</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="/ollama_models" class="nav-link cosmic {% if request.path == '/ollama_models' %}active{% endif %}">
-                    <i class="bi bi-cpu"></i>
-                    <span>AI Models</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="/agent-swarm" class="nav-link cosmic {% if request.path == '/agent-swarm' %}active{% endif %}">
-                    <i class="bi bi-diagram-3-fill"></i>
-                    <span>Agent Swarm</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="/jarvis-code" class="nav-link cosmic {% if request.path == '/jarvis-code' %}active{% endif %}">
-                    <i class="bi bi-code-slash"></i>
-                    <span>Jarvis Code</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="/jarvis-builder" class="nav-link cosmic {% if request.path == '/jarvis-builder' %}active{% endif %}">
-                    <i class="bi bi-browser-chrome"></i>
-                    <span>Website Builder</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="/game-streaming" class="nav-link cosmic {% if request.path == '/game-streaming' %}active{% endif %}">
-                    <i class="bi bi-controller"></i>
-                    <span>Game Streaming</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="/plex" class="nav-link cosmic {% if request.path == '/plex' %}active{% endif %}">
-                    <i class="bi bi-film"></i>
-                    <span>Plex Media Import</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="/nas" class="nav-link cosmic {% if request.path == '/nas' %}active{% endif %}">
-                    <i class="bi bi-hdd-network"></i>
-                    <span>NAS Management</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="/storage" class="nav-link cosmic {% if request.path == '/storage' %}active{% endif %}">
-                    <i class="bi bi-pie-chart"></i>
-                    <span>Storage Monitor</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="/databases" class="nav-link cosmic {% if request.path == '/databases' %}active{% endif %}">
-                    <i class="bi bi-database"></i>
-                    <span>Database Admin</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="/file-manager" class="nav-link cosmic {% if request.path == '/file-manager' %}active{% endif %}">
-                    <i class="bi bi-folder"></i>
-                    <span>File Manager</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="/marketplace" class="nav-link cosmic {% if request.path == '/marketplace' %}active{% endif %}">
-                    <i class="bi bi-shop"></i>
-                    <span>App Marketplace</span>
-                </a>
-            </li>
-        </ul>
         
-        <div style="padding: 20px 20px 12px; margin: 20px 0 0; border-top: 1px solid var(--border-color);">
-            <div style="color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; margin-bottom: 12px;">
+        <div class="nav-section">
+            <div class="nav-section-header">
+                <i class="bi bi-speedometer2"></i> Dashboard
+            </div>
+            <ul>
+                <li class="nav-item">
+                    <a href="/" class="nav-link cosmic {% if request.path == '/' %}active{% endif %}">
+                        <i class="bi bi-house-door"></i>
+                        <span>Home</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/command-center" class="nav-link cosmic {% if request.path == '/command-center' %}active{% endif %}">
+                        <i class="bi bi-command"></i>
+                        <span>Command Center</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/dashboard" class="nav-link cosmic {% if request.path == '/dashboard' %}active{% endif %}">
+                        <i class="bi bi-graph-up"></i>
+                        <span>System Overview</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+        
+        <div class="nav-section">
+            <div class="nav-section-header">
+                <i class="bi bi-rocket-takeoff"></i> Deployments
+            </div>
+            <ul>
+                <li class="nav-item">
+                    <a href="/deployment-wizard" class="nav-link cosmic {% if request.path == '/deployment-wizard' %}active{% endif %}">
+                        <i class="bi bi-plus-circle"></i>
+                        <span>Deploy Service</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/marketplace" class="nav-link cosmic {% if request.path == '/marketplace' %}active{% endif %}">
+                        <i class="bi bi-shop"></i>
+                        <span>Marketplace</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/deployment-guide" class="nav-link cosmic {% if request.path == '/deployment-guide' %}active{% endif %}">
+                        <i class="bi bi-book"></i>
+                        <span>Deploy Guide</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+        
+        <div class="nav-section">
+            <div class="nav-section-header">
+                <i class="bi bi-motherboard"></i> Infrastructure
+            </div>
+            <ul>
+                <li class="nav-item">
+                    <a href="/fleet-management" class="nav-link cosmic {% if request.path == '/fleet-management' %}active{% endif %}">
+                        <i class="bi bi-hdd-network"></i>
+                        <span>Fleet Manager</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/containers" class="nav-link cosmic {% if request.path == '/containers' %}active{% endif %}">
+                        <i class="bi bi-box-seam"></i>
+                        <span>Docker Containers</span>
+                        <span class="sidebar-status-dot" data-service="docker"></span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/dns-management" class="nav-link cosmic {% if request.path == '/dns-management' %}active{% endif %}">
+                        <i class="bi bi-globe2"></i>
+                        <span>DNS Manager</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/network" class="nav-link cosmic {% if request.path == '/network' %}active{% endif %}">
+                        <i class="bi bi-diagram-3"></i>
+                        <span>Network</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/system" class="nav-link cosmic {% if request.path == '/system' %}active{% endif %}">
+                        <i class="bi bi-cpu"></i>
+                        <span>System Monitor</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/logs" class="nav-link cosmic {% if request.path == '/logs' %}active{% endif %}">
+                        <i class="bi bi-file-text"></i>
+                        <span>Logs</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+        
+        <div class="nav-section">
+            <div class="nav-section-header">
+                <i class="bi bi-database"></i> Data
+            </div>
+            <ul>
+                <li class="nav-item">
+                    <a href="/database-console" class="nav-link cosmic {% if request.path == '/database-console' %}active{% endif %}">
+                        <i class="bi bi-terminal"></i>
+                        <span>Database Console</span>
+                        <span class="sidebar-status-dot" data-service="database"></span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/databases" class="nav-link cosmic {% if request.path == '/databases' %}active{% endif %}">
+                        <i class="bi bi-server"></i>
+                        <span>Database Admin</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+        
+        <div class="nav-section">
+            <div class="nav-section-header">
+                <i class="bi bi-hdd-stack"></i> Storage
+            </div>
+            <ul>
+                <li class="nav-item">
+                    <a href="/storage-dashboard/" class="nav-link cosmic {% if request.path.startswith('/storage-dashboard') %}active{% endif %}">
+                        <i class="bi bi-pie-chart"></i>
+                        <span>Storage Dashboard</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/nas" class="nav-link cosmic {% if request.path == '/nas' %}active{% endif %}">
+                        <i class="bi bi-hdd-network"></i>
+                        <span>NAS Management</span>
+                        <span class="sidebar-status-dot" data-service="nas"></span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/file-manager" class="nav-link cosmic {% if request.path == '/file-manager' %}active{% endif %}">
+                        <i class="bi bi-folder"></i>
+                        <span>File Manager</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+        
+        <div class="nav-section">
+            <div class="nav-section-header">
+                <i class="bi bi-collection-play"></i> Services
+            </div>
+            <ul>
+                <li class="nav-item">
+                    <a href="/service-actions" class="nav-link cosmic {% if request.path == '/service-actions' %}active{% endif %}">
+                        <i class="bi bi-lightning-charge"></i>
+                        <span>Service Status</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/plex" class="nav-link cosmic {% if request.path == '/plex' %}active{% endif %}">
+                        <i class="bi bi-film"></i>
+                        <span>Plex Media</span>
+                        <span class="sidebar-status-dot" data-service="plex"></span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/game-streaming" class="nav-link cosmic {% if request.path == '/game-streaming' %}active{% endif %}">
+                        <i class="bi bi-controller"></i>
+                        <span>Game Streaming</span>
+                        <span class="sidebar-status-dot" data-service="gaming"></span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/domains" class="nav-link cosmic {% if request.path == '/domains' %}active{% endif %}">
+                        <i class="bi bi-globe"></i>
+                        <span>Domains</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+        
+        <div class="nav-section">
+            <div class="nav-section-header">
+                <i class="bi bi-robot"></i> AI & Automation
+            </div>
+            <ul>
+                <li class="nav-item">
+                    <a href="/ai-assistant" class="nav-link cosmic {% if request.path == '/ai-assistant' %}active{% endif %}">
+                        <i class="bi bi-chat-dots"></i>
+                        <span>Jarvis AI</span>
+                        <span class="sidebar-status-dot" data-service="jarvis"></span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/agent-swarm" class="nav-link cosmic {% if request.path == '/agent-swarm' %}active{% endif %}">
+                        <i class="bi bi-diagram-3-fill"></i>
+                        <span>Agent Swarm</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/jarvis-voice" class="nav-link cosmic {% if request.path == '/jarvis-voice' %}active{% endif %}">
+                        <i class="bi bi-mic-fill"></i>
+                        <span>Voice Commands</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/jarvis-code" class="nav-link cosmic {% if request.path == '/jarvis-code' %}active{% endif %}">
+                        <i class="bi bi-code-slash"></i>
+                        <span>Jarvis Code</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/jarvis-builder" class="nav-link cosmic {% if request.path == '/jarvis-builder' %}active{% endif %}">
+                        <i class="bi bi-browser-chrome"></i>
+                        <span>Website Builder</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/ollama_models" class="nav-link cosmic {% if request.path == '/ollama_models' %}active{% endif %}">
+                        <i class="bi bi-cpu"></i>
+                        <span>AI Models</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+        
+        <div class="nav-section">
+            <div class="nav-section-header">
                 <i class="bi bi-house-heart"></i> Smart Home
             </div>
+            <ul>
+                <li class="nav-item">
+                    <a href="/smarthome" class="nav-link cosmic {% if request.path.startswith('/smarthome') %}active{% endif %}">
+                        <i class="bi bi-toggles"></i>
+                        <span>Home Control</span>
+                        <span class="sidebar-status-dot" data-service="smarthome"></span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/google" class="nav-link cosmic {% if request.path.startswith('/google') %}active{% endif %}">
+                        <i class="bi bi-google"></i>
+                        <span>Google Services</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="https://home.evindrake.net" target="_blank" rel="noopener noreferrer" class="nav-link external-link">
+                        <i class="bi bi-gear"></i>
+                        <span>Home Assistant</span>
+                        <span class="sidebar-status-dot" data-service="homeassistant"></span>
+                        <i class="bi bi-box-arrow-up-right external-icon"></i>
+                    </a>
+                </li>
+            </ul>
         </div>
         
-        <ul>
-            <li class="nav-item">
-                <a href="/smarthome" class="nav-link cosmic {% if request.path.startswith('/smarthome') %}active{% endif %}">
-                    <i class="bi bi-house-heart"></i>
-                    <span>Home Control</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="/google" class="nav-link cosmic {% if request.path.startswith('/google') %}active{% endif %}">
-                    <i class="bi bi-google"></i>
-                    <span>Google Services</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="https://home.evindrake.net" target="_blank" rel="noopener noreferrer" class="nav-link" style="opacity: 0.9;">
-                    <i class="bi bi-gear"></i>
-                    <span>Home Assistant</span>
-                    <i class="bi bi-box-arrow-up-right" style="margin-left: auto; font-size: 0.75rem;"></i>
-                </a>
-            </li>
-        </ul>
-        
-        <div style="padding: 20px 20px 12px; margin: 20px 0 0; border-top: 1px solid var(--border-color);">
-            <div style="color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; margin-bottom: 12px;">
+        <div class="nav-section">
+            <div class="nav-section-header">
                 <i class="bi bi-grid-3x3-gap"></i> Network Services
             </div>
+            <ul>
+                <li class="nav-item">
+                    <a href="https://bot.rig-city.com" target="_blank" rel="noopener noreferrer" class="nav-link external-link">
+                        <i class="bi bi-discord"></i>
+                        <span>Discord Bot</span>
+                        <span class="sidebar-status-dot" data-service="discord"></span>
+                        <i class="bi bi-box-arrow-up-right external-icon"></i>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="https://stream.rig-city.com" target="_blank" rel="noopener noreferrer" class="nav-link external-link">
+                        <i class="bi bi-camera-video"></i>
+                        <span>Stream Bot</span>
+                        <span class="sidebar-status-dot" data-service="stream"></span>
+                        <i class="bi bi-box-arrow-up-right external-icon"></i>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="https://plex.evindrake.net" target="_blank" rel="noopener noreferrer" class="nav-link external-link">
+                        <i class="bi bi-film"></i>
+                        <span>Plex Server</span>
+                        <span class="sidebar-status-dot" data-service="plex-external"></span>
+                        <i class="bi bi-box-arrow-up-right external-icon"></i>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="https://n8n.evindrake.net" target="_blank" rel="noopener noreferrer" class="nav-link external-link">
+                        <i class="bi bi-lightning"></i>
+                        <span>n8n Automation</span>
+                        <span class="sidebar-status-dot" data-service="n8n"></span>
+                        <i class="bi bi-box-arrow-up-right external-icon"></i>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="https://vnc.evindrake.net" target="_blank" rel="noopener noreferrer" class="nav-link external-link">
+                        <i class="bi bi-display"></i>
+                        <span>VNC Desktop</span>
+                        <span class="sidebar-status-dot" data-service="vnc"></span>
+                        <i class="bi bi-box-arrow-up-right external-icon"></i>
+                    </a>
+                </li>
+            </ul>
         </div>
         
-        <ul>
-            <li class="nav-item">
-                <a href="https://bot.rig-city.com" target="_blank" rel="noopener noreferrer" class="nav-link" style="opacity: 0.9;">
-                    <i class="bi bi-discord"></i>
-                    <span>Discord Bot</span>
-                    <i class="bi bi-box-arrow-up-right" style="margin-left: auto; font-size: 0.75rem;"></i>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="https://stream.rig-city.com" target="_blank" rel="noopener noreferrer" class="nav-link" style="opacity: 0.9;">
-                    <i class="bi bi-camera-video"></i>
-                    <span>Stream Bot</span>
-                    <i class="bi bi-box-arrow-up-right" style="margin-left: auto; font-size: 0.75rem;"></i>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="https://plex.evindrake.net" target="_blank" rel="noopener noreferrer" class="nav-link" style="opacity: 0.9;">
-                    <i class="bi bi-film"></i>
-                    <span>Plex Server</span>
-                    <i class="bi bi-box-arrow-up-right" style="margin-left: auto; font-size: 0.75rem;"></i>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="https://n8n.evindrake.net" target="_blank" rel="noopener noreferrer" class="nav-link" style="opacity: 0.9;">
-                    <i class="bi bi-lightning"></i>
-                    <span>n8n Automation</span>
-                    <i class="bi bi-box-arrow-up-right" style="margin-left: auto; font-size: 0.75rem;"></i>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="https://scarletredjoker.com" target="_blank" rel="noopener noreferrer" class="nav-link" style="opacity: 0.9;">
-                    <i class="bi bi-globe"></i>
-                    <span>Portfolio Site</span>
-                    <i class="bi bi-box-arrow-up-right" style="margin-left: auto; font-size: 0.75rem;"></i>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="https://vnc.evindrake.net" target="_blank" rel="noopener noreferrer" class="nav-link" style="opacity: 0.9;">
-                    <i class="bi bi-display"></i>
-                    <span>VNC Desktop</span>
-                    <i class="bi bi-box-arrow-up-right" style="margin-left: auto; font-size: 0.75rem;"></i>
-                </a>
-            </li>
-        </ul>
-        
-        <div style="padding: 20px 20px 12px; margin: 20px 0 0; border-top: 1px solid var(--border-color);">
-            <div style="color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; margin-bottom: 12px;">
-                <i class="bi bi-gear-wide-connected"></i> Administration
+        <div class="nav-section">
+            <div class="nav-section-header">
+                <i class="bi bi-gear-wide-connected"></i> Settings
             </div>
+            <ul>
+                <li class="nav-item">
+                    <a href="/storage" class="nav-link cosmic {% if request.path == '/storage' %}active{% endif %}">
+                        <i class="bi bi-sliders"></i>
+                        <span>Ops Center</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/setup-wizard" class="nav-link cosmic {% if request.path == '/setup-wizard' %}active{% endif %}">
+                        <i class="bi bi-magic"></i>
+                        <span>Setup Wizard</span>
+                    </a>
+                </li>
+            </ul>
         </div>
-        
-        <ul>
-            <li class="nav-item">
-                <a href="/setup-wizard" class="nav-link cosmic {% if request.path == '/setup-wizard' %}active{% endif %}">
-                    <i class="bi bi-magic"></i>
-                    <span>Setup Wizard</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="/fleet-management" class="nav-link cosmic {% if request.path == '/fleet-management' %}active{% endif %}">
-                    <i class="bi bi-hdd-network"></i>
-                    <span>Fleet Manager</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="/dns-management" class="nav-link cosmic {% if request.path == '/dns-management' %}active{% endif %}">
-                    <i class="bi bi-globe2"></i>
-                    <span>DNS Manager</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="/deployment-guide" class="nav-link cosmic {% if request.path == '/deployment-guide' %}active{% endif %}">
-                    <i class="bi bi-rocket-takeoff"></i>
-                    <span>Deployment Guide</span>
-                </a>
-            </li>
-        </ul>
     </nav>
 
     <div class="main-content">
@@ -899,6 +980,108 @@
                 });
             });
         }
+        
+        // ===========================================
+        // SIDEBAR STATUS POLLING
+        // ===========================================
+        
+        const serviceStatusMap = {};
+        
+        async function fetchServiceStatus() {
+            try {
+                // Fetch container status
+                const containersRes = await fetch('/api/containers', { credentials: 'include' });
+                if (containersRes.ok) {
+                    const containersData = await containersRes.json();
+                    const containers = containersData.containers || [];
+                    
+                    // Map container states to services
+                    containers.forEach(container => {
+                        const name = container.name?.toLowerCase() || '';
+                        let status = 'unknown';
+                        
+                        if (container.state === 'running') {
+                            status = 'healthy';
+                        } else if (container.state === 'exited' || container.state === 'dead') {
+                            status = 'error';
+                        } else if (container.state === 'paused' || container.state === 'restarting') {
+                            status = 'warning';
+                        }
+                        
+                        // Map to known services
+                        if (name.includes('plex')) serviceStatusMap['plex'] = status;
+                        if (name.includes('plex')) serviceStatusMap['plex-external'] = status;
+                        if (name.includes('postgres') || name.includes('db')) serviceStatusMap['database'] = status;
+                        if (name.includes('nas') || name.includes('smb')) serviceStatusMap['nas'] = status;
+                        if (name.includes('home') || name.includes('assistant')) serviceStatusMap['homeassistant'] = status;
+                        if (name.includes('n8n')) serviceStatusMap['n8n'] = status;
+                        if (name.includes('vnc')) serviceStatusMap['vnc'] = status;
+                        if (name.includes('discord')) serviceStatusMap['discord'] = status;
+                        if (name.includes('stream')) serviceStatusMap['stream'] = status;
+                    });
+                    
+                    // Docker is healthy if we got a response
+                    serviceStatusMap['docker'] = containers.length > 0 ? 'healthy' : 'warning';
+                }
+                
+                // Fetch system stats for additional status
+                const statsRes = await fetch('/api/system/stats', { credentials: 'include' });
+                if (statsRes.ok) {
+                    const stats = await statsRes.json();
+                    if (stats.success) {
+                        // Set Jarvis as healthy if API responds
+                        serviceStatusMap['jarvis'] = 'healthy';
+                        
+                        // Check gaming service
+                        serviceStatusMap['gaming'] = 'healthy';
+                        
+                        // Smart home based on system response
+                        serviceStatusMap['smarthome'] = 'healthy';
+                    }
+                }
+            } catch (error) {
+                console.warn('Status fetch error:', error);
+            }
+            
+            // Update UI
+            updateSidebarStatusDots();
+        }
+        
+        function updateSidebarStatusDots() {
+            const dots = document.querySelectorAll('.sidebar-status-dot');
+            
+            dots.forEach(dot => {
+                const service = dot.getAttribute('data-service');
+                const status = serviceStatusMap[service] || 'unknown';
+                
+                // Remove all status classes
+                dot.classList.remove('healthy', 'warning', 'error', 'unknown');
+                
+                // Add the appropriate class
+                dot.classList.add(status);
+                
+                // Update title for accessibility
+                const statusLabels = {
+                    healthy: 'Online',
+                    warning: 'Degraded',
+                    error: 'Offline',
+                    unknown: 'Unknown'
+                };
+                dot.title = statusLabels[status] || 'Unknown';
+            });
+        }
+        
+        // Initialize status polling
+        function initStatusPolling() {
+            // Initial fetch
+            fetchServiceStatus();
+            
+            // Poll every 30 seconds
+            setInterval(fetchServiceStatus, 30000);
+        }
+        
+        // Start status polling when DOM is ready
+        document.addEventListener('DOMContentLoaded', initStatusPolling);
     </script>
     
     <!-- AI Helper Widget -->

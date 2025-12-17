@@ -1,0 +1,749 @@
+{% extends "base.html" %}
+
+{% block title %}Database Console - Nebula Command{% endblock %}
+{% block page_title %}<i class="bi bi-server"></i> Database Console{% endblock %}
+
+{% block extra_css %}
+<style>
+    .console-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+    
+    .env-tabs {
+        display: flex;
+        gap: 8px;
+        background: rgba(17, 24, 39, 0.6);
+        padding: 6px;
+        border-radius: 12px;
+        border: 1px solid rgba(139, 92, 246, 0.2);
+    }
+    
+    .env-tab {
+        padding: 10px 20px;
+        background: transparent;
+        border: none;
+        border-radius: 8px;
+        color: var(--text-secondary);
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .env-tab:hover {
+        background: rgba(139, 92, 246, 0.1);
+        color: var(--text-primary);
+    }
+    
+    .env-tab.active {
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.3) 0%, rgba(59, 130, 246, 0.3) 100%);
+        color: var(--text-primary);
+        box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+    }
+    
+    .env-tab .badge {
+        background: rgba(139, 92, 246, 0.3);
+        color: var(--text-primary);
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 0.75rem;
+    }
+    
+    .section-panel {
+        background: linear-gradient(145deg, rgba(31, 41, 55, 0.6) 0%, rgba(17, 24, 39, 0.9) 100%);
+        border: 1px solid rgba(139, 92, 246, 0.2);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 24px;
+        backdrop-filter: blur(16px);
+    }
+    
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .section-title i {
+        color: var(--accent);
+    }
+    
+    .db-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 20px;
+    }
+    
+    .db-card {
+        background: linear-gradient(145deg, rgba(31, 41, 55, 0.8) 0%, rgba(17, 24, 39, 0.95) 100%);
+        border: 1px solid rgba(139, 92, 246, 0.3);
+        border-radius: 14px;
+        padding: 20px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .db-card:hover {
+        border-color: rgba(139, 92, 246, 0.5);
+        box-shadow: 0 8px 32px rgba(139, 92, 246, 0.2);
+        transform: translateY(-2px);
+    }
+    
+    .db-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 16px;
+    }
+    
+    .db-name {
+        font-size: 1.1rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .db-env-badge {
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .db-env-local {
+        background: rgba(34, 197, 94, 0.2);
+        color: #22C55E;
+        border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    
+    .db-env-linode {
+        background: rgba(59, 130, 246, 0.2);
+        color: #3B82F6;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    
+    .db-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+    
+    .db-stat {
+        text-align: center;
+        padding: 10px;
+        background: rgba(17, 24, 39, 0.5);
+        border-radius: 8px;
+    }
+    
+    .db-stat-value {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--accent);
+    }
+    
+    .db-stat-label {
+        font-size: 0.7rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        margin-top: 2px;
+    }
+    
+    .db-info {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 16px;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+    
+    .db-info-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .db-info-item i {
+        color: var(--accent);
+        width: 16px;
+    }
+    
+    .status-indicator {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 6px;
+    }
+    
+    .status-success { background: #22C55E; box-shadow: 0 0 8px rgba(34, 197, 94, 0.5); }
+    .status-failed { background: #EF4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.5); }
+    .status-pending { background: #FBBF24; box-shadow: 0 0 8px rgba(251, 191, 36, 0.5); }
+    .status-unknown { background: #6B7280; }
+    
+    .db-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+        border-radius: 6px;
+        border: 1px solid rgba(139, 92, 246, 0.3);
+        background: rgba(139, 92, 246, 0.1);
+        color: var(--accent);
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .btn-sm:hover {
+        background: rgba(139, 92, 246, 0.2);
+        border-color: rgba(139, 92, 246, 0.5);
+    }
+    
+    .btn-sm.primary {
+        background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%);
+        border: none;
+        color: white;
+    }
+    
+    .btn-sm.danger {
+        background: rgba(239, 68, 68, 0.1);
+        border-color: rgba(239, 68, 68, 0.3);
+        color: #EF4444;
+    }
+    
+    .btn-sm.danger:hover {
+        background: rgba(239, 68, 68, 0.2);
+    }
+    
+    .credentials-vault {
+        margin-top: 24px;
+    }
+    
+    .cred-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .cred-table th,
+    .cred-table td {
+        padding: 12px 16px;
+        text-align: left;
+        border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+    }
+    
+    .cred-table th {
+        color: var(--accent);
+        font-weight: 600;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        background: rgba(17, 24, 39, 0.5);
+    }
+    
+    .cred-table tr:hover {
+        background: rgba(139, 92, 246, 0.05);
+    }
+    
+    .password-field {
+        font-family: monospace;
+        background: rgba(17, 24, 39, 0.5);
+        padding: 4px 8px;
+        border-radius: 4px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .backup-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 16px;
+    }
+    
+    .backup-table th,
+    .backup-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+        font-size: 0.875rem;
+    }
+    
+    .backup-table th {
+        color: var(--accent);
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        letter-spacing: 0.05em;
+    }
+    
+    .backup-table tr:hover {
+        background: rgba(139, 92, 246, 0.05);
+    }
+    
+    .status-badge {
+        padding: 4px 10px;
+        border-radius: 10px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .status-badge.completed {
+        background: rgba(34, 197, 94, 0.2);
+        color: #22C55E;
+    }
+    
+    .status-badge.running {
+        background: rgba(59, 130, 246, 0.2);
+        color: #3B82F6;
+    }
+    
+    .status-badge.failed {
+        background: rgba(239, 68, 68, 0.2);
+        color: #EF4444;
+    }
+    
+    .status-badge.pending {
+        background: rgba(251, 191, 36, 0.2);
+        color: #FBBF24;
+    }
+    
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(8px);
+    }
+    
+    .modal-content {
+        background: linear-gradient(145deg, rgba(31, 41, 55, 0.95) 0%, rgba(17, 24, 39, 0.98) 100%);
+        margin: 5% auto;
+        padding: 28px;
+        border: 1px solid rgba(139, 92, 246, 0.3);
+        border-radius: 16px;
+        width: 90%;
+        max-width: 500px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+    }
+    
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+    }
+    
+    .modal-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .close-btn {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 1.5rem;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+    
+    .close-btn:hover {
+        color: var(--accent);
+    }
+    
+    .form-group {
+        margin-bottom: 16px;
+    }
+    
+    .form-label {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--text-primary);
+        font-weight: 500;
+        font-size: 0.85rem;
+    }
+    
+    .form-input,
+    .form-select {
+        width: 100%;
+        padding: 10px 14px;
+        background: rgba(17, 24, 39, 0.6);
+        border: 1px solid rgba(139, 92, 246, 0.3);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-size: 0.95rem;
+        transition: all 0.2s;
+    }
+    
+    .form-input:focus,
+    .form-select:focus {
+        outline: none;
+        border-color: rgba(139, 92, 246, 0.5);
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+    }
+    
+    .form-row {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 12px;
+    }
+    
+    .btn-group {
+        display: flex;
+        gap: 12px;
+        margin-top: 20px;
+    }
+    
+    .btn-group button {
+        flex: 1;
+        padding: 12px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%);
+        border: none;
+        color: white;
+    }
+    
+    .btn-secondary {
+        background: rgba(139, 92, 246, 0.1);
+        border: 1px solid rgba(139, 92, 246, 0.3);
+        color: var(--text-primary);
+    }
+    
+    .loading-spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(139, 92, 246, 0.3);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    .connection-result {
+        margin-top: 16px;
+        padding: 16px;
+        border-radius: 8px;
+        display: none;
+    }
+    
+    .connection-result.success {
+        background: rgba(34, 197, 94, 0.1);
+        border: 1px solid rgba(34, 197, 94, 0.3);
+        color: #22C55E;
+    }
+    
+    .connection-result.error {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #EF4444;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 40px;
+        color: var(--text-secondary);
+    }
+    
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+    
+    .toast {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        padding: 16px 24px;
+        border-radius: 12px;
+        color: white;
+        font-weight: 500;
+        z-index: 2000;
+        animation: slideIn 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .toast.success { background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%); }
+    .toast.error { background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%); }
+    .toast.info { background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); }
+    
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    <div class="console-header">
+        <div class="env-tabs">
+            <button class="env-tab active" data-env="all" onclick="filterByEnvironment('all')">
+                <i class="bi bi-grid-3x3"></i>
+                All
+                <span class="badge" id="countAll">0</span>
+            </button>
+            <button class="env-tab" data-env="local" onclick="filterByEnvironment('local')">
+                <i class="bi bi-house"></i>
+                Local
+                <span class="badge" id="countLocal">0</span>
+            </button>
+            <button class="env-tab" data-env="linode" onclick="filterByEnvironment('linode')">
+                <i class="bi bi-cloud"></i>
+                Linode
+                <span class="badge" id="countLinode">0</span>
+            </button>
+        </div>
+        
+        <div style="display: flex; gap: 12px;">
+            <button class="btn-sm" onclick="refreshDatabases()">
+                <i class="bi bi-arrow-clockwise"></i>
+                Refresh
+            </button>
+            <button class="btn-sm primary" onclick="showAddCredentialModal()">
+                <i class="bi bi-plus-circle"></i>
+                Add Database
+            </button>
+        </div>
+    </div>
+    
+    <div class="section-panel">
+        <div class="section-title">
+            <i class="bi bi-database"></i>
+            Databases
+        </div>
+        <div id="databaseGrid" class="db-grid">
+            <div class="empty-state">
+                <div class="loading-spinner" style="width: 32px; height: 32px;"></div>
+                <p style="margin-top: 16px;">Loading databases...</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="section-panel credentials-vault">
+        <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
+            <span><i class="bi bi-key"></i> Credentials Vault</span>
+            <button class="btn-sm" onclick="showAddCredentialModal()">
+                <i class="bi bi-plus"></i>
+                Add
+            </button>
+        </div>
+        <div style="overflow-x: auto;">
+            <table class="cred-table" id="credentialsTable">
+                <thead>
+                    <tr>
+                        <th>Database</th>
+                        <th>Host</th>
+                        <th>Username</th>
+                        <th>Password</th>
+                        <th>Environment</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="credentialsBody">
+                    <tr>
+                        <td colspan="7" class="empty-state">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div class="section-panel">
+        <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
+            <span><i class="bi bi-clock-history"></i> Backup History</span>
+            <button class="btn-sm" onclick="refreshBackups()">
+                <i class="bi bi-arrow-clockwise"></i>
+                Refresh
+            </button>
+        </div>
+        <div style="overflow-x: auto;">
+            <table class="backup-table" id="backupTable">
+                <thead>
+                    <tr>
+                        <th>Database</th>
+                        <th>Environment</th>
+                        <th>Type</th>
+                        <th>Size</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="backupBody">
+                    <tr>
+                        <td colspan="7" class="empty-state">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="credentialModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title" id="credModalTitle">Add Database Credential</h3>
+            <button class="close-btn" onclick="closeModal('credentialModal')">&times;</button>
+        </div>
+        <form id="credentialForm" onsubmit="saveCredential(event)">
+            <input type="hidden" id="credentialId" value="">
+            
+            <div class="form-group">
+                <label class="form-label">Database Name</label>
+                <input type="text" id="dbName" class="form-input" required placeholder="mydb">
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Host</label>
+                    <input type="text" id="dbHost" class="form-input" required placeholder="localhost">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Port</label>
+                    <input type="number" id="dbPort" class="form-input" value="5432" required>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Username</label>
+                <input type="text" id="dbUsername" class="form-input" required placeholder="postgres">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <input type="password" id="dbPassword" class="form-input" required>
+            </div>
+            
+            <div class="connection-result" id="connectionResult"></div>
+            
+            <div class="btn-group">
+                <button type="button" class="btn-secondary" onclick="testConnectionFromModal()">
+                    <i class="bi bi-plug"></i> Test
+                </button>
+                <button type="submit" class="btn-primary">
+                    <i class="bi bi-check"></i> Save
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="backupModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Create Backup</h3>
+            <button class="close-btn" onclick="closeModal('backupModal')">&times;</button>
+        </div>
+        <form id="backupForm" onsubmit="createBackup(event)">
+            <input type="hidden" id="backupCredentialId" value="">
+            
+            <div class="form-group">
+                <label class="form-label">Backup Type</label>
+                <select id="backupType" class="form-select">
+                    <option value="full">Full Backup (Schema + Data)</option>
+                    <option value="schema_only">Schema Only</option>
+                    <option value="data_only">Data Only</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Compression</label>
+                <select id="backupCompression" class="form-select">
+                    <option value="gzip">GZip (Recommended)</option>
+                    <option value="none">None</option>
+                </select>
+            </div>
+            
+            <div class="btn-group">
+                <button type="button" class="btn-secondary" onclick="closeModal('backupModal')">Cancel</button>
+                <button type="submit" class="btn-primary">
+                    <i class="bi bi-download"></i> Create Backup
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="restoreModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Restore Backup</h3>
+            <button class="close-btn" onclick="closeModal('restoreModal')">&times;</button>
+        </div>
+        <form id="restoreForm" onsubmit="restoreBackup(event)">
+            <input type="hidden" id="restoreBackupId" value="">
+            
+            <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                <i class="bi bi-exclamation-triangle" style="color: #FBBF24;"></i>
+                This will replace all data in the target database. This action cannot be undone.
+            </p>
+            
+            <div class="form-group">
+                <label class="form-label">Target Database</label>
+                <select id="restoreTarget" class="form-select">
+                    <option value="">Select target database...</option>
+                </select>
+            </div>
+            
+            <div class="btn-group">
+                <button type="button" class="btn-secondary" onclick="closeModal('restoreModal')">Cancel</button>
+                <button type="submit" class="btn-primary" style="background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);">
+                    <i class="bi bi-arrow-counterclockwise"></i> Restore
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/database_console.js') }}"></script>
+{% endblock %}

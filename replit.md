@@ -30,6 +30,7 @@ The core system uses Docker Compose for orchestrating services across a split de
 - **Notifications & Monitoring:** Multi-channel alerts (Discord, Email), Prometheus, Grafana, and Loki.
 - **Security:** Automatic SSL via Caddy/Let's Encrypt, environment-based secrets, isolated database credentials, rate limiting, and JWT authentication.
 - **New Features:** DNS Management Engine (Cloudflare API), Fleet Manager (Tailscale), Jarvis Code Service (AI code editing/deployment), Jarvis Website Builder (autonomous AI website generation), Deployment Guide, Setup Wizard, and Jarvis Codebase Access (AI interaction with codebase).
+- **Prime Time Ready (Dec 2025):** Command Center UI (unified environment overview), Guided Deployment Wizard (multi-step service deployment with preflight checks), Database Console (cross-environment database management), Storage Dashboard (NAS/storage monitoring for post-upgrade), Enhanced sidebar navigation with status indicators and quick actions.
 
 ### System Design Choices
 - **Containerization:** All services are Dockerized and managed by Docker Compose.

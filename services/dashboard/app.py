@@ -46,6 +46,10 @@ from routes.setup_routes import setup_bp
 from routes.jarvis_infrastructure_api import jarvis_infrastructure_bp
 from routes.ops_center_routes import ops_center_bp
 from routes.remediation_routes import remediation_bp
+from routes.environment_api import environment_bp
+from routes.deployment_wizard_routes import deployment_wizard_bp
+from routes.database_console_routes import database_console_bp
+from routes.storage_dashboard_routes import storage_dashboard_bp
 # DISABLED: Subscription/licensing features removed per user request - "Remove subscriptions and don't block access. I never wanted that."
 # from routes.subscription_api import subscription_bp
 from services.activity_service import activity_service
@@ -207,6 +211,10 @@ app.register_blueprint(setup_bp)
 app.register_blueprint(jarvis_infrastructure_bp)
 app.register_blueprint(ops_center_bp)
 app.register_blueprint(remediation_bp)
+app.register_blueprint(environment_bp)
+app.register_blueprint(deployment_wizard_bp)
+app.register_blueprint(database_console_bp)
+app.register_blueprint(storage_dashboard_bp)
 # DISABLED: Subscription blueprint disabled - no subscription/licensing checks
 # app.register_blueprint(subscription_bp)
 

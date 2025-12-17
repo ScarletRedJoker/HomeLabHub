@@ -1,0 +1,710 @@
+{% extends "base.html" %}
+
+{% block title %}Deploy Service - Nebula Command{% endblock %}
+
+{% block head %}
+<style>
+    .wizard-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .wizard-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .wizard-title {
+        font-size: 2rem;
+        font-weight: bold;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0.5rem;
+    }
+
+    .wizard-subtitle {
+        color: var(--text-secondary);
+    }
+
+    .progress-steps {
+        display: flex;
+        justify-content: center;
+        gap: 0;
+        margin-bottom: 3rem;
+        position: relative;
+    }
+
+    .progress-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        flex: 1;
+        max-width: 180px;
+    }
+
+    .step-connector {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        right: -50%;
+        height: 3px;
+        background: var(--border-color);
+        z-index: 0;
+    }
+
+    .progress-step:last-child .step-connector {
+        display: none;
+    }
+
+    .step-number {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--bg-tertiary);
+        border: 2px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        z-index: 1;
+        transition: all 0.3s ease;
+    }
+
+    .progress-step.active .step-number {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-color: #667eea;
+        color: white;
+        box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+    }
+
+    .progress-step.completed .step-number {
+        background: var(--accent-green);
+        border-color: var(--accent-green);
+        color: white;
+    }
+
+    .progress-step.completed .step-connector {
+        background: var(--accent-green);
+    }
+
+    .step-label {
+        margin-top: 0.5rem;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        text-align: center;
+    }
+
+    .progress-step.active .step-label {
+        color: var(--accent-purple);
+        font-weight: 600;
+    }
+
+    .wizard-content {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 2rem;
+        min-height: 400px;
+    }
+
+    .step-content {
+        display: none;
+        animation: fadeIn 0.3s ease;
+    }
+
+    .step-content.active {
+        display: block;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .env-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .env-card {
+        background: rgba(255, 255, 255, 0.05);
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 1.5rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .env-card:hover {
+        border-color: var(--accent-purple);
+        transform: translateY(-2px);
+    }
+
+    .env-card.selected {
+        border-color: var(--accent-green);
+        background: rgba(52, 211, 153, 0.1);
+    }
+
+    .env-card-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .env-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    .env-name {
+        font-size: 1.25rem;
+        font-weight: bold;
+    }
+
+    .env-type {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
+
+    .env-description {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+    }
+
+    .env-status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+    }
+
+    .status-dot.healthy { background: var(--accent-green); }
+    .status-dot.degraded { background: var(--accent-yellow); }
+    .status-dot.unhealthy { background: var(--accent-red); }
+    .status-dot.unknown { background: var(--text-secondary); }
+
+    .template-filters {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+
+    .filter-btn {
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border-color);
+        background: transparent;
+        color: var(--text-secondary);
+        border-radius: 20px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .filter-btn:hover, .filter-btn.active {
+        background: var(--accent-purple);
+        border-color: var(--accent-purple);
+        color: white;
+    }
+
+    .templates-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1rem;
+    }
+
+    .template-card {
+        background: rgba(255, 255, 255, 0.05);
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 1.25rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .template-card:hover {
+        border-color: var(--accent-purple);
+    }
+
+    .template-card.selected {
+        border-color: var(--accent-green);
+        background: rgba(52, 211, 153, 0.1);
+    }
+
+    .template-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .template-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+        object-fit: contain;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 0.5rem;
+    }
+
+    .template-name {
+        font-weight: bold;
+        font-size: 1.1rem;
+    }
+
+    .template-category {
+        font-size: 0.75rem;
+        padding: 0.2rem 0.5rem;
+        background: rgba(102, 126, 234, 0.2);
+        border-radius: 10px;
+        text-transform: capitalize;
+    }
+
+    .template-description {
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        line-height: 1.4;
+    }
+
+    .config-form {
+        max-width: 600px;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+    }
+
+    .form-group .hint {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+    }
+
+    .input-group {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-size: 1rem;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--accent-purple);
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+    }
+
+    .btn-generate {
+        padding: 0.75rem 1rem;
+        background: rgba(102, 126, 234, 0.2);
+        border: 1px solid var(--accent-purple);
+        color: var(--text-primary);
+        border-radius: 8px;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    .btn-generate:hover {
+        background: var(--accent-purple);
+    }
+
+    .preflight-results {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .preflight-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .preflight-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+
+    .preflight-icon.passed {
+        background: rgba(52, 211, 153, 0.2);
+        color: var(--accent-green);
+    }
+
+    .preflight-icon.warning {
+        background: rgba(251, 191, 36, 0.2);
+        color: var(--accent-yellow);
+    }
+
+    .preflight-icon.failed {
+        background: rgba(248, 113, 113, 0.2);
+        color: var(--accent-red);
+    }
+
+    .preflight-icon.running {
+        background: rgba(102, 126, 234, 0.2);
+        color: var(--accent-purple);
+        animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    .preflight-content {
+        flex: 1;
+    }
+
+    .preflight-name {
+        font-weight: 600;
+    }
+
+    .preflight-message {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+
+    .deployment-progress {
+        margin-bottom: 2rem;
+    }
+
+    .progress-bar-container {
+        height: 8px;
+        background: var(--bg-tertiary);
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+
+    .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+
+    .deployment-logs {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 10px;
+        padding: 1rem;
+        max-height: 300px;
+        overflow-y: auto;
+        font-family: monospace;
+        font-size: 0.85rem;
+    }
+
+    .log-entry {
+        padding: 0.25rem 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .log-entry:last-child {
+        border-bottom: none;
+    }
+
+    .log-time {
+        color: var(--text-secondary);
+        margin-right: 1rem;
+    }
+
+    .log-message.error {
+        color: var(--accent-red);
+    }
+
+    .log-message.warning {
+        color: var(--accent-yellow);
+    }
+
+    .log-message.info {
+        color: var(--text-primary);
+    }
+
+    .success-card {
+        text-align: center;
+        padding: 3rem;
+    }
+
+    .success-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
+
+    .success-title {
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+
+    .success-message {
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+    }
+
+    .success-details {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        padding: 1.5rem;
+        text-align: left;
+        max-width: 500px;
+        margin: 0 auto 2rem;
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .detail-row:last-child {
+        border-bottom: none;
+    }
+
+    .detail-label {
+        color: var(--text-secondary);
+    }
+
+    .detail-value {
+        font-family: monospace;
+    }
+
+    .wizard-actions {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-wizard {
+        padding: 0.75rem 2rem;
+        border-radius: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .btn-back {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+    }
+
+    .btn-back:hover {
+        border-color: var(--text-secondary);
+    }
+
+    .btn-next {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+    }
+
+    .btn-next:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-next:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 1s linear infinite;
+        margin-right: 0.5rem;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .quick-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+    }
+
+    .quick-action-btn {
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .quick-action-btn.primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+    }
+
+    .quick-action-btn.secondary {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wizard-container">
+    <div class="wizard-header">
+        <h1 class="wizard-title">🚀 Deploy Service</h1>
+        <p class="wizard-subtitle">Step-by-step guided deployment to your homelab environments</p>
+    </div>
+
+    <div class="progress-steps">
+        <div class="progress-step active" data-step="1">
+            <div class="step-connector"></div>
+            <div class="step-number">1</div>
+            <div class="step-label">Environment</div>
+        </div>
+        <div class="progress-step" data-step="2">
+            <div class="step-connector"></div>
+            <div class="step-number">2</div>
+            <div class="step-label">Template</div>
+        </div>
+        <div class="progress-step" data-step="3">
+            <div class="step-connector"></div>
+            <div class="step-number">3</div>
+            <div class="step-label">Configure</div>
+        </div>
+        <div class="progress-step" data-step="4">
+            <div class="step-connector"></div>
+            <div class="step-number">4</div>
+            <div class="step-label">Preflight</div>
+        </div>
+        <div class="progress-step" data-step="5">
+            <div class="step-connector"></div>
+            <div class="step-number">5</div>
+            <div class="step-label">Deploy</div>
+        </div>
+        <div class="progress-step" data-step="6">
+            <div class="step-number">6</div>
+            <div class="step-label">Complete</div>
+        </div>
+    </div>
+
+    <div class="wizard-content">
+        <div class="step-content active" data-step="1">
+            <h3 style="margin-bottom: 1.5rem;"><i class="bi bi-server"></i> Select Deployment Environment</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">Choose where you want to deploy your service.</p>
+            
+            <div class="env-cards" id="env-cards">
+                <div class="loading-placeholder" style="text-align: center; padding: 3rem;">
+                    <div class="loading-spinner"></div>
+                    <span>Loading environments...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-content" data-step="2">
+            <h3 style="margin-bottom: 1.5rem;"><i class="bi bi-box-seam"></i> Select Service Template</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">Choose a service to deploy from our marketplace.</p>
+            
+            <div class="template-filters" id="template-filters">
+                <button class="filter-btn active" data-category="all">All</button>
+            </div>
+            
+            <div class="templates-grid" id="templates-grid">
+                <div class="loading-placeholder" style="text-align: center; padding: 3rem;">
+                    <div class="loading-spinner"></div>
+                    <span>Loading templates...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-content" data-step="3">
+            <h3 style="margin-bottom: 1.5rem;"><i class="bi bi-gear"></i> Configure Deployment</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">Set up environment variables and configuration for <strong id="config-template-name"></strong>.</p>
+            
+            <div class="config-form" id="config-form">
+            </div>
+        </div>
+
+        <div class="step-content" data-step="4">
+            <h3 style="margin-bottom: 1.5rem;"><i class="bi bi-check2-all"></i> Preflight Checks</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">Verifying deployment requirements...</p>
+            
+            <div class="preflight-results" id="preflight-results">
+            </div>
+        </div>
+
+        <div class="step-content" data-step="5">
+            <h3 style="margin-bottom: 1.5rem;"><i class="bi bi-rocket-takeoff"></i> Deploying Service</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">Deployment in progress. Please wait...</p>
+            
+            <div class="deployment-progress">
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="deploy-progress-bar" style="width: 0%"></div>
+                </div>
+                <div id="deploy-step-label" style="text-align: center; color: var(--text-secondary);">Initializing...</div>
+            </div>
+            
+            <div class="deployment-logs" id="deployment-logs">
+            </div>
+        </div>
+
+        <div class="step-content" data-step="6">
+            <div class="success-card" id="complete-content">
+            </div>
+        </div>
+    </div>
+
+    <div class="wizard-actions">
+        <button class="btn-wizard btn-back" id="btn-back" style="visibility: hidden;">
+            <i class="bi bi-arrow-left"></i> Back
+        </button>
+        <button class="btn-wizard btn-next" id="btn-next" disabled>
+            Next <i class="bi bi-arrow-right"></i>
+        </button>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/deployment_wizard.js') }}"></script>
+{% endblock %}
