@@ -6,34 +6,46 @@ echo "║          NEBULA DASHBOARD - PRODUCTION STARTUP               ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo ""
 
-# Verify database URL is configured
+# Auto-configure database if not set (self-managed mode)
 if [ -z "$JARVIS_DATABASE_URL" ]; then
-    echo "❌ ERROR: JARVIS_DATABASE_URL environment variable is required!"
-    echo "   Dashboard cannot start without database configuration."
-    exit 1
+    if [ -n "$DATABASE_URL" ]; then
+        export JARVIS_DATABASE_URL="$DATABASE_URL"
+        echo "✓ Using DATABASE_URL for database connection"
+    else
+        # Default to containerized postgres (self-managed)
+        export JARVIS_DATABASE_URL="postgresql://dashboard:dashboard_secure_2024@dashboard-db:5432/homelab_dashboard"
+        export DATABASE_URL="$JARVIS_DATABASE_URL"
+        echo "✓ Auto-configured database (self-managed mode)"
+    fi
+else
+    echo "✓ Using provided JARVIS_DATABASE_URL"
 fi
 
-echo "✓ Database URL configured"
+# Export DATABASE_URL for compatibility
+export DATABASE_URL="${DATABASE_URL:-$JARVIS_DATABASE_URL}"
+
+echo "  Database: ${JARVIS_DATABASE_URL%%@*}@*****"
+
+# Auto-configure Redis if not set
+if [ -z "$REDIS_URL" ]; then
+    export REDIS_URL="redis://dashboard-redis:6379/0"
+    echo "✓ Auto-configured Redis (self-managed mode)"
+else
+    echo "✓ Using provided REDIS_URL"
+fi
 
 # Use the wait_for_schema.py utility for proper database orchestration
-# This ensures PostgreSQL is ready, migrations run, and all tables exist
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  Database Orchestration (wait_for_schema.py)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # Always run migrations in the entrypoint (once at startup)
-# The Flask app has RUN_MIGRATIONS=false to prevent duplicate runs by workers
 ENTRYPOINT_RUN_MIGRATIONS=true
 SCHEMA_WAIT_TIMEOUT=${SCHEMA_WAIT_TIMEOUT:-180}
 
-# Run the wait_for_schema utility - this handles:
-# 1. Waiting for PostgreSQL to be ready
-# 2. Running Alembic migrations
-# 3. Verifying all required tables exist
 export RUN_MIGRATIONS=$ENTRYPOINT_RUN_MIGRATIONS
 export SCHEMA_WAIT_TIMEOUT
-export DATABASE_URL="$JARVIS_DATABASE_URL"
 
 if ! python /app/wait_for_schema.py; then
     echo "❌ ERROR: Database schema not ready after timeout"
