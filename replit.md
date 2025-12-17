@@ -31,6 +31,14 @@ The core system uses Docker Compose for orchestrating services across a split de
 - **Security:** Automatic SSL via Caddy/Let's Encrypt, environment-based secrets, isolated database credentials, rate limiting, and JWT authentication.
 - **New Features:** DNS Management Engine (Cloudflare API), Fleet Manager (Tailscale), Jarvis Code Service (AI code editing/deployment), Jarvis Website Builder (autonomous AI website generation), Deployment Guide, Setup Wizard, and Jarvis Codebase Access (AI interaction with codebase).
 - **Prime Time Ready (Dec 2025):** Command Center UI (unified environment overview), Guided Deployment Wizard (multi-step service deployment with preflight checks), Database Console (cross-environment database management), Storage Dashboard (NAS/storage monitoring for post-upgrade), Enhanced sidebar navigation with status indicators and quick actions.
+- **Homelab Management Suite (Dec 2025):**
+  - **NAS Mount Manager:** Real-time mount status, one-click remount, diagnostics, and troubleshooting from dashboard
+  - **KVM Gaming Control:** Windows 11 VM management with GPU telemetry, mode switching (Gaming/Productivity), and freeze diagnostics
+  - **Unified Docker Management:** Multi-host container control with 24+ deployment templates, logs, and resource monitoring
+  - **Fleet Control Center:** Real-time host monitoring for Local Ubuntu, Linode, and KVM with command execution and health checks
+  - **Jarvis Autonomous Operations:** AI-powered incident detection, root cause analysis, auto-remediation playbooks, and learning system
+  - **Notification & Task Queue:** Human-in-the-loop escalation with Discord/email alerts, SLA tracking, and task management
+  - **Multi-Tenant SaaS Architecture:** Organizations, member roles, API keys, JWT authentication, and complete audit trail
 
 ### System Design Choices
 - **Containerization:** All services are Dockerized and managed by Docker Compose.
