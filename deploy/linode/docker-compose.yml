@@ -180,6 +180,12 @@ services:
       - PLEX_TOKEN=${PLEX_TOKEN}
     volumes:
       - ./services/dashboard/logs:/app/logs
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'celery.*beat' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   discord-bot:
     build:
