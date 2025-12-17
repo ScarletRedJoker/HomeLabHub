@@ -39,6 +39,7 @@ The core system uses Docker Compose for orchestrating services across a split de
   - **Jarvis Autonomous Operations:** AI-powered incident detection, root cause analysis, auto-remediation playbooks, and learning system
   - **Notification & Task Queue:** Human-in-the-loop escalation with Discord/email alerts, SLA tracking, and task management
   - **Multi-Tenant SaaS Architecture:** Organizations, member roles, API keys, JWT authentication, and complete audit trail
+  - **Network Auto-Discovery (NEW):** Dynamic detection of NAS, hosts, and services with automatic IP resolution, fallback strategies, and persistent resource registry. API endpoints for network status, manual re-discovery, and health checks. Uses environment hints as starting points but probes network to verify/discover actual IPs.
 
 ### System Design Choices
 - **Containerization:** All services are Dockerized and managed by Docker Compose.
