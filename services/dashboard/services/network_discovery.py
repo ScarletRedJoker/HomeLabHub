@@ -33,6 +33,17 @@ class DiscoveryCache:
                 del self._cache[key]
         return None
     
+    def get_with_age(self, key: str) -> Tuple[Optional[Any], Optional[float]]:
+        """Get value and its age in seconds. Returns (None, None) if not found."""
+        with self._lock:
+            if key in self._cache:
+                value, timestamp = self._cache[key]
+                age = (datetime.now(timezone.utc) - timestamp).total_seconds()
+                if age < self._ttl.total_seconds():
+                    return value, age
+                del self._cache[key]
+        return None, None
+    
     def set(self, key: str, value: Any) -> None:
         with self._lock:
             self._cache[key] = (value, datetime.now(timezone.utc))
@@ -51,6 +62,23 @@ class DiscoveryCache:
                 k: v for k, (v, ts) in self._cache.items()
                 if now - ts < self._ttl
             }
+    
+    def get_cache_info(self) -> Dict[str, Any]:
+        """Get information about cache state including ages"""
+        with self._lock:
+            now = datetime.now(timezone.utc)
+            info = {
+                'ttl_seconds': self._ttl.total_seconds(),
+                'entries': {}
+            }
+            for key, (value, timestamp) in self._cache.items():
+                age = (now - timestamp).total_seconds()
+                if age < self._ttl.total_seconds():
+                    info['entries'][key] = {
+                        'age_seconds': round(age, 1),
+                        'expires_in_seconds': round(self._ttl.total_seconds() - age, 1)
+                    }
+            return info
 
 
 class NetworkDiscovery:
@@ -91,11 +119,27 @@ class NetworkDiscovery:
         self.probe_timeout = 2.0
         self.executor = ThreadPoolExecutor(max_workers=20)
         
-        self.env_hints = {
-            'nas': os.environ.get('NAS_IP', '192.168.0.176'),
-            'local_host': os.environ.get('TAILSCALE_LOCAL_HOST', '192.168.0.177'),
-            'linode_host': os.environ.get('TAILSCALE_LINODE_HOST', ''),
-            'kvm_host': os.environ.get('KVM_HOST_IP', '192.168.122.250'),
+        self.env_hints = self._load_env_hints()
+        
+        self.discovery_status = {
+            'initial_discovery_run': False,
+            'initial_discovery_succeeded': False,
+            'last_discovery_time': None,
+            'db_persistence_error': None,
+            'db_persistence_retries': 0,
+        }
+    
+    def _load_env_hints(self) -> Dict[str, Optional[str]]:
+        """Load env hints, only using values that are explicitly set and non-empty"""
+        def get_hint(key: str) -> Optional[str]:
+            value = os.environ.get(key, '').strip()
+            return value if value else None
+        
+        return {
+            'nas': get_hint('NAS_IP'),
+            'local_host': get_hint('TAILSCALE_LOCAL_HOST'),
+            'linode_host': get_hint('TAILSCALE_LINODE_HOST'),
+            'kvm_host': get_hint('KVM_HOST_IP'),
         }
     
     def probe_endpoint(self, ip: str, port: int, timeout: float = None) -> bool:
@@ -213,12 +257,7 @@ class NetworkDiscovery:
                 self.cache.set(cache_key, result)
                 return result
         
-        if hint_ip:
-            result['ip'] = hint_ip
-            result['name'] = 'NAS (offline - using hint)'
-            result['discovery_method'] = 'fallback_hint'
-        
-        self._log_discovery('nas', hint_ip, 'all_methods_failed', False, time.time() - start_time)
+        self._log_discovery('nas', None, 'all_methods_failed', False, time.time() - start_time)
         self.cache.set(cache_key, result)
         return result
     
@@ -292,12 +331,7 @@ class NetworkDiscovery:
                 self.cache.set(cache_key, result)
                 return result
         
-        if hint_ip:
-            result['ip'] = hint_ip
-            result['name'] = f'{resource_name} (offline - using hint)'
-            result['discovery_method'] = 'fallback_hint'
-        
-        self._log_discovery('host', hint_ip, 'all_methods_failed', False, time.time() - start_time)
+        self._log_discovery('host', None, 'all_methods_failed', False, time.time() - start_time)
         self.cache.set(cache_key, result)
         return result
     
@@ -348,11 +382,7 @@ class NetworkDiscovery:
             self.cache.set(cache_key, result)
             return result
         
-        if hint_ip:
-            result['ip'] = hint_ip
-            result['discovery_method'] = 'fallback_hint'
-        
-        self._log_discovery('kvm', hint_ip, 'all_methods_failed', False, time.time() - start_time)
+        self._log_discovery('kvm', None, 'all_methods_failed', False, time.time() - start_time)
         self.cache.set(cache_key, result)
         return result
     
@@ -412,23 +442,27 @@ class NetworkDiscovery:
         Returns a dict suitable for setting environment variables.
         """
         cache_key = 'network_config'
-        if not force_refresh:
-            cached = self.cache.get(cache_key)
+        
+        if force_refresh:
+            self.cache.invalidate()
+        else:
+            cached, cache_age = self.cache.get_with_age(cache_key)
             if cached:
+                cached['_cache_age_seconds'] = round(cache_age, 1) if cache_age else None
                 return cached
         
         logger.info("Running full network discovery...")
         
-        nas = self.discover_nas(force_refresh=force_refresh)
+        nas = self.discover_nas(force_refresh=True)
         local_host = self.discover_host(resource_name='local')
         linode_host = self.discover_host(resource_name='linode')
-        kvm = self.discover_kvm(force_refresh=force_refresh)
+        kvm = self.discover_kvm(force_refresh=True)
         
         config = {
-            'NAS_IP': nas.get('ip') or self.env_hints.get('nas', ''),
-            'LOCAL_HOST_IP': local_host.get('ip') or self.env_hints.get('local_host', ''),
-            'LINODE_HOST_IP': linode_host.get('ip') or self.env_hints.get('linode_host', ''),
-            'KVM_HOST_IP': kvm.get('ip') or self.env_hints.get('kvm_host', ''),
+            'NAS_IP': nas.get('ip') or '',
+            'LOCAL_HOST_IP': local_host.get('ip') or '',
+            'LINODE_HOST_IP': linode_host.get('ip') or '',
+            'KVM_HOST_IP': kvm.get('ip') or '',
         }
         
         config['_discovery_status'] = {
@@ -438,10 +472,24 @@ class NetworkDiscovery:
             'kvm': {'found': kvm.get('found', False), 'method': kvm.get('discovery_method')},
         }
         config['_timestamp'] = datetime.now(timezone.utc).isoformat()
+        config['_cache_age_seconds'] = 0
+        
+        db_success = self._save_to_database(nas, local_host, linode_host, kvm)
+        config['_db_persistence_success'] = db_success
+        config['_db_persistence_error'] = self.discovery_status.get('db_persistence_error')
+        
+        self.discovery_status['initial_discovery_run'] = True
+        self.discovery_status['last_discovery_time'] = datetime.now(timezone.utc).isoformat()
+        
+        any_found = any([
+            nas.get('found', False),
+            local_host.get('found', False),
+            linode_host.get('found', False),
+            kvm.get('found', False)
+        ])
+        self.discovery_status['initial_discovery_succeeded'] = any_found
         
         self.cache.set(cache_key, config)
-        
-        self._save_to_database(nas, local_host, linode_host, kvm)
         
         return config
     
@@ -598,41 +646,73 @@ class NetworkDiscovery:
         except Exception as e:
             logger.debug(f"Could not log discovery to database: {e}")
     
-    def _save_to_database(self, nas: Dict, local_host: Dict, linode_host: Dict, kvm: Dict) -> None:
-        """Save discovered resources to database"""
-        try:
-            from services.db_service import db_service
-            from models.network_resource import NetworkResource
-            
-            if not db_service.is_available:
-                return
-            
-            with db_service.get_session() as session:
-                resources = [
-                    ('nas', 'nas', nas),
-                    ('local_host', 'host', local_host),
-                    ('linode_host', 'host', linode_host),
-                    ('kvm_windows', 'vm', kvm),
-                ]
+    def _save_to_database(self, nas: Dict, local_host: Dict, linode_host: Dict, kvm: Dict) -> bool:
+        """
+        Save discovered resources to database with retry logic.
+        Returns True if save succeeded, False otherwise.
+        """
+        max_retries = 3
+        backoff_seconds = [0.5, 1.0, 2.0]
+        
+        for attempt in range(max_retries):
+            try:
+                from services.db_service import db_service
+                from models.network_resource import NetworkResource
                 
-                for name, resource_type, data in resources:
-                    if data.get('ip'):
-                        NetworkResource.upsert(
-                            session,
-                            name=name,
-                            resource_type=resource_type,
-                            preferred_endpoint=data.get('ip'),
-                            discovered_endpoints=[data.get('ip')] if data.get('ip') else [],
-                            last_seen=datetime.now(timezone.utc) if data.get('found') else None,
-                            health_status='healthy' if data.get('found') else 'unknown',
-                            discovery_method=data.get('discovery_method'),
-                            ports=data.get('ports', {})
-                        )
+                if not db_service.is_available:
+                    error_msg = "Database not available - network resource registry is empty"
+                    logger.warning(error_msg)
+                    self.discovery_status['db_persistence_error'] = error_msg
+                    self.discovery_status['db_persistence_retries'] = attempt
+                    if attempt < max_retries - 1:
+                        time.sleep(backoff_seconds[attempt])
+                        continue
+                    return False
                 
-                session.commit()
-                logger.info("Saved discovered resources to database")
-        except Exception as e:
-            logger.warning(f"Could not save resources to database: {e}")
+                with db_service.get_session() as session:
+                    resources = [
+                        ('nas', 'nas', nas),
+                        ('local_host', 'host', local_host),
+                        ('linode_host', 'host', linode_host),
+                        ('kvm_windows', 'vm', kvm),
+                    ]
+                    
+                    saved_count = 0
+                    for name, resource_type, data in resources:
+                        if data.get('found') and data.get('ip'):
+                            NetworkResource.upsert(
+                                session,
+                                name=name,
+                                resource_type=resource_type,
+                                preferred_endpoint=data.get('ip'),
+                                discovered_endpoints=[data.get('ip')],
+                                last_seen=datetime.now(timezone.utc),
+                                health_status='healthy',
+                                discovery_method=data.get('discovery_method'),
+                                ports=data.get('ports', {})
+                            )
+                            saved_count += 1
+                    
+                    session.commit()
+                    logger.info(f"Saved {saved_count} discovered resources to database")
+                    
+                    self.discovery_status['db_persistence_error'] = None
+                    self.discovery_status['db_persistence_retries'] = attempt
+                    return True
+                    
+            except Exception as e:
+                error_msg = f"Database persistence failed (attempt {attempt + 1}/{max_retries}): {e}"
+                logger.warning(error_msg)
+                self.discovery_status['db_persistence_error'] = str(e)
+                self.discovery_status['db_persistence_retries'] = attempt + 1
+                
+                if attempt < max_retries - 1:
+                    time.sleep(backoff_seconds[attempt])
+                else:
+                    logger.error(f"All {max_retries} database persistence attempts failed")
+                    return False
+        
+        return False
 
 
 network_discovery = NetworkDiscovery()

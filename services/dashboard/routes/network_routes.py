@@ -34,20 +34,48 @@ def get_network_status():
     Returns current network resource status from cache
     
     Returns:
-        JSON object with discovered network resources
+        JSON object with discovered network resources including:
+        - config: discovered IPs
+        - status: discovery results per resource
+        - discovery_status: overall discovery state (has run, succeeded, DB errors)
+        - cache_info: age of cached data
+        - env_hints: configured environment hints
     """
     try:
         config = network_discovery.get_network_config(force_refresh=False)
         
         status = config.pop('_discovery_status', {})
         timestamp = config.pop('_timestamp', '')
+        cache_age = config.pop('_cache_age_seconds', None)
+        db_success = config.pop('_db_persistence_success', None)
+        db_error = config.pop('_db_persistence_error', None)
         
-        return make_response(True, {
+        discovery_status = network_discovery.discovery_status.copy()
+        
+        response_data = {
             'config': config,
             'status': status,
             'timestamp': timestamp,
+            'discovery_status': {
+                'initial_discovery_run': discovery_status.get('initial_discovery_run', False),
+                'initial_discovery_succeeded': discovery_status.get('initial_discovery_succeeded', False),
+                'last_discovery_time': discovery_status.get('last_discovery_time'),
+                'db_persistence_error': discovery_status.get('db_persistence_error'),
+                'db_persistence_retries': discovery_status.get('db_persistence_retries', 0),
+            },
+            'cache_info': {
+                'age_seconds': cache_age,
+                'is_fresh': cache_age is not None and isinstance(cache_age, (int, float)) and cache_age < 60,
+            },
             'env_hints': network_discovery.env_hints
-        })
+        }
+        
+        if not discovery_status.get('initial_discovery_run', False):
+            response_data['warning'] = 'Discovery has not run yet'
+        elif db_error or discovery_status.get('db_persistence_error'):
+            response_data['warning'] = f"DB persistence failed: {db_error or discovery_status.get('db_persistence_error')}"
+        
+        return make_response(True, response_data)
     except Exception as e:
         logger.error(f"Error getting network status: {e}")
         return make_response(False, message=str(e), status_code=500)
@@ -236,10 +264,28 @@ def health_check():
     Quick health check of all registered resources
     
     Returns:
-        JSON object with health status of all resources
+        JSON object with health status of all resources including:
+        - Resource health status
+        - Discovery status (has run, succeeded)
+        - DB persistence status
     """
     try:
         results = network_discovery.health_check_all()
+        
+        discovery_status = network_discovery.discovery_status.copy()
+        results['discovery_status'] = {
+            'initial_discovery_run': discovery_status.get('initial_discovery_run', False),
+            'initial_discovery_succeeded': discovery_status.get('initial_discovery_succeeded', False),
+            'last_discovery_time': discovery_status.get('last_discovery_time'),
+            'db_persistence_error': discovery_status.get('db_persistence_error'),
+            'db_persistence_retries': discovery_status.get('db_persistence_retries', 0),
+        }
+        
+        if discovery_status.get('db_persistence_error'):
+            results['warnings'] = [f"DB persistence failed: {discovery_status.get('db_persistence_error')}"]
+        if not discovery_status.get('initial_discovery_run', False):
+            results.setdefault('warnings', []).append('Discovery has not run yet')
+        
         return make_response(True, results)
     except Exception as e:
         logger.error(f"Error running health check: {e}")
@@ -338,17 +384,38 @@ def get_config():
     Get the current network configuration (environment variables)
     
     Returns:
-        JSON object with network configuration
+        JSON object with network configuration including:
+        - env_vars: current environment variable values
+        - discovery_status: whether discovery has run and succeeded
+        - cache_info: information about cached data
     """
     try:
+        discovery_status = network_discovery.discovery_status.copy()
+        cache_info = network_discovery.cache.get_cache_info()
+        
         config = {
-            'NAS_IP': os.environ.get('NAS_IP', network_discovery.env_hints.get('nas', '')),
-            'LOCAL_HOST_IP': os.environ.get('LOCAL_HOST_IP', network_discovery.env_hints.get('local_host', '')),
-            'LINODE_HOST_IP': os.environ.get('LINODE_HOST_IP', network_discovery.env_hints.get('linode_host', '')),
-            'KVM_HOST_IP': os.environ.get('KVM_HOST_IP', network_discovery.env_hints.get('kvm_host', '')),
-            'TAILSCALE_LOCAL_HOST': os.environ.get('TAILSCALE_LOCAL_HOST', ''),
-            'TAILSCALE_LINODE_HOST': os.environ.get('TAILSCALE_LINODE_HOST', ''),
+            'env_vars': {
+                'NAS_IP': os.environ.get('NAS_IP', ''),
+                'LOCAL_HOST_IP': os.environ.get('LOCAL_HOST_IP', ''),
+                'LINODE_HOST_IP': os.environ.get('LINODE_HOST_IP', ''),
+                'KVM_HOST_IP': os.environ.get('KVM_HOST_IP', ''),
+                'TAILSCALE_LOCAL_HOST': os.environ.get('TAILSCALE_LOCAL_HOST', ''),
+                'TAILSCALE_LINODE_HOST': os.environ.get('TAILSCALE_LINODE_HOST', ''),
+            },
+            'env_hints': network_discovery.env_hints,
+            'discovery_status': {
+                'initial_discovery_run': discovery_status.get('initial_discovery_run', False),
+                'initial_discovery_succeeded': discovery_status.get('initial_discovery_succeeded', False),
+                'last_discovery_time': discovery_status.get('last_discovery_time'),
+                'db_persistence_error': discovery_status.get('db_persistence_error'),
+            },
+            'cache_info': cache_info,
         }
+        
+        if not discovery_status.get('initial_discovery_run', False):
+            config['warning'] = 'Discovery has not run yet - values may be stale or missing'
+        elif discovery_status.get('db_persistence_error'):
+            config['warning'] = f"DB persistence failed: {discovery_status.get('db_persistence_error')}"
         
         return make_response(True, config)
     except Exception as e:
