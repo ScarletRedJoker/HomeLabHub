@@ -123,10 +123,8 @@ services:
       - PLEX_CLAIM=${PLEX_CLAIM:-}
     volumes:
       - plex_config:/config
-      # NAS media shares - mounted via CIFS at /srv/media/*
-      - /srv/media/video:/media/video:rw
-      - /srv/media/music:/media/music:rw
-      - /srv/media/photo:/media/photo:ro
+      # NAS networkshare mounted at /srv/media with video/music/photo subfolders
+      - /srv/media:/media:rw
       # Local storage for Plex optimized versions (faster than NAS)
       - /opt/plex-optimized:/optimized:rw
     tmpfs:
