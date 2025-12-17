@@ -82,11 +82,19 @@ from services.network_discovery import run_startup_discovery
 config = run_startup_discovery()
 " 2>&1 || echo "⚠ Network discovery completed with warnings (non-fatal)"
 
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Starting Gunicorn Server"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-echo "Starting with gunicorn.conf.py configuration"
-echo ""
-exec gunicorn --config gunicorn.conf.py "app:app"
+# If arguments passed (docker CMD), run that instead of gunicorn
+if [ $# -gt 0 ]; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  Starting: $@"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    exec "$@"
+else
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  Starting Gunicorn Server"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "Starting with gunicorn.conf.py configuration"
+    echo ""
+    exec gunicorn --config gunicorn.conf.py "app:app"
+fi
