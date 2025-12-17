@@ -142,6 +142,38 @@ services:
     volumes:
       - ./services/dashboard/logs:/app/logs
 
+  homelab-celery-beat:
+    build:
+      context: ../../services/dashboard
+      dockerfile: Dockerfile
+    container_name: homelab-celery-beat
+    restart: unless-stopped
+    env_file:
+      - .env
+    command: celery -A celery_app.celery_app beat --loglevel=info
+    networks:
+      - homelab
+    depends_on:
+      redis:
+        condition: service_healthy
+      homelab-postgres:
+        condition: service_healthy
+    environment:
+      - RUN_MIGRATIONS=false
+      - DOCKER_CONTAINER=true
+      - REDIS_URL=redis://redis:6379/0
+      - JARVIS_DATABASE_URL=postgresql://jarvis:${JARVIS_DB_PASSWORD}@homelab-postgres:5432/homelab_jarvis
+      - PYTHONUNBUFFERED=1
+      - AI_PROVIDER=openai
+      - AI_MODEL=gpt-4o
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - WEB_USERNAME=${WEB_USERNAME}
+      - WEB_PASSWORD=${WEB_PASSWORD}
+      - PLEX_URL=${TAILSCALE_LOCAL_HOST}:32400
+      - PLEX_TOKEN=${PLEX_TOKEN}
+    volumes:
+      - ./services/dashboard/logs:/app/logs
+
   discord-bot:
     build:
       context: ../../services/discord-bot
