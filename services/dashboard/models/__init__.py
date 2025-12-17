@@ -48,6 +48,8 @@ from .builder_project import (
     BuilderProjectStatus, BuilderTechStack, CheckpointStatus
 )
 from .settings import SystemSetting
+from .notification import Alert, AlertSeverity, NotificationSettings
+from .organization import Organization, OrganizationMember, APIKey, OrganizationTier, MemberRole, ROLE_HIERARCHY
 
 __all__ = [
     'Base',
@@ -122,5 +124,14 @@ __all__ = [
     'BuilderProjectStatus',
     'BuilderTechStack',
     'CheckpointStatus',
-    'SystemSetting'
+    'SystemSetting',
+    'Alert',
+    'AlertSeverity',
+    'NotificationSettings',
+    'Organization',
+    'OrganizationMember',
+    'APIKey',
+    'OrganizationTier',
+    'MemberRole',
+    'ROLE_HIERARCHY'
 ]

@@ -1,0 +1,1052 @@
+{% extends "base.html" %}
+
+{% block title %}Fleet Control Center - Nebula Command{% endblock %}
+{% block page_title %}Fleet Control Center{% endblock %}
+
+{% block extra_css %}
+<style>
+.control-center-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.1) 100%);
+    border-radius: 12px;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.health-summary {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.health-stat {
+    text-align: center;
+}
+
+.health-stat .count {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.health-stat .label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.health-stat.healthy .count { color: #10b981; }
+.health-stat.degraded .count { color: #f59e0b; }
+.health-stat.offline .count { color: #ef4444; }
+
+.host-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.host-card {
+    background: var(--bg-card, linear-gradient(145deg, #1a2332, #111827));
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.25rem;
+    transition: all 0.3s ease;
+}
+
+.host-card:hover {
+    border-color: rgba(99, 102, 241, 0.5);
+    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.1);
+    transform: translateY(-2px);
+}
+
+.host-card.online { border-left: 4px solid #10b981; }
+.host-card.offline { border-left: 4px solid #ef4444; }
+.host-card.degraded { border-left: 4px solid #f59e0b; }
+
+.host-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+}
+
+.host-info h5 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.host-type-icon {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.host-type-icon.server { background: rgba(96, 165, 250, 0.2); color: #60a5fa; }
+.host-type-icon.cloud { background: rgba(167, 139, 250, 0.2); color: #a78bfa; }
+.host-type-icon.vm { background: rgba(52, 211, 153, 0.2); color: #34d399; }
+
+.host-meta {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+}
+
+.status-badge {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-badge.online { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+.status-badge.offline { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+.status-badge.degraded { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    margin: 1rem 0;
+    padding: 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+}
+
+.metric-item {
+    text-align: center;
+}
+
+.metric-label {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.25rem;
+}
+
+.metric-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.metric-bar {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    margin-top: 0.25rem;
+    overflow: hidden;
+}
+
+.metric-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.5s ease;
+}
+
+.metric-bar-fill.cpu { background: linear-gradient(90deg, #6366f1, #8b5cf6); }
+.metric-bar-fill.memory { background: linear-gradient(90deg, #10b981, #34d399); }
+.metric-bar-fill.disk { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+
+.host-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.host-actions .btn {
+    flex: 1;
+    min-width: 70px;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+.console-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.console-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.console-input-row {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.1);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.console-output {
+    min-height: 300px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 1rem;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.85rem;
+    background: #0d1117;
+    color: #c9d1d9;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.console-output .prompt { color: #7ee787; }
+.console-output .error { color: #f85149; }
+.console-output .info { color: #58a6ff; }
+
+.alerts-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.alert-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+
+.alert-item:last-child { margin-bottom: 0; }
+
+.alert-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+.alert-item.critical .alert-icon { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+.alert-item.warning .alert-icon { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+.alert-item.info .alert-icon { background: rgba(96, 165, 250, 0.2); color: #60a5fa; }
+
+.alert-content { flex: 1; }
+.alert-content h6 { margin: 0 0 0.25rem 0; font-size: 0.85rem; }
+.alert-content p { margin: 0; font-size: 0.75rem; color: var(--text-secondary); }
+
+.activity-log {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.activity-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 0.8rem;
+}
+
+.activity-item:last-child { border-bottom: none; }
+
+.activity-time {
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    min-width: 80px;
+}
+
+.activity-host {
+    font-weight: 600;
+    min-width: 80px;
+}
+
+.activity-command {
+    flex: 1;
+    font-family: monospace;
+    color: var(--accent-blue);
+}
+
+.modal-content.dark-modal {
+    background: #1a2332;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-secondary);
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.refresh-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #10b981;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.2); }
+}
+
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    z-index: 10;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="control-center-header">
+    <div>
+        <h4 class="mb-1"><i class="bi bi-hdd-network-fill me-2"></i>Fleet Control Center</h4>
+        <p class="mb-0 text-secondary small">Real-time multi-host management and monitoring</p>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+        <div class="health-summary" id="health-summary">
+            <div class="health-stat healthy">
+                <div class="count" id="healthy-count">-</div>
+                <div class="label">Healthy</div>
+            </div>
+            <div class="health-stat degraded">
+                <div class="count" id="degraded-count">-</div>
+                <div class="label">Degraded</div>
+            </div>
+            <div class="health-stat offline">
+                <div class="count" id="offline-count">-</div>
+                <div class="label">Offline</div>
+            </div>
+        </div>
+        <div class="btn-group">
+            <button class="btn btn-primary" onclick="runHealthCheck()">
+                <i class="bi bi-heart-pulse"></i> Health Check
+            </button>
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addHostModal">
+                <i class="bi bi-plus-lg"></i> Add Host
+            </button>
+            <button class="btn btn-outline-light" onclick="refreshFleet()">
+                <i class="bi bi-arrow-clockwise"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0"><i class="bi bi-grid-3x3-gap me-2"></i>Fleet Hosts</h5>
+            <div class="refresh-indicator">
+                <div class="pulse-dot"></div>
+                <span>Auto-refresh: <span id="refresh-countdown">30</span>s</span>
+            </div>
+        </div>
+        <div class="host-grid" id="host-grid">
+            <div class="empty-state">
+                <div class="spinner-border"></div>
+                <p class="mt-3">Loading fleet hosts...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-7 mb-4">
+        <div class="console-panel">
+            <div class="console-header">
+                <span><i class="bi bi-terminal me-2"></i>Command Console</span>
+                <button class="btn btn-sm btn-outline-secondary" onclick="clearConsole()">
+                    <i class="bi bi-trash"></i> Clear
+                </button>
+            </div>
+            <div class="console-input-row">
+                <select id="console-host" class="form-select" style="max-width: 200px;">
+                    <option value="">Select host...</option>
+                </select>
+                <input type="text" id="console-command" class="form-control" 
+                       placeholder="Enter command (e.g., uptime, docker ps, df -h)"
+                       onkeypress="if(event.key==='Enter') executeConsoleCommand()">
+                <button class="btn btn-primary" onclick="executeConsoleCommand()">
+                    <i class="bi bi-play-fill"></i> Run
+                </button>
+            </div>
+            <div class="console-output" id="console-output">
+<span class="info">Welcome to Fleet Command Console</span>
+<span class="info">Select a host and enter a command to execute remotely.</span>
+<span class="info">Allowed commands: uptime, docker ps, df -h, free -m, etc.</span>
+<span class="prompt">$</span> _
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-5 mb-4">
+        <h5 class="mb-3"><i class="bi bi-exclamation-triangle me-2"></i>Alerts & Health Status</h5>
+        <div class="alerts-panel" id="alerts-panel">
+            <div class="empty-state">
+                <i class="bi bi-check-circle"></i>
+                <p>No alerts. Run a health check to see status.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <h5 class="mb-3"><i class="bi bi-clock-history me-2"></i>Recent Activity</h5>
+        <div class="activity-log" id="activity-log">
+            <div class="empty-state">
+                <i class="bi bi-terminal"></i>
+                <p>No recent commands. Execute a command to see history.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addHostModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content dark-modal">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title"><i class="bi bi-plus-lg me-2"></i>Add New Host</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="add-host-form" onsubmit="addNewHost(event)">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Host ID</label>
+                            <input type="text" id="new-host-id" class="form-control" 
+                                   placeholder="my-server" required pattern="[a-zA-Z0-9_-]+">
+                            <small class="text-secondary">Alphanumeric, dashes, underscores only</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Display Name</label>
+                            <input type="text" id="new-host-name" class="form-control" 
+                                   placeholder="My Server" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tailscale IP</label>
+                            <input type="text" id="new-host-ip" class="form-control" 
+                                   placeholder="100.x.x.x" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Host Type</label>
+                            <select id="new-host-type" class="form-select">
+                                <option value="server">Physical Server</option>
+                                <option value="cloud">Cloud Server</option>
+                                <option value="vm">Virtual Machine</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">SSH User</label>
+                            <input type="text" id="new-host-user" class="form-control" value="root">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">SSH Port</label>
+                            <input type="number" id="new-host-port" class="form-control" value="22">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea id="new-host-desc" class="form-control" rows="2" 
+                                  placeholder="Brief description of this host"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-plus-lg me-1"></i>Add Host
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="hostDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content dark-modal">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title"><i class="bi bi-info-circle me-2"></i>Host Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="host-detail-content">
+                Loading...
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let fleetHosts = [];
+let healthResults = [];
+let refreshInterval = null;
+let refreshCountdown = 30;
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadFleet();
+    loadCommandHistory();
+    startAutoRefresh();
+});
+
+function startAutoRefresh() {
+    refreshCountdown = 30;
+    document.getElementById('refresh-countdown').textContent = refreshCountdown;
+    
+    if (refreshInterval) clearInterval(refreshInterval);
+    
+    refreshInterval = setInterval(() => {
+        refreshCountdown--;
+        document.getElementById('refresh-countdown').textContent = refreshCountdown;
+        
+        if (refreshCountdown <= 0) {
+            refreshFleet();
+            refreshCountdown = 30;
+        }
+    }, 1000);
+}
+
+async function loadFleet() {
+    try {
+        const response = await fetch('/api/fleet/hosts', { credentials: 'include' });
+        const result = await response.json();
+        
+        if (!result.success) {
+            showError('Failed to load fleet: ' + (result.message || 'Unknown error'));
+            return;
+        }
+        
+        fleetHosts = result.data?.hosts || [];
+        renderHostGrid();
+        updateHostSelects();
+        updateHealthSummary();
+        
+    } catch (error) {
+        console.error('Failed to load fleet:', error);
+        showError('Failed to connect to fleet API');
+    }
+}
+
+function refreshFleet() {
+    refreshCountdown = 30;
+    loadFleet();
+}
+
+function renderHostGrid() {
+    const grid = document.getElementById('host-grid');
+    
+    if (fleetHosts.length === 0) {
+        grid.innerHTML = `
+            <div class="empty-state" style="grid-column: 1 / -1;">
+                <i class="bi bi-hdd-network"></i>
+                <p>No hosts configured. Add a host or configure TAILSCALE_* environment variables.</p>
+            </div>`;
+        return;
+    }
+    
+    let html = '';
+    for (const host of fleetHosts) {
+        const statusClass = host.online ? 'online' : 'offline';
+        const statusText = host.online ? 'Online' : 'Offline';
+        
+        let typeIcon = 'bi-server';
+        let typeClass = 'server';
+        if (host.role === 'cloud' || host.host_type === 'cloud') {
+            typeIcon = 'bi-cloud';
+            typeClass = 'cloud';
+        } else if (host.role === 'kvm' || host.host_type === 'vm') {
+            typeIcon = 'bi-pc-display';
+            typeClass = 'vm';
+        }
+        
+        const healthData = healthResults.find(h => h.host_id === host.host_id);
+        const metrics = healthData?.metrics || {};
+        
+        html += `
+            <div class="host-card ${statusClass}" data-host-id="${host.host_id}">
+                <div class="host-header">
+                    <div class="host-info">
+                        <h5>
+                            <span class="host-type-icon ${typeClass}"><i class="bi ${typeIcon}"></i></span>
+                            ${host.name}
+                        </h5>
+                        <div class="host-meta">
+                            <code>${host.tailscale_ip || host.ip_address || 'No IP'}</code>
+                            <span class="ms-2 badge bg-secondary">${host.role}</span>
+                        </div>
+                    </div>
+                    <span class="status-badge ${statusClass}">${statusText}</span>
+                </div>
+                
+                <p class="text-secondary small mb-0">${host.description || ''}</p>
+                
+                ${host.online ? `
+                <div class="metrics-grid">
+                    <div class="metric-item">
+                        <div class="metric-label">CPU</div>
+                        <div class="metric-value">${metrics.cpu_percent || '-'}%</div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill cpu" style="width: ${metrics.cpu_percent || 0}%"></div>
+                        </div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-label">Memory</div>
+                        <div class="metric-value">${metrics.memory_percent || '-'}%</div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill memory" style="width: ${metrics.memory_percent || 0}%"></div>
+                        </div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-label">Disk</div>
+                        <div class="metric-value">${metrics.disk_percent || '-'}%</div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill disk" style="width: ${metrics.disk_percent || 0}%"></div>
+                        </div>
+                    </div>
+                </div>
+                ` : `
+                <div class="metrics-grid">
+                    <div class="metric-item"><div class="metric-label">CPU</div><div class="metric-value">-</div></div>
+                    <div class="metric-item"><div class="metric-label">Memory</div><div class="metric-value">-</div></div>
+                    <div class="metric-item"><div class="metric-label">Disk</div><div class="metric-value">-</div></div>
+                </div>
+                `}
+                
+                <div class="host-actions">
+                    <button class="btn btn-outline-primary" onclick="viewHostStatus('${host.host_id}')" ${!host.online ? 'disabled' : ''}>
+                        <i class="bi bi-activity"></i> Status
+                    </button>
+                    <button class="btn btn-outline-info" onclick="selectHostForConsole('${host.host_id}')" ${!host.online ? 'disabled' : ''}>
+                        <i class="bi bi-terminal"></i> Console
+                    </button>
+                    <button class="btn btn-outline-warning" onclick="viewContainers('${host.host_id}')" ${!host.online ? 'disabled' : ''}>
+                        <i class="bi bi-box-seam"></i> Containers
+                    </button>
+                </div>
+            </div>`;
+    }
+    
+    grid.innerHTML = html;
+}
+
+function updateHostSelects() {
+    const select = document.getElementById('console-host');
+    const currentValue = select.value;
+    select.innerHTML = '<option value="">Select host...</option>';
+    
+    fleetHosts.filter(h => h.online).forEach(host => {
+        const option = document.createElement('option');
+        option.value = host.host_id;
+        option.textContent = `${host.name} (${host.role})`;
+        select.appendChild(option);
+    });
+    
+    if (currentValue && select.querySelector(`option[value="${currentValue}"]`)) {
+        select.value = currentValue;
+    }
+}
+
+function updateHealthSummary() {
+    const online = fleetHosts.filter(h => h.online).length;
+    const offline = fleetHosts.filter(h => !h.online).length;
+    const degraded = healthResults.filter(h => h.status === 'degraded').length;
+    
+    document.getElementById('healthy-count').textContent = online - degraded;
+    document.getElementById('degraded-count').textContent = degraded;
+    document.getElementById('offline-count').textContent = offline;
+}
+
+async function runHealthCheck() {
+    const btn = event.target;
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Checking...';
+    
+    try {
+        const response = await fetch('/api/fleet/health-check', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            healthResults = result.data.results || [];
+            renderHostGrid();
+            renderAlerts();
+            updateHealthSummary();
+            
+            appendToConsole(`<span class="info">Health check completed: ${result.data.summary.healthy}/${result.data.summary.total} hosts healthy</span>`);
+        } else {
+            showError('Health check failed: ' + (result.message || 'Unknown error'));
+        }
+        
+    } catch (error) {
+        showError('Health check error: ' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+}
+
+function renderAlerts() {
+    const panel = document.getElementById('alerts-panel');
+    
+    const allAlerts = [];
+    for (const result of healthResults) {
+        for (const alert of (result.alerts || [])) {
+            allAlerts.push({
+                ...alert,
+                host_id: result.host_id,
+                host_name: result.name
+            });
+        }
+    }
+    
+    if (allAlerts.length === 0) {
+        panel.innerHTML = `
+            <div class="empty-state">
+                <i class="bi bi-check-circle" style="color: #10b981;"></i>
+                <p>All systems healthy. No alerts.</p>
+            </div>`;
+        return;
+    }
+    
+    allAlerts.sort((a, b) => {
+        const order = { critical: 0, warning: 1, info: 2 };
+        return (order[a.level] || 3) - (order[b.level] || 3);
+    });
+    
+    let html = '';
+    for (const alert of allAlerts) {
+        const icon = alert.level === 'critical' ? 'bi-exclamation-triangle-fill' : 
+                     alert.level === 'warning' ? 'bi-exclamation-circle-fill' : 'bi-info-circle-fill';
+        
+        html += `
+            <div class="alert-item ${alert.level}">
+                <div class="alert-icon"><i class="bi ${icon}"></i></div>
+                <div class="alert-content">
+                    <h6>${alert.host_name}</h6>
+                    <p>${alert.message}</p>
+                </div>
+            </div>`;
+    }
+    
+    panel.innerHTML = html;
+}
+
+async function viewHostStatus(hostId) {
+    try {
+        const response = await fetch(`/api/fleet/hosts/${hostId}/status`, { credentials: 'include' });
+        const result = await response.json();
+        
+        if (!result.success) {
+            showError('Failed to get host status: ' + (result.message || 'Unknown error'));
+            return;
+        }
+        
+        const data = result.data;
+        const modal = new bootstrap.Modal(document.getElementById('hostDetailModal'));
+        
+        document.getElementById('host-detail-content').innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>System Information</h6>
+                    <table class="table table-sm table-dark">
+                        <tr><td>Host ID</td><td><code>${data.host_id}</code></td></tr>
+                        <tr><td>Status</td><td><span class="badge bg-success">Online</span></td></tr>
+                        <tr><td>Uptime Since</td><td>${data.uptime_since || 'N/A'}</td></tr>
+                        <tr><td>CPU Cores</td><td>${data.cpu_cores || 'N/A'}</td></tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <h6>Resource Usage</h6>
+                    <table class="table table-sm table-dark">
+                        <tr><td>CPU</td><td>${data.cpu_percent}%</td></tr>
+                        <tr><td>Memory</td><td>${data.memory_used_gb} / ${data.memory_total_gb} GB (${data.memory_percent}%)</td></tr>
+                        <tr><td>Disk</td><td>${data.disk_used_gb} / ${data.disk_total_gb} GB (${data.disk_percent}%)</td></tr>
+                        <tr><td>Containers</td><td>${data.containers_running} running / ${data.container_count} total</td></tr>
+                    </table>
+                </div>
+            </div>`;
+        
+        modal.show();
+        
+    } catch (error) {
+        showError('Error getting host status: ' + error.message);
+    }
+}
+
+function selectHostForConsole(hostId) {
+    document.getElementById('console-host').value = hostId;
+    document.getElementById('console-command').focus();
+}
+
+async function executeConsoleCommand() {
+    const hostId = document.getElementById('console-host').value;
+    const command = document.getElementById('console-command').value.trim();
+    
+    if (!hostId) {
+        showError('Please select a host first');
+        return;
+    }
+    
+    if (!command) {
+        showError('Please enter a command');
+        return;
+    }
+    
+    const host = fleetHosts.find(h => h.host_id === hostId);
+    appendToConsole(`\n<span class="prompt">${host?.name || hostId} $</span> ${escapeHtml(command)}`);
+    
+    try {
+        const response = await fetch(`/api/fleet/hosts/${hostId}/command`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ command, timeout: 60 })
+        });
+        const result = await response.json();
+        
+        if (result.success && result.data?.success) {
+            appendToConsole(escapeHtml(result.data.output || '(no output)'));
+        } else {
+            const errorMsg = result.data?.error || result.message || 'Command failed';
+            appendToConsole(`<span class="error">${escapeHtml(errorMsg)}</span>`);
+        }
+        
+        document.getElementById('console-command').value = '';
+        loadCommandHistory();
+        
+    } catch (error) {
+        appendToConsole(`<span class="error">Error: ${escapeHtml(error.message)}</span>`);
+    }
+}
+
+function appendToConsole(text) {
+    const output = document.getElementById('console-output');
+    output.innerHTML += '\n' + text;
+    output.scrollTop = output.scrollHeight;
+}
+
+function clearConsole() {
+    document.getElementById('console-output').innerHTML = `<span class="info">Console cleared.</span>\n<span class="prompt">$</span> _`;
+}
+
+async function viewContainers(hostId) {
+    try {
+        const response = await fetch(`/api/fleet/hosts/${hostId}/containers`, { credentials: 'include' });
+        const result = await response.json();
+        
+        if (!result.success) {
+            showError('Failed to get containers: ' + (result.message || 'Unknown error'));
+            return;
+        }
+        
+        const containers = result.data?.containers || [];
+        const modal = new bootstrap.Modal(document.getElementById('hostDetailModal'));
+        
+        if (containers.length === 0) {
+            document.getElementById('host-detail-content').innerHTML = `
+                <div class="text-center py-4">
+                    <i class="bi bi-box-seam display-4 text-secondary"></i>
+                    <p class="mt-3 text-secondary">No containers found on this host.</p>
+                </div>`;
+        } else {
+            let html = '<table class="table table-sm table-dark"><thead><tr><th>Name</th><th>Image</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+            for (const c of containers) {
+                const isRunning = c.state?.toLowerCase() === 'running';
+                const statusClass = isRunning ? 'success' : 'secondary';
+                
+                html += `<tr>
+                    <td><code>${c.name}</code></td>
+                    <td><small>${c.image}</small></td>
+                    <td><span class="badge bg-${statusClass}">${c.state || c.status}</span></td>
+                    <td>
+                        ${isRunning ? 
+                            `<button class="btn btn-warning btn-sm py-0 px-1" onclick="containerAction('${hostId}', '${c.name}', 'restart')"><i class="bi bi-arrow-clockwise"></i></button>` :
+                            `<button class="btn btn-success btn-sm py-0 px-1" onclick="containerAction('${hostId}', '${c.name}', 'start')"><i class="bi bi-play-fill"></i></button>`
+                        }
+                    </td>
+                </tr>`;
+            }
+            html += '</tbody></table>';
+            document.getElementById('host-detail-content').innerHTML = html;
+        }
+        
+        modal.show();
+        
+    } catch (error) {
+        showError('Error getting containers: ' + error.message);
+    }
+}
+
+async function containerAction(hostId, containerName, action) {
+    try {
+        const response = await fetch(`/api/fleet/hosts/${hostId}/containers/${containerName}/action`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action })
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess(`Container ${action} successful`);
+            viewContainers(hostId);
+        } else {
+            showError('Container action failed: ' + (result.message || 'Unknown error'));
+        }
+        
+    } catch (error) {
+        showError('Error: ' + error.message);
+    }
+}
+
+async function addNewHost(event) {
+    event.preventDefault();
+    
+    const hostData = {
+        host_id: document.getElementById('new-host-id').value,
+        name: document.getElementById('new-host-name').value,
+        tailscale_ip: document.getElementById('new-host-ip').value,
+        role: document.getElementById('new-host-type').value,
+        ssh_user: document.getElementById('new-host-user').value,
+        ssh_port: parseInt(document.getElementById('new-host-port').value),
+        description: document.getElementById('new-host-desc').value
+    };
+    
+    try {
+        const response = await fetch('/api/fleet/hosts', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(hostData)
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess('Host added successfully');
+            bootstrap.Modal.getInstance(document.getElementById('addHostModal')).hide();
+            document.getElementById('add-host-form').reset();
+            loadFleet();
+        } else {
+            showError('Failed to add host: ' + (result.message || 'Unknown error'));
+        }
+        
+    } catch (error) {
+        showError('Error adding host: ' + error.message);
+    }
+}
+
+async function loadCommandHistory() {
+    try {
+        const response = await fetch('/api/fleet/command-history?limit=20', { credentials: 'include' });
+        const result = await response.json();
+        
+        if (!result.success) return;
+        
+        const commands = result.data?.commands || [];
+        const log = document.getElementById('activity-log');
+        
+        if (commands.length === 0) {
+            log.innerHTML = `
+                <div class="empty-state">
+                    <i class="bi bi-terminal"></i>
+                    <p>No recent commands.</p>
+                </div>`;
+            return;
+        }
+        
+        let html = '';
+        for (const cmd of commands) {
+            const time = new Date(cmd.executed_at).toLocaleTimeString();
+            const exitIcon = cmd.exit_code === 0 ? 
+                '<i class="bi bi-check-circle-fill text-success"></i>' : 
+                '<i class="bi bi-x-circle-fill text-danger"></i>';
+            
+            html += `
+                <div class="activity-item">
+                    <span class="activity-time">${time}</span>
+                    <span class="activity-host">${cmd.host_id}</span>
+                    <span class="activity-command">${escapeHtml(cmd.command?.substring(0, 50))}${cmd.command?.length > 50 ? '...' : ''}</span>
+                    ${exitIcon}
+                </div>`;
+        }
+        
+        log.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Failed to load command history:', error);
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function showError(message) {
+    appendToConsole(`<span class="error">Error: ${escapeHtml(message)}</span>`);
+}
+
+function showSuccess(message) {
+    appendToConsole(`<span class="info">${escapeHtml(message)}</span>`);
+}
+</script>
+{% endblock %}

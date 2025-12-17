@@ -2,7 +2,7 @@
 Jarvis AI Models
 Models for anomaly detection, remediation tracking, model routing, and response caching
 """
-from sqlalchemy import Column, Integer, String, DateTime, Text, JSON, Boolean, Float, Index, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, DateTime, Text, JSON, Boolean, Float, Index, Enum as SQLEnum, ForeignKey
 from datetime import datetime
 import enum
 from models import Base
@@ -449,7 +449,236 @@ class RequestQueue(Base):
         }
 
 
+class IncidentStatus(enum.Enum):
+    """Status of an incident in the autonomous operations system"""
+    DETECTED = "detected"
+    ANALYZING = "analyzing"
+    REMEDIATING = "remediating"
+    RESOLVED = "resolved"
+    ESCALATED = "escalated"
+    FAILED = "failed"
+
+
+class IncidentSeverity(enum.Enum):
+    """Severity levels for incidents"""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class IncidentType(enum.Enum):
+    """Types of incidents that can be detected"""
+    CONTAINER_DOWN = "container_down"
+    CONTAINER_UNHEALTHY = "container_unhealthy"
+    CONTAINER_CRASH_LOOP = "container_crash_loop"
+    HIGH_CPU = "high_cpu"
+    HIGH_MEMORY = "high_memory"
+    DISK_FULL = "disk_full"
+    NAS_STALE = "nas_stale"
+    SERVICE_DEGRADED = "service_degraded"
+    NETWORK_ISSUE = "network_issue"
+    SSL_EXPIRING = "ssl_expiring"
+    SECURITY_ALERT = "security_alert"
+    CUSTOM = "custom"
+
+
+class Incident(Base):
+    """Incident tracking for autonomous operations"""
+    __tablename__ = 'incidents'
+    
+    id = Column(Integer, primary_key=True)
+    incident_id = Column(String(50), unique=True, nullable=False, index=True)
+    
+    type = Column(SQLEnum(IncidentType), nullable=False, index=True)
+    severity = Column(SQLEnum(IncidentSeverity), default=IncidentSeverity.MEDIUM, nullable=False, index=True)
+    status = Column(SQLEnum(IncidentStatus), default=IncidentStatus.DETECTED, nullable=False, index=True)
+    
+    host_id = Column(String(100), nullable=True, index=True)
+    service_name = Column(String(100), nullable=False, index=True)
+    container_name = Column(String(100), nullable=True)
+    
+    title = Column(String(500), nullable=False)
+    description = Column(Text, nullable=True)
+    
+    detected_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    acknowledged_at = Column(DateTime, nullable=True)
+    resolved_at = Column(DateTime, nullable=True)
+    
+    ai_analysis = Column(JSON, nullable=True)
+    ai_recommendations = Column(JSON, nullable=True)
+    
+    playbook_id = Column(String(100), nullable=True)
+    playbook_params = Column(JSON, nullable=True)
+    playbook_result = Column(JSON, nullable=True)
+    
+    auto_remediated = Column(Boolean, default=False)
+    remediation_attempts = Column(Integer, default=0)
+    
+    escalated_to = Column(String(100), nullable=True)
+    escalation_reason = Column(Text, nullable=True)
+    
+    resolution_notes = Column(Text, nullable=True)
+    
+    trigger_source = Column(String(50), nullable=True)
+    trigger_details = Column(JSON, nullable=True)
+    
+    related_incident_id = Column(Integer, ForeignKey('incidents.id'), nullable=True)
+    
+    created_by = Column(String(100), default='jarvis')
+    
+    metadata_json = Column(JSON, nullable=True)
+    
+    __table_args__ = (
+        Index('ix_incident_status_severity', 'status', 'severity'),
+        Index('ix_incident_service_status', 'service_name', 'status'),
+        Index('ix_incident_detected', 'detected_at'),
+        Index('ix_incident_host_status', 'host_id', 'status'),
+    )
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'incident_id': self.incident_id,
+            'type': self.type.value if self.type else None,
+            'severity': self.severity.value if self.severity else None,
+            'status': self.status.value if self.status else None,
+            'host_id': self.host_id,
+            'service_name': self.service_name,
+            'container_name': self.container_name,
+            'title': self.title,
+            'description': self.description,
+            'timing': {
+                'detected_at': self.detected_at.isoformat() if self.detected_at else None,
+                'acknowledged_at': self.acknowledged_at.isoformat() if self.acknowledged_at else None,
+                'resolved_at': self.resolved_at.isoformat() if self.resolved_at else None,
+                'duration_seconds': (self.resolved_at - self.detected_at).total_seconds() if self.resolved_at and self.detected_at else None
+            },
+            'ai_analysis': self.ai_analysis,
+            'ai_recommendations': self.ai_recommendations,
+            'playbook': {
+                'id': self.playbook_id,
+                'params': self.playbook_params,
+                'result': self.playbook_result
+            },
+            'remediation': {
+                'auto_remediated': self.auto_remediated,
+                'attempts': self.remediation_attempts
+            },
+            'escalation': {
+                'escalated_to': self.escalated_to,
+                'reason': self.escalation_reason
+            },
+            'resolution_notes': self.resolution_notes,
+            'trigger': {
+                'source': self.trigger_source,
+                'details': self.trigger_details
+            },
+            'related_incident_id': self.related_incident_id,
+            'created_by': self.created_by,
+            'metadata': self.metadata_json
+        }
+
+
+class AutoRemediationSettings(Base):
+    """Settings for auto-remediation per playbook or service"""
+    __tablename__ = 'auto_remediation_settings'
+    
+    id = Column(Integer, primary_key=True)
+    
+    playbook_id = Column(String(100), nullable=True, index=True)
+    service_name = Column(String(100), nullable=True, index=True)
+    
+    enabled = Column(Boolean, default=True, nullable=False)
+    max_auto_attempts = Column(Integer, default=3)
+    cooldown_minutes = Column(Integer, default=15)
+    
+    require_approval_severity = Column(SQLEnum(IncidentSeverity), default=IncidentSeverity.HIGH)
+    
+    notify_on_auto_remediation = Column(Boolean, default=True)
+    notify_channels = Column(JSON, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_by = Column(String(100), nullable=True)
+    
+    metadata_json = Column(JSON, nullable=True)
+    
+    __table_args__ = (
+        Index('ix_auto_remediation_playbook', 'playbook_id'),
+        Index('ix_auto_remediation_service', 'service_name'),
+    )
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'playbook_id': self.playbook_id,
+            'service_name': self.service_name,
+            'enabled': self.enabled,
+            'max_auto_attempts': self.max_auto_attempts,
+            'cooldown_minutes': self.cooldown_minutes,
+            'require_approval_severity': self.require_approval_severity.value if self.require_approval_severity else None,
+            'notify_on_auto_remediation': self.notify_on_auto_remediation,
+            'notify_channels': self.notify_channels,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'updated_by': self.updated_by
+        }
+
+
+class LearningRecord(Base):
+    """Records for ML/learning from past incidents"""
+    __tablename__ = 'learning_records'
+    
+    id = Column(Integer, primary_key=True)
+    
+    incident_type = Column(SQLEnum(IncidentType), nullable=False, index=True)
+    service_name = Column(String(100), nullable=True, index=True)
+    
+    symptoms = Column(JSON, nullable=False)
+    root_cause = Column(Text, nullable=True)
+    successful_playbook = Column(String(100), nullable=True)
+    
+    success_count = Column(Integer, default=0)
+    failure_count = Column(Integer, default=0)
+    
+    avg_resolution_time_seconds = Column(Float, nullable=True)
+    
+    last_occurrence = Column(DateTime, default=datetime.utcnow)
+    first_occurrence = Column(DateTime, default=datetime.utcnow)
+    
+    pattern_hash = Column(String(64), unique=True, nullable=False, index=True)
+    
+    ai_insights = Column(Text, nullable=True)
+    prevention_recommendations = Column(JSON, nullable=True)
+    
+    metadata_json = Column(JSON, nullable=True)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'incident_type': self.incident_type.value if self.incident_type else None,
+            'service_name': self.service_name,
+            'symptoms': self.symptoms,
+            'root_cause': self.root_cause,
+            'successful_playbook': self.successful_playbook,
+            'statistics': {
+                'success_count': self.success_count,
+                'failure_count': self.failure_count,
+                'success_rate': self.success_count / (self.success_count + self.failure_count) if (self.success_count + self.failure_count) > 0 else 0,
+                'avg_resolution_time_seconds': self.avg_resolution_time_seconds
+            },
+            'occurrence': {
+                'first': self.first_occurrence.isoformat() if self.first_occurrence else None,
+                'last': self.last_occurrence.isoformat() if self.last_occurrence else None
+            },
+            'ai_insights': self.ai_insights,
+            'prevention_recommendations': self.prevention_recommendations
+        }
+
+
 __all__ = [
     'AnomalyBaseline', 'AnomalyEvent', 'RemediationHistory', 'RemediationStatus',
-    'ModelUsage', 'ResponseCache', 'RequestQueue'
+    'ModelUsage', 'ResponseCache', 'RequestQueue',
+    'Incident', 'IncidentStatus', 'IncidentSeverity', 'IncidentType',
+    'AutoRemediationSettings', 'LearningRecord'
 ]

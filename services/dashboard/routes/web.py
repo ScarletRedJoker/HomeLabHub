@@ -99,6 +99,19 @@ def service_actions():
 def ai_assistant():
     return render_template('ai_assistant.html')
 
+@web_bp.route('/admin')
+@require_web_auth
+def admin_dashboard():
+    from services.organization_service import organization_service
+    org = None
+    if session.get('current_org_id'):
+        org = organization_service.get_organization(session.get('current_org_id'))
+    response = make_response(render_template('admin_dashboard.html', org=org))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
+
 @web_bp.route('/file-manager')
 @require_web_auth
 def file_manager():
@@ -120,6 +133,15 @@ def scripts():
 @require_web_auth
 def containers():
     return render_template('containers.html')
+
+@web_bp.route('/docker-management')
+@require_web_auth
+def docker_management():
+    response = make_response(render_template('docker_unified.html'))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 @web_bp.route('/system')
 @require_web_auth
@@ -236,6 +258,16 @@ def deployment_guide():
 def jarvis_builder():
     """Jarvis 2.0 Website Builder - Autonomous AI-powered website generation"""
     response = make_response(render_template('jarvis_website_builder.html'))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
+
+@web_bp.route('/jarvis-control-center')
+@require_web_auth
+def jarvis_control_center():
+    """Jarvis Autonomous Operations - AI-powered diagnostics and auto-remediation"""
+    response = make_response(render_template('jarvis_control_center.html'))
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'

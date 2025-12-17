@@ -1,13 +1,105 @@
 from functools import wraps
-from flask import request, jsonify, session, redirect, url_for
+from flask import request, jsonify, session, redirect, url_for, g
 import os
 import secrets
 import logging
+from typing import Optional, Dict
 
 logger = logging.getLogger(__name__)
 
 def generate_api_key():
     return secrets.token_urlsafe(32)
+
+
+def get_jwt_from_request() -> Optional[str]:
+    """Extract JWT token from request headers"""
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header.startswith('Bearer '):
+        return auth_header[7:]
+    return None
+
+
+def validate_jwt_token(token: str) -> Optional[Dict]:
+    """Validate JWT token and return payload"""
+    try:
+        from utils.jwt_utils import jwt_service
+        return jwt_service.validate_token(token)
+    except Exception as e:
+        logger.error(f"JWT validation error: {e}")
+        return None
+
+
+def validate_org_api_key(key: str) -> Optional[Dict]:
+    """Validate organization API key"""
+    try:
+        from services.organization_service import organization_service
+        return organization_service.validate_api_key(key)
+    except Exception as e:
+        logger.error(f"Org API key validation error: {e}")
+        return None
+
+
+def get_auth_context() -> Optional[Dict]:
+    """
+    Get authentication context from any supported method:
+    1. Session (web UI)
+    2. API key (X-API-Key header)
+    3. Organization API key (X-API-Key header with org prefix)
+    4. JWT token (Authorization: Bearer header)
+    
+    Returns dict with user_id, username, org_id, permissions, etc.
+    """
+    if session.get('authenticated'):
+        return {
+            'authenticated': True,
+            'auth_method': 'session',
+            'user_id': session.get('user_id'),
+            'username': session.get('username', os.environ.get('WEB_USERNAME', 'admin')),
+            'org_id': session.get('current_org_id'),
+            'role': session.get('role', 'admin')
+        }
+    
+    jwt_token = get_jwt_from_request()
+    if jwt_token:
+        payload = validate_jwt_token(jwt_token)
+        if payload:
+            return {
+                'authenticated': True,
+                'auth_method': 'jwt',
+                'user_id': int(payload.get('sub')),
+                'username': payload.get('username'),
+                'org_id': payload.get('org_id'),
+                'role': payload.get('role'),
+                'permissions': payload.get('permissions', [])
+            }
+    
+    api_key = request.headers.get('X-API-Key')
+    if api_key:
+        if api_key.startswith('hlh_'):
+            key_info = validate_org_api_key(api_key)
+            if key_info:
+                return {
+                    'authenticated': True,
+                    'auth_method': 'org_api_key',
+                    'user_id': key_info['api_key'].get('user_id'),
+                    'org_id': key_info['api_key'].get('org_id'),
+                    'api_key_id': key_info['api_key'].get('id'),
+                    'api_key_name': key_info['api_key'].get('name'),
+                    'permissions': key_info['api_key'].get('permissions', ['*']),
+                    'organization': key_info.get('organization')
+                }
+        else:
+            valid_api_key = os.environ.get('DASHBOARD_API_KEY')
+            if valid_api_key and api_key == valid_api_key:
+                return {
+                    'authenticated': True,
+                    'auth_method': 'global_api_key',
+                    'username': 'api_user',
+                    'role': 'admin'
+                }
+    
+    return None
+
 
 def make_api_response(success=True, data=None, message=None, status_code=200):
     """Standardized API response format"""
@@ -21,15 +113,10 @@ def make_api_response(success=True, data=None, message=None, status_code=200):
 def require_auth(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        session_authenticated = session.get('authenticated', False)
+        auth_context = get_auth_context()
         
-        if session_authenticated:
-            return f(*args, **kwargs)
-        
-        api_key = request.headers.get('X-API-Key')
-        valid_api_key = os.environ.get('DASHBOARD_API_KEY')
-        
-        if api_key and valid_api_key and api_key == valid_api_key:
+        if auth_context:
+            g.auth_context = auth_context
             return f(*args, **kwargs)
         
         # Authentication failed - log the attempt

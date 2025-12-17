@@ -7,6 +7,7 @@ from services.fleet_service import fleet_manager
 from utils.auth import require_auth, require_web_auth
 from utils.rbac import require_permission
 from models.rbac import Permission
+from datetime import datetime, timezone
 import logging
 import re
 
@@ -20,6 +21,13 @@ fleet_bp = Blueprint('fleet', __name__)
 def fleet_management_page():
     """Render Fleet Management page"""
     return render_template('fleet_management.html')
+
+
+@fleet_bp.route('/fleet-control-center')
+@require_web_auth
+def fleet_control_center():
+    """Render Fleet Control Center page - Real-time multi-host management"""
+    return render_template('fleet_control_center.html')
 
 ALLOWED_HOST_ID_PATTERN = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9_-]{0,49}$')
 ALLOWED_CONTAINER_PATTERN = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}$')
@@ -305,6 +313,105 @@ def add_host():
             
     except Exception as e:
         logger.error(f"Error adding host: {e}")
+        return make_response(False, message=str(e), status_code=500)
+
+
+@fleet_bp.route('/api/fleet/hosts/<host_id>', methods=['DELETE'])
+@require_auth
+@require_permission(Permission.MANAGE_DOCKER)
+def remove_host(host_id):
+    """
+    DELETE /api/fleet/hosts/<host_id>
+    Remove a host from the fleet
+    
+    Returns:
+        JSON object with removal status
+    """
+    try:
+        if not validate_host_id(host_id):
+            return make_response(False, message='Invalid host ID format', status_code=400)
+        
+        result = fleet_manager.remove_host(host_id)
+        
+        if result.get('success'):
+            return make_response(True, message=f'Host {host_id} removed successfully')
+        else:
+            return make_response(False, message=result.get('error'), status_code=400)
+            
+    except Exception as e:
+        logger.error(f"Error removing host {host_id}: {e}")
+        return make_response(False, message=str(e), status_code=500)
+
+
+@fleet_bp.route('/api/fleet/health-check', methods=['POST'])
+@require_auth
+@require_permission(Permission.VIEW_DOCKER)
+def run_health_check():
+    """
+    POST /api/fleet/health-check
+    Run health check on all or specified hosts
+    
+    Request body (optional):
+        {
+            "host_ids": ["host1", "host2"]  // optional, defaults to all hosts
+        }
+    
+    Returns:
+        JSON object with health check results for each host
+    """
+    try:
+        data = request.get_json() or {}
+        host_ids = data.get('host_ids')
+        
+        results = fleet_manager.run_health_check(host_ids)
+        
+        healthy_count = sum(1 for r in results if r.get('healthy'))
+        unhealthy_count = len(results) - healthy_count
+        
+        return make_response(True, {
+            'results': results,
+            'summary': {
+                'total': len(results),
+                'healthy': healthy_count,
+                'unhealthy': unhealthy_count,
+                'health_percentage': round((healthy_count / len(results) * 100), 1) if results else 0
+            },
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error running health check: {e}")
+        return make_response(False, message=str(e), status_code=500)
+
+
+@fleet_bp.route('/api/fleet/command-history', methods=['GET'])
+@require_auth
+@require_permission(Permission.VIEW_DOCKER)
+def get_command_history():
+    """
+    GET /api/fleet/command-history
+    Get recent command execution history
+    
+    Query params:
+        host_id - Filter by host (optional)
+        limit - Max results (default 50)
+    
+    Returns:
+        JSON array of command history entries
+    """
+    try:
+        host_id = request.args.get('host_id')
+        limit = min(int(request.args.get('limit', 50)), 200)
+        
+        history = fleet_manager.get_command_history(host_id, limit)
+        
+        return make_response(True, {
+            'commands': history,
+            'count': len(history)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting command history: {e}")
         return make_response(False, message=str(e), status_code=500)
 
 

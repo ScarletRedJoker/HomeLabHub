@@ -1,0 +1,897 @@
+{% extends "base.html" %}
+
+{% block title %}Jarvis Control Center - Nebula Command{% endblock %}
+{% block page_title %}Jarvis Autonomous Operations{% endblock %}
+
+{% block extra_css %}
+<style>
+.incident-card {
+    background: linear-gradient(135deg, rgba(30, 30, 50, 0.9) 0%, rgba(20, 20, 40, 0.9) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    transition: all 0.3s ease;
+}
+.incident-card:hover {
+    border-color: rgba(99, 102, 241, 0.5);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+.incident-card.severity-critical {
+    border-left: 4px solid #ef4444;
+}
+.incident-card.severity-high {
+    border-left: 4px solid #f97316;
+}
+.incident-card.severity-medium {
+    border-left: 4px solid #eab308;
+}
+.incident-card.severity-low {
+    border-left: 4px solid #22c55e;
+}
+.severity-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+.severity-badge.critical { background: #ef4444; color: white; }
+.severity-badge.high { background: #f97316; color: white; }
+.severity-badge.medium { background: #eab308; color: black; }
+.severity-badge.low { background: #22c55e; color: white; }
+
+.status-badge {
+    font-size: 0.7rem;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+.status-badge.detected { background: rgba(59, 130, 246, 0.3); color: #60a5fa; border: 1px solid #60a5fa; }
+.status-badge.analyzing { background: rgba(168, 85, 247, 0.3); color: #c084fc; border: 1px solid #c084fc; }
+.status-badge.remediating { background: rgba(245, 158, 11, 0.3); color: #fbbf24; border: 1px solid #fbbf24; }
+.status-badge.resolved { background: rgba(34, 197, 94, 0.3); color: #4ade80; border: 1px solid #4ade80; }
+.status-badge.escalated { background: rgba(239, 68, 68, 0.3); color: #f87171; border: 1px solid #f87171; }
+.status-badge.failed { background: rgba(239, 68, 68, 0.5); color: #fca5a5; border: 1px solid #ef4444; }
+
+.action-btn {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.05);
+    color: #d1d5db;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.action-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: white;
+}
+.action-btn.btn-analyze { border-color: #a855f7; color: #a855f7; }
+.action-btn.btn-analyze:hover { background: rgba(168, 85, 247, 0.2); }
+.action-btn.btn-remediate { border-color: #10b981; color: #10b981; }
+.action-btn.btn-remediate:hover { background: rgba(16, 185, 129, 0.2); }
+.action-btn.btn-escalate { border-color: #f59e0b; color: #f59e0b; }
+.action-btn.btn-escalate:hover { background: rgba(245, 158, 11, 0.2); }
+.action-btn.btn-resolve { border-color: #22c55e; color: #22c55e; }
+.action-btn.btn-resolve:hover { background: rgba(34, 197, 94, 0.2); }
+
+.playbook-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 12px;
+    transition: all 0.2s ease;
+}
+.playbook-card:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(99, 102, 241, 0.3);
+}
+.playbook-card.risk-low { border-left: 3px solid #22c55e; }
+.playbook-card.risk-medium { border-left: 3px solid #eab308; }
+.playbook-card.risk-high { border-left: 3px solid #ef4444; }
+
+.stat-card {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+.stat-card:hover {
+    border-color: rgba(99, 102, 241, 0.6);
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.2);
+}
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #e0e0ff;
+}
+.stat-label {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.analysis-panel {
+    background: rgba(168, 85, 247, 0.1);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 15px;
+}
+.analysis-panel h6 {
+    color: #c084fc;
+    margin-bottom: 15px;
+}
+
+.cosmic-modal .modal-content {
+    background: linear-gradient(135deg, rgba(30, 30, 50, 0.98) 0%, rgba(15, 15, 35, 0.98) 100%);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
+}
+.cosmic-modal .modal-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.cosmic-modal .modal-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+.cosmic-modal .btn-close {
+    filter: invert(1);
+}
+
+.auto-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    margin-bottom: 8px;
+}
+.auto-toggle .form-check-input:checked {
+    background-color: #10b981;
+    border-color: #10b981;
+}
+
+.learning-stat {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.learning-stat:last-child {
+    border-bottom: none;
+}
+
+.log-output {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.75rem;
+    background: #0a0e1a;
+    color: #d1d5db;
+    padding: 15px;
+    border-radius: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #9ca3af;
+}
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 15px;
+    opacity: 0.5;
+}
+
+.loading-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.tab-content-section {
+    min-height: 400px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value" id="stat-active-incidents">-</div>
+            <div class="stat-label">Active Incidents</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value" id="stat-auto-resolved">-</div>
+            <div class="stat-label">Auto-Resolved</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value" id="stat-success-rate">-</div>
+            <div class="stat-label">Success Rate</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value" id="stat-playbooks">-</div>
+            <div class="stat-label">Active Playbooks</div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card cosmic cosmic-fade-in">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#incidents-tab" type="button">
+                            <i class="bi bi-exclamation-triangle"></i> Incidents
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#playbooks-tab" type="button">
+                            <i class="bi bi-book"></i> Playbooks
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#settings-tab" type="button">
+                            <i class="bi bi-gear"></i> Auto-Remediation
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#learning-tab" type="button">
+                            <i class="bi bi-graph-up"></i> Learning
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content tab-content-section">
+                    <div class="tab-pane fade show active" id="incidents-tab">
+                        <div class="row mb-3">
+                            <div class="col">
+                                <div class="d-flex gap-2 flex-wrap">
+                                    <button class="btn btn-primary" onclick="detectIncidents()">
+                                        <i class="bi bi-search"></i> Detect Issues
+                                    </button>
+                                    <button class="btn btn-outline-secondary" onclick="loadIncidents()">
+                                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                                    </button>
+                                    <div class="vr mx-2"></div>
+                                    <select class="form-select form-select-sm" style="width: auto;" id="filter-status" onchange="loadIncidents()">
+                                        <option value="">All Status</option>
+                                        <option value="detected">Detected</option>
+                                        <option value="analyzing">Analyzing</option>
+                                        <option value="remediating">Remediating</option>
+                                        <option value="escalated">Escalated</option>
+                                        <option value="resolved">Resolved</option>
+                                    </select>
+                                    <select class="form-select form-select-sm" style="width: auto;" id="filter-severity" onchange="loadIncidents()">
+                                        <option value="">All Severity</option>
+                                        <option value="critical">Critical</option>
+                                        <option value="high">High</option>
+                                        <option value="medium">Medium</option>
+                                        <option value="low">Low</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="incidents-container">
+                            <div class="empty-state">
+                                <i class="bi bi-shield-check"></i>
+                                <p>No active incidents detected</p>
+                                <small>Click "Detect Issues" to scan for problems</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-pane fade" id="playbooks-tab">
+                        <div class="row mb-3">
+                            <div class="col">
+                                <p class="text-secondary mb-0">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    Playbooks are predefined remediation procedures that can be executed automatically or manually.
+                                </p>
+                            </div>
+                        </div>
+                        <div id="playbooks-container" class="row">
+                            <div class="col-12 text-center py-4">
+                                <div class="spinner-border text-primary" role="status"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-pane fade" id="settings-tab">
+                        <div class="row">
+                            <div class="col-lg-6">
+                                <h6 class="mb-3"><i class="bi bi-toggle-on me-2"></i>Auto-Remediation Settings</h6>
+                                <div id="auto-remediation-settings">
+                                    <p class="text-secondary">Loading settings...</p>
+                                </div>
+                            </div>
+                            <div class="col-lg-6">
+                                <h6 class="mb-3"><i class="bi bi-info-circle me-2"></i>How It Works</h6>
+                                <div class="alert alert-secondary">
+                                    <p class="mb-2"><strong>Automatic Detection:</strong> Jarvis continuously monitors services for issues.</p>
+                                    <p class="mb-2"><strong>AI Analysis:</strong> When an issue is detected, AI analyzes the root cause.</p>
+                                    <p class="mb-2"><strong>Safe Execution:</strong> Only low-risk playbooks with auto_execute=true run automatically.</p>
+                                    <p class="mb-0"><strong>Escalation:</strong> High-risk issues are escalated to human operators.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-pane fade" id="learning-tab">
+                        <div class="row">
+                            <div class="col-lg-6">
+                                <h6 class="mb-3"><i class="bi bi-graph-up me-2"></i>Performance Statistics</h6>
+                                <div id="learning-stats">
+                                    <p class="text-secondary">Loading statistics...</p>
+                                </div>
+                            </div>
+                            <div class="col-lg-6">
+                                <h6 class="mb-3"><i class="bi bi-lightbulb me-2"></i>Common Issues</h6>
+                                <div id="common-issues">
+                                    <p class="text-secondary">Loading common issues...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade cosmic-modal" id="incidentModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Incident Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="incident-modal-body">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade cosmic-modal" id="analysisModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-robot me-2"></i>AI Analysis</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="analysis-modal-body">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-3 text-secondary">Jarvis is analyzing the incident...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-success" id="btn-execute-recommended" style="display:none;">
+                    <i class="bi bi-play-circle"></i> Execute Recommended Playbook
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const API_BASE = '/api/jarvis/control';
+let currentIncidentId = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadIncidents();
+    loadPlaybooks();
+    loadStats();
+    loadAutoRemediationSettings();
+    loadLearningStats();
+});
+
+async function apiCall(endpoint, method = 'GET', body = null) {
+    const options = {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+    };
+    if (body) options.body = JSON.stringify(body);
+    
+    const response = await fetch(`${API_BASE}${endpoint}`, options);
+    return response.json();
+}
+
+async function loadIncidents() {
+    const status = document.getElementById('filter-status').value;
+    const severity = document.getElementById('filter-severity').value;
+    const includeResolved = status === 'resolved';
+    
+    let url = '/incidents?limit=50';
+    if (status) url += `&status=${status}`;
+    if (severity) url += `&severity=${severity}`;
+    if (includeResolved) url += '&include_resolved=true';
+    
+    try {
+        const data = await apiCall(url);
+        renderIncidents(data.incidents || []);
+        updateStats(data.summary || {});
+    } catch (e) {
+        console.error('Failed to load incidents:', e);
+    }
+}
+
+function renderIncidents(incidents) {
+    const container = document.getElementById('incidents-container');
+    
+    if (!incidents.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="bi bi-shield-check"></i>
+                <p>No incidents found</p>
+                <small>All systems are operating normally</small>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = incidents.map(inc => `
+        <div class="incident-card severity-${inc.severity}">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <div>
+                    <span class="severity-badge ${inc.severity}">${inc.severity}</span>
+                    <span class="status-badge ${inc.status} ms-2">${inc.status}</span>
+                </div>
+                <small class="text-secondary">${formatTime(inc.timing?.detected_at)}</small>
+            </div>
+            <h6 class="mb-1">${inc.title || 'Untitled Incident'}</h6>
+            <p class="text-secondary small mb-2">
+                <i class="bi bi-server me-1"></i>${inc.service_name}
+                ${inc.container_name ? `<span class="ms-2"><i class="bi bi-box me-1"></i>${inc.container_name}</span>` : ''}
+            </p>
+            <div class="d-flex gap-2 flex-wrap">
+                ${inc.status !== 'resolved' ? `
+                    <button class="action-btn btn-analyze" onclick="analyzeIncident('${inc.incident_id}')">
+                        <i class="bi bi-robot"></i> Analyze
+                    </button>
+                    ${inc.playbook?.id ? `
+                        <button class="action-btn btn-remediate" onclick="remediateIncident('${inc.incident_id}')">
+                            <i class="bi bi-play-circle"></i> Remediate
+                        </button>
+                    ` : ''}
+                    <button class="action-btn btn-escalate" onclick="escalateIncident('${inc.incident_id}')">
+                        <i class="bi bi-arrow-up-circle"></i> Escalate
+                    </button>
+                    <button class="action-btn btn-resolve" onclick="resolveIncident('${inc.incident_id}')">
+                        <i class="bi bi-check-circle"></i> Resolve
+                    </button>
+                ` : ''}
+                <button class="action-btn" onclick="viewIncidentDetails('${inc.incident_id}')">
+                    <i class="bi bi-info-circle"></i> Details
+                </button>
+            </div>
+            ${inc.ai_analysis ? `
+                <div class="analysis-panel mt-3">
+                    <h6><i class="bi bi-robot me-1"></i> AI Analysis</h6>
+                    <p class="mb-1"><strong>Root Cause:</strong> ${inc.ai_analysis.root_cause || 'Pending analysis'}</p>
+                    ${inc.ai_analysis.recommended_playbook ? `
+                        <p class="mb-0"><strong>Recommended:</strong> ${inc.ai_analysis.recommended_playbook}</p>
+                    ` : ''}
+                </div>
+            ` : ''}
+        </div>
+    `).join('');
+}
+
+async function detectIncidents() {
+    try {
+        const btn = event.target;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading-spinner"></span> Detecting...';
+        
+        const data = await apiCall('/incidents/detect', 'POST');
+        
+        if (data.success) {
+            showToast(`Detected ${data.incidents_created} new incident(s)`, 'success');
+            loadIncidents();
+        } else {
+            showToast(data.error || 'Failed to detect incidents', 'danger');
+        }
+    } catch (e) {
+        showToast('Error detecting incidents', 'danger');
+    } finally {
+        const btn = event.target;
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-search"></i> Detect Issues';
+    }
+}
+
+async function analyzeIncident(incidentId) {
+    currentIncidentId = incidentId;
+    const modal = new bootstrap.Modal(document.getElementById('analysisModal'));
+    modal.show();
+    
+    document.getElementById('analysis-modal-body').innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-3 text-secondary">Jarvis is analyzing the incident...</p>
+        </div>
+    `;
+    document.getElementById('btn-execute-recommended').style.display = 'none';
+    
+    try {
+        const data = await apiCall(`/incidents/${incidentId}/analyze`, 'POST');
+        
+        if (data.success) {
+            const analysis = data.analysis;
+            document.getElementById('analysis-modal-body').innerHTML = `
+                <div class="mb-3">
+                    <h6 class="text-primary">Root Cause</h6>
+                    <p>${analysis.root_cause || 'Unable to determine'}</p>
+                </div>
+                <div class="mb-3">
+                    <h6 class="text-primary">Severity Assessment</h6>
+                    <span class="severity-badge ${analysis.severity_assessment}">${analysis.severity_assessment}</span>
+                    <span class="ms-2">Risk: <strong>${analysis.risk_assessment || 'unknown'}</strong></span>
+                </div>
+                <div class="mb-3">
+                    <h6 class="text-primary">Recommended Action</h6>
+                    <p>
+                        ${analysis.recommended_playbook !== 'manual' 
+                            ? `<strong>Playbook:</strong> ${analysis.recommended_playbook}` 
+                            : '<em>Manual intervention recommended</em>'}
+                    </p>
+                    ${analysis.reasoning ? `<p class="text-secondary small">${analysis.reasoning}</p>` : ''}
+                </div>
+                ${analysis.alternative_actions?.length ? `
+                    <div class="mb-3">
+                        <h6 class="text-primary">Alternative Actions</h6>
+                        <ul class="mb-0">
+                            ${analysis.alternative_actions.map(a => `<li>${a}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+                <div class="mb-0">
+                    <h6 class="text-primary">Prevention Tips</h6>
+                    <ul class="mb-0">
+                        ${(analysis.prevention_tips || ['Monitor service health regularly']).map(t => `<li>${t}</li>`).join('')}
+                    </ul>
+                </div>
+                <div class="mt-3">
+                    <span class="text-secondary small">Confidence: ${Math.round((analysis.confidence || 0) * 100)}%</span>
+                    <span class="text-secondary small ms-3">Auto-safe: ${analysis.is_auto_safe ? 'Yes' : 'No'}</span>
+                </div>
+            `;
+            
+            if (analysis.recommended_playbook && analysis.recommended_playbook !== 'manual') {
+                const btn = document.getElementById('btn-execute-recommended');
+                btn.style.display = 'inline-block';
+                btn.onclick = () => remediateIncident(incidentId, analysis.recommended_playbook);
+            }
+            
+            loadIncidents();
+        } else {
+            document.getElementById('analysis-modal-body').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    ${data.error || 'Analysis failed'}
+                </div>
+            `;
+        }
+    } catch (e) {
+        document.getElementById('analysis-modal-body').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                Failed to analyze incident: ${e.message}
+            </div>
+        `;
+    }
+}
+
+async function remediateIncident(incidentId, playbookId = null) {
+    if (!confirm('Are you sure you want to execute remediation for this incident?')) return;
+    
+    try {
+        const data = await apiCall(`/incidents/${incidentId}/remediate`, 'POST', {
+            playbook_id: playbookId,
+            params: { confirmed: true }
+        });
+        
+        if (data.success) {
+            showToast('Remediation executed successfully', 'success');
+            loadIncidents();
+        } else if (data.requires_confirmation) {
+            showToast('This playbook requires additional confirmation', 'warning');
+        } else {
+            showToast(data.error || 'Remediation failed', 'danger');
+        }
+    } catch (e) {
+        showToast('Error executing remediation', 'danger');
+    }
+}
+
+async function escalateIncident(incidentId) {
+    const reason = prompt('Enter reason for escalation:');
+    if (!reason) return;
+    
+    try {
+        const data = await apiCall(`/incidents/${incidentId}/escalate`, 'POST', { reason });
+        
+        if (data.success) {
+            showToast('Incident escalated to human operator', 'warning');
+            loadIncidents();
+        } else {
+            showToast(data.error || 'Escalation failed', 'danger');
+        }
+    } catch (e) {
+        showToast('Error escalating incident', 'danger');
+    }
+}
+
+async function resolveIncident(incidentId) {
+    const notes = prompt('Enter resolution notes (optional):') || '';
+    
+    try {
+        const data = await apiCall(`/incidents/${incidentId}/status`, 'PATCH', {
+            status: 'resolved',
+            notes
+        });
+        
+        if (data.success) {
+            showToast('Incident marked as resolved', 'success');
+            loadIncidents();
+        } else {
+            showToast(data.error || 'Failed to resolve', 'danger');
+        }
+    } catch (e) {
+        showToast('Error resolving incident', 'danger');
+    }
+}
+
+async function viewIncidentDetails(incidentId) {
+    try {
+        const data = await apiCall(`/incidents/${incidentId}`);
+        
+        if (data.success) {
+            const inc = data.incident;
+            document.getElementById('incident-modal-body').innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Incident ID:</strong> ${inc.incident_id}</p>
+                        <p><strong>Type:</strong> ${inc.type}</p>
+                        <p><strong>Severity:</strong> <span class="severity-badge ${inc.severity}">${inc.severity}</span></p>
+                        <p><strong>Status:</strong> <span class="status-badge ${inc.status}">${inc.status}</span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Service:</strong> ${inc.service_name}</p>
+                        <p><strong>Container:</strong> ${inc.container_name || 'N/A'}</p>
+                        <p><strong>Host:</strong> ${inc.host_id || 'Local'}</p>
+                        <p><strong>Detected:</strong> ${formatTime(inc.timing?.detected_at)}</p>
+                    </div>
+                </div>
+                <hr>
+                <h6>Title</h6>
+                <p>${inc.title}</p>
+                ${inc.description ? `<h6>Description</h6><p>${inc.description}</p>` : ''}
+                ${inc.ai_analysis ? `
+                    <h6>AI Analysis</h6>
+                    <pre class="log-output">${JSON.stringify(inc.ai_analysis, null, 2)}</pre>
+                ` : ''}
+                ${inc.playbook?.result ? `
+                    <h6>Playbook Result</h6>
+                    <pre class="log-output">${JSON.stringify(inc.playbook.result, null, 2)}</pre>
+                ` : ''}
+                ${inc.resolution_notes ? `<h6>Resolution Notes</h6><p>${inc.resolution_notes}</p>` : ''}
+            `;
+            
+            new bootstrap.Modal(document.getElementById('incidentModal')).show();
+        }
+    } catch (e) {
+        showToast('Error loading incident details', 'danger');
+    }
+}
+
+async function loadPlaybooks() {
+    try {
+        const data = await apiCall('/playbooks');
+        
+        if (data.success) {
+            const container = document.getElementById('playbooks-container');
+            container.innerHTML = data.playbooks.map(pb => `
+                <div class="col-md-6 col-lg-4">
+                    <div class="playbook-card risk-${pb.risk_level}">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="mb-0">${pb.name}</h6>
+                            ${pb.auto_execute ? '<span class="badge bg-success">Auto</span>' : '<span class="badge bg-secondary">Manual</span>'}
+                        </div>
+                        <p class="text-secondary small mb-2">${pb.description}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-secondary">
+                                <i class="bi bi-speedometer2 me-1"></i>~${pb.estimated_duration_seconds}s
+                            </small>
+                            <span class="badge ${pb.risk_level === 'low' ? 'bg-success' : pb.risk_level === 'medium' ? 'bg-warning text-dark' : 'bg-danger'}">
+                                ${pb.risk_level} risk
+                            </span>
+                        </div>
+                        ${pb.applicable_issues?.length ? `
+                            <div class="mt-2">
+                                <small class="text-secondary">Applies to: ${pb.applicable_issues.join(', ')}</small>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+            
+            document.getElementById('stat-playbooks').textContent = data.playbooks.length;
+        }
+    } catch (e) {
+        console.error('Failed to load playbooks:', e);
+    }
+}
+
+async function loadAutoRemediationSettings() {
+    try {
+        const data = await apiCall('/auto-remediation/settings');
+        const container = document.getElementById('auto-remediation-settings');
+        
+        const playbooks = await apiCall('/playbooks');
+        
+        if (playbooks.success) {
+            container.innerHTML = playbooks.playbooks.map(pb => `
+                <div class="auto-toggle">
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="auto-${pb.id}" 
+                            ${pb.auto_execute ? 'checked' : ''} 
+                            onchange="toggleAutoRemediation('${pb.id}', this.checked)">
+                        <label class="form-check-label" for="auto-${pb.id}">${pb.name}</label>
+                    </div>
+                    <span class="ms-auto badge ${pb.risk_level === 'low' ? 'bg-success' : pb.risk_level === 'medium' ? 'bg-warning text-dark' : 'bg-danger'}">
+                        ${pb.risk_level}
+                    </span>
+                </div>
+            `).join('');
+        }
+    } catch (e) {
+        console.error('Failed to load settings:', e);
+    }
+}
+
+async function toggleAutoRemediation(playbookId, enabled) {
+    try {
+        await apiCall('/auto-remediation/settings', 'POST', {
+            playbook_id: playbookId,
+            enabled
+        });
+        showToast(`Auto-remediation ${enabled ? 'enabled' : 'disabled'} for ${playbookId}`, 'info');
+    } catch (e) {
+        showToast('Failed to update setting', 'danger');
+    }
+}
+
+async function loadLearningStats() {
+    try {
+        const data = await apiCall('/learning/stats');
+        
+        if (data.success) {
+            const stats = data.statistics;
+            
+            document.getElementById('learning-stats').innerHTML = `
+                <div class="learning-stat">
+                    <span>Total Patterns Learned</span>
+                    <strong>${stats.total_patterns || 0}</strong>
+                </div>
+                <div class="learning-stat">
+                    <span>Total Resolutions</span>
+                    <strong>${stats.total_resolutions || 0}</strong>
+                </div>
+                <div class="learning-stat">
+                    <span>Success Rate</span>
+                    <strong class="${stats.success_rate >= 0.8 ? 'text-success' : stats.success_rate >= 0.5 ? 'text-warning' : 'text-danger'}">
+                        ${Math.round((stats.success_rate || 0) * 100)}%
+                    </strong>
+                </div>
+                <div class="learning-stat">
+                    <span>Auto-Resolution Rate</span>
+                    <strong>${Math.round((stats.auto_resolution_rate || 0) * 100)}%</strong>
+                </div>
+            `;
+            
+            document.getElementById('stat-success-rate').textContent = `${Math.round((stats.success_rate || 0) * 100)}%`;
+            document.getElementById('stat-auto-resolved').textContent = stats.auto_resolved || 0;
+            
+            if (data.common_issues?.length) {
+                document.getElementById('common-issues').innerHTML = data.common_issues.map(issue => `
+                    <div class="d-flex justify-content-between py-2 border-bottom border-secondary">
+                        <span>${issue.type}</span>
+                        <span class="text-secondary">${issue.service || 'Various services'}</span>
+                    </div>
+                `).join('');
+            } else {
+                document.getElementById('common-issues').innerHTML = '<p class="text-secondary">No data yet</p>';
+            }
+        }
+    } catch (e) {
+        console.error('Failed to load learning stats:', e);
+    }
+}
+
+function updateStats(summary) {
+    const active = (summary.total || 0) - (summary.by_status?.resolved || 0);
+    document.getElementById('stat-active-incidents').textContent = active;
+}
+
+async function loadStats() {
+    try {
+        const data = await apiCall('/incidents?limit=100&include_resolved=true');
+        if (data.summary) {
+            updateStats(data.summary);
+        }
+    } catch (e) {
+        console.error('Failed to load stats:', e);
+    }
+}
+
+function formatTime(isoString) {
+    if (!isoString) return 'N/A';
+    const date = new Date(isoString);
+    return date.toLocaleString();
+}
+
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container') || createToastContainer();
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white bg-${type} border-0`;
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">${message}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    container.appendChild(toast);
+    new bootstrap.Toast(toast, { delay: 4000 }).show();
+    toast.addEventListener('hidden.bs.toast', () => toast.remove());
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.id = 'toast-container';
+    container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+    container.style.zIndex = 1100;
+    document.body.appendChild(container);
+    return container;
+}
+</script>
+{% endblock %}

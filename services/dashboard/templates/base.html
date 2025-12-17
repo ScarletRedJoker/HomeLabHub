@@ -451,6 +451,13 @@
                         <span>System Overview</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="/notifications" class="nav-link cosmic {% if request.path == '/notifications' %}active{% endif %}">
+                        <i class="bi bi-bell"></i>
+                        <span>Notifications</span>
+                        <span class="badge badge-primary notification-badge" id="sidebarNotificationBadge" style="display: none;">0</span>
+                    </a>
+                </li>
             </ul>
         </div>
         
@@ -492,10 +499,16 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="/containers" class="nav-link cosmic {% if request.path == '/containers' %}active{% endif %}">
+                    <a href="/docker-management" class="nav-link cosmic {% if request.path == '/docker-management' %}active{% endif %}">
                         <i class="bi bi-box-seam"></i>
-                        <span>Docker Containers</span>
+                        <span>Docker Management</span>
                         <span class="sidebar-status-dot" data-service="docker"></span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/containers" class="nav-link cosmic {% if request.path == '/containers' %}active{% endif %}">
+                        <i class="bi bi-boxes"></i>
+                        <span>Local Containers</span>
                     </a>
                 </li>
                 <li class="nav-item">

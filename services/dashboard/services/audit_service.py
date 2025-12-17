@@ -61,6 +61,7 @@ class AuditService:
         action: str,
         user_id: Optional[str] = None,
         username: Optional[str] = None,
+        org_id: Optional[str] = None,
         target_type: Optional[str] = None,
         target_id: Optional[str] = None,
         target_name: Optional[str] = None,
@@ -94,7 +95,7 @@ class AuditService:
             ID of the created audit log entry, or None if logging failed
         """
         if not self.db_available:
-            logger.warning(f"Audit log (no DB): {action} by {username} on {target_type}:{target_id}")
+            logger.warning(f"Audit log (no DB): {action} by {username} on {target_type}:{target_id} (org:{org_id})")
             return None
         
         try:
@@ -137,8 +138,17 @@ class AuditService:
             else:
                 sanitized_data = None
             
+            resolved_org_id = org_id
+            if not resolved_org_id:
+                try:
+                    from flask import session as flask_session
+                    resolved_org_id = flask_session.get('current_org_id')
+                except RuntimeError:
+                    pass
+            
             with db_service.get_session() as session:
                 audit_log = AuditLog(
+                    org_id=resolved_org_id,
                     user_id=user_id,
                     username=username,
                     action=action,

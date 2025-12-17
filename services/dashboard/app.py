@@ -51,6 +51,8 @@ from routes.deployment_wizard_routes import deployment_wizard_bp
 from routes.database_console_routes import database_console_bp
 from routes.storage_dashboard_routes import storage_dashboard_bp
 from routes.kvm_routes import kvm_bp
+from routes.notification_routes import notification_bp
+from routes.organization_routes import org_bp
 # DISABLED: Subscription/licensing features removed per user request - "Remove subscriptions and don't block access. I never wanted that."
 # from routes.subscription_api import subscription_bp
 from services.activity_service import activity_service
@@ -111,6 +113,8 @@ csrf.exempt(jarvis_infrastructure_bp)  # Jarvis Infrastructure API (IaC, deploym
 csrf.exempt(ops_center_bp)  # Ops Center API (remote env management, deployment)
 csrf.exempt(remediation_bp)  # Remediation API (AI-powered service remediation)
 csrf.exempt(kvm_bp)  # KVM Gaming API (Windows VM control)
+csrf.exempt(notification_bp)  # Notification Center API
+csrf.exempt(org_bp)  # Organization API (multi-tenant management)
 
 limiter.init_app(app)
 logger.info("✓ CSRF Protection and Rate Limiting initialized")
@@ -171,7 +175,7 @@ CORS(app, resources={r"/api/*": {
         "http://127.0.0.1:5000"
     ],
     "supports_credentials": True,
-    "allow_headers": ["Content-Type", "X-API-Key"]
+    "allow_headers": ["Content-Type", "X-API-Key", "Authorization"]
 }})
 
 app.register_blueprint(api_bp)
@@ -218,6 +222,8 @@ app.register_blueprint(deployment_wizard_bp)
 app.register_blueprint(database_console_bp)
 app.register_blueprint(storage_dashboard_bp)
 app.register_blueprint(kvm_bp)
+app.register_blueprint(notification_bp)
+app.register_blueprint(org_bp)
 # DISABLED: Subscription blueprint disabled - no subscription/licensing checks
 # app.register_blueprint(subscription_bp)
 

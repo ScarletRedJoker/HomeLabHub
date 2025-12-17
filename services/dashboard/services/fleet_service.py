@@ -22,6 +22,7 @@ class FleetManager:
             'name': 'Linode Cloud Server',
             'tailscale_ip': os.environ.get('TAILSCALE_LINODE_HOST', ''),
             'role': 'cloud',
+            'host_type': 'cloud',
             'ssh_user': os.environ.get('FLEET_LINODE_SSH_USER', 'root'),
             'ssh_port': 22,
             'description': 'Cloud server for Discord Bot, Stream Bot, and Dashboard',
@@ -30,10 +31,24 @@ class FleetManager:
             'host_id': 'local',
             'name': 'Local Ubuntu Host',
             'tailscale_ip': os.environ.get('TAILSCALE_LOCAL_HOST', ''),
+            'ip_address': '192.168.0.177',
             'role': 'local',
+            'host_type': 'server',
             'ssh_user': os.environ.get('FLEET_LOCAL_SSH_USER', 'evin'),
             'ssh_port': 22,
             'description': 'Local gaming/media server with Plex, Home Assistant, MinIO, Sunshine GameStream',
+        },
+        'kvm-windows': {
+            'host_id': 'kvm-windows',
+            'name': 'Windows KVM Gaming',
+            'tailscale_ip': os.environ.get('TAILSCALE_KVM_HOST', ''),
+            'ip_address': '192.168.122.250',
+            'role': 'kvm',
+            'host_type': 'vm',
+            'ssh_user': os.environ.get('FLEET_KVM_SSH_USER', 'Administrator'),
+            'ssh_port': 22,
+            'description': 'Windows KVM VM for gaming via libvirt on local host',
+            'is_windows': True,
         },
     }
     
@@ -497,6 +512,148 @@ class FleetManager:
         except Exception as e:
             logger.error(f"Failed to add host: {e}")
             return {'success': False, 'error': str(e)}
+    
+    def remove_host(self, host_id: str) -> Dict:
+        """Remove a host from the fleet (database hosts only, not default hosts)"""
+        if host_id in self.DEFAULT_HOSTS:
+            return {'success': False, 'error': f'Cannot remove default host {host_id}. Remove from DEFAULT_HOSTS instead.'}
+        
+        try:
+            from services.db_service import db_service
+            from models.fleet import FleetHost
+            from sqlalchemy import select
+            
+            if not db_service.is_available:
+                return {'success': False, 'error': 'Database not available'}
+            
+            with db_service.get_session() as session:
+                host = session.execute(
+                    select(FleetHost).where(FleetHost.host_id == host_id)
+                ).scalar_one_or_none()
+                
+                if not host:
+                    return {'success': False, 'error': f'Host {host_id} not found'}
+                
+                session.delete(host)
+                session.commit()
+                
+                return {'success': True}
+                
+        except Exception as e:
+            logger.error(f"Failed to remove host {host_id}: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def run_health_check(self, host_ids: Optional[List[str]] = None) -> List[Dict]:
+        """Run health check on all or specified hosts"""
+        results = []
+        hosts = self.list_hosts()
+        
+        for host in hosts:
+            if host_ids and host['host_id'] not in host_ids:
+                continue
+            
+            host_id = host['host_id']
+            result = {
+                'host_id': host_id,
+                'name': host.get('name', host_id),
+                'role': host.get('role', 'unknown'),
+                'host_type': host.get('host_type', 'server'),
+                'healthy': False,
+                'checks': {},
+                'alerts': [],
+                'timestamp': datetime.now(timezone.utc).isoformat(),
+            }
+            
+            if not host.get('online'):
+                result['checks']['connectivity'] = {'status': 'fail', 'message': 'Host offline'}
+                result['alerts'].append({'level': 'critical', 'message': 'Host is offline'})
+                results.append(result)
+                continue
+            
+            result['checks']['connectivity'] = {'status': 'pass', 'message': 'Host reachable'}
+            
+            status = self.get_host_status(host_id)
+            if not status:
+                result['checks']['metrics'] = {'status': 'fail', 'message': 'Failed to get metrics'}
+                result['alerts'].append({'level': 'warning', 'message': 'Cannot retrieve system metrics'})
+                results.append(result)
+                continue
+            
+            cpu_pct = status.get('cpu_percent', 0)
+            mem_pct = status.get('memory_percent', 0)
+            disk_pct = status.get('disk_percent', 0)
+            
+            result['metrics'] = {
+                'cpu_percent': cpu_pct,
+                'memory_percent': mem_pct,
+                'disk_percent': disk_pct,
+                'memory_total_gb': status.get('memory_total_gb', 0),
+                'memory_used_gb': status.get('memory_used_gb', 0),
+                'disk_total_gb': status.get('disk_total_gb', 0),
+                'disk_used_gb': status.get('disk_used_gb', 0),
+                'cpu_cores': status.get('cpu_cores', 0),
+                'uptime_since': status.get('uptime_since', ''),
+                'containers_running': status.get('containers_running', 0),
+                'container_count': status.get('container_count', 0),
+            }
+            
+            if cpu_pct > 90:
+                result['checks']['cpu'] = {'status': 'fail', 'message': f'CPU at {cpu_pct}%'}
+                result['alerts'].append({'level': 'critical', 'message': f'CPU usage critical: {cpu_pct}%'})
+            elif cpu_pct > 75:
+                result['checks']['cpu'] = {'status': 'warn', 'message': f'CPU at {cpu_pct}%'}
+                result['alerts'].append({'level': 'warning', 'message': f'CPU usage high: {cpu_pct}%'})
+            else:
+                result['checks']['cpu'] = {'status': 'pass', 'message': f'CPU at {cpu_pct}%'}
+            
+            if mem_pct > 90:
+                result['checks']['memory'] = {'status': 'fail', 'message': f'Memory at {mem_pct}%'}
+                result['alerts'].append({'level': 'critical', 'message': f'Memory usage critical: {mem_pct}%'})
+            elif mem_pct > 80:
+                result['checks']['memory'] = {'status': 'warn', 'message': f'Memory at {mem_pct}%'}
+                result['alerts'].append({'level': 'warning', 'message': f'Memory usage high: {mem_pct}%'})
+            else:
+                result['checks']['memory'] = {'status': 'pass', 'message': f'Memory at {mem_pct}%'}
+            
+            if disk_pct > 90:
+                result['checks']['disk'] = {'status': 'fail', 'message': f'Disk at {disk_pct}%'}
+                result['alerts'].append({'level': 'critical', 'message': f'Disk usage critical: {disk_pct}%'})
+            elif disk_pct > 80:
+                result['checks']['disk'] = {'status': 'warn', 'message': f'Disk at {disk_pct}%'}
+                result['alerts'].append({'level': 'warning', 'message': f'Disk usage high: {disk_pct}%'})
+            else:
+                result['checks']['disk'] = {'status': 'pass', 'message': f'Disk at {disk_pct}%'}
+            
+            critical_alerts = [a for a in result['alerts'] if a['level'] == 'critical']
+            result['healthy'] = len(critical_alerts) == 0
+            result['status'] = 'healthy' if result['healthy'] else ('degraded' if not critical_alerts else 'unhealthy')
+            
+            results.append(result)
+        
+        return results
+    
+    def get_command_history(self, host_id: Optional[str] = None, limit: int = 50) -> List[Dict]:
+        """Get command execution history"""
+        try:
+            from services.db_service import db_service
+            from models.fleet import FleetCommand
+            from sqlalchemy import select, desc
+            
+            if not db_service.is_available:
+                return []
+            
+            with db_service.get_session() as session:
+                query = select(FleetCommand).order_by(desc(FleetCommand.executed_at)).limit(limit)
+                
+                if host_id:
+                    query = query.where(FleetCommand.host_id == host_id)
+                
+                commands = session.execute(query).scalars().all()
+                return [cmd.to_dict() for cmd in commands]
+                
+        except Exception as e:
+            logger.warning(f"Could not get command history: {e}")
+            return []
 
 
 fleet_manager = FleetManager()

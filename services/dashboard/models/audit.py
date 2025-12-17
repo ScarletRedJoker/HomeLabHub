@@ -2,7 +2,7 @@
 Audit Trail Model
 Tracks all user actions for compliance and debugging
 """
-from sqlalchemy import Column, Integer, String, DateTime, Text, JSON, Index
+from sqlalchemy import Column, Integer, String, DateTime, Text, JSON, Index, ForeignKey
 from datetime import datetime
 from models import Base
 
@@ -12,6 +12,8 @@ class AuditLog(Base):
     __tablename__ = 'audit_logs'
     
     id = Column(Integer, primary_key=True)
+    
+    org_id = Column(String(36), ForeignKey('organizations.id', ondelete='SET NULL'), nullable=True, index=True)
     
     user_id = Column(String(100), nullable=True, index=True)
     username = Column(String(100), nullable=True)
@@ -46,11 +48,13 @@ class AuditLog(Base):
         Index('ix_audit_user_action', 'user_id', 'action'),
         Index('ix_audit_timestamp_user', 'timestamp', 'user_id'),
         Index('ix_audit_target', 'target_type', 'target_id'),
+        Index('ix_audit_org_timestamp', 'org_id', 'timestamp'),
     )
     
     def to_dict(self):
         return {
             'id': self.id,
+            'org_id': self.org_id,
             'user_id': self.user_id,
             'username': self.username,
             'action': self.action,

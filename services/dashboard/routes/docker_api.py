@@ -159,6 +159,76 @@ CONTAINER_TEMPLATES = {
         'description': 'Application dashboard',
         'icon': 'bi-grid-1x2',
         'category': 'management'
+    },
+    'plex': {
+        'name': 'plex',
+        'image': 'lscr.io/linuxserver/plex:latest',
+        'ports': ['32400:32400'],
+        'volumes': ['plex_config:/config', '/media:/media'],
+        'environment': {'PUID': '1000', 'PGID': '1000', 'VERSION': 'docker'},
+        'description': 'Plex Media Server',
+        'icon': 'bi-film',
+        'category': 'media'
+    },
+    'homeassistant': {
+        'name': 'homeassistant',
+        'image': 'ghcr.io/home-assistant/home-assistant:stable',
+        'ports': ['8123:8123'],
+        'volumes': ['homeassistant_config:/config', '/etc/localtime:/etc/localtime:ro'],
+        'environment': {},
+        'description': 'Home Assistant smart home platform',
+        'icon': 'bi-house-heart',
+        'category': 'automation'
+    },
+    'nginx-proxy-manager': {
+        'name': 'nginx-proxy-manager',
+        'image': 'jc21/nginx-proxy-manager:latest',
+        'ports': ['80:80', '443:443', '81:81'],
+        'volumes': ['npm_data:/data', 'npm_letsencrypt:/etc/letsencrypt'],
+        'environment': {},
+        'description': 'Nginx Proxy Manager with Let\'s Encrypt',
+        'icon': 'bi-shield-lock',
+        'category': 'web'
+    },
+    'jellyfin': {
+        'name': 'jellyfin',
+        'image': 'lscr.io/linuxserver/jellyfin:latest',
+        'ports': ['8096:8096'],
+        'volumes': ['jellyfin_config:/config', '/media:/media'],
+        'environment': {'PUID': '1000', 'PGID': '1000'},
+        'description': 'Free software media system',
+        'icon': 'bi-play-circle',
+        'category': 'media'
+    },
+    'nextcloud': {
+        'name': 'nextcloud',
+        'image': 'nextcloud:latest',
+        'ports': ['8888:80'],
+        'volumes': ['nextcloud_data:/var/www/html'],
+        'environment': {},
+        'description': 'Self-hosted cloud storage',
+        'icon': 'bi-cloud-upload',
+        'category': 'storage'
+    },
+    'vaultwarden': {
+        'name': 'vaultwarden',
+        'image': 'vaultwarden/server:latest',
+        'ports': ['8089:80'],
+        'volumes': ['vaultwarden_data:/data'],
+        'environment': {},
+        'description': 'Bitwarden-compatible password manager',
+        'icon': 'bi-key',
+        'category': 'security'
+    },
+    'pihole': {
+        'name': 'pihole',
+        'image': 'pihole/pihole:latest',
+        'ports': ['53:53/tcp', '53:53/udp', '8084:80'],
+        'volumes': ['pihole_etc:/etc/pihole', 'pihole_dnsmasq:/etc/dnsmasq.d'],
+        'environment': {'WEBPASSWORD': 'admin'},
+        'description': 'Network-wide ad blocking',
+        'icon': 'bi-shield-x',
+        'category': 'network'
     }
 }
 

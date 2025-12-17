@@ -1,0 +1,685 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - {{ org.name if org else 'HomeLabHub' }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2><i class="bi bi-building me-2"></i>Organization Admin</h2>
+                <div class="btn-group">
+                    <button class="btn btn-outline-secondary" onclick="refreshData()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="exportAuditLog()">
+                        <i class="bi bi-download me-1"></i>Export Audit Log
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card h-100 border-primary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="text-muted mb-2">Organization</h6>
+                            <h4 class="mb-0" id="org-name">-</h4>
+                            <small class="text-muted" id="org-tier">-</small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-building fs-1 text-primary opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card h-100 border-success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="text-muted mb-2">Members</h6>
+                            <h4 class="mb-0" id="member-count">0</h4>
+                            <small class="text-muted" id="member-limit">of 0 max</small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-people-fill fs-1 text-success opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card h-100 border-warning">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="text-muted mb-2">API Keys</h6>
+                            <h4 class="mb-0" id="api-key-count">0</h4>
+                            <small class="text-muted" id="api-key-limit">of 0 max</small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-key-fill fs-1 text-warning opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card h-100 border-info">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="text-muted mb-2">Actions (24h)</h6>
+                            <h4 class="mb-0" id="action-count">0</h4>
+                            <small class="text-muted" id="action-success-rate">-</small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-activity fs-1 text-info opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-people me-2"></i>Members</h5>
+                    <button class="btn btn-sm btn-primary" onclick="showInviteModal()">
+                        <i class="bi bi-person-plus me-1"></i>Invite
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>User</th>
+                                    <th>Role</th>
+                                    <th>Joined</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="members-table">
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">
+                                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                        Loading members...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-key me-2"></i>API Keys</h5>
+                    <button class="btn btn-sm btn-primary" onclick="showCreateKeyModal()">
+                        <i class="bi bi-plus-lg me-1"></i>Create Key
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Prefix</th>
+                                    <th>Last Used</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="api-keys-table">
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">
+                                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                        Loading API keys...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-journal-text me-2"></i>Audit Log</h5>
+                    <div class="d-flex gap-2">
+                        <select id="audit-action-filter" class="form-select form-select-sm" style="width: auto;" onchange="loadAuditLog()">
+                            <option value="">All Actions</option>
+                        </select>
+                        <select id="audit-time-filter" class="form-select form-select-sm" style="width: auto;" onchange="loadAuditLog()">
+                            <option value="24">Last 24 hours</option>
+                            <option value="72">Last 3 days</option>
+                            <option value="168">Last 7 days</option>
+                            <option value="720">Last 30 days</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-hover table-sm mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>User</th>
+                                    <th>Action</th>
+                                    <th>Target</th>
+                                    <th>Status</th>
+                                    <th>IP</th>
+                                </tr>
+                            </thead>
+                            <tbody id="audit-log-table">
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">
+                                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                        Loading audit log...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted" id="audit-pagination">Showing 0 of 0 entries</small>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-secondary" id="audit-prev" onclick="loadAuditLog('prev')" disabled>
+                                <i class="bi bi-chevron-left"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary" id="audit-next" onclick="loadAuditLog('next')" disabled>
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="inviteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Invite Member</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="invite-form">
+                    <div class="mb-3">
+                        <label for="invite-user-id" class="form-label">User ID</label>
+                        <input type="number" class="form-control" id="invite-user-id" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="invite-role" class="form-label">Role</label>
+                        <select class="form-select" id="invite-role">
+                            <option value="viewer">Viewer</option>
+                            <option value="member" selected>Member</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="inviteMember()">Invite</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="createKeyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create API Key</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="create-key-form">
+                    <div class="mb-3">
+                        <label for="key-name" class="form-label">Key Name</label>
+                        <input type="text" class="form-control" id="key-name" placeholder="Production API Key" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="key-expiry" class="form-label">Expires In (days)</label>
+                        <select class="form-select" id="key-expiry">
+                            <option value="">Never</option>
+                            <option value="30">30 days</option>
+                            <option value="90">90 days</option>
+                            <option value="365">1 year</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="key-rate-limit" class="form-label">Rate Limit (requests/hour)</label>
+                        <input type="number" class="form-control" id="key-rate-limit" value="1000" min="100" max="10000">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createApiKey()">Create Key</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="showKeyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Save Your API Key</h5>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <strong>Important!</strong> This is the only time you'll see this key. Copy and save it securely now.
+                </div>
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control font-monospace" id="new-api-key" readonly>
+                    <button class="btn btn-outline-secondary" onclick="copyApiKey()">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="loadApiKeys()">I've Saved It</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentOrg = null;
+let auditOffset = 0;
+const auditLimit = 50;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadOrganization();
+});
+
+function refreshData() {
+    loadOrganization();
+}
+
+async function loadOrganization() {
+    try {
+        const response = await fetch('/api/org/current', {
+            credentials: 'include'
+        });
+        const data = await response.json();
+        
+        if (data.success && data.data.organization) {
+            currentOrg = data.data.organization;
+            updateOrgDisplay(currentOrg);
+            loadMembers();
+            loadApiKeys();
+            loadAuditLog();
+        } else {
+            showNoOrg();
+        }
+    } catch (error) {
+        console.error('Error loading organization:', error);
+        showError('Failed to load organization data');
+    }
+}
+
+function updateOrgDisplay(org) {
+    document.getElementById('org-name').textContent = org.name;
+    document.getElementById('org-tier').textContent = org.tier.charAt(0).toUpperCase() + org.tier.slice(1) + ' Tier';
+    document.getElementById('member-count').textContent = org.member_count || 0;
+    document.getElementById('member-limit').textContent = `of ${org.limits?.max_members || 5} max`;
+    document.getElementById('api-key-limit').textContent = `of ${org.limits?.max_api_keys || 3} max`;
+}
+
+function showNoOrg() {
+    document.getElementById('org-name').textContent = 'No Organization';
+    document.getElementById('org-tier').textContent = 'Create one to get started';
+}
+
+async function loadMembers() {
+    if (!currentOrg) return;
+    
+    try {
+        const response = await fetch(`/api/org/${currentOrg.id}/members`, {
+            credentials: 'include'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            renderMembers(data.data.members);
+        }
+    } catch (error) {
+        console.error('Error loading members:', error);
+    }
+}
+
+function renderMembers(members) {
+    const tbody = document.getElementById('members-table');
+    
+    if (!members || members.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4" class="text-center text-muted py-4">No members found</td>
+            </tr>
+        `;
+        return;
+    }
+    
+    const roleColors = {
+        'owner': 'danger',
+        'admin': 'warning',
+        'member': 'primary',
+        'viewer': 'secondary'
+    };
+    
+    tbody.innerHTML = members.map(member => `
+        <tr>
+            <td>
+                <strong>${member.user?.username || 'Unknown'}</strong>
+                ${member.user?.email ? `<br><small class="text-muted">${member.user.email}</small>` : ''}
+            </td>
+            <td><span class="badge bg-${roleColors[member.role] || 'secondary'}">${member.role}</span></td>
+            <td><small>${formatDate(member.joined_at)}</small></td>
+            <td>
+                ${member.role !== 'owner' ? `
+                    <button class="btn btn-sm btn-outline-danger" onclick="removeMember(${member.user_id})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                ` : ''}
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function loadApiKeys() {
+    if (!currentOrg) return;
+    
+    try {
+        const response = await fetch(`/api/org/${currentOrg.id}/api-keys`, {
+            credentials: 'include'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            renderApiKeys(data.data.api_keys);
+            document.getElementById('api-key-count').textContent = data.data.count || 0;
+        }
+    } catch (error) {
+        console.error('Error loading API keys:', error);
+    }
+}
+
+function renderApiKeys(keys) {
+    const tbody = document.getElementById('api-keys-table');
+    
+    if (!keys || keys.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4" class="text-center text-muted py-4">No API keys created</td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = keys.map(key => `
+        <tr>
+            <td><strong>${key.name}</strong></td>
+            <td><code>${key.key_prefix}...</code></td>
+            <td><small>${key.last_used_at ? formatDate(key.last_used_at) : 'Never'}</small></td>
+            <td>
+                <button class="btn btn-sm btn-outline-danger" onclick="revokeKey('${key.id}', '${key.name}')">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function loadAuditLog(direction = null) {
+    if (!currentOrg) return;
+    
+    if (direction === 'next') {
+        auditOffset += auditLimit;
+    } else if (direction === 'prev') {
+        auditOffset = Math.max(0, auditOffset - auditLimit);
+    } else {
+        auditOffset = 0;
+    }
+    
+    const actionFilter = document.getElementById('audit-action-filter').value;
+    const timeFilter = document.getElementById('audit-time-filter').value;
+    
+    const hours = parseInt(timeFilter) || 24;
+    const startDate = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+    
+    let url = `/api/org/${currentOrg.id}/audit-log?limit=${auditLimit}&offset=${auditOffset}&start_date=${startDate}`;
+    if (actionFilter) {
+        url += `&action=${encodeURIComponent(actionFilter)}`;
+    }
+    
+    try {
+        const response = await fetch(url, {
+            credentials: 'include'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            renderAuditLog(data.data.logs, data.data.pagination);
+            document.getElementById('action-count').textContent = data.data.pagination.total || 0;
+        }
+    } catch (error) {
+        console.error('Error loading audit log:', error);
+    }
+}
+
+function renderAuditLog(logs, pagination) {
+    const tbody = document.getElementById('audit-log-table');
+    
+    if (!logs || logs.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center text-muted py-4">No audit entries found</td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = logs.map(log => `
+        <tr>
+            <td><small>${formatDateTime(log.timestamp)}</small></td>
+            <td><small>${log.username || 'System'}</small></td>
+            <td><code class="small">${log.action}</code></td>
+            <td><small>${log.target?.type || '-'}${log.target?.id ? `: ${log.target.id.substring(0, 8)}` : ''}</small></td>
+            <td>
+                <span class="badge bg-${log.success ? 'success' : 'danger'} badge-sm">
+                    ${log.success ? 'OK' : 'FAIL'}
+                </span>
+            </td>
+            <td><small class="text-muted">${log.client?.ip_address || '-'}</small></td>
+        </tr>
+    `).join('');
+    
+    document.getElementById('audit-pagination').textContent = 
+        `Showing ${auditOffset + 1}-${auditOffset + logs.length} of ${pagination.total} entries`;
+    
+    document.getElementById('audit-prev').disabled = auditOffset === 0;
+    document.getElementById('audit-next').disabled = !pagination.has_more;
+}
+
+function showInviteModal() {
+    new bootstrap.Modal(document.getElementById('inviteModal')).show();
+}
+
+function showCreateKeyModal() {
+    new bootstrap.Modal(document.getElementById('createKeyModal')).show();
+}
+
+async function inviteMember() {
+    const userId = document.getElementById('invite-user-id').value;
+    const role = document.getElementById('invite-role').value;
+    
+    try {
+        const response = await fetch(`/api/org/${currentOrg.id}/members`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ user_id: parseInt(userId), role })
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('inviteModal')).hide();
+            loadMembers();
+            showToast('Member invited successfully', 'success');
+        } else {
+            showToast(data.message || 'Failed to invite member', 'danger');
+        }
+    } catch (error) {
+        showToast('Error inviting member', 'danger');
+    }
+}
+
+async function removeMember(userId) {
+    if (!confirm('Are you sure you want to remove this member?')) return;
+    
+    try {
+        const response = await fetch(`/api/org/${currentOrg.id}/members/${userId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            loadMembers();
+            showToast('Member removed successfully', 'success');
+        } else {
+            showToast(data.message || 'Failed to remove member', 'danger');
+        }
+    } catch (error) {
+        showToast('Error removing member', 'danger');
+    }
+}
+
+async function createApiKey() {
+    const name = document.getElementById('key-name').value;
+    const expiry = document.getElementById('key-expiry').value;
+    const rateLimit = document.getElementById('key-rate-limit').value;
+    
+    try {
+        const response = await fetch(`/api/org/${currentOrg.id}/api-keys`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                name,
+                expires_in_days: expiry ? parseInt(expiry) : null,
+                rate_limit: parseInt(rateLimit)
+            })
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('createKeyModal')).hide();
+            document.getElementById('new-api-key').value = data.data.key;
+            new bootstrap.Modal(document.getElementById('showKeyModal')).show();
+        } else {
+            showToast(data.message || 'Failed to create API key', 'danger');
+        }
+    } catch (error) {
+        showToast('Error creating API key', 'danger');
+    }
+}
+
+function copyApiKey() {
+    const keyInput = document.getElementById('new-api-key');
+    keyInput.select();
+    document.execCommand('copy');
+    showToast('API key copied to clipboard', 'success');
+}
+
+async function revokeKey(keyId, keyName) {
+    if (!confirm(`Are you sure you want to revoke API key "${keyName}"?`)) return;
+    
+    try {
+        const response = await fetch(`/api/org/${currentOrg.id}/api-keys/${keyId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            loadApiKeys();
+            showToast('API key revoked', 'success');
+        } else {
+            showToast(data.message || 'Failed to revoke key', 'danger');
+        }
+    } catch (error) {
+        showToast('Error revoking key', 'danger');
+    }
+}
+
+function exportAuditLog() {
+    if (!currentOrg) return;
+    
+    const timeFilter = document.getElementById('audit-time-filter').value;
+    const hours = parseInt(timeFilter) || 24;
+    const startDate = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+    
+    window.open(`/api/org/${currentOrg.id}/audit-log?limit=1000&start_date=${startDate}&format=csv`, '_blank');
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '-';
+    return new Date(dateStr).toLocaleDateString();
+}
+
+function formatDateTime(dateStr) {
+    if (!dateStr) return '-';
+    return new Date(dateStr).toLocaleString();
+}
+
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-bg-${type} border-0 show`;
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">${message}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    
+    let container = document.querySelector('.toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        document.body.appendChild(container);
+    }
+    
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 5000);
+}
+
+function showError(message) {
+    showToast(message, 'danger');
+}
+</script>
+{% endblock %}

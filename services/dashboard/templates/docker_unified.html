@@ -1,0 +1,960 @@
+{% extends "base.html" %}
+
+{% block title %}Docker Management - Nebula Command{% endblock %}
+{% block page_title %}Docker Management{% endblock %}
+
+{% block extra_css %}
+<style>
+.host-filter-bar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+.host-chip {
+    padding: 8px 16px;
+    border-radius: 20px;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.host-chip:hover, .host-chip.active {
+    background: rgba(99, 102, 241, 0.3);
+    border-color: rgba(99, 102, 241, 0.6);
+}
+.host-chip.active {
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
+}
+.host-chip .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+.host-chip .status-dot.online { background: var(--accent-green); }
+.host-chip .status-dot.offline { background: var(--accent-red); }
+
+.container-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+}
+.container-card {
+    background: linear-gradient(135deg, rgba(31, 41, 55, 0.9) 0%, rgba(17, 24, 39, 0.95) 100%);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.3s ease;
+    position: relative;
+}
+.container-card:hover {
+    border-color: rgba(99, 102, 241, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.2);
+}
+.container-card.selected {
+    border-color: var(--accent-purple);
+    box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.3);
+}
+.container-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+.container-name {
+    font-weight: 600;
+    font-size: 1.05rem;
+    color: var(--text-primary);
+    word-break: break-all;
+}
+.container-host-badge {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(99, 102, 241, 0.2);
+    color: var(--accent-blue);
+}
+.container-image {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.container-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+.container-status.running {
+    background: rgba(52, 211, 153, 0.2);
+    color: var(--accent-green);
+}
+.container-status.exited, .container-status.stopped {
+    background: rgba(248, 113, 113, 0.2);
+    color: var(--accent-red);
+}
+.container-status.paused {
+    background: rgba(251, 191, 36, 0.2);
+    color: var(--accent-yellow);
+}
+
+.resource-bars {
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+.resource-bar-group {
+    text-align: left;
+}
+.resource-bar-label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    margin-bottom: 3px;
+    display: flex;
+    justify-content: space-between;
+}
+.resource-bar {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.resource-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+}
+.resource-bar-fill.cpu { background: linear-gradient(90deg, #6366f1, #8b5cf6); }
+.resource-bar-fill.memory { background: linear-gradient(90deg, #10b981, #34d399); }
+
+.container-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+.container-actions .btn {
+    flex: 1;
+    padding: 6px 8px;
+    font-size: 0.8rem;
+}
+
+.summary-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.summary-stat {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+}
+.summary-stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.summary-stat-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+.template-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+}
+.template-card {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+.template-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(99, 102, 241, 0.6);
+    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.2);
+}
+.template-card.selected {
+    border-color: var(--accent-purple);
+    background: rgba(167, 139, 250, 0.2);
+}
+.template-icon {
+    font-size: 2rem;
+    margin-bottom: 8px;
+    color: var(--accent-purple);
+}
+.template-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+.template-desc {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+.category-filter {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+.category-btn {
+    padding: 6px 14px;
+    border-radius: 16px;
+    background: rgba(55, 65, 81, 0.5);
+    border: 1px solid rgba(75, 85, 99, 0.5);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.category-btn:hover, .category-btn.active {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: rgba(99, 102, 241, 0.5);
+    color: var(--text-primary);
+}
+
+.logs-container {
+    background: #0d1117;
+    border-radius: 8px;
+    padding: 16px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    max-height: 500px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+.log-line {
+    padding: 2px 0;
+}
+.log-line:hover {
+    background: rgba(99, 102, 241, 0.1);
+}
+.log-timestamp {
+    color: var(--text-secondary);
+    margin-right: 10px;
+}
+
+.bulk-actions-bar {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, rgba(31, 41, 55, 0.95) 0%, rgba(17, 24, 39, 0.98) 100%);
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    border-radius: 16px;
+    padding: 12px 24px;
+    display: none;
+    align-items: center;
+    gap: 16px;
+    z-index: 1000;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(12px);
+}
+.bulk-actions-bar.visible {
+    display: flex;
+}
+.bulk-count {
+    font-weight: 600;
+    color: var(--accent-purple);
+}
+
+.search-bar {
+    position: relative;
+    margin-bottom: 20px;
+}
+.search-bar input {
+    width: 100%;
+    padding: 12px 16px 12px 44px;
+    background: rgba(31, 41, 55, 0.6);
+    border: 1px solid rgba(75, 85, 99, 0.5);
+    border-radius: 12px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+.search-bar input:focus {
+    outline: none;
+    border-color: rgba(99, 102, 241, 0.6);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+.search-bar i {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="summary-stats" id="summary-stats">
+            <div class="summary-stat">
+                <div class="summary-stat-value" id="stat-total">-</div>
+                <div class="summary-stat-label">Total Containers</div>
+            </div>
+            <div class="summary-stat">
+                <div class="summary-stat-value" id="stat-running">-</div>
+                <div class="summary-stat-label">Running</div>
+            </div>
+            <div class="summary-stat">
+                <div class="summary-stat-value" id="stat-stopped">-</div>
+                <div class="summary-stat-label">Stopped</div>
+            </div>
+            <div class="summary-stat">
+                <div class="summary-stat-value" id="stat-hosts">-</div>
+                <div class="summary-stat-label">Hosts Online</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card cosmic cosmic-fade-in mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <span><i class="bi bi-box-seam"></i> Container Management</span>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-primary" onclick="refreshContainers()">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                    <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#deployModal">
+                        <i class="bi bi-plus-lg"></i> Deploy
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="host-filter-bar" id="host-filter-bar">
+                    <div class="host-chip active" data-host="all" onclick="filterByHost('all')">
+                        <i class="bi bi-grid-3x3-gap"></i> All Hosts
+                    </div>
+                </div>
+                
+                <div class="search-bar">
+                    <i class="bi bi-search"></i>
+                    <input type="text" id="container-search" placeholder="Search containers by name, image, or status..." oninput="filterContainers()">
+                </div>
+                
+                <div id="container-list" class="container-grid">
+                    <div class="loading text-center py-5">
+                        <div class="spinner-border"></div>
+                        <p style="margin-top: 20px; color: var(--text-secondary);">Loading containers from all hosts...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card cosmic cosmic-fade-in mb-4">
+            <div class="card-header">
+                <i class="bi bi-rocket-takeoff"></i> Quick Deploy Templates
+            </div>
+            <div class="card-body">
+                <div class="category-filter" id="category-filter"></div>
+                <div class="template-grid" id="template-grid">
+                    <div class="loading text-center py-4">
+                        <div class="spinner-border spinner-border-sm"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="bulk-actions-bar" id="bulk-actions-bar">
+    <span><span class="bulk-count" id="bulk-count">0</span> selected</span>
+    <button class="btn btn-success btn-sm" onclick="bulkAction('start')"><i class="bi bi-play-fill"></i> Start All</button>
+    <button class="btn btn-warning btn-sm" onclick="bulkAction('stop')"><i class="bi bi-stop-fill"></i> Stop All</button>
+    <button class="btn btn-info btn-sm" onclick="bulkAction('restart')"><i class="bi bi-arrow-clockwise"></i> Restart All</button>
+    <button class="btn btn-secondary btn-sm" onclick="clearSelection()"><i class="bi bi-x-lg"></i> Clear</button>
+</div>
+
+<div class="modal fade" id="logsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-file-text"></i> Container Logs: <span id="logs-container-name"></span></h5>
+                <div class="d-flex gap-2 align-items-center">
+                    <select id="logs-lines" class="form-select form-select-sm" style="width: auto;" onchange="refreshLogs()">
+                        <option value="50">50 lines</option>
+                        <option value="100" selected>100 lines</option>
+                        <option value="500">500 lines</option>
+                        <option value="1000">1000 lines</option>
+                    </select>
+                    <button class="btn btn-sm btn-primary" onclick="refreshLogs()"><i class="bi bi-arrow-clockwise"></i></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div id="logs-content" class="logs-container">
+                    Loading logs...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deployModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-rocket-takeoff"></i> Deploy Container</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="deploy-form" onsubmit="deployContainer(event)">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Target Host</label>
+                            <select id="deploy-host" class="form-select" required>
+                                <option value="">Select host...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Template (optional)</label>
+                            <select id="deploy-template" class="form-select" onchange="loadTemplateDefaults()">
+                                <option value="">Custom container...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Docker Image</label>
+                            <input type="text" id="deploy-image" class="form-control" placeholder="nginx:latest" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Container Name</label>
+                            <input type="text" id="deploy-name" class="form-control" placeholder="my-container">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Ports (comma-separated)</label>
+                            <input type="text" id="deploy-ports" class="form-control" placeholder="80:80, 443:443">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Restart Policy</label>
+                            <select id="deploy-restart" class="form-select">
+                                <option value="unless-stopped">Unless Stopped</option>
+                                <option value="always">Always</option>
+                                <option value="on-failure">On Failure</option>
+                                <option value="no">Never</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Volumes (comma-separated)</label>
+                        <input type="text" id="deploy-volumes" class="form-control" placeholder="/host/path:/container/path">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Environment Variables (JSON)</label>
+                        <textarea id="deploy-env" class="form-control" rows="3" placeholder='{"KEY": "value"}'></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success"><i class="bi bi-rocket-takeoff"></i> Deploy</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allContainers = [];
+let allHosts = [];
+let allTemplates = [];
+let selectedContainers = new Set();
+let currentHostFilter = 'all';
+let currentCategoryFilter = 'all';
+let currentLogsContainer = null;
+let currentLogsHost = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadContainers();
+    loadTemplates();
+    setInterval(loadContainers, 30000);
+});
+
+async function loadContainers() {
+    try {
+        const response = await fetch('/api/docker/unified/containers', { credentials: 'include' });
+        const result = await response.json();
+        
+        if (!result.success) {
+            document.getElementById('container-list').innerHTML = 
+                `<div class="alert alert-danger">${result.message || 'Failed to load containers'}</div>`;
+            return;
+        }
+        
+        allContainers = result.data?.containers || [];
+        allHosts = Object.entries(result.data?.hosts || {}).map(([id, status]) => ({
+            host_id: id,
+            ...status
+        }));
+        
+        const summary = result.data?.summary || {};
+        document.getElementById('stat-total').textContent = summary.total_containers || 0;
+        document.getElementById('stat-running').textContent = summary.running || 0;
+        document.getElementById('stat-stopped').textContent = summary.stopped || 0;
+        document.getElementById('stat-hosts').textContent = `${summary.hosts_online || 0}/${summary.hosts_total || 0}`;
+        
+        renderHostFilter();
+        renderContainers();
+        updateHostSelects();
+        
+    } catch (error) {
+        console.error('Failed to load containers:', error);
+        document.getElementById('container-list').innerHTML = 
+            '<div class="alert alert-danger">Failed to load containers. Check API connection.</div>';
+    }
+}
+
+function renderHostFilter() {
+    const bar = document.getElementById('host-filter-bar');
+    let html = `<div class="host-chip ${currentHostFilter === 'all' ? 'active' : ''}" data-host="all" onclick="filterByHost('all')">
+        <i class="bi bi-grid-3x3-gap"></i> All Hosts
+    </div>`;
+    
+    const hostSet = new Set(allContainers.map(c => c.host_id));
+    hostSet.forEach(hostId => {
+        const host = allHosts.find(h => h.host_id === hostId);
+        const isOnline = host?.online !== false;
+        const hostName = allContainers.find(c => c.host_id === hostId)?.host_name || hostId;
+        html += `<div class="host-chip ${currentHostFilter === hostId ? 'active' : ''}" data-host="${hostId}" onclick="filterByHost('${hostId}')">
+            <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
+            ${hostName}
+        </div>`;
+    });
+    
+    bar.innerHTML = html;
+}
+
+function filterByHost(hostId) {
+    currentHostFilter = hostId;
+    renderHostFilter();
+    renderContainers();
+}
+
+function filterContainers() {
+    renderContainers();
+}
+
+function renderContainers() {
+    const searchTerm = document.getElementById('container-search').value.toLowerCase();
+    let filtered = allContainers;
+    
+    if (currentHostFilter !== 'all') {
+        filtered = filtered.filter(c => c.host_id === currentHostFilter);
+    }
+    
+    if (searchTerm) {
+        filtered = filtered.filter(c => 
+            (c.name || '').toLowerCase().includes(searchTerm) ||
+            (c.image || '').toLowerCase().includes(searchTerm) ||
+            (c.state || c.status || '').toLowerCase().includes(searchTerm)
+        );
+    }
+    
+    if (filtered.length === 0) {
+        document.getElementById('container-list').innerHTML = 
+            '<div class="text-center py-5 text-secondary"><i class="bi bi-inbox display-4"></i><p class="mt-3">No containers found</p></div>';
+        return;
+    }
+    
+    let html = '';
+    filtered.forEach(container => {
+        const state = (container.state || container.status || '').toLowerCase();
+        const isRunning = state === 'running';
+        const isSelected = selectedContainers.has(`${container.host_id}:${container.name}`);
+        
+        html += `
+            <div class="container-card ${isSelected ? 'selected' : ''}" 
+                 data-container="${container.name}" data-host="${container.host_id}"
+                 onclick="toggleContainerSelection(event, '${container.host_id}', '${container.name}')">
+                <div class="container-header">
+                    <div>
+                        <div class="container-name">${container.name}</div>
+                        <span class="container-host-badge">${container.host_name || container.host_id}</span>
+                    </div>
+                    <span class="container-status ${state}">${state}</span>
+                </div>
+                <div class="container-image" title="${container.image}">
+                    <i class="bi bi-box"></i> ${container.image}
+                </div>
+                ${container.ports ? `<div class="container-image"><i class="bi bi-plug"></i> ${container.ports}</div>` : ''}
+                
+                <div class="resource-bars">
+                    <div class="resource-bar-group">
+                        <div class="resource-bar-label">
+                            <span>CPU</span>
+                            <span>${container.cpu_percent || 0}%</span>
+                        </div>
+                        <div class="resource-bar">
+                            <div class="resource-bar-fill cpu" style="width: ${Math.min(container.cpu_percent || 0, 100)}%"></div>
+                        </div>
+                    </div>
+                    <div class="resource-bar-group">
+                        <div class="resource-bar-label">
+                            <span>Memory</span>
+                            <span>${container.memory_percent || 0}%</span>
+                        </div>
+                        <div class="resource-bar">
+                            <div class="resource-bar-fill memory" style="width: ${Math.min(container.memory_percent || 0, 100)}%"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="container-actions" onclick="event.stopPropagation()">
+                    ${isRunning ? `
+                        <button class="btn btn-warning btn-sm" onclick="containerAction('${container.host_id}', '${container.name}', 'stop')" title="Stop">
+                            <i class="bi bi-stop-fill"></i>
+                        </button>
+                        <button class="btn btn-info btn-sm" onclick="containerAction('${container.host_id}', '${container.name}', 'restart')" title="Restart">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    ` : `
+                        <button class="btn btn-success btn-sm" onclick="containerAction('${container.host_id}', '${container.name}', 'start')" title="Start">
+                            <i class="bi bi-play-fill"></i>
+                        </button>
+                    `}
+                    <button class="btn btn-primary btn-sm" onclick="viewLogs('${container.host_id}', '${container.name}')" title="Logs">
+                        <i class="bi bi-file-text"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    
+    document.getElementById('container-list').innerHTML = html;
+}
+
+function toggleContainerSelection(event, hostId, containerName) {
+    if (event.target.tagName === 'BUTTON' || event.target.tagName === 'I') return;
+    
+    const key = `${hostId}:${containerName}`;
+    if (selectedContainers.has(key)) {
+        selectedContainers.delete(key);
+    } else {
+        selectedContainers.add(key);
+    }
+    
+    updateBulkActionsBar();
+    renderContainers();
+}
+
+function updateBulkActionsBar() {
+    const bar = document.getElementById('bulk-actions-bar');
+    const count = selectedContainers.size;
+    
+    if (count > 0) {
+        bar.classList.add('visible');
+        document.getElementById('bulk-count').textContent = count;
+    } else {
+        bar.classList.remove('visible');
+    }
+}
+
+function clearSelection() {
+    selectedContainers.clear();
+    updateBulkActionsBar();
+    renderContainers();
+}
+
+async function bulkAction(action) {
+    if (selectedContainers.size === 0) return;
+    
+    if (!confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} ${selectedContainers.size} containers?`)) return;
+    
+    const promises = Array.from(selectedContainers).map(key => {
+        const [hostId, containerName] = key.split(':');
+        return containerAction(hostId, containerName, action, false);
+    });
+    
+    await Promise.all(promises);
+    clearSelection();
+    loadContainers();
+}
+
+async function containerAction(hostId, containerName, action, reload = true) {
+    try {
+        const response = await fetch(`/api/docker/unified/${hostId}/${containerName}/action`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ action })
+        });
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+            alert(`Error: ${result.message || 'Action failed'}`);
+            return;
+        }
+        
+        if (reload) {
+            setTimeout(loadContainers, 1000);
+        }
+        
+    } catch (error) {
+        console.error(`Container action failed:`, error);
+        alert(`Error: ${error.message}`);
+    }
+}
+
+async function viewLogs(hostId, containerName) {
+    currentLogsContainer = containerName;
+    currentLogsHost = hostId;
+    document.getElementById('logs-container-name').textContent = `${containerName} (${hostId})`;
+    
+    const modal = new bootstrap.Modal(document.getElementById('logsModal'));
+    modal.show();
+    
+    await refreshLogs();
+}
+
+async function refreshLogs() {
+    if (!currentLogsContainer || !currentLogsHost) return;
+    
+    const lines = document.getElementById('logs-lines').value;
+    const logsContent = document.getElementById('logs-content');
+    logsContent.innerHTML = '<span class="text-secondary">Loading logs...</span>';
+    
+    try {
+        const response = await fetch(`/api/docker/unified/${currentLogsHost}/${currentLogsContainer}/logs?lines=${lines}`, {
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        if (!result.success) {
+            logsContent.innerHTML = `<span class="text-danger">${result.message || 'Failed to load logs'}</span>`;
+            return;
+        }
+        
+        const logs = result.data?.logs || '';
+        if (!logs.trim()) {
+            logsContent.innerHTML = '<span class="text-secondary">No logs available</span>';
+            return;
+        }
+        
+        const formattedLogs = logs.split('\n').map(line => {
+            return `<div class="log-line">${escapeHtml(line)}</div>`;
+        }).join('');
+        
+        logsContent.innerHTML = formattedLogs;
+        logsContent.scrollTop = logsContent.scrollHeight;
+        
+    } catch (error) {
+        logsContent.innerHTML = `<span class="text-danger">Error: ${error.message}</span>`;
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+async function loadTemplates() {
+    try {
+        const response = await fetch('/api/docker/templates', { credentials: 'include' });
+        const result = await response.json();
+        
+        if (!result.success) return;
+        
+        allTemplates = result.data?.templates || [];
+        const categories = ['all', ...new Set(allTemplates.map(t => t.category))];
+        
+        let categoryHtml = '';
+        categories.forEach(cat => {
+            const label = cat === 'all' ? 'All' : cat.charAt(0).toUpperCase() + cat.slice(1);
+            categoryHtml += `<button class="category-btn ${currentCategoryFilter === cat ? 'active' : ''}" 
+                onclick="filterTemplatesByCategory('${cat}')">${label}</button>`;
+        });
+        document.getElementById('category-filter').innerHTML = categoryHtml;
+        
+        renderTemplates();
+        
+        const templateSelect = document.getElementById('deploy-template');
+        templateSelect.innerHTML = '<option value="">Custom container...</option>';
+        allTemplates.forEach(t => {
+            templateSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`;
+        });
+        
+    } catch (error) {
+        console.error('Failed to load templates:', error);
+    }
+}
+
+function filterTemplatesByCategory(category) {
+    currentCategoryFilter = category;
+    const btns = document.querySelectorAll('.category-btn');
+    btns.forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    renderTemplates();
+}
+
+function renderTemplates() {
+    let filtered = allTemplates;
+    if (currentCategoryFilter !== 'all') {
+        filtered = filtered.filter(t => t.category === currentCategoryFilter);
+    }
+    
+    let html = '';
+    filtered.forEach(template => {
+        html += `
+            <div class="template-card" onclick="selectTemplate('${template.id}')">
+                <div class="template-icon"><i class="bi ${template.icon || 'bi-box'}"></i></div>
+                <div class="template-name">${template.name}</div>
+                <div class="template-desc">${template.description || ''}</div>
+            </div>
+        `;
+    });
+    
+    document.getElementById('template-grid').innerHTML = html || '<p class="text-secondary text-center">No templates found</p>';
+}
+
+function selectTemplate(templateId) {
+    document.getElementById('deploy-template').value = templateId;
+    loadTemplateDefaults();
+    
+    const modal = new bootstrap.Modal(document.getElementById('deployModal'));
+    modal.show();
+}
+
+function loadTemplateDefaults() {
+    const templateId = document.getElementById('deploy-template').value;
+    if (!templateId) return;
+    
+    const template = allTemplates.find(t => t.id === templateId);
+    if (!template) return;
+    
+    document.getElementById('deploy-image').value = template.image || '';
+    document.getElementById('deploy-name').value = template.name || '';
+    document.getElementById('deploy-ports').value = (template.ports || []).join(', ');
+}
+
+function updateHostSelects() {
+    const hostSelect = document.getElementById('deploy-host');
+    hostSelect.innerHTML = '<option value="">Select host...</option>';
+    
+    allHosts.filter(h => h.online !== false).forEach(host => {
+        const container = allContainers.find(c => c.host_id === host.host_id);
+        const hostName = container?.host_name || host.host_id;
+        hostSelect.innerHTML += `<option value="${host.host_id}">${hostName}</option>`;
+    });
+}
+
+async function deployContainer(event) {
+    event.preventDefault();
+    
+    const hostId = document.getElementById('deploy-host').value;
+    const templateId = document.getElementById('deploy-template').value;
+    const image = document.getElementById('deploy-image').value;
+    const name = document.getElementById('deploy-name').value;
+    const portsStr = document.getElementById('deploy-ports').value;
+    const volumesStr = document.getElementById('deploy-volumes').value;
+    const envStr = document.getElementById('deploy-env').value;
+    const restart = document.getElementById('deploy-restart').value;
+    
+    if (!hostId) {
+        alert('Please select a target host');
+        return;
+    }
+    
+    let endpoint, body;
+    
+    if (templateId) {
+        endpoint = `/api/docker/templates/${templateId}/deploy`;
+        body = {
+            host_id: hostId,
+            overrides: {
+                name: name || undefined,
+                ports: portsStr ? portsStr.split(',').map(p => p.trim()) : undefined,
+                volumes: volumesStr ? volumesStr.split(',').map(v => v.trim()) : undefined,
+                environment: envStr ? JSON.parse(envStr) : undefined,
+                restart: restart
+            }
+        };
+    } else {
+        endpoint = `/api/fleet/hosts/${hostId}/deploy`;
+        body = {
+            image,
+            name,
+            ports: portsStr ? portsStr.split(',').map(p => p.trim()) : [],
+            volumes: volumesStr ? volumesStr.split(',').map(v => v.trim()) : [],
+            environment: envStr ? JSON.parse(envStr) : {},
+            restart
+        };
+    }
+    
+    try {
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(body)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(result.message || 'Deployment successful!');
+            bootstrap.Modal.getInstance(document.getElementById('deployModal')).hide();
+            document.getElementById('deploy-form').reset();
+            setTimeout(loadContainers, 2000);
+        } else {
+            alert(`Deployment failed: ${result.message || 'Unknown error'}`);
+        }
+        
+    } catch (error) {
+        alert(`Deployment error: ${error.message}`);
+    }
+}
+
+function refreshContainers() {
+    document.getElementById('container-list').innerHTML = `
+        <div class="loading text-center py-5">
+            <div class="spinner-border"></div>
+            <p style="margin-top: 20px; color: var(--text-secondary);">Refreshing containers...</p>
+        </div>
+    `;
+    loadContainers();
+}
+</script>
+{% endblock %}

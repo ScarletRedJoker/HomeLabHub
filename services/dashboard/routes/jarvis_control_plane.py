@@ -321,3 +321,377 @@ def health_check_all():
     except Exception as e:
         logger.error(f"Error running health checks: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@jarvis_control_bp.route('/incidents', methods=['GET'])
+@require_auth
+def list_incidents():
+    """
+    GET /api/jarvis/control/incidents
+    List all incidents with optional filters
+    """
+    try:
+        from services.remediation_service import remediation_service
+        
+        status = request.args.get('status')
+        severity = request.args.get('severity')
+        service_name = request.args.get('service')
+        limit = request.args.get('limit', 50, type=int)
+        include_resolved = request.args.get('include_resolved', 'false').lower() == 'true'
+        
+        incidents = remediation_service.list_incidents(
+            status=status,
+            severity=severity,
+            service_name=service_name,
+            limit=limit,
+            include_resolved=include_resolved
+        )
+        
+        severity_counts = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0}
+        status_counts = {'detected': 0, 'analyzing': 0, 'remediating': 0, 'resolved': 0, 'escalated': 0, 'failed': 0}
+        
+        for inc in incidents:
+            sev = inc.get('severity', 'medium')
+            stat = inc.get('status', 'detected')
+            if sev in severity_counts:
+                severity_counts[sev] += 1
+            if stat in status_counts:
+                status_counts[stat] += 1
+        
+        return jsonify({
+            'success': True,
+            'incidents': incidents,
+            'summary': {
+                'total': len(incidents),
+                'by_severity': severity_counts,
+                'by_status': status_counts
+            },
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error listing incidents: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@jarvis_control_bp.route('/incidents', methods=['POST'])
+@require_auth
+def create_incident():
+    """
+    POST /api/jarvis/control/incidents
+    Create a new incident manually
+    """
+    try:
+        from services.remediation_service import remediation_service
+        
+        data = request.get_json() or {}
+        
+        required = ['type', 'service_name', 'title']
+        for field in required:
+            if not data.get(field):
+                return jsonify({
+                    'success': False,
+                    'error': f'Missing required field: {field}'
+                }), 400
+        
+        result = remediation_service.create_incident(
+            incident_type=data.get('type'),
+            service_name=data.get('service_name'),
+            title=data.get('title'),
+            host_id=data.get('host_id'),
+            container_name=data.get('container_name'),
+            description=data.get('description'),
+            severity=data.get('severity', 'medium'),
+            trigger_source='manual',
+            trigger_details=data.get('details')
+        )
+        
+        return jsonify(result), 201 if result.get('success') else 400
+        
+    except Exception as e:
+        logger.error(f"Error creating incident: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@jarvis_control_bp.route('/incidents/<incident_id>', methods=['GET'])
+@require_auth
+def get_incident(incident_id):
+    """
+    GET /api/jarvis/control/incidents/<incident_id>
+    Get details of a specific incident
+    """
+    try:
+        from services.remediation_service import remediation_service
+        
+        incident = remediation_service.get_incident(incident_id)
+        
+        if not incident:
+            return jsonify({
+                'success': False,
+                'error': 'Incident not found'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'incident': incident,
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error getting incident: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@jarvis_control_bp.route('/incidents/<incident_id>/analyze', methods=['POST'])
+@require_auth
+def analyze_incident(incident_id):
+    """
+    POST /api/jarvis/control/incidents/<incident_id>/analyze
+    Run AI analysis on an incident
+    """
+    try:
+        from services.remediation_service import remediation_service
+        
+        result = remediation_service.analyze_issue(incident_id)
+        
+        return jsonify(result), 200 if result.get('success') else 400
+        
+    except Exception as e:
+        logger.error(f"Error analyzing incident: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@jarvis_control_bp.route('/incidents/<incident_id>/remediate', methods=['POST'])
+@require_auth
+def remediate_incident(incident_id):
+    """
+    POST /api/jarvis/control/incidents/<incident_id>/remediate
+    Execute remediation for an incident
+    
+    Request body:
+        playbook_id: ID of playbook to execute (optional)
+        params: Parameters for playbook execution
+        dry_run: If true, only simulate
+        confirmed: Required for high-risk playbooks
+    """
+    try:
+        from services.remediation_service import remediation_service
+        
+        data = request.get_json() or {}
+        
+        result = remediation_service.execute_playbook(
+            incident_id=incident_id,
+            playbook_id=data.get('playbook_id'),
+            params=data.get('params'),
+            dry_run=data.get('dry_run', False),
+            auto_execute=False
+        )
+        
+        return jsonify(result), 200 if result.get('success') else 400
+        
+    except Exception as e:
+        logger.error(f"Error remediating incident: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@jarvis_control_bp.route('/incidents/<incident_id>/escalate', methods=['POST'])
+@require_auth
+def escalate_incident(incident_id):
+    """
+    POST /api/jarvis/control/incidents/<incident_id>/escalate
+    Escalate an incident to human operators
+    """
+    try:
+        from services.remediation_service import remediation_service
+        
+        data = request.get_json() or {}
+        reason = data.get('reason', 'Escalated by user')
+        notify_channels = data.get('notify_channels', [])
+        
+        result = remediation_service.escalate_to_human(
+            incident_id=incident_id,
+            reason=reason,
+            notify_channels=notify_channels
+        )
+        
+        return jsonify(result), 200 if result.get('success') else 400
+        
+    except Exception as e:
+        logger.error(f"Error escalating incident: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@jarvis_control_bp.route('/incidents/<incident_id>/status', methods=['PATCH'])
+@require_auth
+def update_incident_status(incident_id):
+    """
+    PATCH /api/jarvis/control/incidents/<incident_id>/status
+    Update the status of an incident
+    """
+    try:
+        from services.remediation_service import remediation_service
+        
+        data = request.get_json() or {}
+        
+        if not data.get('status'):
+            return jsonify({
+                'success': False,
+                'error': 'Status is required'
+            }), 400
+        
+        result = remediation_service.update_incident_status(
+            incident_id=incident_id,
+            status=data.get('status'),
+            notes=data.get('notes'),
+            **data
+        )
+        
+        return jsonify(result), 200 if result.get('success') else 400
+        
+    except Exception as e:
+        logger.error(f"Error updating incident status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@jarvis_control_bp.route('/incidents/detect', methods=['POST'])
+@require_auth
+def detect_incidents():
+    """
+    POST /api/jarvis/control/incidents/detect
+    Automatically detect issues and create incidents
+    """
+    try:
+        from services.remediation_service import remediation_service
+        
+        incidents = remediation_service.detect_and_create_incidents()
+        
+        return jsonify({
+            'success': True,
+            'incidents_created': len(incidents),
+            'incidents': incidents,
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error detecting incidents: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@jarvis_control_bp.route('/playbooks', methods=['GET'])
+@require_auth
+def list_playbooks():
+    """
+    GET /api/jarvis/control/playbooks
+    List available remediation playbooks
+    """
+    try:
+        from services.remediation_service import remediation_service
+        
+        applicable_to = request.args.get('applicable_to')
+        
+        playbooks = remediation_service.get_playbooks(applicable_to=applicable_to)
+        
+        return jsonify({
+            'success': True,
+            'playbooks': playbooks,
+            'count': len(playbooks),
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error listing playbooks: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@jarvis_control_bp.route('/playbooks/<playbook_id>', methods=['GET'])
+@require_auth
+def get_playbook(playbook_id):
+    """
+    GET /api/jarvis/control/playbooks/<playbook_id>
+    Get details of a specific playbook
+    """
+    try:
+        from services.remediation_service import remediation_service
+        
+        playbooks = remediation_service.get_playbooks()
+        playbook = next((p for p in playbooks if p.get('id') == playbook_id), None)
+        
+        if not playbook:
+            return jsonify({
+                'success': False,
+                'error': 'Playbook not found'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'playbook': playbook,
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error getting playbook: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@jarvis_control_bp.route('/auto-remediation/settings', methods=['GET'])
+@require_auth
+def get_auto_remediation_settings():
+    """
+    GET /api/jarvis/control/auto-remediation/settings
+    Get current auto-remediation settings
+    """
+    try:
+        from services.remediation_service import remediation_service
+        
+        result = remediation_service.get_auto_remediation_settings()
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        logger.error(f"Error getting auto-remediation settings: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@jarvis_control_bp.route('/auto-remediation/settings', methods=['POST'])
+@require_auth
+def update_auto_remediation_settings():
+    """
+    POST /api/jarvis/control/auto-remediation/settings
+    Update auto-remediation settings
+    """
+    try:
+        from services.remediation_service import remediation_service
+        
+        data = request.get_json() or {}
+        
+        result = remediation_service.update_auto_remediation_settings(
+            playbook_id=data.get('playbook_id'),
+            service_name=data.get('service_name'),
+            enabled=data.get('enabled', True),
+            **data
+        )
+        
+        return jsonify(result), 200 if result.get('success') else 400
+        
+    except Exception as e:
+        logger.error(f"Error updating auto-remediation settings: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@jarvis_control_bp.route('/learning/stats', methods=['GET'])
+@require_auth
+def get_learning_stats():
+    """
+    GET /api/jarvis/control/learning/stats
+    Get learning statistics from past incidents
+    """
+    try:
+        from services.remediation_service import remediation_service
+        
+        result = remediation_service.get_learning_stats()
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        logger.error(f"Error getting learning stats: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500

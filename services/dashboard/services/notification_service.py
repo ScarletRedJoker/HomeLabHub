@@ -1410,5 +1410,607 @@ class NotificationService:
             return {'success': False, 'error': str(e)}
 
 
+    # ===========================================
+    # Task Queue Methods for Human-in-the-Loop
+    # ===========================================
+    
+    def send_alert(self, 
+                   title: str, 
+                   message: str, 
+                   severity: str = 'info',
+                   channels: List[str] = None,
+                   source: str = None,
+                   source_id: str = None,
+                   metadata: dict = None) -> Dict[str, Any]:
+        """Send alert to specified channels and store in database"""
+        channels = channels or ['discord', 'web']
+        results = {}
+        
+        if 'discord' in channels and self.discord_webhook_url:
+            results['discord'] = self._send_discord_generic(title, message, severity)
+        if 'email' in channels:
+            results['email'] = self._send_email_generic(title, message, severity)
+        if 'web' in channels:
+            results['web'] = self._create_web_notification(
+                title, message, severity, source, source_id, metadata, channels
+            )
+        
+        logger.info(f"Alert sent: {title} (severity={severity}, channels={channels})")
+        return {'success': True, 'results': results, 'channels': channels}
+    
+    def _send_discord_generic(self, title: str, message: str, severity: str) -> Dict[str, Any]:
+        """Send generic Discord webhook notification"""
+        if not self.discord_webhook_url:
+            return {'success': False, 'error': 'Discord webhook not configured'}
+        
+        color_map = {
+            'info': 3447003,       # Blue
+            'warning': 16776960,   # Yellow
+            'error': 15158332,     # Red
+            'success': 3066993,    # Green
+            'critical': 10038562   # Dark red
+        }
+        
+        icon_map = {
+            'info': 'ℹ️',
+            'warning': '⚠️',
+            'error': '❌',
+            'success': '✅',
+            'critical': '🚨'
+        }
+        
+        payload = {
+            'embeds': [{
+                'title': f"{icon_map.get(severity, 'ℹ️')} {title}",
+                'description': message,
+                'color': color_map.get(severity, 3447003),
+                'timestamp': datetime.utcnow().isoformat(),
+                'footer': {'text': 'Nebula Command'}
+            }],
+            'username': 'Nebula Command'
+        }
+        
+        try:
+            response = requests.post(self.discord_webhook_url, json=payload, timeout=10)
+            return {'success': response.status_code in [200, 204], 'status_code': response.status_code}
+        except Exception as e:
+            logger.error(f"Discord notification failed: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def _send_email_generic(self, title: str, message: str, severity: str) -> Dict[str, Any]:
+        """Send generic email notification"""
+        if not self.notification_email:
+            return {'success': False, 'error': 'Notification email not configured'}
+        
+        if not self.gmail_service:
+            return {'success': False, 'error': 'Gmail service not available'}
+        
+        try:
+            emoji_map = {'info': 'ℹ️', 'warning': '⚠️', 'error': '❌', 'success': '✅', 'critical': '🚨'}
+            emoji = emoji_map.get(severity, 'ℹ️')
+            
+            result = self.gmail_service.send_email(
+                to=self.notification_email,
+                subject=f'{emoji} [{severity.upper()}] {title}',
+                body=message,
+                template_type='default',
+                html=False
+            )
+            return {'success': True, 'message_id': result.get('id')}
+        except Exception as e:
+            logger.error(f"Email notification failed: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def _create_web_notification(self, 
+                                  title: str, 
+                                  message: str, 
+                                  severity: str,
+                                  source: str = None,
+                                  source_id: str = None,
+                                  metadata: dict = None,
+                                  channels: List[str] = None) -> Dict[str, Any]:
+        """Create a web notification (stored in database)"""
+        try:
+            from services.db_service import db_service
+            from models.notification import Alert
+            
+            if not db_service.is_available:
+                return {'success': False, 'error': 'Database not available'}
+            
+            with db_service.get_session() as session:
+                alert = Alert(
+                    title=title,
+                    message=message,
+                    severity=severity,
+                    channels_sent=channels or ['web'],
+                    source=source,
+                    source_id=source_id,
+                    metadata_json=metadata
+                )
+                session.add(alert)
+                session.flush()
+                alert_id = alert.id
+            
+            return {'success': True, 'alert_id': alert_id}
+        except Exception as e:
+            logger.error(f"Web notification failed: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def create_task(self,
+                    title: str,
+                    description: str,
+                    task_type: str,
+                    priority: str = 'medium',
+                    sla_hours: int = 24,
+                    assigned_to: str = None,
+                    instructions: dict = None,
+                    metadata: dict = None,
+                    send_notification: bool = True) -> Dict[str, Any]:
+        """Create a task requiring human action"""
+        try:
+            from services.db_service import db_service
+            from models.task import Task, TaskType, TaskStatus, TaskPriority
+            from datetime import timezone, timedelta
+            import uuid
+            
+            if not db_service.is_available:
+                return {'success': False, 'error': 'Database not available'}
+            
+            try:
+                task_type_enum = TaskType(task_type)
+            except ValueError:
+                task_type_enum = TaskType.approval_required
+            
+            try:
+                priority_enum = TaskPriority(priority)
+            except ValueError:
+                priority_enum = TaskPriority.medium
+            
+            sla_deadline = datetime.now(timezone.utc) + timedelta(hours=sla_hours)
+            
+            with db_service.get_session() as session:
+                task = Task(
+                    id=uuid.uuid4(),
+                    title=title,
+                    description=description,
+                    task_type=task_type_enum,
+                    status=TaskStatus.pending,
+                    priority=priority_enum,
+                    assigned_to=assigned_to,
+                    instructions=instructions or {},
+                    sla_deadline=sla_deadline,
+                    task_metadata=metadata or {}
+                )
+                session.add(task)
+                session.flush()
+                task_id = str(task.id)
+                task_dict = task.to_dict()
+            
+            if send_notification:
+                self.send_alert(
+                    title=f"New Task: {title}",
+                    message=f"Priority: {priority.upper()}\nSLA: {sla_hours} hours\n\n{description}",
+                    severity='warning' if priority in ['high', 'critical'] else 'info',
+                    channels=['discord', 'web'],
+                    source='task_queue',
+                    source_id=task_id
+                )
+            
+            logger.info(f"Task created: {task_id} - {title}")
+            return {'success': True, 'task': task_dict}
+            
+        except Exception as e:
+            logger.error(f"Error creating task: {e}", exc_info=True)
+            return {'success': False, 'error': str(e)}
+    
+    def complete_task(self, task_id: str, notes: str = None, send_notification: bool = True) -> Dict[str, Any]:
+        """Mark task as completed"""
+        try:
+            from services.db_service import db_service
+            from models.task import Task, TaskStatus
+            from datetime import timezone
+            import uuid as uuid_mod
+            
+            if not db_service.is_available:
+                return {'success': False, 'error': 'Database not available'}
+            
+            with db_service.get_session() as session:
+                task = session.get(Task, uuid_mod.UUID(task_id))
+                if not task:
+                    return {'success': False, 'error': 'Task not found'}
+                
+                task.status = TaskStatus.completed
+                task.completed_at = datetime.now(timezone.utc)
+                if notes:
+                    task.notes = notes
+                
+                task_dict = task.to_dict()
+            
+            if send_notification:
+                self.send_alert(
+                    title=f"Task Completed: {task_dict['title']}",
+                    message=f"Task has been marked as completed.\n\nNotes: {notes or 'None'}",
+                    severity='success',
+                    channels=['web'],
+                    source='task_queue',
+                    source_id=task_id
+                )
+            
+            logger.info(f"Task completed: {task_id}")
+            return {'success': True, 'task': task_dict}
+            
+        except Exception as e:
+            logger.error(f"Error completing task: {e}", exc_info=True)
+            return {'success': False, 'error': str(e)}
+    
+    def dismiss_task(self, task_id: str, notes: str = None) -> Dict[str, Any]:
+        """Dismiss a task without completing it"""
+        try:
+            from services.db_service import db_service
+            from models.task import Task, TaskStatus
+            from datetime import timezone
+            import uuid as uuid_mod
+            
+            if not db_service.is_available:
+                return {'success': False, 'error': 'Database not available'}
+            
+            with db_service.get_session() as session:
+                task = session.get(Task, uuid_mod.UUID(task_id))
+                if not task:
+                    return {'success': False, 'error': 'Task not found'}
+                
+                task.status = TaskStatus.dismissed
+                task.completed_at = datetime.now(timezone.utc)
+                if notes:
+                    task.notes = notes
+                
+                task_dict = task.to_dict()
+            
+            logger.info(f"Task dismissed: {task_id}")
+            return {'success': True, 'task': task_dict}
+            
+        except Exception as e:
+            logger.error(f"Error dismissing task: {e}", exc_info=True)
+            return {'success': False, 'error': str(e)}
+    
+    def start_task(self, task_id: str) -> Dict[str, Any]:
+        """Mark task as in progress"""
+        try:
+            from services.db_service import db_service
+            from models.task import Task, TaskStatus
+            import uuid as uuid_mod
+            
+            if not db_service.is_available:
+                return {'success': False, 'error': 'Database not available'}
+            
+            with db_service.get_session() as session:
+                task = session.get(Task, uuid_mod.UUID(task_id))
+                if not task:
+                    return {'success': False, 'error': 'Task not found'}
+                
+                task.status = TaskStatus.in_progress
+                task_dict = task.to_dict()
+            
+            logger.info(f"Task started: {task_id}")
+            return {'success': True, 'task': task_dict}
+            
+        except Exception as e:
+            logger.error(f"Error starting task: {e}", exc_info=True)
+            return {'success': False, 'error': str(e)}
+    
+    def get_tasks(self, 
+                  status: str = None, 
+                  priority: str = None,
+                  overdue_only: bool = False,
+                  limit: int = 50) -> List[Dict[str, Any]]:
+        """Get tasks with optional filters"""
+        try:
+            from services.db_service import db_service
+            from models.task import Task, TaskStatus, TaskPriority
+            from sqlalchemy import select, and_
+            from datetime import timezone
+            
+            if not db_service.is_available:
+                return []
+            
+            with db_service.get_session() as session:
+                query = select(Task).order_by(Task.created_at.desc())
+                
+                conditions = []
+                
+                if status:
+                    try:
+                        status_enum = TaskStatus(status)
+                        conditions.append(Task.status == status_enum)
+                    except ValueError:
+                        pass
+                
+                if priority:
+                    try:
+                        priority_enum = TaskPriority(priority)
+                        conditions.append(Task.priority == priority_enum)
+                    except ValueError:
+                        pass
+                
+                if overdue_only:
+                    now = datetime.now(timezone.utc)
+                    conditions.append(Task.sla_deadline < now)
+                    conditions.append(Task.status.in_([TaskStatus.pending, TaskStatus.in_progress]))
+                
+                if conditions:
+                    query = query.where(and_(*conditions))
+                
+                query = query.limit(limit)
+                
+                result = session.execute(query)
+                tasks = result.scalars().all()
+                return [task.to_dict() for task in tasks]
+                
+        except Exception as e:
+            logger.error(f"Error getting tasks: {e}", exc_info=True)
+            return []
+    
+    def get_pending_tasks(self) -> List[Dict[str, Any]]:
+        """Get all pending tasks"""
+        return self.get_tasks(status='pending')
+    
+    def get_overdue_tasks(self) -> List[Dict[str, Any]]:
+        """Get tasks past their SLA"""
+        return self.get_tasks(overdue_only=True)
+    
+    def get_task_stats(self) -> Dict[str, Any]:
+        """Get task queue statistics"""
+        try:
+            from services.db_service import db_service
+            from models.task import Task, TaskStatus
+            from sqlalchemy import select, func, and_
+            from datetime import timezone
+            
+            if not db_service.is_available:
+                return {}
+            
+            with db_service.get_session() as session:
+                now = datetime.now(timezone.utc)
+                today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+                
+                pending_count = session.execute(
+                    select(func.count()).select_from(Task).where(Task.status == TaskStatus.pending)
+                ).scalar() or 0
+                
+                in_progress_count = session.execute(
+                    select(func.count()).select_from(Task).where(Task.status == TaskStatus.in_progress)
+                ).scalar() or 0
+                
+                completed_today = session.execute(
+                    select(func.count()).select_from(Task).where(
+                        and_(
+                            Task.status == TaskStatus.completed,
+                            Task.completed_at >= today_start
+                        )
+                    )
+                ).scalar() or 0
+                
+                overdue_count = session.execute(
+                    select(func.count()).select_from(Task).where(
+                        and_(
+                            Task.sla_deadline < now,
+                            Task.status.in_([TaskStatus.pending, TaskStatus.in_progress])
+                        )
+                    )
+                ).scalar() or 0
+                
+                return {
+                    'pending': pending_count,
+                    'in_progress': in_progress_count,
+                    'completed_today': completed_today,
+                    'overdue': overdue_count,
+                    'total_active': pending_count + in_progress_count
+                }
+                
+        except Exception as e:
+            logger.error(f"Error getting task stats: {e}", exc_info=True)
+            return {}
+    
+    def get_alerts(self, 
+                   unread_only: bool = False, 
+                   severity: str = None,
+                   limit: int = 50) -> List[Dict[str, Any]]:
+        """Get recent alerts"""
+        try:
+            from services.db_service import db_service
+            from models.notification import Alert
+            from sqlalchemy import select, and_
+            
+            if not db_service.is_available:
+                return []
+            
+            with db_service.get_session() as session:
+                query = select(Alert).where(Alert.dismissed == False).order_by(Alert.created_at.desc())
+                
+                conditions = []
+                
+                if unread_only:
+                    conditions.append(Alert.read == False)
+                
+                if severity:
+                    conditions.append(Alert.severity == severity)
+                
+                if conditions:
+                    query = query.where(and_(*conditions))
+                
+                query = query.limit(limit)
+                
+                result = session.execute(query)
+                alerts = result.scalars().all()
+                return [alert.to_dict() for alert in alerts]
+                
+        except Exception as e:
+            logger.error(f"Error getting alerts: {e}", exc_info=True)
+            return []
+    
+    def mark_alert_read(self, alert_id: int) -> Dict[str, Any]:
+        """Mark an alert as read"""
+        try:
+            from services.db_service import db_service
+            from models.notification import Alert
+            from datetime import timezone
+            
+            if not db_service.is_available:
+                return {'success': False, 'error': 'Database not available'}
+            
+            with db_service.get_session() as session:
+                alert = session.get(Alert, alert_id)
+                if not alert:
+                    return {'success': False, 'error': 'Alert not found'}
+                
+                alert.read = True
+                alert.read_at = datetime.now(timezone.utc)
+            
+            return {'success': True}
+            
+        except Exception as e:
+            logger.error(f"Error marking alert read: {e}", exc_info=True)
+            return {'success': False, 'error': str(e)}
+    
+    def dismiss_alert(self, alert_id: int) -> Dict[str, Any]:
+        """Dismiss an alert"""
+        try:
+            from services.db_service import db_service
+            from models.notification import Alert
+            
+            if not db_service.is_available:
+                return {'success': False, 'error': 'Database not available'}
+            
+            with db_service.get_session() as session:
+                alert = session.get(Alert, alert_id)
+                if not alert:
+                    return {'success': False, 'error': 'Alert not found'}
+                
+                alert.dismissed = True
+            
+            return {'success': True}
+            
+        except Exception as e:
+            logger.error(f"Error dismissing alert: {e}", exc_info=True)
+            return {'success': False, 'error': str(e)}
+    
+    def mark_all_alerts_read(self) -> Dict[str, Any]:
+        """Mark all alerts as read"""
+        try:
+            from services.db_service import db_service
+            from models.notification import Alert
+            from sqlalchemy import update
+            from datetime import timezone
+            
+            if not db_service.is_available:
+                return {'success': False, 'error': 'Database not available'}
+            
+            with db_service.get_session() as session:
+                session.execute(
+                    update(Alert)
+                    .where(Alert.read == False)
+                    .values(read=True, read_at=datetime.now(timezone.utc))
+                )
+            
+            return {'success': True}
+            
+        except Exception as e:
+            logger.error(f"Error marking all alerts read: {e}", exc_info=True)
+            return {'success': False, 'error': str(e)}
+    
+    def get_unread_count(self) -> int:
+        """Get count of unread alerts"""
+        try:
+            from services.db_service import db_service
+            from models.notification import Alert
+            from sqlalchemy import select, func, and_
+            
+            if not db_service.is_available:
+                return 0
+            
+            with db_service.get_session() as session:
+                count = session.execute(
+                    select(func.count()).select_from(Alert).where(
+                        and_(Alert.read == False, Alert.dismissed == False)
+                    )
+                ).scalar() or 0
+                return count
+                
+        except Exception as e:
+            logger.error(f"Error getting unread count: {e}", exc_info=True)
+            return 0
+    
+    def get_notification_settings(self, user_id: str = 'default') -> Dict[str, Any]:
+        """Get notification settings for a user"""
+        try:
+            from services.db_service import db_service
+            from models.notification import NotificationSettings
+            from sqlalchemy import select
+            
+            if not db_service.is_available:
+                return self._get_default_settings()
+            
+            with db_service.get_session() as session:
+                result = session.execute(
+                    select(NotificationSettings).where(NotificationSettings.user_id == user_id)
+                )
+                settings = result.scalar_one_or_none()
+                
+                if settings:
+                    return settings.to_dict()
+                else:
+                    return self._get_default_settings()
+                    
+        except Exception as e:
+            logger.error(f"Error getting notification settings: {e}", exc_info=True)
+            return self._get_default_settings()
+    
+    def update_notification_settings(self, user_id: str, settings_data: dict) -> Dict[str, Any]:
+        """Update notification settings for a user"""
+        try:
+            from services.db_service import db_service
+            from models.notification import NotificationSettings
+            from sqlalchemy import select
+            
+            if not db_service.is_available:
+                return {'success': False, 'error': 'Database not available'}
+            
+            with db_service.get_session() as session:
+                result = session.execute(
+                    select(NotificationSettings).where(NotificationSettings.user_id == user_id)
+                )
+                settings = result.scalar_one_or_none()
+                
+                if not settings:
+                    settings = NotificationSettings(user_id=user_id)
+                    session.add(settings)
+                
+                for key, value in settings_data.items():
+                    if hasattr(settings, key):
+                        setattr(settings, key, value)
+                
+                session.flush()
+                return {'success': True, 'settings': settings.to_dict()}
+                    
+        except Exception as e:
+            logger.error(f"Error updating notification settings: {e}", exc_info=True)
+            return {'success': False, 'error': str(e)}
+    
+    def _get_default_settings(self) -> Dict[str, Any]:
+        """Get default notification settings"""
+        return {
+            'discord_enabled': True,
+            'email_enabled': False,
+            'web_enabled': True,
+            'discord_webhook': self.discord_webhook_url,
+            'email_address': None,
+            'quiet_hours_enabled': False,
+            'quiet_hours_start': None,
+            'quiet_hours_end': None,
+            'default_sla_hours': 24,
+            'severity_filter': ['warning', 'error', 'critical']
+        }
+
+
 # Global notification service instance
 notification_service = NotificationService()

@@ -1,0 +1,907 @@
+{% extends "base.html" %}
+{% block title %}Notification Center - Nebula Command{% endblock %}
+
+{% block extra_css %}
+<style>
+    .notification-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    
+    .stat-card {
+        background: linear-gradient(145deg, rgba(31, 41, 55, 0.6) 0%, rgba(17, 24, 39, 0.9) 100%);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+    }
+    
+    .stat-card.overdue {
+        border-color: rgba(248, 113, 113, 0.5);
+        background: linear-gradient(145deg, rgba(127, 29, 29, 0.2) 0%, rgba(17, 24, 39, 0.9) 100%);
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #8B5CF6, #3B82F6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .stat-card.overdue .stat-value {
+        background: linear-gradient(135deg, #f87171, #dc2626);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .content-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+    }
+    
+    @media (max-width: 1200px) {
+        .content-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    .section-card {
+        background: linear-gradient(145deg, rgba(31, 41, 55, 0.8) 0%, rgba(17, 24, 39, 0.9) 100%);
+        border: 1px solid rgba(139, 92, 246, 0.2);
+        border-radius: 12px;
+        padding: 24px;
+        backdrop-filter: blur(16px);
+    }
+    
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .task-list, .alert-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        max-height: 500px;
+        overflow-y: auto;
+    }
+    
+    .task-item, .alert-item {
+        background: rgba(31, 41, 55, 0.5);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 16px;
+        transition: all 0.2s ease;
+    }
+    
+    .task-item:hover, .alert-item:hover {
+        border-color: rgba(139, 92, 246, 0.4);
+        transform: translateX(4px);
+    }
+    
+    .task-item.overdue {
+        border-left: 3px solid #f87171;
+    }
+    
+    .task-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 8px;
+    }
+    
+    .task-title {
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+    
+    .task-description {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-bottom: 12px;
+        line-height: 1.5;
+    }
+    
+    .task-meta {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
+    
+    .task-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+    }
+    
+    .priority-badge {
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .priority-low { background: rgba(96, 165, 250, 0.2); color: #60a5fa; }
+    .priority-medium { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+    .priority-high { background: rgba(251, 146, 60, 0.2); color: #fb923c; }
+    .priority-critical { background: rgba(248, 113, 113, 0.2); color: #f87171; }
+    
+    .severity-info { border-left: 3px solid #60a5fa; }
+    .severity-warning { border-left: 3px solid #fbbf24; }
+    .severity-error { border-left: 3px solid #f87171; }
+    .severity-success { border-left: 3px solid #34d399; }
+    .severity-critical { border-left: 3px solid #dc2626; }
+    
+    .severity-icon {
+        font-size: 1.2rem;
+    }
+    
+    .alert-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 8px;
+    }
+    
+    .alert-title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .alert-message {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        line-height: 1.4;
+    }
+    
+    .alert-time {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin-top: 8px;
+    }
+    
+    .unread-indicator {
+        width: 8px;
+        height: 8px;
+        background: #60a5fa;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    
+    .sla-countdown {
+        font-size: 0.8rem;
+        padding: 2px 8px;
+        border-radius: 4px;
+    }
+    
+    .sla-ok { background: rgba(52, 211, 153, 0.2); color: #34d399; }
+    .sla-warning { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+    .sla-critical { background: rgba(248, 113, 113, 0.2); color: #f87171; }
+    
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .btn-complete {
+        background: rgba(52, 211, 153, 0.2);
+        color: #34d399;
+    }
+    
+    .btn-complete:hover {
+        background: rgba(52, 211, 153, 0.4);
+    }
+    
+    .btn-start {
+        background: rgba(96, 165, 250, 0.2);
+        color: #60a5fa;
+    }
+    
+    .btn-start:hover {
+        background: rgba(96, 165, 250, 0.4);
+    }
+    
+    .btn-dismiss {
+        background: rgba(107, 114, 128, 0.2);
+        color: #9ca3af;
+    }
+    
+    .btn-dismiss:hover {
+        background: rgba(107, 114, 128, 0.4);
+    }
+    
+    .filter-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+    
+    .filter-tab {
+        padding: 8px 16px;
+        border-radius: 8px;
+        background: rgba(31, 41, 55, 0.5);
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.85rem;
+    }
+    
+    .filter-tab:hover {
+        border-color: rgba(139, 92, 246, 0.4);
+    }
+    
+    .filter-tab.active {
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(59, 130, 246, 0.2));
+        border-color: rgba(139, 92, 246, 0.5);
+        color: var(--text-primary);
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--text-secondary);
+    }
+    
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+    
+    .refresh-btn {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+        padding: 8px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+    }
+    
+    .refresh-btn:hover {
+        border-color: rgba(139, 92, 246, 0.4);
+        color: var(--text-primary);
+    }
+    
+    .settings-section {
+        margin-top: 24px;
+    }
+    
+    .settings-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 16px;
+    }
+    
+    .setting-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px;
+        background: rgba(31, 41, 55, 0.5);
+        border-radius: 8px;
+    }
+    
+    .toggle-switch {
+        position: relative;
+        width: 48px;
+        height: 24px;
+    }
+    
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(107, 114, 128, 0.5);
+        transition: 0.3s;
+        border-radius: 24px;
+    }
+    
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.3s;
+        border-radius: 50%;
+    }
+    
+    input:checked + .toggle-slider {
+        background: linear-gradient(135deg, #8B5CF6, #3B82F6);
+    }
+    
+    input:checked + .toggle-slider:before {
+        transform: translateX(24px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="notification-header">
+    <h2><i class="bi bi-bell"></i> Notification Center</h2>
+    <div class="d-flex gap-2">
+        <button class="refresh-btn" onclick="refreshAll()">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
+        <button class="btn-primary" onclick="openNewTaskModal()">
+            <i class="bi bi-plus-lg"></i> New Task
+        </button>
+    </div>
+</div>
+
+<div class="stats-grid" id="statsGrid">
+    <div class="stat-card">
+        <div class="stat-value" id="pendingCount">-</div>
+        <div class="stat-label">Pending Tasks</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" id="inProgressCount">-</div>
+        <div class="stat-label">In Progress</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" id="completedTodayCount">-</div>
+        <div class="stat-label">Completed Today</div>
+    </div>
+    <div class="stat-card overdue" id="overdueCard">
+        <div class="stat-value" id="overdueCount">-</div>
+        <div class="stat-label">Overdue</div>
+    </div>
+</div>
+
+<div class="content-grid">
+    <div class="section-card">
+        <div class="section-header">
+            <div class="section-title">
+                <i class="bi bi-list-task"></i> Task Queue
+            </div>
+            <span class="badge badge-primary" id="taskBadge">0</span>
+        </div>
+        
+        <div class="filter-tabs">
+            <button class="filter-tab active" data-filter="pending" onclick="filterTasks('pending')">Pending</button>
+            <button class="filter-tab" data-filter="in_progress" onclick="filterTasks('in_progress')">In Progress</button>
+            <button class="filter-tab" data-filter="overdue" onclick="filterTasks('overdue')">Overdue</button>
+            <button class="filter-tab" data-filter="all" onclick="filterTasks('all')">All</button>
+        </div>
+        
+        <div class="task-list" id="taskList">
+            <div class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <p>Loading tasks...</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="section-card">
+        <div class="section-header">
+            <div class="section-title">
+                <i class="bi bi-bell-fill"></i> Alert Feed
+            </div>
+            <button class="btn-sm btn-dismiss" onclick="markAllAlertsRead()">Mark All Read</button>
+        </div>
+        
+        <div class="filter-tabs">
+            <button class="filter-tab active" data-alert-filter="all" onclick="filterAlerts('all')">All</button>
+            <button class="filter-tab" data-alert-filter="unread" onclick="filterAlerts('unread')">Unread</button>
+            <button class="filter-tab" data-alert-filter="error" onclick="filterAlerts('error')">Errors</button>
+            <button class="filter-tab" data-alert-filter="warning" onclick="filterAlerts('warning')">Warnings</button>
+        </div>
+        
+        <div class="alert-list" id="alertList">
+            <div class="empty-state">
+                <i class="bi bi-bell-slash"></i>
+                <p>Loading alerts...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="newTaskModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background: var(--bg-secondary); border: 1px solid var(--border-color);">
+            <div class="modal-header" style="border-color: var(--border-color);">
+                <h5 class="modal-title">Create New Task</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newTaskForm">
+                    <div class="mb-3">
+                        <label class="form-label">Title</label>
+                        <input type="text" class="form-control" id="taskTitle" required style="background: var(--bg-tertiary); border-color: var(--border-color); color: var(--text-primary);">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" id="taskDescription" rows="3" required style="background: var(--bg-tertiary); border-color: var(--border-color); color: var(--text-primary);"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Type</label>
+                            <select class="form-select" id="taskType" style="background: var(--bg-tertiary); border-color: var(--border-color); color: var(--text-primary);">
+                                <option value="approval_required">Approval Required</option>
+                                <option value="manual_remediation">Manual Remediation</option>
+                                <option value="configuration">Configuration</option>
+                                <option value="review">Review</option>
+                                <option value="deployment">Deployment</option>
+                                <option value="security">Security</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Priority</label>
+                            <select class="form-select" id="taskPriority" style="background: var(--bg-tertiary); border-color: var(--border-color); color: var(--text-primary);">
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                                <option value="critical">Critical</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">SLA (hours)</label>
+                        <input type="number" class="form-control" id="taskSLA" value="24" min="1" max="720" style="background: var(--bg-tertiary); border-color: var(--border-color); color: var(--text-primary);">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer" style="border-color: var(--border-color);">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createTask()">Create Task</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="taskCompleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background: var(--bg-secondary); border: 1px solid var(--border-color);">
+            <div class="modal-header" style="border-color: var(--border-color);">
+                <h5 class="modal-title">Complete Task</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="completeTaskId">
+                <div class="mb-3">
+                    <label class="form-label">Completion Notes (optional)</label>
+                    <textarea class="form-control" id="taskNotes" rows="3" placeholder="Add any notes about the task completion..." style="background: var(--bg-tertiary); border-color: var(--border-color); color: var(--text-primary);"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-color: var(--border-color);">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="submitCompleteTask()">Complete Task</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentTaskFilter = 'pending';
+let currentAlertFilter = 'all';
+let allTasks = [];
+let allAlerts = [];
+
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+async function fetchWithCsrf(url, options = {}) {
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers
+    };
+    if (csrfToken) {
+        headers['X-CSRFToken'] = csrfToken;
+    }
+    return fetch(url, { ...options, headers });
+}
+
+async function loadTasks() {
+    try {
+        const response = await fetchWithCsrf('/notifications/api/tasks');
+        const data = await response.json();
+        
+        if (data.success) {
+            allTasks = data.tasks || [];
+            updateTaskStats(data.stats);
+            renderTasks();
+        }
+    } catch (error) {
+        console.error('Error loading tasks:', error);
+    }
+}
+
+async function loadAlerts() {
+    try {
+        const response = await fetchWithCsrf('/notifications/api/alerts');
+        const data = await response.json();
+        
+        if (data.success) {
+            allAlerts = data.alerts || [];
+            renderAlerts();
+        }
+    } catch (error) {
+        console.error('Error loading alerts:', error);
+    }
+}
+
+function updateTaskStats(stats) {
+    if (!stats) return;
+    
+    document.getElementById('pendingCount').textContent = stats.pending || 0;
+    document.getElementById('inProgressCount').textContent = stats.in_progress || 0;
+    document.getElementById('completedTodayCount').textContent = stats.completed_today || 0;
+    document.getElementById('overdueCount').textContent = stats.overdue || 0;
+    document.getElementById('taskBadge').textContent = stats.total_active || 0;
+    
+    const overdueCard = document.getElementById('overdueCard');
+    if (stats.overdue > 0) {
+        overdueCard.classList.add('overdue');
+    } else {
+        overdueCard.classList.remove('overdue');
+    }
+}
+
+function renderTasks() {
+    const taskList = document.getElementById('taskList');
+    
+    let filteredTasks = allTasks;
+    
+    if (currentTaskFilter === 'pending') {
+        filteredTasks = allTasks.filter(t => t.status === 'pending');
+    } else if (currentTaskFilter === 'in_progress') {
+        filteredTasks = allTasks.filter(t => t.status === 'in_progress');
+    } else if (currentTaskFilter === 'overdue') {
+        filteredTasks = allTasks.filter(t => t.is_overdue);
+    }
+    
+    if (filteredTasks.length === 0) {
+        taskList.innerHTML = `
+            <div class="empty-state">
+                <i class="bi bi-check-circle"></i>
+                <p>No tasks found</p>
+            </div>
+        `;
+        return;
+    }
+    
+    taskList.innerHTML = filteredTasks.map(task => {
+        const priorityClass = `priority-${task.priority}`;
+        const isOverdue = task.is_overdue;
+        const slaClass = getSlaClass(task.sla_deadline, isOverdue);
+        const slaText = getSlaText(task.sla_deadline, isOverdue);
+        
+        return `
+            <div class="task-item ${isOverdue ? 'overdue' : ''}">
+                <div class="task-header">
+                    <div class="task-title">${escapeHtml(task.title)}</div>
+                    <span class="priority-badge ${priorityClass}">${task.priority}</span>
+                </div>
+                <div class="task-description">${escapeHtml(task.description || '')}</div>
+                <div class="task-meta">
+                    <span><i class="bi bi-tag"></i> ${task.task_type}</span>
+                    <span class="sla-countdown ${slaClass}"><i class="bi bi-clock"></i> ${slaText}</span>
+                    <span><i class="bi bi-calendar"></i> ${formatDate(task.created_at)}</span>
+                </div>
+                <div class="task-actions">
+                    ${task.status === 'pending' ? `<button class="btn-sm btn-start" onclick="startTask('${task.id}')"><i class="bi bi-play"></i> Start</button>` : ''}
+                    ${task.status === 'in_progress' ? `<button class="btn-sm btn-complete" onclick="openCompleteModal('${task.id}')"><i class="bi bi-check"></i> Complete</button>` : ''}
+                    <button class="btn-sm btn-dismiss" onclick="dismissTask('${task.id}')"><i class="bi bi-x"></i> Dismiss</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderAlerts() {
+    const alertList = document.getElementById('alertList');
+    
+    let filteredAlerts = allAlerts;
+    
+    if (currentAlertFilter === 'unread') {
+        filteredAlerts = allAlerts.filter(a => !a.read);
+    } else if (currentAlertFilter === 'error') {
+        filteredAlerts = allAlerts.filter(a => a.severity === 'error' || a.severity === 'critical');
+    } else if (currentAlertFilter === 'warning') {
+        filteredAlerts = allAlerts.filter(a => a.severity === 'warning');
+    }
+    
+    if (filteredAlerts.length === 0) {
+        alertList.innerHTML = `
+            <div class="empty-state">
+                <i class="bi bi-bell-slash"></i>
+                <p>No alerts found</p>
+            </div>
+        `;
+        return;
+    }
+    
+    alertList.innerHTML = filteredAlerts.map(alert => {
+        const severityIcon = getSeverityIcon(alert.severity);
+        
+        return `
+            <div class="alert-item severity-${alert.severity}">
+                <div class="alert-header">
+                    <div class="alert-title">
+                        <span class="severity-icon">${severityIcon}</span>
+                        ${escapeHtml(alert.title)}
+                        ${!alert.read ? '<span class="unread-indicator"></span>' : ''}
+                    </div>
+                    <button class="btn-sm btn-dismiss" onclick="dismissAlert(${alert.id})"><i class="bi bi-x"></i></button>
+                </div>
+                <div class="alert-message">${escapeHtml(alert.message)}</div>
+                <div class="alert-time">${formatDate(alert.created_at)}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function getSeverityIcon(severity) {
+    const icons = {
+        'info': 'ℹ️',
+        'warning': '⚠️',
+        'error': '❌',
+        'success': '✅',
+        'critical': '🚨'
+    };
+    return icons[severity] || 'ℹ️';
+}
+
+function getSlaClass(deadline, isOverdue) {
+    if (isOverdue) return 'sla-critical';
+    if (!deadline) return 'sla-ok';
+    
+    const now = new Date();
+    const slaDate = new Date(deadline);
+    const hoursRemaining = (slaDate - now) / (1000 * 60 * 60);
+    
+    if (hoursRemaining < 2) return 'sla-critical';
+    if (hoursRemaining < 8) return 'sla-warning';
+    return 'sla-ok';
+}
+
+function getSlaText(deadline, isOverdue) {
+    if (isOverdue) return 'OVERDUE';
+    if (!deadline) return 'No SLA';
+    
+    const now = new Date();
+    const slaDate = new Date(deadline);
+    const hoursRemaining = Math.max(0, Math.floor((slaDate - now) / (1000 * 60 * 60)));
+    
+    if (hoursRemaining < 1) {
+        const minutesRemaining = Math.max(0, Math.floor((slaDate - now) / (1000 * 60)));
+        return `${minutesRemaining}m remaining`;
+    }
+    if (hoursRemaining < 24) return `${hoursRemaining}h remaining`;
+    
+    const daysRemaining = Math.floor(hoursRemaining / 24);
+    return `${daysRemaining}d remaining`;
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diff = now - date;
+    
+    if (diff < 60000) return 'Just now';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+    
+    return date.toLocaleDateString();
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function filterTasks(filter) {
+    currentTaskFilter = filter;
+    document.querySelectorAll('[data-filter]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === filter);
+    });
+    renderTasks();
+}
+
+function filterAlerts(filter) {
+    currentAlertFilter = filter;
+    document.querySelectorAll('[data-alert-filter]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.alertFilter === filter);
+    });
+    renderAlerts();
+}
+
+async function startTask(taskId) {
+    try {
+        const response = await fetchWithCsrf(`/notifications/api/tasks/${taskId}/start`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        if (data.success) {
+            loadTasks();
+        } else {
+            alert('Failed to start task: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error starting task:', error);
+    }
+}
+
+function openCompleteModal(taskId) {
+    document.getElementById('completeTaskId').value = taskId;
+    document.getElementById('taskNotes').value = '';
+    new bootstrap.Modal(document.getElementById('taskCompleteModal')).show();
+}
+
+async function submitCompleteTask() {
+    const taskId = document.getElementById('completeTaskId').value;
+    const notes = document.getElementById('taskNotes').value;
+    
+    try {
+        const response = await fetchWithCsrf(`/notifications/api/tasks/${taskId}/complete`, {
+            method: 'POST',
+            body: JSON.stringify({ notes })
+        });
+        const data = await response.json();
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('taskCompleteModal')).hide();
+            loadTasks();
+        } else {
+            alert('Failed to complete task: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error completing task:', error);
+    }
+}
+
+async function dismissTask(taskId) {
+    if (!confirm('Are you sure you want to dismiss this task?')) return;
+    
+    try {
+        const response = await fetchWithCsrf(`/notifications/api/tasks/${taskId}/dismiss`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        if (data.success) {
+            loadTasks();
+        } else {
+            alert('Failed to dismiss task: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error dismissing task:', error);
+    }
+}
+
+async function dismissAlert(alertId) {
+    try {
+        const response = await fetchWithCsrf(`/notifications/api/alerts/${alertId}/dismiss`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        if (data.success) {
+            loadAlerts();
+        }
+    } catch (error) {
+        console.error('Error dismissing alert:', error);
+    }
+}
+
+async function markAllAlertsRead() {
+    try {
+        const response = await fetchWithCsrf('/notifications/api/alerts/read-all', {
+            method: 'POST'
+        });
+        const data = await response.json();
+        if (data.success) {
+            loadAlerts();
+        }
+    } catch (error) {
+        console.error('Error marking alerts read:', error);
+    }
+}
+
+function openNewTaskModal() {
+    document.getElementById('newTaskForm').reset();
+    new bootstrap.Modal(document.getElementById('newTaskModal')).show();
+}
+
+async function createTask() {
+    const title = document.getElementById('taskTitle').value;
+    const description = document.getElementById('taskDescription').value;
+    const taskType = document.getElementById('taskType').value;
+    const priority = document.getElementById('taskPriority').value;
+    const slaHours = parseInt(document.getElementById('taskSLA').value);
+    
+    if (!title || !description) {
+        alert('Title and description are required');
+        return;
+    }
+    
+    try {
+        const response = await fetchWithCsrf('/notifications/api/tasks', {
+            method: 'POST',
+            body: JSON.stringify({
+                title,
+                description,
+                task_type: taskType,
+                priority,
+                sla_hours: slaHours
+            })
+        });
+        const data = await response.json();
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('newTaskModal')).hide();
+            loadTasks();
+        } else {
+            alert('Failed to create task: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error creating task:', error);
+    }
+}
+
+function refreshAll() {
+    loadTasks();
+    loadAlerts();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadTasks();
+    loadAlerts();
+    
+    setInterval(refreshAll, 30000);
+});
+</script>
+{% endblock %}
