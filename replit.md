@@ -293,3 +293,7 @@ Users need to OAuth connect platforms in the Stream Bot UI. Production requires:
 - **Dashboard Status Widgets**: Real-time Stream Bot and Discord Bot status with active bots, WebSocket clients, latency
 - **Caddy Fixes**: Added X-Forwarded-Proto header for all services (needed for secure cookies)
 - **WebSocket Auth Debug**: Added detailed logging for troubleshooting session issues in production
+- **Simplified Onboarding**: Bot auto-starts when first platform is connected (no manual "Start Bot" step needed)
+- **Race-Safe UPSERT**: BotManager uses `ON CONFLICT DO UPDATE` for atomic bot_instances creation
+- **Admin Panel API**: `/api/admin/users` lists all users with bot status; `/api/admin/users/:id/start-bot|stop-bot|restart-bot` for manual control
+- **Token Health UI**: Dashboard shows platforms needing reauth with one-click reconnect buttons
