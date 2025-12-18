@@ -20,17 +20,19 @@ class HostConfig:
 FLEET_HOSTS = {
     'linode': HostConfig(
         name='Linode Cloud Server',
-        ip=os.environ.get('LINODE_HOST', '100.66.61.51'),
-        user=os.environ.get('LINODE_SSH_USER', 'root'),
+        ip=os.environ.get('TAILSCALE_LINODE_HOST', os.environ.get('LINODE_HOST', '100.66.61.51')),
+        user=os.environ.get('FLEET_LINODE_SSH_USER', os.environ.get('LINODE_SSH_USER', 'root')),
         port=22
     ),
     'ubuntu': HostConfig(
         name='Local Ubuntu Server',
-        ip=os.environ.get('UBUNTU_HOST', '100.110.227.25'),
-        user=os.environ.get('UBUNTU_SSH_USER', 'evin'),
+        ip=os.environ.get('TAILSCALE_LOCAL_HOST', os.environ.get('UBUNTU_HOST', '100.110.227.25')),
+        user=os.environ.get('FLEET_LOCAL_SSH_USER', os.environ.get('SSH_USER', 'evin')),
         port=22
     )
 }
+
+SSH_KEY_PATH = os.environ.get('FLEET_SSH_KEY_PATH', os.environ.get('SSH_KEY_PATH', '/root/.ssh/id_rsa'))
 
 class FleetManager:
     """Manages SSH connections to fleet hosts"""
@@ -72,9 +74,15 @@ class FleetManager:
             '-o', 'ConnectTimeout=10',
             '-o', 'BatchMode=yes',
             '-p', str(host_config.port),
+        ]
+        
+        if os.path.exists(SSH_KEY_PATH):
+            ssh_cmd.extend(['-i', SSH_KEY_PATH])
+        
+        ssh_cmd.extend([
             f'{host_config.user}@{host_config.ip}',
             command
-        ]
+        ])
         
         try:
             logger.info(f"Executing on {host}: {command[:100]}...")
