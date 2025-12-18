@@ -61,39 +61,50 @@ Body: { userId, platform, streamUrl, streamTitle, game?, thumbnailUrl?, viewerCo
 
 ## Deployment Runbook
 
-### Deploy to Production (One Command)
+### IMPORTANT: Two Separate Servers
 
-**On Local Ubuntu (100.110.227.25):**
-```bash
-ssh evin@host.evindrake.net
-cd /opt/homelab/HomeLabHub
-git pull origin main
-./scripts/deploy.sh all
-```
+Each server deploys **only its own services**. They do NOT deploy each other.
 
-**On Linode (100.66.61.51):**
+| Server | Services | Deploy Directory |
+|--------|----------|------------------|
+| **Local Ubuntu** | Plex, MinIO, Home Assistant | `deploy/local/` |
+| **Linode Cloud** | Dashboard, Discord Bot, Stream Bot | `deploy/linode/` |
+
+---
+
+### Deploy Linode (Dashboard, Discord Bot, Stream Bot)
+
 ```bash
 ssh root@linode.evindrake.net
-cd /opt/homelab/HomeLabHub
-git pull origin main
-./scripts/deploy.sh all
+cd /opt/homelab/HomeLabHub/deploy/linode
+./deploy.sh
 ```
 
-### Deploy Single Service
+### Deploy Local Ubuntu (Plex, MinIO, Home Assistant)
+
 ```bash
-./scripts/deploy.sh dashboard
-./scripts/deploy.sh discord-bot
-./scripts/deploy.sh stream-bot
+ssh evin@host.evindrake.net
+cd /opt/homelab/HomeLabHub/deploy/local
+./deploy.sh
 ```
 
-### Health Check
+### Deploy Both (Run from Local Ubuntu)
+
 ```bash
-./scripts/health-check.sh all
+ssh evin@host.evindrake.net
+cd /opt/homelab/HomeLabHub/deploy/local && ./deploy.sh
+ssh root@linode.evindrake.net "cd /opt/homelab/HomeLabHub/deploy/linode && ./deploy.sh"
 ```
 
 ### Rollback
 ```bash
-./scripts/rollback.sh <backup-name>
+# On Linode:
+cd /opt/homelab/HomeLabHub/deploy/linode
+./scripts/deploy.sh --rollback
+
+# On Local:
+cd /opt/homelab/HomeLabHub/deploy/local
+docker compose down && docker compose up -d
 ```
 
 ---
