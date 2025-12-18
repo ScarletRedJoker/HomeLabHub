@@ -358,6 +358,13 @@ class AIHelperWidget {
                 })
             });
 
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('AI API Error:', response.status, errorText);
+                this.addMessage('error', `API Error (${response.status}): ${errorText.slice(0, 100)}`);
+                return;
+            }
+
             const data = await response.json();
 
             if (data.success) {
