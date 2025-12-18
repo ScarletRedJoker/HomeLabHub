@@ -75,6 +75,8 @@ services:
     restart: unless-stopped
     networks:
       - homelab
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "80:80"
       - "443:443"
@@ -143,22 +145,27 @@ services:
     container_name: homeassistant
     restart: unless-stopped
     privileged: true
-    networks:
-      - homelab
+    network_mode: host
     environment:
       - TZ=${TZ:-America/New_York}
     volumes:
       - homeassistant_config:/config
       - ./config/homeassistant:/config-templates:ro
       - /run/dbus:/run/dbus:ro
+      - /var/run/dbus:/var/run/dbus:ro
     devices:
       - /dev/bus/usb:/dev/bus/usb
+      - /dev/ttyUSB0:/dev/ttyUSB0
+      - /dev/ttyUSB1:/dev/ttyUSB1
+      - /dev/ttyACM0:/dev/ttyACM0
+      - /dev/serial:/dev/serial
     cap_add:
       - NET_ADMIN
       - NET_RAW
       - SYS_ADMIN
-    ports:
-      - "8123:8123"
+      - NET_BIND_SERVICE
+    security_opt:
+      - apparmor:unconfined
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8123/"]
       interval: 30s

@@ -34,7 +34,7 @@ vnc.evindrake.net {
 }
 
 home.evindrake.net {
-    reverse_proxy homeassistant:8123 {
+    reverse_proxy host.docker.internal:8123 {
         header_up Upgrade {>Upgrade}
         header_up Connection {>Connection}
         header_up X-Forwarded-Host {host}
