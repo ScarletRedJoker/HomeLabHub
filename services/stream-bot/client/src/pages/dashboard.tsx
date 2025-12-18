@@ -26,6 +26,8 @@ import {
   Play,
   Pause,
   Plus,
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import type { PlatformConnection, BotSettings } from "@shared/schema";
@@ -49,6 +51,25 @@ export default function Dashboard() {
     activePlatforms: number;
   }>({
     queryKey: ["/api/stats"],
+  });
+
+  const { data: tokenHealth } = useQuery<{
+    success: boolean;
+    platforms: Array<{
+      platform: string;
+      platformUsername: string;
+      isConnected: boolean;
+      hasRefreshToken: boolean;
+      tokenExpired: boolean;
+      tokenExpiringSoon: boolean;
+      status: 'healthy' | 'needs_reauth' | 'expiring_soon' | 'expired';
+      message: string;
+      needsReauth: boolean;
+    }>;
+    anyNeedsReauth: boolean;
+  }>({
+    queryKey: ["/api/platforms/token-health"],
+    refetchInterval: 60000,
   });
 
   // WebSocket for real-time updates
@@ -274,6 +295,48 @@ export default function Dashboard() {
           </Button>
         </div>
       </div>
+
+      {/* Token Health Warning */}
+      {tokenHealth?.anyNeedsReauth && (
+        <Card className="border-orange-500/50 bg-orange-500/10">
+          <CardHeader className="p-3 sm:p-4 pb-2">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-orange-500" />
+              <CardTitle className="text-sm sm:text-base text-orange-700 dark:text-orange-400">
+                Platform Token Issues Detected
+              </CardTitle>
+            </div>
+            <CardDescription className="text-xs sm:text-sm mt-1">
+              Some platforms need to be reconnected for your bot to work properly.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-3 sm:p-4 pt-0">
+            <div className="flex flex-wrap gap-2">
+              {tokenHealth.platforms
+                .filter(p => p.needsReauth || p.status === 'expired')
+                .map(p => (
+                  <div key={p.platform} className="flex items-center gap-2 p-2 rounded-md bg-background/50">
+                    <span className="text-xs sm:text-sm font-medium capitalize">{p.platform}</span>
+                    <span className="text-[10px] sm:text-xs text-muted-foreground">
+                      {p.message}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs border-orange-500/50 hover:bg-orange-500/10"
+                      onClick={() => {
+                        window.location.href = `/auth/${p.platform}`;
+                      }}
+                    >
+                      <RefreshCw className="h-3 w-3 mr-1" />
+                      Reconnect
+                    </Button>
+                  </div>
+                ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Welcome Card for New Users */}
       <WelcomeCard />

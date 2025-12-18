@@ -12,6 +12,7 @@ import {
   decryptToken 
 } from "./crypto-utils";
 import { oauthStorageDB } from "./oauth-storage-db";
+import { botManager } from "./bot-manager";
 
 const router = Router();
 
@@ -316,6 +317,20 @@ router.get('/twitch/callback', async (req, res) => {
     }
 
     console.log(`[Twitch OAuth] ✓ Successfully connected user ${session.userId} to Twitch (@${login})`);
+
+    // Auto-start bot on first platform connection
+    try {
+      const allConnections = await storage.getPlatformConnections(session.userId);
+      const connectedPlatforms = allConnections.filter(c => c.isConnected);
+      if (connectedPlatforms.length === 1) {
+        console.log(`[Twitch OAuth] First platform connected, auto-starting bot for user ${session.userId}`);
+        await storage.updateBotSettings(session.userId, { isActive: true });
+        await botManager.startUserBot(session.userId);
+      }
+    } catch (autoStartError: any) {
+      console.error('[Twitch OAuth] Auto-start bot error (non-fatal):', autoStartError.message);
+    }
+
     res.redirect('/settings?success=twitch_connected');
   } catch (error: any) {
     console.error('[Twitch OAuth] Unexpected callback error:', error.message, error.stack);

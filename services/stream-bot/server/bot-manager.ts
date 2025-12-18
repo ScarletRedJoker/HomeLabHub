@@ -3,7 +3,7 @@ import { BotWorker } from "./bot-worker";
 import { createUserStorage } from "./user-storage";
 import { db } from "./db";
 import { botInstances } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 export class BotManager {
   private workers: Map<string, BotWorker> = new Map();
@@ -49,6 +49,32 @@ export class BotManager {
     }
 
     console.log(`[BotManager] Starting bot for user ${userId}`);
+
+    // IMPORTANT: Ensure bot_instance exists using proper UPSERT (handles race conditions)
+    // This uses ON CONFLICT DO UPDATE to atomically create or update the instance
+    try {
+      await db
+        .insert(botInstances)
+        .values({
+          userId,
+          status: "running",
+          startedAt: new Date(),
+          lastHeartbeat: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: botInstances.userId,
+          set: {
+            status: "running",
+            startedAt: new Date(),
+            lastHeartbeat: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+      console.log(`[BotManager] Bot instance ensured for user ${userId}`);
+    } catch (error) {
+      console.error(`[BotManager] Failed to upsert bot instance for ${userId}:`, error);
+      // Continue anyway - the update below will still work
+    }
 
     // Create user-scoped storage
     const userStorage = createUserStorage(userId);

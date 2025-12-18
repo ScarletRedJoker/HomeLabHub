@@ -44,9 +44,11 @@ import { intentDetectionService } from "./intent-detection-service";
 import { enhancedModerationService } from "./enhanced-moderation-service";
 import { personalizedFactService } from "./personalized-fact-service";
 import { speechToTextService } from "./speech-to-text-service";
+import adminRoutes from "./admin-routes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/auth", oauthSignInRoutes);
+  app.use("/api/admin", adminRoutes);
   app.use("/auth", authRoutes);
   app.use("/auth", oauthSpotifyRoutes);
   app.use("/auth", oauthYoutubeRoutes);
