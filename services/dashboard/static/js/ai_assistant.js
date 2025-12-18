@@ -424,140 +424,83 @@ async function sendMessageAutonomous(message, model) {
 function addToolExecutionResults(toolCalls) {
     const messagesDiv = document.getElementById('chatMessages');
     
+    const wrapper = document.createElement('div');
+    wrapper.className = 'message-wrapper';
+    
+    const group = document.createElement('div');
+    group.className = 'tool-results-group';
+    
     toolCalls.forEach((tc, index) => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'message-wrapper tool-execution-wrapper';
-        
-        const card = document.createElement('div');
-        card.className = `tool-card ${tc.success ? 'tool-card-success' : 'tool-card-error'}`;
-        
+        const chipId = `tool-${Date.now()}-${index}`;
         const outputText = tc.output || tc.error || 'No output';
-        const outputLines = outputText.split('\n');
-        const lineCount = outputLines.length;
-        const hasLongOutput = lineCount > 5;
-        const previewLines = hasLongOutput ? outputLines.slice(0, 5).join('\n') : outputText;
-        const summaryText = outputLines[0]?.substring(0, 60) || 'No output';
-        const cardId = `tool-output-${Date.now()}-${index}`;
+        const toolName = formatToolName(tc.tool);
+        const host = tc.host || 'local';
+        const time = tc.execution_time?.toFixed(1) || '0';
         
-        const header = document.createElement('div');
-        header.className = 'tool-card-header';
-        header.innerHTML = `
-            <div class="tool-card-status">
-                <span class="tool-status-badge ${tc.success ? 'badge-success' : 'badge-error'}">
-                    <i class="bi ${tc.success ? 'bi-check-circle-fill' : 'bi-x-circle-fill'}"></i>
-                    ${tc.success ? 'Success' : 'Error'}
-                </span>
-                <span class="tool-name">${formatToolName(tc.tool)}</span>
+        const item = document.createElement('div');
+        item.className = 'tool-result-item';
+        
+        const chip = document.createElement('div');
+        chip.className = 'tool-chip';
+        chip.setAttribute('data-target', chipId);
+        chip.onclick = () => toggleToolDetail(chipId);
+        chip.innerHTML = `
+            <i class="bi ${tc.success ? 'bi-check-circle-fill' : 'bi-x-circle-fill'} tool-chip-icon ${tc.success ? 'success' : 'error'}"></i>
+            <span class="tool-chip-text">${toolName}</span>
+            <span class="tool-chip-meta">
+                <span class="host">${host}</span>
+                <span>${time}s</span>
+            </span>
+            <i class="bi bi-chevron-down tool-chip-expand"></i>
+        `;
+        
+        const detail = document.createElement('div');
+        detail.className = 'tool-detail';
+        detail.id = chipId;
+        detail.innerHTML = `
+            <div class="tool-detail-header">
+                <button class="tool-detail-copy" onclick="event.stopPropagation(); copyOutput('${chipId}')" title="Copy">
+                    <i class="bi bi-clipboard"></i> Copy
+                </button>
             </div>
-            <div class="tool-card-meta">
-                <span class="tool-host"><i class="bi bi-server"></i> ${tc.host || 'local'}</span>
-                <span class="tool-time"><i class="bi bi-clock"></i> ${tc.execution_time?.toFixed(2) || '0'}s</span>
-            </div>
+            <pre class="tool-detail-output" data-output="${escapeHtml(outputText)}"><code>${escapeHtml(outputText)}</code></pre>
         `;
         
-        const summary = document.createElement('div');
-        summary.className = 'tool-card-summary';
-        summary.innerHTML = `
-            <span class="summary-text">${lineCount} line${lineCount !== 1 ? 's' : ''} of output</span>
-            <button class="tool-toggle-btn" data-target="${cardId}" onclick="toggleToolOutput('${cardId}')">
-                <i class="bi bi-chevron-down"></i>
-                <span>Show output</span>
-            </button>
-        `;
-        
-        const outputContainer = document.createElement('div');
-        outputContainer.className = 'tool-output-container collapsed';
-        outputContainer.id = cardId;
-        
-        const outputHeader = document.createElement('div');
-        outputHeader.className = 'tool-output-header';
-        outputHeader.innerHTML = `
-            <span class="output-label">Output</span>
-            <button class="tool-copy-btn" onclick="copyToolOutput('${cardId}')" title="Copy output">
-                <i class="bi bi-clipboard"></i>
-            </button>
-        `;
-        
-        const outputPre = document.createElement('pre');
-        outputPre.className = 'tool-output';
-        outputPre.setAttribute('data-full-output', outputText);
-        
-        if (hasLongOutput) {
-            outputPre.innerHTML = `<code>${escapeHtml(previewLines)}</code>
-<span class="output-truncated">... ${lineCount - 5} more lines</span>`;
-            
-            const showMoreBtn = document.createElement('button');
-            showMoreBtn.className = 'show-more-btn';
-            showMoreBtn.innerHTML = '<i class="bi bi-arrows-expand"></i> Show all lines';
-            showMoreBtn.onclick = function() {
-                const isExpanded = outputPre.classList.contains('expanded');
-                if (isExpanded) {
-                    outputPre.innerHTML = `<code>${escapeHtml(previewLines)}</code>
-<span class="output-truncated">... ${lineCount - 5} more lines</span>`;
-                    showMoreBtn.innerHTML = '<i class="bi bi-arrows-expand"></i> Show all lines';
-                } else {
-                    outputPre.innerHTML = `<code>${escapeHtml(outputText)}</code>`;
-                    showMoreBtn.innerHTML = '<i class="bi bi-arrows-collapse"></i> Show less';
-                }
-                outputPre.classList.toggle('expanded');
-            };
-            outputContainer.appendChild(outputHeader);
-            outputContainer.appendChild(outputPre);
-            outputContainer.appendChild(showMoreBtn);
-        } else {
-            outputPre.innerHTML = `<code>${escapeHtml(outputText)}</code>`;
-            outputContainer.appendChild(outputHeader);
-            outputContainer.appendChild(outputPre);
-        }
-        
-        if (!tc.success && tc.error) {
-            const errorHint = document.createElement('div');
-            errorHint.className = 'tool-error-hint';
-            errorHint.innerHTML = `
-                <i class="bi bi-lightbulb"></i>
-                <span>Check the error message above for details. Common fixes: verify permissions, check connectivity, or review command syntax.</span>
-            `;
-            outputContainer.appendChild(errorHint);
-        }
-        
-        card.appendChild(header);
-        card.appendChild(summary);
-        card.appendChild(outputContainer);
-        wrapper.appendChild(card);
-        messagesDiv.appendChild(wrapper);
+        item.appendChild(chip);
+        item.appendChild(detail);
+        group.appendChild(item);
     });
     
+    wrapper.appendChild(group);
+    messagesDiv.appendChild(wrapper);
     scrollToBottom();
 }
 
-function toggleToolOutput(cardId) {
-    const container = document.getElementById(cardId);
-    const btn = document.querySelector(`[data-target="${cardId}"]`);
-    if (container && btn) {
-        const isCollapsed = container.classList.contains('collapsed');
-        container.classList.toggle('collapsed');
-        btn.innerHTML = isCollapsed 
-            ? '<i class="bi bi-chevron-up"></i><span>Hide output</span>'
-            : '<i class="bi bi-chevron-down"></i><span>Show output</span>';
+function toggleToolDetail(id) {
+    const detail = document.getElementById(id);
+    const chip = document.querySelector(`[data-target="${id}"]`);
+    if (detail && chip) {
+        detail.classList.toggle('show');
+        chip.classList.toggle('expanded');
     }
 }
 
-async function copyToolOutput(cardId) {
-    const container = document.getElementById(cardId);
-    const outputPre = container?.querySelector('.tool-output');
-    const btn = container?.querySelector('.tool-copy-btn');
-    if (outputPre && btn) {
-        const fullOutput = outputPre.getAttribute('data-full-output') || outputPre.textContent;
+async function copyOutput(id) {
+    const detail = document.getElementById(id);
+    const pre = detail?.querySelector('.tool-detail-output');
+    const btn = detail?.querySelector('.tool-detail-copy');
+    if (pre && btn) {
+        const text = pre.getAttribute('data-output') || pre.textContent;
         try {
-            await navigator.clipboard.writeText(fullOutput);
-            btn.innerHTML = '<i class="bi bi-check2"></i>';
+            await navigator.clipboard.writeText(text);
+            btn.innerHTML = '<i class="bi bi-check2"></i> Copied';
             btn.classList.add('copied');
             setTimeout(() => {
-                btn.innerHTML = '<i class="bi bi-clipboard"></i>';
+                btn.innerHTML = '<i class="bi bi-clipboard"></i> Copy';
                 btn.classList.remove('copied');
             }, 2000);
         } catch (err) {
-            console.error('Failed to copy:', err);
+            console.error('Copy failed:', err);
         }
     }
 }
