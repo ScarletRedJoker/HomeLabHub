@@ -1,77 +1,272 @@
-# Nebula Command Dashboard Project
+# Nebula Command - HomeLabHub Platform
 
-## Overview
-The Nebula Command Dashboard is a web-based interface designed to manage a homelab environment, orchestrating 15 Docker-based services on a Ubuntu 25.10 server using custom subdomains. The project aims to establish a centralized, robust, and secure platform for personal and community use, with a long-term vision to evolve into an app marketplace offering one-click deployments.
+## Quick Reference
+
+| Environment | Dashboard | Discord Bot | Stream Bot |
+|------------|-----------|-------------|------------|
+| **Replit (Dev)** | Port 5000 | Port 4000 | Port 3000 |
+| **Production** | dashboard.rig-city.com | discord.rig-city.com | stream.rig-city.com |
+| **Local Ubuntu** | 100.110.227.25 | 100.110.227.25 | 100.110.227.25 |
+| **Linode Cloud** | 100.66.61.51 | 100.66.61.51 | 100.66.61.51 |
+
+---
 
 ## User Preferences
-- User: Evin
-- Ubuntu 25.10 server at host.evindrake.net
-- Project location: `/home/evin/contain/HomeLabHub` (local) and `/opt/homelab/HomeLabHub` (both servers)
-- Development: Edit in cloud IDE → Push to GitHub → Pull on Ubuntu server
-- All services use shared PostgreSQL (homelab-postgres) with individual databases
-- Passwords: Stored securely in .env file (never commit to git)
-- Managed domains: rig-city.com, evindrake.net, scarletredjoker.com
+- **User:** Evin
+- **Managed Domains:** rig-city.com, evindrake.net, scarletredjoker.com
+- **Development Workflow:** Edit in Replit → Push to GitHub → Pull on Ubuntu servers
+- **Database:** Shared PostgreSQL (Neon in dev, homelab-postgres in prod)
+- **Secrets:** .env file (never commit), Replit Secrets in dev
+
+---
+
+## Architecture
+
+### Three Core Services
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    NEBULA COMMAND PLATFORM                   │
+├─────────────────┬─────────────────┬─────────────────────────┤
+│   Dashboard     │   Discord Bot   │      Stream Bot         │
+│   (Flask/Py)    │   (Node/React)  │    (Node/React/Vite)    │
+│   Port 5000     │   Port 4000     │      Port 3000          │
+├─────────────────┴─────────────────┴─────────────────────────┤
+│              Shared PostgreSQL + Redis                       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+| Service | Tech Stack | Database | Purpose |
+|---------|-----------|----------|---------|
+| **Dashboard** | Flask, Bootstrap 5, Chart.js | homelab_jarvis | Homelab management, Jarvis AI, Docker control |
+| **Discord Bot** | Node.js, React, discord.js v14 | discord_bot | Ticket system, music bot, stream notifications |
+| **Stream Bot** | Node.js, React, Vite, Tailwind | stream_bot | Multi-platform fact posting (Twitch/YouTube/Kick) |
+
+### Cross-Service Integration
+
+```
+Stream Bot ──webhook──> Discord Bot (go-live notifications)
+Dashboard  ──API────> Discord Bot (ticket management)
+All Services ────────> Shared PostgreSQL
+```
+
+**Webhook Contract (Stream → Discord):**
+```
+POST /api/stream-notifications/external
+Headers: X-Stream-Bot-Secret: <STREAM_BOT_WEBHOOK_SECRET>
+Body: { userId, platform, streamUrl, streamTitle, game?, thumbnailUrl?, viewerCount? }
+```
+
+---
+
+## Deployment Runbook
+
+### Deploy to Production (One Command)
+
+**On Local Ubuntu (100.110.227.25):**
+```bash
+ssh evin@host.evindrake.net
+cd /opt/homelab/HomeLabHub
+git pull origin main
+./scripts/deploy.sh all
+```
+
+**On Linode (100.66.61.51):**
+```bash
+ssh root@linode.evindrake.net
+cd /opt/homelab/HomeLabHub
+git pull origin main
+./scripts/deploy.sh all
+```
+
+### Deploy Single Service
+```bash
+./scripts/deploy.sh dashboard
+./scripts/deploy.sh discord-bot
+./scripts/deploy.sh stream-bot
+```
+
+### Health Check
+```bash
+./scripts/health-check.sh all
+```
+
+### Rollback
+```bash
+./scripts/rollback.sh <backup-name>
+```
+
+---
 
 ## Network Configuration
-- **Local Ubuntu Host:** `100.110.227.25` (Tailscale IP), `host.evindrake.net`
-- **Linode Cloud Server:** `100.66.61.51` (Tailscale IP), `linode.evindrake.net`
-- **Connection:** Tailscale VPN mesh between hosts
-- **SSH User (Local):** evin
-- **SSH User (Linode):** root
 
-## System Architecture
+| Host | Tailscale IP | Hostname | SSH User | Role |
+|------|--------------|----------|----------|------|
+| Local Ubuntu | 100.110.227.25 | host.evindrake.net | evin | Primary services, KVM gaming |
+| Linode Cloud | 100.66.61.51 | linode.evindrake.net | root | Cloud services, redundancy |
+| Windows KVM | 100.110.227.25:47984 | - | - | GPU passthrough gaming |
+| ZyXEL NAS | 192.168.0.198 | - | - | Media storage |
 
-### UI/UX Decisions
-The dashboard utilizes a Flask-based UI with Bootstrap 5 and Chart.js. Bot interfaces are built with React, Vite, Tailwind CSS, and Radix UI, adhering to mobile-first, responsive design principles with features like collapsible sidebars, bottom navigation, and skeleton loading states.
+---
 
-### Technical Implementations
-The core system uses Docker Compose for orchestrating services across a split deployment (Linode cloud and local Ubuntu host). An idempotent `bootstrap-homelab.sh` script handles installations, and a `./homelab` script manages daily operations. Key features include an RBAC system, Docker lifecycle APIs, a marketplace deployment queue with rollback, and an audit trail. Jarvis, an AI-powered agentic remediation system with multi-model routing (OpenAI + Ollama), provides service diagnosis and auto-repair, including offline fallbacks.
+## Required Environment Variables
 
-### Feature Specifications
-- **Dashboard & AI:** Flask UI with Jarvis AI assistant (GPT-4o), Agent Swarm, Voice Interface, Docker/system monitoring, JWT token management, anomaly detection, and AI-powered infrastructure orchestration.
-- **Storage & Data:** NAS Management, Storage Monitor, Database Admin, File Manager, Plex Media Import, automated backup, and a unified storage service with dual-backend (local MinIO + cloud S3).
-- **Bots:** Discord ticket bot with SLA automation, LLM-assisted triage, and sentiment analysis; multi-platform stream bot (Twitch/Kick/YouTube) with broadcaster onboarding and moderation.
-- **Services:** Remote Ubuntu desktop (Host VNC), VS Code in browser (code-server), Plex, n8n, Home Assistant, and GameStream with Sunshine.
-- **App Marketplace:** One-click deployment for various applications.
-- **Static Sites:** Hosting for rig-city.com and scarletredjoker.com, optimized for SEO and accessibility.
-- **Notifications & Monitoring:** Multi-channel alerts (Discord, Email), Prometheus, Grafana, and Loki.
-- **Security:** Automatic SSL via Caddy/Let's Encrypt, environment-based secrets, isolated database credentials, rate limiting, and JWT authentication.
-- **New Features:** DNS Management Engine (Cloudflare API), Fleet Manager (Tailscale), Jarvis Code Service (AI code editing/deployment), Jarvis Website Builder (autonomous AI website generation), Deployment Guide, Setup Wizard, and Jarvis Codebase Access (AI interaction with codebase).
-- **Prime Time Ready (Dec 2025):** Command Center UI (unified environment overview), Guided Deployment Wizard (multi-step service deployment with preflight checks), Database Console (cross-environment database management), Storage Dashboard (NAS/storage monitoring for post-upgrade), Enhanced sidebar navigation with status indicators and quick actions.
-- **Homelab Management Suite (Dec 2025):**
-  - **NAS Mount Manager:** Real-time mount status, one-click remount, diagnostics, and troubleshooting from dashboard
-  - **KVM Gaming Control:** Windows 11 VM management with GPU telemetry, mode switching (Gaming/Productivity), and freeze diagnostics
-  - **Unified Docker Management:** Multi-host container control with 24+ deployment templates, logs, and resource monitoring
-  - **Fleet Control Center:** Real-time host monitoring for Local Ubuntu, Linode, and KVM with command execution and health checks
-  - **Jarvis Autonomous Operations:** AI-powered incident detection, root cause analysis, auto-remediation playbooks, and learning system
-  - **Notification & Task Queue:** Human-in-the-loop escalation with Discord/email alerts, SLA tracking, and task management
-  - **Multi-Tenant SaaS Architecture:** Organizations, member roles, API keys, JWT authentication, and complete audit trail
-  - **Network Auto-Discovery (NEW):** Dynamic detection of NAS, hosts, and services with automatic IP resolution, fallback strategies, and persistent resource registry. API endpoints for network status, manual re-discovery, and health checks. Uses environment hints as starting points but probes network to verify/discover actual IPs.
+### All Services (Shared)
+```bash
+DATABASE_URL=postgresql://...            # Neon (dev) or homelab-postgres (prod)
+REDIS_URL=redis://redis:6379/0
+SERVICE_AUTH_TOKEN=<random-32-chars>     # Inter-service auth
+OPENAI_API_KEY=<key>                     # AI features
+```
 
-### System Design Choices
-- **Containerization:** All services are Dockerized and managed by Docker Compose.
-- **Centralized Database:** A single PostgreSQL 16 Alpine container (`homelab-postgres`) with `database_orchestrator.py` for migrations and health checks.
-- **Reverse Proxy:** Caddy handles reverse proxying and automatic SSL, with an Nginx sidecar.
-- **Environment Management:** Centralized configuration via a single `.env` file.
-- **Modular Architecture:** Designed for scalability and easy service expansion.
-- **Deployment Automation:** Enhanced automation scripts for Tailscale, SSH key management, cross-host health checks, and a unified `./homelab pipeline` command for automated deployment across local and cloud environments.
-- **NAS Integration:** ZyXEL NAS326 at 192.168.0.198 with single SMB share "networkshare" mounted via CIFS to /srv/media. User creates their own subfolders (video, music, photo, etc.). Docker containers mount /srv/media:/media, so Plex sees /media and user points libraries wherever they want. Systemd automount with fail-fast timeouts ensures system doesn't hang when NAS is offline.
-- **Secrets Management:** Age-based encryption for centralized secrets using `scripts/secrets-manager.sh`.
-- **Desktop Integration:** Scripts for integrating NAS folders into the Ubuntu desktop and mode switching for gaming (Sunshine) and productivity (RDP for WinApps).
-- **Gamestream Forwarding:** Windows KVM VM with GPU passthrough, streaming to Moonlight clients via iptables forwarding through Ubuntu host.
-- **KVM Mode Switching:** Seamlessly switch between Gaming Mode (Sunshine/Moonlight) and Productivity Mode (RDP/WinApps).
+### Dashboard Specific
+```bash
+FLASK_ENV=production
+WEB_USERNAME=admin
+WEB_PASSWORD=<secure-password>
+JARVIS_DATABASE_URL=postgresql://jarvis:...
+PLEX_URL=http://100.64.0.1:32400
+PLEX_TOKEN=<token>
+HOME_ASSISTANT_URL=http://100.64.0.1:8123
+HOME_ASSISTANT_TOKEN=<token>
+CLOUDFLARE_API_TOKEN=<token>
+```
 
-## External Dependencies
-- **PostgreSQL 16 Alpine:** Shared database.
-- **Redis:** Caching and message broker.
-- **MinIO:** S3-compatible object storage.
-- **Caddy:** Reverse proxy with automatic SSL.
-- **GPT-4o (OpenAI API):** Jarvis AI assistant, Stream Bot fact generation, AI code generation.
-- **Discord API:** Discord ticket bot.
-- **Twitch/Kick/YouTube APIs:** Multi-platform stream bot.
-- **Plex Media Server:** Media streaming.
-- **n8n:** Workflow automation.
-- **Home Assistant:** Smart home hub.
-- **Cloudflare API:** DNS automation.
-- **Tailscale:** VPN mesh.
-- **Sunshine:** Game streaming server.
+### Discord Bot Specific
+```bash
+DISCORD_BOT_TOKEN=<token>
+DISCORD_CLIENT_ID=<id>
+DISCORD_CLIENT_SECRET=<secret>
+TWITCH_CLIENT_ID=<id>
+TWITCH_CLIENT_SECRET=<secret>
+SESSION_SECRET=<random-64-chars>
+STREAM_BOT_WEBHOOK_SECRET=<random-32-chars>
+```
+
+### Stream Bot Specific
+```bash
+TWITCH_CLIENT_ID=<id>
+TWITCH_CLIENT_SECRET=<secret>
+YOUTUBE_CLIENT_ID=<id>
+YOUTUBE_CLIENT_SECRET=<secret>
+YOUTUBE_REDIRECT_URI=https://stream.rig-city.com/auth/youtube/callback
+KICK_CLIENT_ID=<id>
+SPOTIFY_CLIENT_ID=<id>
+SPOTIFY_CLIENT_SECRET=<secret>
+DISCORD_BOT_URL=https://discord.rig-city.com
+STREAM_BOT_WEBHOOK_SECRET=<same-as-discord-bot>
+SESSION_SECRET=<random-64-chars>
+TOKEN_ENCRYPTION_KEY=<random-32-chars>
+```
+
+---
+
+## Replit Workflows
+
+| Workflow | Command | Port | Output |
+|----------|---------|------|--------|
+| dashboard | `cd services/dashboard && python main.py` | 5000 | webview |
+| discord-bot | `cd services/discord-bot && npm run dev` | 4000 | console |
+| stream-bot | `cd services/stream-bot && PORT=3000 npm run dev` | 3000 | console |
+
+---
+
+## Database Schema
+
+### Shared PostgreSQL Databases
+- `homelab_jarvis` - Dashboard, Jarvis AI, Docker management
+- `discord_bot` - Tickets, music, stream notifications
+- `stream_bot` - Bot configs, platform connections, message history
+
+### Key Tables per Service
+**Dashboard:** users, docker_containers, jarvis_conversations, audit_logs
+**Discord Bot:** tickets, ticket_messages, servers, bot_settings, stream_notifications
+**Stream Bot:** users, bot_configs, platform_connections, message_history
+
+---
+
+## Feature Status (Dec 2025)
+
+### Stream Bot
+- [x] Twitch OAuth + chat posting
+- [x] YouTube OAuth + live chat (force-ssl scope)
+- [x] Kick connection with exponential backoff reconnection
+- [x] Per-user fact personalization with rolling topics
+- [x] Token encryption for all platforms
+- [x] Rate limiting (ToS-compliant per platform)
+- [x] Anti-spam: cooldowns, deduplication, message pacing
+- [x] Cross-service webhook to Discord for go-live notifications
+
+### Discord Bot
+- [x] Ticket system with SLA automation
+- [x] Music bot with Spotify/YouTube
+- [x] Stream notifications (presence detection)
+- [x] Analytics dashboard (staff performance, trends, satisfaction)
+- [x] External webhook for stream-bot integration
+- [x] Multi-tenant security with server access validation
+
+### Dashboard
+- [x] Jarvis AI assistant (GPT-4o)
+- [x] Docker container management
+- [x] NAS mount manager
+- [x] Fleet control center
+- [x] KVM gaming mode switching
+- [x] DNS management (Cloudflare)
+
+---
+
+## Troubleshooting
+
+### Stream Bot "No platforms connected"
+Users need to OAuth connect platforms in the Stream Bot UI. Production requires:
+1. YouTube: Disconnect and reconnect to grant `youtube.force-ssl` scope
+2. Kick: Provide bearer token + cookies from browser dev tools
+3. Twitch: Standard OAuth flow
+
+### Discord Bot not responding
+1. Check `DISCORD_BOT_TOKEN` is valid
+2. Verify bot is in the server with proper permissions
+3. Check `/api/bot/health` endpoint
+
+### Cross-service webhooks failing
+1. Verify `STREAM_BOT_WEBHOOK_SECRET` matches in both services
+2. Check `DISCORD_BOT_URL` is reachable from stream-bot
+3. Test: `curl -X POST $DISCORD_BOT_URL/api/stream-notifications/external -H "X-Stream-Bot-Secret: $SECRET"`
+
+---
+
+## File Structure
+
+```
+/
+├── services/
+│   ├── dashboard/          # Flask dashboard (Python)
+│   ├── discord-bot/        # Discord bot (Node.js/React)
+│   └── stream-bot/         # Stream bot (Node.js/React/Vite)
+├── scripts/
+│   ├── deploy.sh           # Production deployment
+│   ├── health-check.sh     # Service health checks
+│   ├── rollback.sh         # Rollback to backup
+│   └── secrets-manager.sh  # Age-encrypted secrets
+├── deployment/
+│   ├── deploy-to-ubuntu.sh # Full server deployment
+│   └── generate-unified-env.sh
+├── docker-compose.yml      # Production orchestration
+├── Caddyfile              # Reverse proxy config
+└── .env                   # Environment variables (gitignored)
+```
+
+---
+
+## Recent Changes Log
+
+**2025-12-18:**
+- Fixed YouTube OAuth: Added `youtube.force-ssl` scope for live chat posting
+- Fixed Kick reconnection: Exponential backoff, error handlers
+- Added per-user fact personalization with rolling topic rotation
+- Encrypted Kick bearer tokens in database
+- Added platform-specific rate limiting (Twitch 20/30s, YouTube 200/min, Kick 5/min)
+- Added fact deduplication and cooldowns
+- Added Stream-Bot → Discord go-live webhook integration
+- Added Analytics dashboard (staff performance, ticket trends, satisfaction)
+- Fixed analytics security: server access validation on all endpoints
