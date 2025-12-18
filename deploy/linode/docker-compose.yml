@@ -114,6 +114,7 @@ services:
       - HOMELABHUB_API_KEY=${SERVICE_AUTH_TOKEN}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://100.110.227.25:11434}
       - SESSION_SECRET=${SESSION_SECRET:-NebulaCommandDash2024SecureSessionKey}
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
     volumes:
       - ./services/dashboard/logs:/app/logs
       - /root/.ssh:/root/.ssh:ro
