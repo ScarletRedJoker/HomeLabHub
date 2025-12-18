@@ -90,35 +90,6 @@ router.get('/youtube/callback',
   }
 );
 
-router.get('/kick', 
-  passport.authenticate('kick-signin', { 
-    scope: ['user:read', 'chat:read', 'chat:send'] 
-  })
-);
-
-router.get('/kick/callback',
-  oauthLimiter,
-  passport.authenticate('kick-signin', { 
-    failureRedirect: '/login?error=kick_auth_failed',
-    failureMessage: true 
-  }),
-  (req, res) => {
-    try {
-      const userId = (req.user as any)?.id;
-      if (!userId) {
-        console.error('[OAuth Sign-in] No user ID found after Kick authentication');
-        return res.redirect('/login?error=kick_session_failed');
-      }
-      
-      console.log(`[OAuth Sign-in] Kick authentication successful for user ${userId}`);
-      res.redirect('/?success=kick_connected');
-    } catch (error) {
-      console.error('[OAuth Sign-in] Kick callback error:', error);
-      res.redirect('/login?error=kick_callback_error');
-    }
-  }
-);
-
 router.delete('/unlink/:platform', requireAuth, async (req, res) => {
   try {
     const { platform } = req.params;

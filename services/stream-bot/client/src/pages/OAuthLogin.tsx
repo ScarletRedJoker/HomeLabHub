@@ -42,10 +42,6 @@ export default function OAuthLogin() {
     window.location.href = '/api/auth/youtube';
   };
 
-  const handleKickLogin = () => {
-    window.location.href = '/api/auth/kick';
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center candy-animated-bg p-4">
       <div className="candy-glass-card w-full max-w-md p-8 candy-fade-in">
@@ -98,26 +94,6 @@ export default function OAuthLogin() {
                 Sign in with YouTube
               </div>
             </button>
-
-            <button
-              onClick={handleKickLogin}
-              className="w-full h-12 text-base text-white font-semibold rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-lg"
-              style={{
-                background: 'linear-gradient(135deg, #53FC18 0%, #45D614 100%)',
-                boxShadow: '0 4px 15px rgba(83, 252, 24, 0.3)'
-              }}
-            >
-              <div className="flex items-center justify-center gap-2">
-                <svg 
-                  className="h-5 w-5" 
-                  viewBox="0 0 24 24" 
-                  fill="currentColor"
-                >
-                  <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
-                </svg>
-                Sign in with Kick
-              </div>
-            </button>
           </div>
 
           <div className="mt-6 text-center text-sm text-white/70">
@@ -131,6 +107,9 @@ export default function OAuthLogin() {
             <p>
               <strong>New to StreamBot?</strong> Just click a button above!
               We'll automatically create your account when you sign in for the first time.
+            </p>
+            <p className="mt-2">
+              <strong>Kick users:</strong> Sign in with Twitch or YouTube first, then connect your Kick channel from your dashboard.
             </p>
           </div>
         </div>
