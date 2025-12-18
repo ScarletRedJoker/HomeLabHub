@@ -90,7 +90,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     sessionMiddleware(request, res, () => {
       // Check if user is authenticated
       if (!request.session?.passport?.user) {
-        console.log("[WebSocket] Rejecting unauthenticated connection");
+        // Debug: Log session state for troubleshooting
+        const hasCookies = !!request.headers.cookie;
+        const hasSession = !!request.session;
+        const hasPassport = !!request.session?.passport;
+        console.log(`[WebSocket] Rejecting unauthenticated connection (cookies: ${hasCookies}, session: ${hasSession}, passport: ${hasPassport})`);
         socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
         socket.destroy();
         return;

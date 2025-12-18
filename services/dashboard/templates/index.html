@@ -468,9 +468,81 @@ async function loadSystemData() {
     }
 }
 
+async function loadCrossServiceHealth() {
+    try {
+        const response = await fetch('/api/services/cross-health', { credentials: 'include' });
+        const data = await response.json();
+        
+        if (data.success && data.services) {
+            // Update Stream Bot status
+            const streamBot = data.services.stream_bot;
+            const streamLed = document.getElementById('status-stream-led');
+            const streamBadge = streamLed?.closest('.status-indicator-box')?.querySelector('.badge');
+            const streamDetails = streamLed?.closest('.status-indicator-box')?.querySelector('.status-details > div:first-child');
+            
+            if (streamBot && streamLed) {
+                if (streamBot.status === 'healthy') {
+                    streamLed.className = 'status-led online blink';
+                    if (streamBadge) {
+                        streamBadge.textContent = 'ONLINE';
+                        streamBadge.className = 'badge badge-success';
+                    }
+                    if (streamDetails) {
+                        const uptime = Math.floor(streamBot.uptime / 60);
+                        streamDetails.innerHTML = `
+                            <div><strong>Active Bots:</strong> ${streamBot.active_bots || 0}</div>
+                            <div><strong>WebSocket Clients:</strong> ${streamBot.websocket_clients || 0}</div>
+                            <div><strong>Uptime:</strong> ${uptime} minutes</div>
+                        `;
+                    }
+                } else {
+                    streamLed.className = 'status-led offline';
+                    if (streamBadge) {
+                        streamBadge.textContent = streamBot.status?.toUpperCase() || 'OFFLINE';
+                        streamBadge.className = 'badge badge-danger';
+                    }
+                }
+            }
+            
+            // Update Discord Bot status
+            const discordBot = data.services.discord_bot;
+            const discordLed = document.getElementById('status-discord-led');
+            const discordBadge = discordLed?.closest('.status-indicator-box')?.querySelector('.badge');
+            const discordDetails = discordLed?.closest('.status-indicator-box')?.querySelector('.status-details > div:first-child');
+            
+            if (discordBot && discordLed) {
+                if (discordBot.status === 'healthy') {
+                    discordLed.className = 'status-led online blink';
+                    if (discordBadge) {
+                        discordBadge.textContent = 'ONLINE';
+                        discordBadge.className = 'badge badge-success';
+                    }
+                    if (discordDetails) {
+                        discordDetails.innerHTML = `
+                            <div><strong>Bot Status:</strong> ${discordBot.bot_status || 'Online'}</div>
+                            <div><strong>Servers:</strong> ${discordBot.servers || 0}</div>
+                            <div><strong>Latency:</strong> ${discordBot.latency || 0}ms</div>
+                        `;
+                    }
+                } else {
+                    discordLed.className = 'status-led offline';
+                    if (discordBadge) {
+                        discordBadge.textContent = discordBot.status?.toUpperCase() || 'OFFLINE';
+                        discordBadge.className = 'badge badge-danger';
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load cross-service health:', error);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     loadSystemData();
+    loadCrossServiceHealth();
     setInterval(loadSystemData, 5000);
+    setInterval(loadCrossServiceHealth, 30000);
 });
 </script>
 {% endblock %}

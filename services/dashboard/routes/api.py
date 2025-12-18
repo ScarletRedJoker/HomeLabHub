@@ -425,6 +425,69 @@ def get_services_status():
         logger.error(f"Error getting services status: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+@api_bp.route('/services/cross-health', methods=['GET'])
+@require_auth
+def get_cross_service_health():
+    """Fetch real-time health data from all external services (Stream Bot, Discord Bot)"""
+    import requests
+    
+    results = {}
+    
+    # Service endpoints configuration
+    # In Docker, use internal hostnames; in Replit, use environment variable URLs
+    stream_bot_url = os.environ.get('STREAM_BOT_URL', 'http://stream-bot:5000')
+    discord_bot_url = os.environ.get('DISCORD_BOT_URL', 'http://discord-bot:4000')
+    
+    # Stream Bot diagnostics
+    try:
+        resp = requests.get(f"{stream_bot_url}/api/diagnostics", timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            results['stream_bot'] = {
+                'status': 'healthy',
+                'uptime': data.get('uptime', 0),
+                'environment': data.get('environment', 'unknown'),
+                'websocket_clients': data.get('websocket', {}).get('clients', 0),
+                'active_bots': data.get('bot', {}).get('activeWorkers', 0),
+                'total_workers': data.get('bot', {}).get('totalWorkers', 0),
+                'openai_configured': data.get('openai', {}).get('configured', False),
+            }
+        else:
+            results['stream_bot'] = {'status': 'error', 'message': f'HTTP {resp.status_code}'}
+    except requests.exceptions.ConnectionError:
+        results['stream_bot'] = {'status': 'unreachable', 'message': 'Service unreachable'}
+    except Exception as e:
+        results['stream_bot'] = {'status': 'error', 'message': str(e)}
+    
+    # Discord Bot health
+    try:
+        resp = requests.get(f"{discord_bot_url}/api/bot/health", timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            results['discord_bot'] = {
+                'status': 'healthy',
+                'bot_status': data.get('status', 'unknown'),
+                'latency': data.get('latency', None),
+                'servers': data.get('servers', 0),
+                'uptime': data.get('uptime', 0),
+            }
+        else:
+            results['discord_bot'] = {'status': 'error', 'message': f'HTTP {resp.status_code}'}
+    except requests.exceptions.ConnectionError:
+        results['discord_bot'] = {'status': 'unreachable', 'message': 'Service unreachable'}
+    except Exception as e:
+        results['discord_bot'] = {'status': 'error', 'message': str(e)}
+    
+    # Overall status
+    all_healthy = all(s.get('status') == 'healthy' for s in results.values())
+    
+    return jsonify({
+        'success': True,
+        'overall_status': 'healthy' if all_healthy else 'degraded',
+        'services': results,
+        'timestamp': datetime.utcnow().isoformat()
+    })
+
 @api_bp.route('/ai/analyze-logs', methods=['POST'])
 @require_auth
 def analyze_logs():
