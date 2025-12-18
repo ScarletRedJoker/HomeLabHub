@@ -2,20 +2,36 @@
 KVM Gaming Management Routes
 Windows VM control with GPU passthrough for gaming/productivity mode switching
 """
+import os
+import logging
+import re
+
 from flask import Blueprint, jsonify, request, render_template
 from utils.auth import require_auth, require_web_auth
 from utils.rbac import require_permission
 from models.rbac import Permission
 from services.fleet_service import fleet_manager
-import logging
-import re
 
 logger = logging.getLogger(__name__)
 
 kvm_bp = Blueprint('kvm', __name__, url_prefix='/kvm')
 
-VM_NAME = 'win11'
+VM_NAME = os.environ.get('KVM_VM_NAME', 'win11')
 HOST_ID = 'local'
+
+def get_windows_ssh_config():
+    """Get Windows VM SSH configuration from environment"""
+    return {
+        'ip': os.environ.get('WINDOWS_VM_IP', '192.168.122.250'),
+        'user': os.environ.get('WINDOWS_VM_USER', 'Administrator'),
+        'ssh_key': os.environ.get('WINDOWS_VM_SSH_KEY', '~/.ssh/id_rsa'),
+        'known_hosts': os.environ.get('WINDOWS_VM_KNOWN_HOSTS', '~/.ssh/known_hosts'),
+    }
+
+def build_secure_ssh_cmd(command: str) -> str:
+    """Build a secure SSH command with proper host key checking"""
+    cfg = get_windows_ssh_config()
+    return f'''ssh -o ConnectTimeout=10 -o UserKnownHostsFile={cfg["known_hosts"]} -i {cfg["ssh_key"]} {cfg["user"]}@{cfg["ip"]} "{command}" 2>&1'''
 
 
 def make_response(success: bool, data=None, message=None, status_code=200):
@@ -427,6 +443,169 @@ def get_vm_logs():
         
     except Exception as e:
         logger.error(f"Error getting VM logs: {e}")
+        return make_response(False, message=str(e), status_code=500)
+
+
+@kvm_bp.route('/api/windows-diagnose', methods=['POST'])
+@require_auth
+def diagnose_windows_gaming():
+    """Run gaming diagnostics on Windows VM (HAGS, Game Bar, drivers, Sunshine)"""
+    try:
+        vm_result = fleet_manager.execute_command(
+            HOST_ID,
+            f'virsh list --all | grep {VM_NAME}',
+            bypass_whitelist=True
+        )
+        
+        if 'running' not in vm_result.get('output', '').lower():
+            return make_response(False, message='Windows VM is not running', status_code=400)
+        
+        ssh_cmd = build_secure_ssh_cmd(
+            'powershell -ExecutionPolicy Bypass -File C:\\\\opt\\\\homelab\\\\scripts\\\\diagnose-gaming.ps1 -Json'
+        )
+        
+        diag_result = fleet_manager.execute_command(
+            HOST_ID,
+            ssh_cmd,
+            timeout=60,
+            bypass_whitelist=True
+        )
+        
+        if diag_result.get('success'):
+            output = diag_result.get('output', '').strip()
+            try:
+                import json
+                diagnostics = json.loads(output)
+                return make_response(True, diagnostics)
+            except:
+                if 'Host key verification failed' in output:
+                    return make_response(False, message='SSH host key not in known_hosts. Run: ssh-keyscan -H <WINDOWS_VM_IP> >> ~/.ssh/known_hosts', status_code=400)
+                return make_response(True, {
+                    'raw_output': output,
+                    'note': 'Could not parse JSON - raw output returned'
+                })
+        else:
+            return make_response(False, message=diag_result.get('error', 'Diagnostics failed'), status_code=500)
+            
+    except Exception as e:
+        logger.error(f"Error running Windows diagnostics: {e}")
+        return make_response(False, message=str(e), status_code=500)
+
+
+@kvm_bp.route('/api/sunshine/restart', methods=['POST'])
+@require_auth
+@require_permission(Permission.MANAGE_DOCKER)
+def restart_sunshine():
+    """Restart Sunshine service on Windows VM"""
+    try:
+        ssh_cmd = build_secure_ssh_cmd(
+            "powershell -Command \\\"Restart-Service SunshineService -Force; Start-Sleep 3; Get-Service SunshineService | Select-Object Status\\\""
+        )
+        
+        result = fleet_manager.execute_command(
+            HOST_ID,
+            ssh_cmd,
+            timeout=30,
+            bypass_whitelist=True
+        )
+        
+        output = result.get('output', '')
+        if 'Host key verification failed' in output:
+            return make_response(False, message='SSH host key not in known_hosts. Run: ssh-keyscan -H <WINDOWS_VM_IP> >> ~/.ssh/known_hosts', status_code=400)
+        
+        if result.get('success'):
+            return make_response(True, {
+                'output': output,
+            }, message='Sunshine restart initiated')
+        else:
+            return make_response(False, message=result.get('error', 'Restart failed'), status_code=500)
+            
+    except Exception as e:
+        logger.error(f"Error restarting Sunshine: {e}")
+        return make_response(False, message=str(e), status_code=500)
+
+
+@kvm_bp.route('/api/vnc/status', methods=['GET'])
+@require_auth
+def get_vnc_status():
+    """Get VNC service status on Ubuntu host"""
+    try:
+        # Check x11vnc and novnc status
+        result = fleet_manager.execute_command(
+            HOST_ID,
+            '''echo "x11vnc: $(systemctl is-active x11vnc 2>/dev/null || echo 'not installed')"; echo "novnc: $(systemctl is-active novnc 2>/dev/null || echo 'not installed')"; echo "port_6080: $(ss -tlnp | grep :6080 | head -1 || echo 'not listening')"''',
+            bypass_whitelist=True
+        )
+        
+        output = result.get('output', '')
+        status = {
+            'x11vnc': 'unknown',
+            'novnc': 'unknown',
+            'port_listening': False,
+            'url': None
+        }
+        
+        if 'x11vnc: active' in output:
+            status['x11vnc'] = 'running'
+        elif 'x11vnc: inactive' in output:
+            status['x11vnc'] = 'stopped'
+        elif 'not installed' in output:
+            status['x11vnc'] = 'not_installed'
+            
+        if 'novnc: active' in output:
+            status['novnc'] = 'running'
+            status['port_listening'] = True
+            status['url'] = 'http://100.110.227.25:6080/vnc.html'
+        elif 'novnc: inactive' in output:
+            status['novnc'] = 'stopped'
+            
+        return make_response(True, status)
+        
+    except Exception as e:
+        logger.error(f"Error getting VNC status: {e}")
+        return make_response(False, message=str(e), status_code=500)
+
+
+@kvm_bp.route('/api/vnc/start', methods=['POST'])
+@require_auth
+@require_permission(Permission.MANAGE_DOCKER)
+def start_vnc():
+    """Start VNC services on Ubuntu host"""
+    try:
+        result = fleet_manager.execute_command(
+            HOST_ID,
+            'sudo systemctl start x11vnc novnc 2>&1; sleep 2; systemctl is-active x11vnc novnc',
+            bypass_whitelist=True
+        )
+        
+        return make_response(True, {
+            'output': result.get('output', ''),
+            'url': 'http://100.110.227.25:6080/vnc.html'
+        }, message='VNC services started')
+        
+    except Exception as e:
+        logger.error(f"Error starting VNC: {e}")
+        return make_response(False, message=str(e), status_code=500)
+
+
+@kvm_bp.route('/api/vnc/stop', methods=['POST'])
+@require_auth
+@require_permission(Permission.MANAGE_DOCKER)
+def stop_vnc():
+    """Stop VNC services on Ubuntu host"""
+    try:
+        result = fleet_manager.execute_command(
+            HOST_ID,
+            'sudo systemctl stop x11vnc novnc 2>&1',
+            bypass_whitelist=True
+        )
+        
+        return make_response(True, {
+            'output': result.get('output', ''),
+        }, message='VNC services stopped')
+        
+    except Exception as e:
+        logger.error(f"Error stopping VNC: {e}")
         return make_response(False, message=str(e), status_code=500)
 
 

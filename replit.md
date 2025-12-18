@@ -297,3 +297,8 @@ Users need to OAuth connect platforms in the Stream Bot UI. Production requires:
 - **Race-Safe UPSERT**: BotManager uses `ON CONFLICT DO UPDATE` for atomic bot_instances creation
 - **Admin Panel API**: `/api/admin/users` lists all users with bot status; `/api/admin/users/:id/start-bot|stop-bot|restart-bot` for manual control
 - **Token Health UI**: Dashboard shows platforms needing reauth with one-click reconnect buttons
+- **Sunshine Watchdog**: Auto-recovery script (`deploy/local/scripts/sunshine-watchdog.ps1`) monitors and restarts Sunshine on crash
+- **Gaming Diagnostics**: PowerShell script checks HAGS, Xbox Game Bar, NVIDIA drivers, NVENC, Sunshine status
+- **VNC Access APIs**: Dashboard endpoints for Ubuntu host VNC status/start/stop (`/kvm/api/vnc/*`)
+- **Windows VM Diagnostics API**: Dashboard endpoints to run diagnostics remotely (`/kvm/api/windows-diagnose`, `/kvm/api/sunshine/restart`)
+- **Secure SSH**: All Windows VM SSH commands use proper host key verification via configurable known_hosts
