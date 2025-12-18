@@ -358,6 +358,7 @@ if (YOUTUBE_CLIENT_ID && YOUTUBE_CLIENT_SECRET) {
       callbackURL: YOUTUBE_CALLBACK_URL,
       scope: [
         'https://www.googleapis.com/auth/youtube.readonly',
+        'https://www.googleapis.com/auth/youtube.force-ssl',
         'https://www.googleapis.com/auth/userinfo.email',
         'https://www.googleapis.com/auth/userinfo.profile',
       ],

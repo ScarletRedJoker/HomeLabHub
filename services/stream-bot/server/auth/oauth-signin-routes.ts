@@ -54,6 +54,42 @@ router.get('/twitch/callback',
   }
 );
 
+router.get('/youtube', 
+  passport.authenticate('google-youtube-signin', { 
+    scope: [
+      'https://www.googleapis.com/auth/youtube.readonly',
+      'https://www.googleapis.com/auth/youtube.force-ssl',
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/userinfo.profile',
+    ],
+    accessType: 'offline',
+    prompt: 'consent',
+  })
+);
+
+router.get('/youtube/callback',
+  oauthLimiter,
+  passport.authenticate('google-youtube-signin', { 
+    failureRedirect: '/login?error=youtube_auth_failed',
+    failureMessage: true 
+  }),
+  (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        console.error('[OAuth Sign-in] No user ID found after YouTube authentication');
+        return res.redirect('/login?error=youtube_session_failed');
+      }
+      
+      console.log(`[OAuth Sign-in] YouTube authentication successful for user ${userId}`);
+      res.redirect('/?success=youtube_connected');
+    } catch (error) {
+      console.error('[OAuth Sign-in] YouTube callback error:', error);
+      res.redirect('/login?error=youtube_callback_error');
+    }
+  }
+);
+
 router.get('/kick', 
   passport.authenticate('kick-signin', { 
     scope: ['user:read', 'chat:read', 'chat:send'] 
