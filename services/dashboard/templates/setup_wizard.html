@@ -1012,6 +1012,14 @@ async function loadSetupStatus() {
     }
 }
 
+const elementIdMap = {
+    'fleet_ssh': 'ssh',
+    'cloud_storage': 'storage',
+    'cloudflare': 'cloudflare',
+    'tailscale': 'tailscale',
+    'openai': 'openai'
+};
+
 function updateUI(data) {
     const services = data.services;
     const summary = data.summary;
@@ -1022,8 +1030,9 @@ function updateUI(data) {
     document.getElementById('progressValue').textContent = summary.percentage + '%';
     
     for (const [key, service] of Object.entries(services)) {
-        const icon = document.getElementById(`${key}-icon`);
-        const status = document.getElementById(`${key}-status`);
+        const elementId = elementIdMap[key] || key;
+        const icon = document.getElementById(`${elementId}-icon`);
+        const status = document.getElementById(`${elementId}-status`);
         
         if (icon && status) {
             if (service.configured) {
