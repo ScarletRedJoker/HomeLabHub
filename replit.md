@@ -6,11 +6,18 @@ The Nebula Command Dashboard is a web-based interface designed to manage a homel
 ## User Preferences
 - User: Evin
 - Ubuntu 25.10 server at host.evindrake.net
-- Project location: `/home/evin/contain/HomeLabHub`
+- Project location: `/home/evin/contain/HomeLabHub` (local) and `/opt/homelab/HomeLabHub` (both servers)
 - Development: Edit in cloud IDE → Push to GitHub → Pull on Ubuntu server
 - All services use shared PostgreSQL (homelab-postgres) with individual databases
 - Passwords: Stored securely in .env file (never commit to git)
 - Managed domains: rig-city.com, evindrake.net, scarletredjoker.com
+
+## Network Configuration
+- **Local Ubuntu Host:** `100.110.227.25` (Tailscale IP), `host.evindrake.net`
+- **Linode Cloud Server:** `100.66.61.51` (Tailscale IP), `linode.evindrake.net`
+- **Connection:** Tailscale VPN mesh between hosts
+- **SSH User (Local):** evin
+- **SSH User (Linode):** root
 
 ## System Architecture
 
