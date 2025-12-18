@@ -17,6 +17,28 @@ ALLOWED_DOCKER_COMMANDS = ['ps', 'logs', 'inspect', 'stats', 'top']
 MAX_OUTPUT_LENGTH = 8000
 COMMAND_TIMEOUT = 30
 
+CAPABILITY_REGISTRY = {
+    'local': {
+        'available_commands': ['docker', 'docker-compose', 'git', 'bash', 'ping', 'nslookup', 'echo', 'cat', 'grep', 'top', 'df', 'free'],
+        'container_prefix': '',
+    },
+    'linode': {
+        'available_commands': ['docker', 'git', 'systemctl', 'bash', 'ping', 'nslookup', 'echo', 'cat', 'grep', 'top', 'df', 'free'],
+        'container_prefix': 'homelab-',
+    },
+    'ubuntu': {
+        'available_commands': ['docker', 'docker-compose', 'git', 'systemctl', 'bash', 'ping', 'nslookup', 'echo', 'cat', 'grep', 'top', 'df', 'free'],
+        'container_prefix': '',
+    }
+}
+
+COMMAND_ALTERNATIVES = {
+    'docker-compose': "Try 'docker compose' (without hyphen) instead.",
+    'systemctl': "Service management may not be available on this host.",
+    'apt': "Package management requires elevated privileges.",
+    'yum': "Package management requires elevated privileges.",
+}
+
 @dataclass
 class ToolResult:
     success: bool
@@ -317,6 +339,56 @@ class JarvisToolExecutor:
         """Return OpenAI-compatible tool definitions"""
         return TOOL_DEFINITIONS
     
+    def _check_capability(self, host: str, command: str) -> tuple[bool, str]:
+        """
+        Check if a command is available on the specified host.
+        
+        Args:
+            host: Target host ('local', 'linode', 'ubuntu')
+            command: Full command string to check
+            
+        Returns:
+            Tuple of (is_available, error_message)
+            - (True, "") if command is available
+            - (False, "helpful message") if not available
+        """
+        if not command:
+            return (True, "")
+        
+        base_command = command.split()[0] if isinstance(command, str) else command[0]
+        
+        capabilities = self._probe_host_capabilities(host)
+        available_commands = capabilities.get('available_commands', [])
+        
+        if base_command in available_commands:
+            return (True, "")
+        
+        suggestion = COMMAND_ALTERNATIVES.get(base_command, "")
+        available_list = ", ".join(available_commands) if available_commands else "none known"
+        
+        error_msg = f"Command '{base_command}' is not available on {host}."
+        if suggestion:
+            error_msg += f"\n\nSuggested alternative: {suggestion}"
+        error_msg += f"\n\nAvailable commands on {host}: {available_list}"
+        
+        return (False, error_msg)
+    
+    def _probe_host_capabilities(self, host: str) -> Dict[str, Any]:
+        """
+        Get capabilities for a host. Currently returns cached registry,
+        but can be extended for dynamic capability discovery.
+        
+        Args:
+            host: Target host ('local', 'linode', 'ubuntu')
+            
+        Returns:
+            Dict with 'available_commands' and 'container_prefix' keys
+        """
+        return CAPABILITY_REGISTRY.get(host, {
+            'available_commands': [],
+            'container_prefix': '',
+        })
+    
     def execute_tool(self, tool_name: str, arguments: Dict[str, Any]) -> ToolResult:
         """Execute a tool and return the result"""
         start_time = datetime.now()
@@ -363,8 +435,20 @@ class JarvisToolExecutor:
                 execution_time=(datetime.now() - start_time).total_seconds()
             )
     
-    def _run_command(self, cmd: List[str], timeout: int = COMMAND_TIMEOUT) -> ToolResult:
+    def _run_command(self, cmd: List[str], timeout: int = COMMAND_TIMEOUT, host: str = "local") -> ToolResult:
         """Run a local command safely"""
+        command_str = " ".join(cmd)
+        
+        is_available, error_msg = self._check_capability(host, cmd[0] if cmd else "")
+        if not is_available:
+            return ToolResult(
+                success=False,
+                output="",
+                error=error_msg,
+                command=command_str,
+                host=host
+            )
+        
         try:
             result = subprocess.run(
                 cmd,
@@ -380,19 +464,19 @@ class JarvisToolExecutor:
             return ToolResult(
                 success=result.returncode == 0,
                 output=output,
-                command=" ".join(cmd)
+                command=command_str
             )
         except subprocess.TimeoutExpired:
             return self._make_error_result(
                 "Command timed out",
-                context={"command": " ".join(cmd)},
-                command=" ".join(cmd)
+                context={"command": command_str},
+                command=command_str
             )
         except Exception as e:
             return self._make_error_result(
                 str(e),
-                context={"command": " ".join(cmd)},
-                command=" ".join(cmd)
+                context={"command": command_str},
+                command=command_str
             )
     
     def _in_docker(self) -> bool:
@@ -613,6 +697,17 @@ class JarvisToolExecutor:
             return self._make_error_result(
                 "Host and command required",
                 context={"host": host or "unknown", "command": command or "unknown"}
+            )
+        
+        base_command = command.split()[0] if command else ""
+        is_available, error_msg = self._check_capability(host, base_command)
+        if not is_available:
+            return ToolResult(
+                success=False,
+                output="",
+                error=error_msg,
+                command=command,
+                host=host
             )
         
         dangerous_patterns = ['rm -rf', 'mkfs', 'dd if=', ':(){', 'chmod 777', '> /dev/', 'shutdown', 'reboot']
