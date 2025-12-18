@@ -288,3 +288,8 @@ Users need to OAuth connect platforms in the Stream Bot UI. Production requires:
 - Added Stream-Bot → Discord go-live webhook integration
 - Added Analytics dashboard (staff performance, ticket trends, satisfaction)
 - Fixed analytics security: server access validation on all endpoints
+- **Discord Rich Presence**: Bot presence shows homelab status, Plex Rich Presence container, personal presence client
+- **Cross-Service Health API**: Dashboard `/api/services/cross-health` fetches live status from all services
+- **Dashboard Status Widgets**: Real-time Stream Bot and Discord Bot status with active bots, WebSocket clients, latency
+- **Caddy Fixes**: Added X-Forwarded-Proto header for all services (needed for secure cookies)
+- **WebSocket Auth Debug**: Added detailed logging for troubleshooting session issues in production
