@@ -99,6 +99,8 @@ export const sessionMiddleware = session({
     secure: NODE_ENV === "production",
     httpOnly: true,
     maxAge: 1000 * 60 * 60 * 24 * 7,
+    sameSite: NODE_ENV === "production" ? "none" : "lax",
+    domain: NODE_ENV === "production" ? ".rig-city.com" : undefined,
   },
 });
 
