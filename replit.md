@@ -278,26 +278,66 @@ Users need to OAuth connect platforms in the Stream Bot UI. Production requires:
 
 ## Recent Changes Log
 
-**2025-12-19:**
+**2025-12-19 (10X Enhancement Release):**
+
+### UI Modernization
+- **Dashboard Theme Overhaul**: Replaced cosmic/toy theme with professional GitHub-style dark theme
+  - Neutral gray palette (#0d1117, #161b22, #21262d) with blue accents
+  - Removed animated gradients, cosmic effects, starfield canvas
+  - Clean, flat design with subtle shadows instead of glows
+  - Added missing hex-led status indicators with semantic colors
+  - Added blink animation for live status indicators
+  - Professional badge and button styles with proper contrast
+
+- **Stream Bot Theme Overhaul**: Replaced candy theme with professional neutral aesthetic
+  - Removed playful animations (candyBounce, candyPulse)
+  - Professional indigo accent color (#6366f1)
+  - Clean surface hierarchy with subtle shadows
+
+### YAGPDB-Style Stream Notifications
+- **Discord Streaming Detection**: presenceUpdate event catches users going "purple"
+- **Role-Based Filtering**: 
+  - `roleRequirements` - only notify if user has at least one role
+  - `excludedRoles` - skip users with certain roles
+- **Streaming Role Assignment**: Auto-assign/remove role when streaming
+- **Game/Category Filtering**: Regex filter for specific games
+- **Notify All Members**: Option to notify for ANY member streaming
+- **Cooldowns**: Configurable minutes between notifications per user
+- **Validation**: Server-side regex and snowflake validation prevents crashes
+
+### Platform Health & Cleanup
 - **Token Health Monitoring**: Auth failures auto-mark platforms as `needsRefresh`, UI shows "Needs Reconnect" badge
+- **Test Data Cleanup**: Purged 10 test users and 6 expired platform connections
+- **Admin Auth Fix**: requireAdmin middleware fetches role from database
+- **Presence Routes Fix**: Corrected session accessor for user ID
+
+### Rich Presence & Integrations
 - **Plex "Now Playing" Integration**: Bot presence shows current Plex media with hacker aesthetic text
   - "Decrypting: {Movie}", "Neural Feed: {Episode}", "Audio Matrix: {Song}"
   - Rotates between homelab status and Plex data every 3 cycles
-- **Multi-Tenant Admin System**: User roles (admin/user), full RBAC with permission checks
-  - `/api/admin/users` - List all users with bot status
-  - `/api/admin/users/:id/status` - Detailed user info
-  - `/api/admin/users/:id/start-bot|stop-bot|restart-bot` - Remote bot control
-  - `/api/admin/stats` - Platform-wide statistics
 - **Personal Rich Presence (Lanyard)**: 
   - New Lanyard service fetches Discord presence data
   - `/api/presence/current` - Get user's current Discord activity
   - `/api/presence/validate/:discordId` - Validate Lanyard connection
   - `/api/settings/personal-presence` - Configure Discord ID and enable presence
-- **YouTube OAuth Scope UI**: Shows warning when YouTube connection needs force-ssl scope upgrade
+
+### Multi-Tenant System
+- **Multi-Tenant Admin System**: User roles (admin/user), full RBAC with permission checks
+  - `/api/admin/users` - List all users with bot status
+  - `/api/admin/users/:id/status` - Detailed user info
+  - `/api/admin/users/:id/start-bot|stop-bot|restart-bot` - Remote bot control
+  - `/api/admin/stats` - Platform-wide statistics
+
+### Platform Stability
 - **Kick Hardening**: Exponential backoff (1s→5min), graceful degradation mode after 5 failures
   - Connection states: connecting, connected, disconnected, reconnecting, degraded
-  - Emits `kick_degraded` event to notify dashboard
+  - Prevents concurrent reconnection attempts
 - **Bot Worker Reconciliation**: Auto-starts bots for users with connected platforms on bootstrap
+
+### Future Enhancements (TODO)
+- **Stream Notification Reconciliation**: Add periodic polling to catch missed streams
+- **Durable Webhook Retry**: Persist webhooks, retry on failure, reconcile on restart
+- **Multi-Platform Polling**: Independent Twitch/YouTube/Kick polling in Discord bot
 
 **2025-12-18:**
 - Fixed YouTube OAuth: Added `youtube.force-ssl` scope for live chat posting

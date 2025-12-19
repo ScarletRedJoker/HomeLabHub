@@ -40,6 +40,62 @@ const trackedUserSchema = z.object({
   username: z.string().nullable().optional(),
 });
 
+// Discord snowflake ID pattern (17-19 digit string)
+const SNOWFLAKE_REGEX = /^\d{17,19}$/;
+
+/**
+ * Validate that a string is a valid Discord snowflake ID
+ */
+function isValidSnowflake(id: string): boolean {
+  return SNOWFLAKE_REGEX.test(id);
+}
+
+/**
+ * Validate that a JSON string contains a valid array of Discord snowflake IDs
+ * Returns { valid: true } or { valid: false, error: string }
+ */
+function validateRoleArrayJson(jsonString: string | null | undefined): { valid: true } | { valid: false; error: string } {
+  if (!jsonString) return { valid: true };
+  
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonString);
+  } catch (e) {
+    return { valid: false, error: 'Invalid JSON format' };
+  }
+  
+  if (!Array.isArray(parsed)) {
+    return { valid: false, error: 'Must be a JSON array' };
+  }
+  
+  for (let i = 0; i < parsed.length; i++) {
+    const item = parsed[i];
+    if (typeof item !== 'string') {
+      return { valid: false, error: `Item at index ${i} must be a string` };
+    }
+    if (!isValidSnowflake(item)) {
+      return { valid: false, error: `Item at index ${i} is not a valid Discord ID (must be 17-19 digits)` };
+    }
+  }
+  
+  return { valid: true };
+}
+
+/**
+ * Validate that a regex pattern is valid and safe to compile
+ */
+function validateRegexPattern(pattern: string | null | undefined): { valid: true } | { valid: false; error: string } {
+  if (!pattern) return { valid: true };
+  
+  try {
+    new RegExp(pattern, 'i');
+    return { valid: true };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'Invalid regex pattern';
+    return { valid: false, error: message };
+  }
+}
+
 // Helper function to check if user has access to server
 async function userHasServerAccess(req: Request, serverId: string): Promise<boolean> {
   try {
@@ -118,8 +174,53 @@ router.post("/settings/:serverId", isAuthenticated, async (req: Request, res: Re
       return res.status(403).json({ error: "You don't have permission to access this server" });
     }
 
-    // Validate request body
+    // Validate request body with Zod schema
     const validatedData = streamSettingsSchema.parse(req.body);
+
+    // Additional YAGPDB-style validation for complex fields
+    
+    // Validate gameFilterRegex is a valid regex pattern
+    const regexValidation = validateRegexPattern(validatedData.gameFilterRegex);
+    if (!regexValidation.valid) {
+      return res.status(400).json({ 
+        error: 'Invalid game filter regex pattern', 
+        details: regexValidation.error 
+      });
+    }
+
+    // Validate roleRequirements is a valid JSON array of snowflake IDs
+    const roleReqValidation = validateRoleArrayJson(validatedData.roleRequirements);
+    if (!roleReqValidation.valid) {
+      return res.status(400).json({ 
+        error: 'Invalid roleRequirements format', 
+        details: roleReqValidation.error 
+      });
+    }
+
+    // Validate excludedRoles is a valid JSON array of snowflake IDs
+    const excludedRolesValidation = validateRoleArrayJson(validatedData.excludedRoles);
+    if (!excludedRolesValidation.valid) {
+      return res.status(400).json({ 
+        error: 'Invalid excludedRoles format', 
+        details: excludedRolesValidation.error 
+      });
+    }
+
+    // Validate streamingRoleId is a valid snowflake if provided
+    if (validatedData.streamingRoleId && !isValidSnowflake(validatedData.streamingRoleId)) {
+      return res.status(400).json({ 
+        error: 'Invalid streamingRoleId', 
+        details: 'Must be a valid Discord ID (17-19 digits)' 
+      });
+    }
+
+    // Validate mentionRole is a valid snowflake if provided
+    if (validatedData.mentionRole && !isValidSnowflake(validatedData.mentionRole)) {
+      return res.status(400).json({ 
+        error: 'Invalid mentionRole', 
+        details: 'Must be a valid Discord ID (17-19 digits)' 
+      });
+    }
 
     // Check if settings exist
     const existingSettings = await storage.getStreamNotificationSettings(serverId);

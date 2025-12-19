@@ -16,6 +16,46 @@
   --pro-info: #58a6ff;
 }
 
+/* ==================== STATUS LED ANIMATIONS ==================== */
+
+/* Blink animation for status LEDs */
+.blink {
+  animation: blink-animation 1.5s ease-in-out infinite;
+}
+
+@keyframes blink-animation {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Hex LED - hexagonal status indicator */
+.hex-led {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background: var(--pro-success, #3fb950);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  margin-right: 8px;
+  box-shadow: 0 0 8px var(--pro-success, #3fb950);
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hex-led.offline,
+.hex-led.error {
+  background: var(--pro-danger, #f85149);
+  box-shadow: 0 0 8px var(--pro-danger, #f85149);
+}
+
+.hex-led.warning {
+  background: var(--pro-warning, #d29922);
+  box-shadow: 0 0 8px var(--pro-warning, #d29922);
+}
+
+.hex-led.active {
+  background: var(--pro-accent, #3b82f6);
+  box-shadow: 0 0 8px var(--pro-accent, #3b82f6);
+}
+
 /* ==================== WCAG AA CONTRAST FIXES ==================== */
 
 body, .main-content {
@@ -130,6 +170,50 @@ h1, h2, h3, h4, h5, h6 {
   border-color: var(--pro-border) !important;
 }
 
+.btn-success {
+  background: var(--pro-success) !important;
+  border-color: var(--pro-success) !important;
+  color: #FFFFFF !important;
+}
+
+.btn-success:hover {
+  background: #2ea043 !important;
+  border-color: #2ea043 !important;
+}
+
+.btn-warning {
+  background: var(--pro-warning) !important;
+  border-color: var(--pro-warning) !important;
+  color: #FFFFFF !important;
+}
+
+.btn-warning:hover {
+  background: #b8860b !important;
+  border-color: #b8860b !important;
+}
+
+.btn-danger {
+  background: var(--pro-danger) !important;
+  border-color: var(--pro-danger) !important;
+  color: #FFFFFF !important;
+}
+
+.btn-danger:hover {
+  background: #da3633 !important;
+  border-color: #da3633 !important;
+}
+
+.btn-info {
+  background: var(--pro-info) !important;
+  border-color: var(--pro-info) !important;
+  color: #FFFFFF !important;
+}
+
+.btn-info:hover {
+  background: #4090e8 !important;
+  border-color: #4090e8 !important;
+}
+
 .btn-outline-primary, .btn-outline-secondary, .btn-outline-info {
   color: var(--pro-text-primary) !important;
   border-color: var(--pro-border) !important;
@@ -182,23 +266,28 @@ ul, ol, li, p, span, div {
 }
 
 .badge-primary {
-  background-color: var(--pro-accent) !important;
+  background: var(--pro-accent) !important;
+  color: #FFFFFF !important;
 }
 
 .badge-success {
-  background-color: var(--pro-success) !important;
+  background: var(--pro-success) !important;
+  color: #FFFFFF !important;
 }
 
 .badge-warning {
-  background-color: var(--pro-warning) !important;
+  background: var(--pro-warning) !important;
+  color: #FFFFFF !important;
 }
 
 .badge-danger {
-  background-color: var(--pro-danger) !important;
+  background: var(--pro-danger) !important;
+  color: #FFFFFF !important;
 }
 
 .badge-info {
-  background-color: var(--pro-info) !important;
+  background: var(--pro-info) !important;
+  color: #FFFFFF !important;
 }
 
 /* Alerts */
