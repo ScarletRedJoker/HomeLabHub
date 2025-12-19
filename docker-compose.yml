@@ -40,9 +40,15 @@ services:
     restart: unless-stopped
     networks:
       - homelab
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --maxmemory 100mb --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -57,6 +63,12 @@ services:
       homelab:
         aliases:
           - postgres
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -87,6 +99,12 @@ services:
         condition: service_healthy
     networks:
       - homelab
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+        reservations:
+          memory: 384M
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./services/dashboard/logs:/app/logs
@@ -133,9 +151,15 @@ services:
       dockerfile: Dockerfile
     container_name: homelab-celery-worker
     restart: unless-stopped
-    command: celery -A celery_app.celery_app worker --loglevel=info --concurrency=4
+    command: celery -A celery_app.celery_app worker --loglevel=info --concurrency=2
     networks:
       - homelab
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
     depends_on:
       redis:
         condition: service_healthy
@@ -180,6 +204,12 @@ services:
     dns:
       - 8.8.8.8
       - 8.8.4.4
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
     environment:
       DATABASE_URL: "postgresql://ticketbot:${DISCORD_DB_PASSWORD}@homelab-postgres:5432/ticketbot"
       DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
@@ -222,6 +252,12 @@ services:
     dns:
       - 8.8.8.8
       - 8.8.4.4
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
     env_file:
       - .env
     environment:
@@ -267,6 +303,12 @@ services:
     restart: unless-stopped
     networks:
       - homelab
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
     environment:
       - N8N_HOST=${N8N_HOST:-n8n.evindrake.net}
       - N8N_PORT=5678
