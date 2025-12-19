@@ -67,10 +67,7 @@ interface LanyardResponse {
  */
 router.get('/settings/personal-presence', requireAuth, async (req, res) => {
   try {
-    const userId = (req as any).session?.passport?.user;
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+    const userId = req.user!.id;
 
     const [user] = await db
       .select({
@@ -115,10 +112,7 @@ router.get('/settings/personal-presence', requireAuth, async (req, res) => {
  */
 router.post('/settings/personal-presence', requireAuth, async (req, res) => {
   try {
-    const userId = (req as any).session?.passport?.user;
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+    const userId = req.user!.id;
 
     const { discordId, enabled } = req.body;
 
@@ -191,10 +185,7 @@ router.post('/settings/personal-presence', requireAuth, async (req, res) => {
  */
 router.get('/presence/current', requireAuth, async (req, res) => {
   try {
-    const userId = (req as any).session?.passport?.user;
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+    const userId = req.user!.id;
 
     // Get user's Discord ID
     const [user] = await db

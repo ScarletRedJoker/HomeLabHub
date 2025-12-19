@@ -85,6 +85,7 @@ export class BotWorker {
   private kickConnectionState: KickConnectionState = "disconnected";
   private kickLastStateChange: Date | null = null;
   private kickIsDegraded: boolean = false;
+  private kickReconnectInProgress: boolean = false;
   private youtubeActiveLiveChatId: string | null = null;
   private cronJob: cron.ScheduledTask | null = null;
   private randomTimeout: NodeJS.Timeout | null = null;
@@ -353,6 +354,7 @@ export class BotWorker {
         this.kickTotalReconnectAttempts = 0;
         this.setKickConnectionState("disconnected");
         this.kickIsDegraded = false;
+        this.kickReconnectInProgress = false;
       }
 
       // Stop cron job
@@ -1583,8 +1585,13 @@ export class BotWorker {
     this.kickConnection = connection;
     this.kickKeywords = keywords;
     this.kickReconnectAttempts = 0;
+    this.kickReconnectInProgress = false;
 
-    await this.connectKickClient();
+    try {
+      await this.connectKickClient();
+    } catch (error: any) {
+      console.error(`[BotWorker] Kick: Failed to start client for user ${this.userId}:`, error?.message || error);
+    }
   }
 
   private async connectKickClient(): Promise<void> {
@@ -1725,7 +1732,7 @@ export class BotWorker {
       
       // Attempt reconnection if bot is still running
       if (this.isRunning) {
-        this.scheduleKickReconnect();
+        this.handleKickDisconnect(`disconnect: ${reason || 'unknown'}`);
       }
     });
 
@@ -1867,72 +1874,88 @@ export class BotWorker {
     }
     
     if (this.isRunning) {
-      this.scheduleKickReconnect();
+      this.handleKickDisconnect(`error: ${errorMessage.substring(0, 50)}`);
     }
   }
 
-  private scheduleKickReconnect(): void {
+  private async handleKickDisconnect(reason: string): Promise<void> {
+    if (this.kickReconnectInProgress) {
+      console.log(`[BotWorker] Kick: Reconnect already in progress for user ${this.userId}, skipping`);
+      return;
+    }
+
+    if (!this.isRunning) {
+      console.log(`[BotWorker] Kick: Bot not running for user ${this.userId}, skipping reconnect`);
+      return;
+    }
+
+    this.kickReconnectInProgress = true;
+    
     if (this.kickReconnectTimeout) {
       clearTimeout(this.kickReconnectTimeout);
       this.kickReconnectTimeout = null;
     }
 
-    this.kickReconnectAttempts++;
-    
-    const { maxReconnectAttempts, initialDelayMs, maxDelayMs, degradedIntervalMs } = KICK_RECONNECT_CONFIG;
+    try {
+      const { maxReconnectAttempts, initialDelayMs, maxDelayMs, degradedIntervalMs } = KICK_RECONNECT_CONFIG;
 
-    if (this.kickReconnectAttempts > maxReconnectAttempts && !this.kickIsDegraded) {
-      this.kickIsDegraded = true;
-      this.setKickConnectionState("degraded");
-      
-      console.warn(`[BotWorker] Kick: Entering degraded mode after ${maxReconnectAttempts} failed attempts for user ${this.userId}. Will retry every 5 minutes.`);
-      
-      this.emitEvent({
-        type: "kick_degraded",
-        userId: this.userId,
-        data: { 
-          message: `Kick connection is degraded after ${maxReconnectAttempts} failed attempts. Bot will continue trying in the background.`,
-          totalAttempts: this.kickTotalReconnectAttempts,
-          timestamp: new Date().toISOString(),
-        },
-      });
-    }
+      const delay = this.kickIsDegraded 
+        ? degradedIntervalMs 
+        : Math.min(initialDelayMs * Math.pow(2, this.kickReconnectAttempts), maxDelayMs);
 
-    let backoffMs: number;
-    if (this.kickIsDegraded) {
-      backoffMs = degradedIntervalMs;
-    } else {
-      backoffMs = Math.min(initialDelayMs * Math.pow(2, this.kickReconnectAttempts - 1), maxDelayMs);
-    }
+      this.setKickConnectionState(this.kickIsDegraded ? "degraded" : "reconnecting");
 
-    this.setKickConnectionState(this.kickIsDegraded ? "degraded" : "reconnecting");
-    
-    if (!this.kickIsDegraded) {
-      console.log(`[BotWorker] Kick: Scheduling reconnection for user ${this.userId} in ${backoffMs / 1000}s (attempt ${this.kickReconnectAttempts}/${maxReconnectAttempts})`);
-    }
-
-    this.kickReconnectTimeout = setTimeout(async () => {
       if (!this.kickIsDegraded) {
-        console.log(`[BotWorker] Kick: Attempting reconnection for user ${this.userId}...`);
+        console.log(`[BotWorker] Kick: Disconnected (${reason}) for user ${this.userId}. Reconnecting in ${delay / 1000}s (attempt ${this.kickReconnectAttempts + 1}/${maxReconnectAttempts})`);
       }
-      
+
+      await new Promise(resolve => setTimeout(resolve, delay));
+
+      if (!this.isRunning) {
+        console.log(`[BotWorker] Kick: Bot stopped during reconnect delay for user ${this.userId}`);
+        return;
+      }
+
+      this.kickReconnectAttempts++;
+
+      if (this.kickReconnectAttempts >= maxReconnectAttempts && !this.kickIsDegraded) {
+        this.kickIsDegraded = true;
+        this.setKickConnectionState("degraded");
+        
+        console.warn(`[BotWorker] Kick: Entering degraded mode after ${this.kickReconnectAttempts} attempts for user ${this.userId}. Will retry every 5 minutes.`);
+        
+        this.emitEvent({
+          type: "kick_degraded",
+          userId: this.userId,
+          data: { 
+            message: `Kick connection is degraded after ${maxReconnectAttempts} failed attempts. Bot will continue trying in the background.`,
+            totalAttempts: this.kickTotalReconnectAttempts,
+            timestamp: new Date().toISOString(),
+          },
+        });
+      }
+
       if (this.kickClient) {
         try {
           this.kickClient.removeAllListeners?.();
         } catch (e) {
-          // Ignore cleanup errors
         }
         this.kickClient = null;
       }
+
+      await this.connectKickClient();
+
+    } catch (error: any) {
+      console.error(`[BotWorker] Kick: Reconnection error for user ${this.userId}:`, error?.message || error);
       
-      try {
-        await this.connectKickClient();
-      } catch (error: any) {
-        if (!this.kickIsDegraded) {
-          console.warn(`[BotWorker] Kick: Reconnection attempt failed for user ${this.userId}:`, error?.message || error);
-        }
-      }
-    }, backoffMs);
+      this.kickReconnectTimeout = setTimeout(() => {
+        this.kickReconnectInProgress = false;
+        this.handleKickDisconnect('retry_after_error');
+      }, KICK_RECONNECT_CONFIG.maxDelayMs);
+      return;
+    } finally {
+      this.kickReconnectInProgress = false;
+    }
   }
 
   private setupFixedInterval(minutes: number) {

@@ -7,17 +7,29 @@ import { requireAuth } from './auth/middleware';
 
 const router = Router();
 
-const requireAdmin = (req: any, res: any, next: any) => {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ error: 'Unauthorized' });
+const requireAdmin = async (req: any, res: any, next: any) => {
+  const userId = req.session?.userId || (req.user as any)?.id;
+  
+  if (!userId) {
+    return res.status(401).json({ error: 'Authentication required' });
   }
   
-  const user = req.user;
-  if (!user || user.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
+  try {
+    const [user] = await db.select({
+      id: users.id,
+      role: users.role,
+    }).from(users).where(eq(users.id, userId));
+    
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    (req as any).adminUser = user;
+    next();
+  } catch (error) {
+    console.error('[Admin] Failed to verify admin status:', error);
+    return res.status(500).json({ error: 'Failed to verify admin status' });
   }
-  
-  next();
 };
 
 router.get('/users', requireAuth, requireAdmin, async (req, res) => {
