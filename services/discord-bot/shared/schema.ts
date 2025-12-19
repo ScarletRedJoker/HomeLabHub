@@ -586,17 +586,18 @@ export const streamTrackedUsers = pgTable("stream_tracked_users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Stream Notification Log - tracks notification history
+// Stream Notification Log - tracks notification history for reconciliation
+// Used to deduplicate notifications across presence detection, webhooks, and API polling
 export const streamNotificationLog = pgTable("stream_notification_log", {
   id: serial("id").primaryKey(),
   serverId: text("server_id").notNull(),
-  userId: text("user_id").notNull(), // Discord user ID who went live
-  streamTitle: text("stream_title"), // Title/game of the stream
-  streamUrl: text("stream_url"), // URL to the stream
-  platform: text("platform"), // twitch, youtube, etc
-  messageId: text("message_id"), // Discord message ID of the notification
-  notifiedAt: timestamp("notified_at").defaultNow(),
+  discordUserId: text("discord_user_id").notNull(), // Discord user ID who went live
+  platform: text("platform").notNull(), // twitch, youtube, kick, discord
+  streamId: text("stream_id"), // Platform-specific stream/broadcast ID for deduplication
+  notifiedAt: timestamp("notified_at").defaultNow().notNull(),
+  source: text("source").notNull(), // 'presence', 'webhook', 'poller', 'reconciliation'
 });
+// Index for quick lookups: CREATE INDEX idx_notification_log_lookup ON stream_notification_log(server_id, discord_user_id, stream_id);
 
 // Developers validation schemas
 export const insertDeveloperSchema = createInsertSchema(developers).omit({
@@ -639,6 +640,9 @@ export const insertStreamNotificationLogSchema = createInsertSchema(streamNotifi
 });
 export type InsertStreamNotificationLog = z.infer<typeof insertStreamNotificationLogSchema>;
 export type StreamNotificationLog = typeof streamNotificationLog.$inferSelect;
+
+// Notification source types for stream notification log
+export type StreamNotificationSource = 'presence' | 'webhook' | 'poller' | 'reconciliation';
 
 // Developer audit log validation schemas
 export const insertDeveloperAuditLogSchema = createInsertSchema(developerAuditLog).omit({

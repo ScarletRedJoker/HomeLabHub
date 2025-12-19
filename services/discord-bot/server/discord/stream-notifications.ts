@@ -420,6 +420,22 @@ export function createStreamNotificationEmbed(
 }
 
 /**
+ * Generate a unique stream ID for deduplication
+ * - Twitch/YouTube: Use platform-specific stream/broadcast ID from enriched data
+ * - Discord presence: Generate from startedAt timestamp and sessionId
+ */
+function generateStreamId(state: StreamState, enrichedData: EnrichedStreamData | null): string {
+  // If we have enriched data with a stream ID, use it
+  if (enrichedData?.streamId) {
+    return enrichedData.streamId;
+  }
+  
+  // Fall back to generating a unique ID from session info
+  // Format: {platform}_{sessionId or startedAt timestamp}
+  return `${state.platform}_${state.sessionId || state.startedAt.getTime()}`;
+}
+
+/**
  * Send stream notification with retry logic (YAGPDB-enhanced)
  */
 async function sendStreamNotification(
@@ -428,9 +444,23 @@ async function sendStreamNotification(
   state: StreamState,
   settings: StreamNotificationSettings,
   storage: IStorage,
-  enrichedData: EnrichedStreamData | null
+  enrichedData: EnrichedStreamData | null,
+  source: 'presence' | 'webhook' | 'poller' | 'reconciliation' = 'presence'
 ): Promise<boolean> {
   const context = `Send notification for ${member.displayName}`;
+  const streamId = generateStreamId(state, enrichedData);
+  
+  // Check if notification was already sent for this stream (deduplication)
+  const alreadyNotified = await storage.checkNotificationExists(
+    state.serverId,
+    state.userId,
+    streamId
+  );
+  
+  if (alreadyNotified) {
+    console.log(`[Notification Skip] Already notified for stream ${streamId}`);
+    return true; // Return true since notification was already handled
+  }
   
   const result = await retryWithBackoff(async () => {
     const channel = await guild.channels.fetch(settings.notificationChannelId);
@@ -466,17 +496,16 @@ async function sendStreamNotification(
       embeds: [embed]
     });
 
-    // Log the notification
+    // Log the notification with new schema fields for reconciliation
     await storage.createStreamNotificationLog({
       serverId: state.serverId,
-      userId: state.userId,
-      streamTitle: state.streamTitle,
-      streamUrl: state.streamUrl,
+      discordUserId: state.userId,
       platform: state.platform,
-      messageId: message.id
+      streamId,
+      source
     });
 
-    console.log(`✓ [Notification Sent] ${member.displayName} on ${state.platform}`);
+    console.log(`✓ [Notification Sent] ${member.displayName} on ${state.platform} (source: ${source}, streamId: ${streamId})`);
     
     return message;
   }, context);

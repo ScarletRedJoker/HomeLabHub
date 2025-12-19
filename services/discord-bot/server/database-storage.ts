@@ -1020,6 +1020,37 @@ export class DatabaseStorage implements IStorage {
     return results;
   }
   
+  // Notification reconciliation operations
+  async checkNotificationExists(serverId: string, discordUserId: string, streamId: string): Promise<boolean> {
+    if (!streamId) return false;
+    
+    const { and: andOp } = await import('drizzle-orm');
+    const [existing] = await db.select({ id: streamNotificationLog.id })
+      .from(streamNotificationLog)
+      .where(andOp(
+        eq(streamNotificationLog.serverId, serverId),
+        eq(streamNotificationLog.discordUserId, discordUserId),
+        eq(streamNotificationLog.streamId, streamId)
+      ))
+      .limit(1);
+    
+    return !!existing;
+  }
+  
+  async cleanupOldNotificationLogs(daysOld: number = 7): Promise<number> {
+    const { lt } = await import('drizzle-orm');
+    const cutoffDate = new Date(Date.now() - daysOld * 24 * 60 * 60 * 1000);
+    
+    const result = await db.delete(streamNotificationLog)
+      .where(lt(streamNotificationLog.notifiedAt, cutoffDate));
+    
+    const deletedCount = result.rowCount ?? 0;
+    if (deletedCount > 0) {
+      console.log(`[Notification Log Cleanup] Deleted ${deletedCount} logs older than ${daysOld} days`);
+    }
+    return deletedCount;
+  }
+  
   // Interaction lock operations (deduplication)
   async createInteractionLock(interactionId: string, userId: string, actionType: string): Promise<boolean> {
     try {

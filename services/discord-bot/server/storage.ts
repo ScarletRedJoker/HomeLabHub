@@ -185,6 +185,10 @@ export interface IStorage {
   getStreamNotificationLogs(serverId: string, limit?: number): Promise<StreamNotificationLog[]>;
   getServersTrackingUser(userId: string): Promise<{ serverId: string; settings: StreamNotificationSettings }[]>;
   
+  // Notification reconciliation operations
+  checkNotificationExists(serverId: string, discordUserId: string, streamId: string): Promise<boolean>;
+  cleanupOldNotificationLogs(daysOld?: number): Promise<number>;
+  
   // Interaction lock operations (deduplication)
   createInteractionLock(interactionId: string, userId: string, actionType: string): Promise<boolean>;
   cleanupOldInteractionLocks(): Promise<void>;
@@ -1296,12 +1300,11 @@ export class MemStorage implements IStorage {
     const newLog: StreamNotificationLog = {
       id,
       serverId: log.serverId,
-      userId: log.userId,
-      streamTitle: log.streamTitle || null,
-      streamUrl: log.streamUrl || null,
-      platform: log.platform || null,
-      messageId: log.messageId || null,
-      notifiedAt: now
+      discordUserId: log.discordUserId,
+      platform: log.platform,
+      streamId: log.streamId || null,
+      notifiedAt: now,
+      source: log.source
     };
     this.streamNotificationLogs.push(newLog);
     return newLog;
@@ -1310,7 +1313,7 @@ export class MemStorage implements IStorage {
   async getStreamNotificationLogs(serverId: string, limit?: number): Promise<StreamNotificationLog[]> {
     const logs = this.streamNotificationLogs
       .filter(log => log.serverId === serverId)
-      .sort((a, b) => new Date(b.notifiedAt!).getTime() - new Date(a.notifiedAt!).getTime());
+      .sort((a, b) => new Date(b.notifiedAt).getTime() - new Date(a.notifiedAt).getTime());
     return limit ? logs.slice(0, limit) : logs;
   }
 
@@ -1328,6 +1331,25 @@ export class MemStorage implements IStorage {
     }
     
     return results;
+  }
+  
+  // Notification reconciliation operations
+  async checkNotificationExists(serverId: string, discordUserId: string, streamId: string): Promise<boolean> {
+    if (!streamId) return false;
+    return this.streamNotificationLogs.some(
+      log => log.serverId === serverId && 
+             log.discordUserId === discordUserId && 
+             log.streamId === streamId
+    );
+  }
+  
+  async cleanupOldNotificationLogs(daysOld: number = 7): Promise<number> {
+    const cutoffDate = new Date(Date.now() - daysOld * 24 * 60 * 60 * 1000);
+    const originalLength = this.streamNotificationLogs.length;
+    this.streamNotificationLogs = this.streamNotificationLogs.filter(
+      log => new Date(log.notifiedAt) >= cutoffDate
+    );
+    return originalLength - this.streamNotificationLogs.length;
   }
 }
 

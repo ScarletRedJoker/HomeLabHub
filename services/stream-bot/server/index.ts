@@ -252,6 +252,11 @@ app.use((req, res, next) => {
   startOAuthCleanupJob();
   log('OAuth session cleanup job started');
 
+  // Initialize webhook retry service for durable Discord notifications
+  const { startWebhookRetryService } = await import('./webhook-retry-service');
+  startWebhookRetryService();
+  log('Webhook retry service started');
+
   // Check OpenAI availability for fact generation (manual triggers and scheduled intervals)
   try {
     const openaiModule = await import('./openai');
@@ -304,6 +309,10 @@ app.use((req, res, next) => {
     // Stop token refresh service
     const { tokenRefreshService } = await import('./token-refresh-service');
     tokenRefreshService.stop();
+    
+    // Stop webhook retry service
+    const { stopWebhookRetryService } = await import('./webhook-retry-service');
+    stopWebhookRetryService();
     
     server.close(async () => {
       try {

@@ -90,6 +90,7 @@ export interface EnrichedStreamData {
   thumbnailUrl: string;
   profileImageUrl: string;
   isLive: boolean;
+  streamId?: string; // Platform-specific stream/broadcast ID for deduplication
 }
 
 /**
@@ -333,7 +334,7 @@ class TwitchAPI {
         .replace('{width}', '1280')
         .replace('{height}', '720');
 
-      console.log(`[Twitch API] ✓ ${username} is live: "${stream.title}" with ${stream.viewer_count} viewers`);
+      console.log(`[Twitch API] ✓ ${username} is live: "${stream.title}" with ${stream.viewer_count} viewers (stream_id: ${stream.id})`);
 
       return {
         title: stream.title,
@@ -342,6 +343,7 @@ class TwitchAPI {
         thumbnailUrl,
         profileImageUrl,
         isLive: true,
+        streamId: stream.id, // Twitch stream ID for deduplication
       };
     } catch (error) {
       console.error('[Twitch API] Error fetching stream data:', error);
@@ -546,7 +548,7 @@ class YouTubeAPI {
         console.warn('[YouTube API] Could not fetch channel data:', error);
       }
 
-      console.log(`[YouTube API] ✓ ${snippet.channelTitle} is live: "${snippet.title}" with ${viewerCount} viewers`);
+      console.log(`[YouTube API] ✓ ${snippet.channelTitle} is live: "${snippet.title}" with ${viewerCount} viewers (video_id: ${videoId})`);
 
       return {
         title: snippet.title,
@@ -555,6 +557,7 @@ class YouTubeAPI {
         thumbnailUrl,
         profileImageUrl,
         isLive: true,
+        streamId: videoId, // YouTube video ID for deduplication
       };
     } catch (error) {
       console.error('[YouTube API] Error fetching stream data:', error);

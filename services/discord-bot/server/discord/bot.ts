@@ -24,6 +24,7 @@ import { handlePresenceUpdate, initializeStreamTracking } from './stream-notific
 import { initializeAutoDetection, scheduleAutoDetectionScans } from './stream-auto-detection';
 import { TicketChannelManager, startThreadCleanupJob } from './ticket-channel-manager';
 import { initHomelabPresence, HomelabPresenceService } from './homelab-presence';
+import { streamPoller } from '../services/stream-poller';
 
 // Discord bot instance
 let client: Client | null = null;
@@ -2091,6 +2092,15 @@ export async function startBot(storage: IStorage, broadcast: (data: any) => void
       
       // Initialize stream tracking
       await initializeStreamTracking(client!, storage);
+      
+      // Start multi-platform stream polling service
+      console.log('[Bot] Starting stream polling service...');
+      try {
+        await streamPoller.start(client!, storage);
+        console.log('[Bot] ✅ Stream polling service started successfully');
+      } catch (pollerError) {
+        console.error('[Bot] Failed to start stream polling service:', pollerError);
+      }
       
       // Initialize auto-detection for stream notifications
       console.log('[Bot] Initializing stream notification auto-detection...');

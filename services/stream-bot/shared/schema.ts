@@ -1194,6 +1194,25 @@ export const tokenExpiryAlerts = pgTable("token_expiry_alerts", {
   alertTypeIdx: index("token_expiry_alerts_alert_type_idx").on(table.alertType),
 }));
 
+// Webhook Queue - Durable webhook retry system for go-live notifications
+export const webhookQueue = pgTable("webhook_queue", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  platform: text("platform").notNull(), // twitch, youtube, kick
+  payload: text("payload").notNull(), // JSON stringified webhook data
+  attempts: integer("attempts").default(0).notNull(),
+  maxAttempts: integer("max_attempts").default(5).notNull(),
+  lastAttemptAt: timestamp("last_attempt_at"),
+  nextRetryAt: timestamp("next_retry_at"),
+  status: text("status").default("pending").notNull(), // pending, sent, failed
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  statusIdx: index("webhook_queue_status_idx").on(table.status),
+  nextRetryAtIdx: index("webhook_queue_next_retry_at_idx").on(table.nextRetryAt),
+  userIdIdx: index("webhook_queue_user_id_idx").on(table.userId),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users, {
   email: z.string().email("Invalid email address"),
@@ -1815,6 +1834,15 @@ export const insertTranscriptionSchema = createInsertSchema(transcriptions, {
   createdAt: true,
 });
 
+export const insertWebhookQueueSchema = createInsertSchema(webhookQueue, {
+  platform: z.enum(["twitch", "youtube", "kick"]),
+  payload: z.string().min(1),
+  status: z.enum(["pending", "sent", "failed"]).optional(),
+}).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Update schemas for enhanced database and AI features
 export const updatePlatformCredentialMetadataSchema = insertPlatformCredentialMetadataSchema.partial();
 export const updateFactAnalyticsSchema = insertFactAnalyticsSchema.partial();
@@ -1946,6 +1974,7 @@ export type EnhancedModerationSettings = typeof enhancedModerationSettings.$infe
 export type ModerationActionLog = typeof moderationActionLog.$inferSelect;
 export type SpeechToTextQueue = typeof speechToTextQueue.$inferSelect;
 export type Transcription = typeof transcriptions.$inferSelect;
+export type WebhookQueue = typeof webhookQueue.$inferSelect;
 
 // Insert types
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -2015,6 +2044,7 @@ export type InsertEnhancedModerationSettings = z.infer<typeof insertEnhancedMode
 export type InsertModerationActionLog = z.infer<typeof insertModerationActionLogSchema>;
 export type InsertSpeechToTextQueue = z.infer<typeof insertSpeechToTextQueueSchema>;
 export type InsertTranscription = z.infer<typeof insertTranscriptionSchema>;
+export type InsertWebhookQueue = z.infer<typeof insertWebhookQueueSchema>;
 
 // Update types
 export type UpdateUser = z.infer<typeof updateUserSchema>;

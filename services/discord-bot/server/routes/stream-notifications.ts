@@ -14,6 +14,7 @@ const externalNotificationSchema = z.object({
   game: z.string().optional(),
   thumbnailUrl: z.string().url().optional(),
   viewerCount: z.number().optional(),
+  streamId: z.string().optional(), // Platform-specific stream ID for deduplication
 });
 
 // Validation schemas - Enhanced with YAGPDB-style features
@@ -396,9 +397,12 @@ router.post("/external", async (req: Request, res: Response) => {
     }
 
     const validatedData = externalNotificationSchema.parse(req.body);
-    const { userId, platform, streamUrl, streamTitle, game, thumbnailUrl, viewerCount } = validatedData;
+    const { userId, platform, streamUrl, streamTitle, game, thumbnailUrl, viewerCount, streamId } = validatedData;
+    
+    // Generate a streamId if not provided (fallback to URL hash for uniqueness)
+    const effectiveStreamId = streamId || `webhook_${platform}_${Date.now()}`;
 
-    console.log(`[External Stream Notification] Received go-live notification for user ${userId} on ${platform}`);
+    console.log(`[External Stream Notification] Received go-live notification for user ${userId} on ${platform} (streamId: ${effectiveStreamId})`);
 
     const serversTracking = await storage.getServersTrackingUser(userId);
     
@@ -420,6 +424,13 @@ router.post("/external", async (req: Request, res: Response) => {
 
     for (const { serverId, settings } of serversTracking) {
       try {
+        // Check if notification was already sent for this stream (deduplication)
+        const alreadyNotified = await storage.checkNotificationExists(serverId, userId, effectiveStreamId);
+        if (alreadyNotified) {
+          console.log(`[External Stream Notification] Already notified for streamId ${effectiveStreamId} in server ${serverId}`);
+          continue;
+        }
+        
         const guild = client.guilds.cache.get(serverId);
         if (!guild) {
           errors.push(`Server ${serverId}: Bot not in server`);
@@ -490,17 +501,17 @@ router.post("/external", async (req: Request, res: Response) => {
           embeds: [embed]
         });
 
+        // Log notification with new schema for deduplication
         await storage.createStreamNotificationLog({
           serverId,
-          userId,
-          streamTitle,
-          streamUrl,
+          discordUserId: userId,
           platform,
-          messageId: message.id
+          streamId: effectiveStreamId,
+          source: 'webhook'
         });
 
         notificationsSent++;
-        console.log(`[External Stream Notification] ✓ Sent notification to ${guild.name}`);
+        console.log(`[External Stream Notification] ✓ Sent notification to ${guild.name} (streamId: ${effectiveStreamId})`);
       } catch (serverError) {
         console.error(`[External Stream Notification] Error sending to server ${serverId}:`, serverError);
         errors.push(`Server ${serverId}: ${serverError instanceof Error ? serverError.message : 'Unknown error'}`);
