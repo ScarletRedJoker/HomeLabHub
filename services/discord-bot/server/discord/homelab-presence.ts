@@ -3,6 +3,12 @@
  * 
  * Polls the Dashboard API and updates the Discord bot's presence
  * to show homelab status (CPU, services, mode).
+ * 
+ * Features:
+ * - Config validation at startup
+ * - Exponential backoff on failures
+ * - Rate-limited error logging
+ * - Graceful fallback when Dashboard is unreachable
  */
 
 import { Client, ActivityType, PresenceStatusData } from 'discord.js';
@@ -28,6 +34,12 @@ interface HomelabPresenceData {
   timestamp: string;
 }
 
+const DEFAULT_DASHBOARD_URLS = [
+  'http://homelab-dashboard:5000',
+  'http://localhost:5000',
+  ''
+];
+
 export class HomelabPresenceService {
   private client: Client;
   private dashboardUrl: string;
@@ -36,29 +48,55 @@ export class HomelabPresenceService {
   private lastPresenceData: HomelabPresenceData | null = null;
   private activityIndex = 0;
   private rotationInterval: NodeJS.Timeout | null = null;
+  private enabled = true;
+  
+  private consecutiveFailures = 0;
+  private maxBackoffMs = 300000; // 5 minutes max
+  private baseIntervalMs = 60000; // 1 minute base
+  private lastErrorLogTime = 0;
+  private errorLogIntervalMs = 300000; // Only log errors every 5 minutes
+  private isConfigured = false;
 
   constructor(client: Client) {
     this.client = client;
-    this.dashboardUrl = process.env.DASHBOARD_URL || 'http://homelab-dashboard:5000';
+    this.dashboardUrl = process.env.DASHBOARD_URL || '';
     this.serviceAuthToken = process.env.SERVICE_AUTH_TOKEN || 'dev-token';
+    
+    this.isConfigured = this.validateConfig();
   }
 
-  /**
-   * Start the presence polling service
-   */
+  private validateConfig(): boolean {
+    if (!this.dashboardUrl || DEFAULT_DASHBOARD_URLS.includes(this.dashboardUrl)) {
+      return false;
+    }
+    
+    try {
+      new URL(this.dashboardUrl);
+    } catch {
+      return false;
+    }
+    
+    if (!this.serviceAuthToken || this.serviceAuthToken === 'dev-token') {
+      console.warn('[Homelab Presence] SERVICE_AUTH_TOKEN not set - using dev fallback token');
+    }
+    
+    return true;
+  }
+
   async start(): Promise<void> {
+    if (!this.isConfigured) {
+      console.log('[Homelab Presence] Dashboard URL not configured - using fallback presence only');
+      console.log('[Homelab Presence] Set DASHBOARD_URL env var to enable homelab status display');
+      this.setFallbackPresence();
+      return;
+    }
+
     console.log('[Homelab Presence] Starting presence service...');
     console.log(`[Homelab Presence] Dashboard URL: ${this.dashboardUrl}`);
 
-    // Initial fetch
     await this.fetchAndUpdatePresence();
+    this.schedulePoll();
 
-    // Poll every 60 seconds for new data
-    this.pollInterval = setInterval(async () => {
-      await this.fetchAndUpdatePresence();
-    }, 60000);
-
-    // Rotate activities every 15 seconds
     this.rotationInterval = setInterval(() => {
       this.rotateActivity();
     }, 15000);
@@ -66,12 +104,32 @@ export class HomelabPresenceService {
     console.log('[Homelab Presence] ✅ Presence service started');
   }
 
-  /**
-   * Stop the presence service
-   */
-  stop(): void {
+  private schedulePoll(): void {
     if (this.pollInterval) {
-      clearInterval(this.pollInterval);
+      clearTimeout(this.pollInterval);
+    }
+
+    const backoffMs = Math.min(
+      this.baseIntervalMs * Math.pow(1.5, this.consecutiveFailures),
+      this.maxBackoffMs
+    );
+
+    const jitter = Math.random() * 5000;
+    const delay = backoffMs + jitter;
+
+    this.pollInterval = setTimeout(async () => {
+      if (this.enabled) {
+        await this.fetchAndUpdatePresence();
+        this.schedulePoll();
+      }
+    }, delay);
+  }
+
+  stop(): void {
+    this.enabled = false;
+    
+    if (this.pollInterval) {
+      clearTimeout(this.pollInterval);
       this.pollInterval = null;
     }
     if (this.rotationInterval) {
@@ -81,10 +139,11 @@ export class HomelabPresenceService {
     console.log('[Homelab Presence] Presence service stopped');
   }
 
-  /**
-   * Fetch presence data from Dashboard API
-   */
   private async fetchAndUpdatePresence(): Promise<void> {
+    if (!this.isConfigured || !this.enabled) {
+      return;
+    }
+
     try {
       const response = await fetch(`${this.dashboardUrl}/api/homelab/presence`, {
         headers: {
@@ -100,18 +159,33 @@ export class HomelabPresenceService {
 
       this.lastPresenceData = await response.json() as HomelabPresenceData;
       this.updateBotPresence();
+      
+      if (this.consecutiveFailures > 0) {
+        console.log('[Homelab Presence] ✅ Dashboard connection restored');
+      }
+      this.consecutiveFailures = 0;
 
     } catch (error: any) {
-      console.error('[Homelab Presence] Failed to fetch presence data:', error.message);
+      this.consecutiveFailures++;
       
-      // Set fallback presence on error
+      const now = Date.now();
+      const shouldLog = (now - this.lastErrorLogTime) >= this.errorLogIntervalMs;
+      
+      if (shouldLog || this.consecutiveFailures === 1) {
+        const nextRetrySeconds = Math.round(
+          Math.min(this.baseIntervalMs * Math.pow(1.5, this.consecutiveFailures), this.maxBackoffMs) / 1000
+        );
+        console.warn(
+          `[Homelab Presence] Dashboard unreachable (attempt ${this.consecutiveFailures}). ` +
+          `Next retry in ~${nextRetrySeconds}s. Error: ${error.message}`
+        );
+        this.lastErrorLogTime = now;
+      }
+      
       this.setFallbackPresence();
     }
   }
 
-  /**
-   * Update bot presence with current data
-   */
   private updateBotPresence(): void {
     if (!this.lastPresenceData || !this.client.user) return;
 
@@ -123,10 +197,8 @@ export class HomelabPresenceService {
       return;
     }
 
-    // Get current activity based on rotation index
     const currentActivity = activities[this.activityIndex % activities.length];
 
-    // Determine status based on homelab health
     let status: PresenceStatusData = 'online';
     if (data.status === 'degraded') {
       status = 'idle';
@@ -140,9 +212,6 @@ export class HomelabPresenceService {
     });
   }
 
-  /**
-   * Rotate through available activities
-   */
   private rotateActivity(): void {
     if (!this.lastPresenceData) return;
 
@@ -153,13 +222,9 @@ export class HomelabPresenceService {
     this.updateBotPresence();
   }
 
-  /**
-   * Convert presence data to Discord activities
-   */
   private getActivitiesFromData(data: HomelabPresenceData) {
     const activities: Array<{ name: string; type: ActivityType }> = [];
 
-    // Mode activity
     if (data.mode) {
       activities.push({
         name: data.mode,
@@ -167,7 +232,6 @@ export class HomelabPresenceService {
       });
     }
 
-    // Services online
     if (data.services.online > 0) {
       activities.push({
         name: `${data.services.online} services online`,
@@ -175,7 +239,6 @@ export class HomelabPresenceService {
       });
     }
 
-    // CPU/Memory stats
     if (data.stats.cpu > 0) {
       activities.push({
         name: `CPU ${data.stats.cpu}% | RAM ${data.stats.memory}%`,
@@ -183,7 +246,6 @@ export class HomelabPresenceService {
       });
     }
 
-    // Uptime
     if (data.stats.uptime && data.stats.uptime !== 'unknown') {
       activities.push({
         name: `Uptime: ${data.stats.uptime}`,
@@ -191,7 +253,6 @@ export class HomelabPresenceService {
       });
     }
 
-    // Tickets (keep the original functionality)
     activities.push({
       name: 'Support Tickets | /ticket',
       type: ActivityType.Watching
@@ -200,9 +261,6 @@ export class HomelabPresenceService {
     return activities;
   }
 
-  /**
-   * Set fallback presence when Dashboard is unreachable
-   */
   private setFallbackPresence(): void {
     if (!this.client.user) return;
 
@@ -214,9 +272,16 @@ export class HomelabPresenceService {
       status: 'online'
     });
   }
+
+  getStatus(): { configured: boolean; healthy: boolean; consecutiveFailures: number } {
+    return {
+      configured: this.isConfigured,
+      healthy: this.consecutiveFailures === 0,
+      consecutiveFailures: this.consecutiveFailures
+    };
+  }
 }
 
-// Singleton instance
 let presenceService: HomelabPresenceService | null = null;
 
 export function initHomelabPresence(client: Client): HomelabPresenceService {

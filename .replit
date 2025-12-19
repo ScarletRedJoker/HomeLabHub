@@ -87,6 +87,8 @@ WEB_PASSWORD = "admin123"
 DASHBOARD_API_KEY = "test-api-key-for-dashboard"
 REDIS_URL = "redis://localhost:6379/0"
 FLASK_ENV = "development"
+STREAM_BOT_WEBHOOK_SECRET = "a26a11876826c590655cb5f7272e3e950b47ea4f2e7f68cfadc31cc3034c10fc"
+DISCORD_BOT_URL = "http://localhost:4000"
 
 [userenv.development]
 TWITCH_REDIRECT_URI = "https://3acc42cf-91e9-40f1-90e8-761e2c391cdf-00-17v3bbf5unhyf.picard.replit.dev/api/auth/twitch/callback"
