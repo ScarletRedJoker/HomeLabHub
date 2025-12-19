@@ -278,6 +278,27 @@ Users need to OAuth connect platforms in the Stream Bot UI. Production requires:
 
 ## Recent Changes Log
 
+**2025-12-19:**
+- **Token Health Monitoring**: Auth failures auto-mark platforms as `needsRefresh`, UI shows "Needs Reconnect" badge
+- **Plex "Now Playing" Integration**: Bot presence shows current Plex media with hacker aesthetic text
+  - "Decrypting: {Movie}", "Neural Feed: {Episode}", "Audio Matrix: {Song}"
+  - Rotates between homelab status and Plex data every 3 cycles
+- **Multi-Tenant Admin System**: User roles (admin/user), full RBAC with permission checks
+  - `/api/admin/users` - List all users with bot status
+  - `/api/admin/users/:id/status` - Detailed user info
+  - `/api/admin/users/:id/start-bot|stop-bot|restart-bot` - Remote bot control
+  - `/api/admin/stats` - Platform-wide statistics
+- **Personal Rich Presence (Lanyard)**: 
+  - New Lanyard service fetches Discord presence data
+  - `/api/presence/current` - Get user's current Discord activity
+  - `/api/presence/validate/:discordId` - Validate Lanyard connection
+  - `/api/settings/personal-presence` - Configure Discord ID and enable presence
+- **YouTube OAuth Scope UI**: Shows warning when YouTube connection needs force-ssl scope upgrade
+- **Kick Hardening**: Exponential backoff (1s→5min), graceful degradation mode after 5 failures
+  - Connection states: connecting, connected, disconnected, reconnecting, degraded
+  - Emits `kick_degraded` event to notify dashboard
+- **Bot Worker Reconciliation**: Auto-starts bots for users with connected platforms on bootstrap
+
 **2025-12-18:**
 - Fixed YouTube OAuth: Added `youtube.force-ssl` scope for live chat posting
 - Fixed Kick reconnection: Exponential backoff, error handlers
