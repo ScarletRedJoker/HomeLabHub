@@ -209,7 +209,53 @@ call_agent() {
     if [[ "$method" == "GET" ]]; then
         curl -s --connect-timeout 5 "$url" 2>/dev/null
     else
-        curl -s --connect-timeout 5 -X POST "$url" 2>/dev/null
+        # Fix HTTP 411: Windows agent requires Content-Length header on POST
+        curl -s --connect-timeout 5 -X POST -H "Content-Length: 0" "$url" 2>/dev/null
+    fi
+}
+
+open_console() {
+    header "Recovery Console"
+    require_vm_config || return 1
+    
+    local state
+    state=$(get_vm_state)
+    
+    if [[ "$state" != "running" ]]; then
+        error "VM '$VM_NAME' is not running (state: $state)"
+        echo "Start the VM first: $0 start"
+        return 1
+    fi
+    
+    log "Opening SPICE console to $VM_NAME..."
+    echo ""
+    echo "This gives you direct GUI access to the Windows VM."
+    echo "Use this to fix Sunshine, RDP, or other issues."
+    echo ""
+    
+    if command -v virt-viewer &>/dev/null; then
+        virt-viewer "$VM_NAME" &
+        success "Console opened in new window"
+    elif command -v remote-viewer &>/dev/null; then
+        # Get SPICE port from VM config
+        local spice_port
+        spice_port=$(virsh domdisplay "$VM_NAME" 2>/dev/null | grep -oP 'spice://[^:]+:\K[0-9]+' || echo "")
+        if [[ -n "$spice_port" ]]; then
+            remote-viewer "spice://localhost:$spice_port" &
+            success "Console opened via remote-viewer"
+        else
+            warn "Could not determine SPICE port"
+            echo "Try: virsh domdisplay $VM_NAME"
+        fi
+    else
+        error "Neither virt-viewer nor remote-viewer found"
+        echo "Install with: sudo apt install virt-viewer"
+        echo ""
+        echo "Manual access options:"
+        echo "  1. Install virt-viewer: sudo apt install virt-viewer"
+        echo "  2. Use virt-manager GUI: virt-manager"
+        echo "  3. SSH with X forwarding from another machine"
+        return 1
     fi
 }
 
@@ -538,6 +584,7 @@ Commands:
   stop        Gracefully shutdown the VM
   gaming      Switch to gaming mode (Sunshine/Moonlight)
   desktop     Switch to desktop mode (RDP)
+  console     Open SPICE recovery console (when Sunshine/RDP unavailable)
   status      Show full system status
   help        Show this help message
 
@@ -583,6 +630,9 @@ main() {
             ;;
         desktop|rdp|productivity|p)
             switch_to_desktop
+            ;;
+        console|c|recovery)
+            open_console
             ;;
         status|s)
             show_status

@@ -64,3 +64,27 @@ The codebase is organized into a `services/` directory for each application, alo
 -   **Lanyard API**: For personal rich presence integration.
 -   **Caddy**: Used as a reverse proxy for all services.
 -   **Tailscale**: For secure network access between homelab components.
+
+## KVM Gaming Setup
+
+### Access Methods (Priority Order)
+1. **Sunshine/Moonlight** - Primary gaming mode (port 47989)
+2. **RDP** - Productivity mode (port 3389) - Currently disabled for virtual display compatibility
+3. **SPICE Console** - Recovery fallback via libvirt (always works)
+
+### Recovery When Locked Out
+If Sunshine needs new credentials and RDP is disabled:
+```bash
+# On LOCAL Ubuntu host (host.evindrake.net)
+cd /opt/homelab/HomeLabHub/deploy/local/scripts
+./kvm-orchestrator.sh console
+```
+This opens a SPICE console directly to Windows, bypassing Sunshine/RDP entirely.
+
+### Mode Switching
+```bash
+./kvm-orchestrator.sh gaming      # Enable Sunshine for Moonlight
+./kvm-orchestrator.sh desktop     # Enable RDP for WinApps
+./kvm-orchestrator.sh console     # SPICE recovery console
+./kvm-orchestrator.sh status      # Check current state
+```
