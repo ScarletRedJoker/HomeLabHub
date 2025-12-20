@@ -201,9 +201,9 @@
     <tpm model="tpm-tis">
       <backend type="emulator" version="2.0"/>
     </tpm>
-    <!-- SPICE with GL acceleration for smooth console access -->
-    <graphics type="spice" autoport="yes">
-      <listen type="address"/>
+    <!-- SPICE with GL acceleration (Unix socket for local access) -->
+    <graphics type="spice" autoport="no">
+      <listen type="socket" socket="/run/libvirt/qemu/spice-RDPWindows.sock"/>
       <image compression="off"/>
       <gl enable="yes" rendernode="/dev/dri/renderD128"/>
     </graphics>

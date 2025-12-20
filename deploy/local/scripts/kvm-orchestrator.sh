@@ -233,7 +233,22 @@ open_console() {
     echo "Use this to fix Sunshine, RDP, or other issues."
     echo ""
     
-    if command -v virt-viewer &>/dev/null; then
+    # Check for Unix socket (GL-enabled config) first
+    local spice_socket="/run/libvirt/qemu/spice-${VM_NAME}.sock"
+    
+    if [[ -S "$spice_socket" ]]; then
+        log "Found SPICE Unix socket (GL-accelerated)"
+        if command -v remote-viewer &>/dev/null; then
+            remote-viewer "spice+unix://$spice_socket" &
+            success "Console opened via Unix socket"
+        elif command -v virt-viewer &>/dev/null; then
+            virt-viewer "$VM_NAME" &
+            success "Console opened via virt-viewer"
+        else
+            error "Neither remote-viewer nor virt-viewer found"
+            echo "Install with: sudo apt install virt-viewer"
+        fi
+    elif command -v virt-viewer &>/dev/null; then
         virt-viewer "$VM_NAME" &
         success "Console opened in new window"
     elif command -v remote-viewer &>/dev/null; then
