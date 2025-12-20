@@ -67,54 +67,65 @@ The codebase is organized into a `services/` directory for each application, alo
 
 ## KVM Gaming Setup
 
-### One-Click Access (Recommended)
-After installing shortcuts, just click in your app menu:
-- **Windows Gaming (Moonlight)** - Auto-starts VM, switches to gaming mode, launches Moonlight
-- **Windows Desktop (RDP)** - Auto-starts VM, switches to desktop mode, connects RDP
-- **Windows Console (Recovery)** - Opens SPICE console for emergencies
-
-Install shortcuts:
+### Quick Fix (If Things Break)
 ```bash
 cd /opt/homelab/HomeLabHub/deploy/local/scripts
-./install-kvm-shortcuts.sh
+./fix-kvm-winapps.sh   # Fixes RDP, WinApps config, everything
 ```
 
+### VM Configuration
+- **VM Name:** RDPWindows
+- **VM IP:** 192.168.122.250
+- **User:** Evin
+- **Network:** e1000e on libvirt default (virbr0)
+- **GPU:** NVIDIA passthrough for gaming
+- **Guest Agent:** QEMU Guest Agent for remote admin commands
+
 ### Access Methods
-1. **Sunshine/Moonlight** - Primary gaming mode (CoD, Steam Big Picture)
-2. **RDP/WinApps** - Desktop productivity mode (Windows apps on Linux)
-3. **SPICE Console** - Recovery fallback (always works)
+1. **Sunshine/Moonlight** - Gaming mode (CoD, Steam) via https://192.168.122.250:47990
+2. **RDP/WinApps** - Desktop mode, seamless Windows apps on Linux
+3. **SPICE Console** - Recovery fallback (`virt-viewer RDPWindows`)
+
+### WinApps Setup
+Config lives at `~/.config/winapps/winapps.conf`:
+```
+RDP_USER="Evin"
+RDP_PASS="Brs=2729"
+RDP_IP="192.168.122.250"
+VM_NAME="RDPWindows"
+```
+
+Also requires in `/etc/environment`:
+```
+LIBVIRT_DEFAULT_URI="qemu:///system"
+```
 
 ### Manual Mode Switching
 ```bash
-./kvm-launch.sh gaming     # One-click: start VM → gaming mode → Moonlight
-./kvm-launch.sh desktop    # One-click: start VM → desktop mode → RDP
-./kvm-launch.sh console    # Recovery access
-
-# Or use the lower-level orchestrator:
-./kvm-orchestrator.sh gaming      # Switch to Sunshine mode
-./kvm-orchestrator.sh desktop     # Switch to RDP mode
-./kvm-orchestrator.sh console     # SPICE recovery console
-./kvm-orchestrator.sh status      # Check current state
+./kvm-launch.sh gaming     # Start VM → Sunshine → Moonlight
+./kvm-launch.sh desktop    # Start VM → RDP mode → WinApps
+./kvm-launch.sh console    # SPICE recovery console
 ```
 
-### Windows Agent Setup
-For automatic mode switching, install the agent on Windows (run as Admin):
-```powershell
-# Save to C:\Scripts\kvm-mode-agent.ps1 and run
-powershell -ExecutionPolicy Bypass -File C:\Scripts\kvm-mode-agent.ps1
+### Enable RDP from Linux (via Guest Agent)
+```bash
+./enable-rdp.sh            # Uses QEMU guest agent to enable RDP remotely
 ```
-The agent listens on port 8765 and manages Sunshine/RDP services.
+
+### Windows Requirements
+Inside Windows, these must be installed:
+1. **QEMU Guest Agent** - From virtio-win.iso → `guest-agent/qemu-ga-x86_64.msi`
+2. **SPICE Guest Tools** - For mouse input in SPICE console
+3. **Sunshine** - For Moonlight game streaming
 
 ### Recovery When Locked Out
-If Sunshine needs new credentials and RDP is unavailable:
 ```bash
-cd /opt/homelab/HomeLabHub/deploy/local/scripts
-./kvm-orchestrator.sh console
+virt-viewer RDPWindows     # Opens SPICE console (keyboard works)
 ```
-This opens a SPICE console directly to Windows, bypassing Sunshine/RDP entirely.
+Then use keyboard to navigate Windows and run admin commands.
 
 ### Technical Notes
-- Mode state persists in `/var/lib/kvm-orchestrator/state.json`
-- SPICE uses GL acceleration via Unix socket (`/run/libvirt/qemu/spice-*.sock`)
-- Network uses virtio for optimal performance
-- GPU passthrough uses NVIDIA with vfio-pci binding
+- Network: e1000e adapter (Windows built-in driver support)
+- GPU passthrough: NVIDIA with vfio-pci binding
+- Sunshine ports: 47984-48010 (TCP/UDP)
+- RDP port: 3389
