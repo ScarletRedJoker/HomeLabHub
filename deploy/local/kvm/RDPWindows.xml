@@ -166,11 +166,11 @@
     <controller type="virtio-serial" index="0">
       <address type="pci" domain="0x0000" bus="0x03" slot="0x00" function="0x0"/>
     </controller>
-    <!-- Upgraded to virtio-net for better performance -->
+    <!-- Using e1000e for Windows built-in driver support -->
     <interface type="network">
       <mac address="52:54:00:21:57:83"/>
       <source network="default"/>
-      <model type="virtio"/>
+      <model type="e1000e"/>
       <link state="up"/>
       <address type="pci" domain="0x0000" bus="0x01" slot="0x00" function="0x0"/>
     </interface>
