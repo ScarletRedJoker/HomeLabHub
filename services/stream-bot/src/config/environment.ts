@@ -79,8 +79,11 @@ export function getOpenAIConfig(): OpenAIConfig {
 export function getYouTubeConfig(): YouTubeConfig {
   const clientId = process.env.YOUTUBE_CLIENT_ID || "";
   const clientSecret = process.env.YOUTUBE_CLIENT_SECRET || "";
-  // Support both YOUTUBE_REDIRECT_URI (workflow) and YOUTUBE_SIGNIN_CALLBACK_URL (legacy)
-  const redirectUri = process.env.YOUTUBE_REDIRECT_URI || process.env.YOUTUBE_SIGNIN_CALLBACK_URL || "";
+  // YOUTUBE_REDIRECT_URI is for platform connection (direct OAuth at /auth/youtube/callback)
+  // YOUTUBE_SIGNIN_CALLBACK_URL is for passport signin (at /api/auth/youtube/callback)
+  // For platform connection, default to /auth/youtube/callback
+  const appUrl = process.env.APP_URL || "https://stream.rig-city.com";
+  const redirectUri = process.env.YOUTUBE_REDIRECT_URI || `${appUrl}/auth/youtube/callback`;
 
   if (!clientId || !clientSecret) {
     throw new Error(

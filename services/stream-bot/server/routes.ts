@@ -55,12 +55,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/auth", oauthSpotifyRoutes);
   app.use("/auth", oauthYoutubeRoutes);
   app.use("/auth", oauthTwitchRoutes);
-  // Mount YouTube OAuth at /api/auth as well for backward compatibility with redirect URIs
-  app.use("/api/auth", oauthYoutubeRoutes);
-  // Mount Twitch OAuth at /api/auth as well for consistency with DELETE /api/auth/twitch/disconnect
-  app.use("/api/auth", oauthTwitchRoutes);
-  // Mount Spotify OAuth at /api/auth as well for consistency
-  app.use("/api/auth", oauthSpotifyRoutes);
+  // Note: Direct OAuth routes (platform connection) are ONLY at /auth/*
+  // Signin routes (passport) are at /api/auth/* - they must NOT overlap
+  // This prevents PKCE conflicts between the two OAuth flows
   app.use("/api/spotify", spotifyRoutes);
   app.use("/api/overlay", overlayRoutes);
   app.use("/api/obs", obsRoutes);
