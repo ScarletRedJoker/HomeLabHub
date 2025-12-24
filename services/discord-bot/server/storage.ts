@@ -47,7 +47,19 @@ import {
   type StreamTrackedUser,
   type InsertStreamTrackedUser,
   type StreamNotificationLog,
-  type InsertStreamNotificationLog
+  type InsertStreamNotificationLog,
+  type StarredMessage,
+  type InsertStarredMessage,
+  type XpData,
+  type InsertXpData,
+  type UpdateXpData,
+  type ReactionRole,
+  type InsertReactionRole,
+  type AfkUser,
+  type InsertAfkUser,
+  type DiscordGiveaway,
+  type InsertDiscordGiveaway,
+  type UpdateDiscordGiveaway
 } from "@shared/schema";
 
 // Define the storage interface
@@ -192,6 +204,39 @@ export interface IStorage {
   // Interaction lock operations (deduplication)
   createInteractionLock(interactionId: string, userId: string, actionType: string): Promise<boolean>;
   cleanupOldInteractionLocks(): Promise<void>;
+  
+  // Starboard operations
+  getStarredMessage(serverId: string, originalMessageId: string): Promise<StarredMessage | null>;
+  createStarredMessage(message: InsertStarredMessage): Promise<StarredMessage>;
+  updateStarredMessageCount(serverId: string, originalMessageId: string, starCount: number): Promise<StarredMessage | null>;
+  deleteStarredMessage(serverId: string, originalMessageId: string): Promise<boolean>;
+  
+  // XP/Leveling operations
+  getXpData(serverId: string, userId: string): Promise<XpData | null>;
+  createXpData(data: InsertXpData): Promise<XpData>;
+  updateXpData(serverId: string, userId: string, updates: UpdateXpData): Promise<XpData | null>;
+  getServerLeaderboard(serverId: string, limit: number, offset: number): Promise<XpData[]>;
+  getUserRank(serverId: string, userId: string): Promise<number>;
+  
+  // Reaction Role operations
+  getReactionRoles(serverId: string): Promise<ReactionRole[]>;
+  getReactionRole(serverId: string, messageId: string, emoji: string): Promise<ReactionRole | null>;
+  createReactionRole(data: InsertReactionRole): Promise<ReactionRole>;
+  deleteReactionRole(serverId: string, messageId: string, emoji: string): Promise<boolean>;
+  
+  // AFK operations
+  getAfkUser(serverId: string, userId: string): Promise<AfkUser | null>;
+  setAfkUser(data: InsertAfkUser): Promise<AfkUser>;
+  removeAfkUser(serverId: string, userId: string): Promise<boolean>;
+  
+  // Giveaway operations
+  getActiveGiveaways(serverId: string): Promise<DiscordGiveaway[]>;
+  getGiveaway(id: number): Promise<DiscordGiveaway | null>;
+  getGiveawayByMessage(messageId: string): Promise<DiscordGiveaway | null>;
+  getEndedGiveaways(): Promise<DiscordGiveaway[]>;
+  createGiveaway(data: InsertDiscordGiveaway): Promise<DiscordGiveaway>;
+  updateGiveaway(id: number, updates: UpdateDiscordGiveaway): Promise<DiscordGiveaway | null>;
+  endGiveaway(id: number, winners: string[]): Promise<DiscordGiveaway | null>;
 }
 
 export class MemStorage implements IStorage {

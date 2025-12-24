@@ -67,6 +67,18 @@ import {
   type InsertWebhookEventLog,
   type GuildProvisioningStatus,
   type InsertGuildProvisioningStatus,
+  type StarredMessage,
+  type InsertStarredMessage,
+  type XpData,
+  type InsertXpData,
+  type UpdateXpData,
+  type ReactionRole,
+  type InsertReactionRole,
+  type AfkUser,
+  type InsertAfkUser,
+  type DiscordGiveaway,
+  type InsertDiscordGiveaway,
+  type UpdateDiscordGiveaway,
   users,
   discordUsers,
   servers,
@@ -95,7 +107,12 @@ import {
   escalationHistory,
   webhookConfigurations,
   webhookEventLog,
-  guildProvisioningStatus
+  guildProvisioningStatus,
+  starredMessages,
+  xpData,
+  reactionRoles,
+  afkUsers,
+  discordGiveaways
 } from "@shared/schema";
 import { IStorage } from "./storage";
 import { db } from "./db";
@@ -1338,6 +1355,251 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       return { connected: false, latencyMs: Date.now() - start };
     }
+  }
+
+  // Starboard operations
+  async getStarredMessage(serverId: string, originalMessageId: string): Promise<StarredMessage | null> {
+    const [message] = await db.select()
+      .from(starredMessages)
+      .where(and(
+        eq(starredMessages.serverId, serverId),
+        eq(starredMessages.originalMessageId, originalMessageId)
+      ))
+      .limit(1);
+    return message || null;
+  }
+
+  async createStarredMessage(message: InsertStarredMessage): Promise<StarredMessage> {
+    const [newMessage] = await db.insert(starredMessages)
+      .values({
+        ...message,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .returning();
+    return newMessage;
+  }
+
+  async updateStarredMessageCount(serverId: string, originalMessageId: string, starCount: number): Promise<StarredMessage | null> {
+    const [updated] = await db.update(starredMessages)
+      .set({ starCount, updatedAt: new Date() })
+      .where(and(
+        eq(starredMessages.serverId, serverId),
+        eq(starredMessages.originalMessageId, originalMessageId)
+      ))
+      .returning();
+    return updated || null;
+  }
+
+  async deleteStarredMessage(serverId: string, originalMessageId: string): Promise<boolean> {
+    const result = await db.delete(starredMessages)
+      .where(and(
+        eq(starredMessages.serverId, serverId),
+        eq(starredMessages.originalMessageId, originalMessageId)
+      ));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // XP/Leveling operations
+  async getXpData(serverId: string, userId: string): Promise<XpData | null> {
+    const [data] = await db.select()
+      .from(xpData)
+      .where(and(
+        eq(xpData.serverId, serverId),
+        eq(xpData.userId, userId)
+      ))
+      .limit(1);
+    return data || null;
+  }
+
+  async createXpData(data: InsertXpData): Promise<XpData> {
+    const [newData] = await db.insert(xpData)
+      .values({
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .returning();
+    return newData;
+  }
+
+  async updateXpData(serverId: string, userId: string, updates: UpdateXpData): Promise<XpData | null> {
+    const [updated] = await db.update(xpData)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(
+        eq(xpData.serverId, serverId),
+        eq(xpData.userId, userId)
+      ))
+      .returning();
+    return updated || null;
+  }
+
+  async getServerLeaderboard(serverId: string, limit: number = 10, offset: number = 0): Promise<XpData[]> {
+    const { desc } = await import('drizzle-orm');
+    return await db.select()
+      .from(xpData)
+      .where(eq(xpData.serverId, serverId))
+      .orderBy(desc(xpData.xp))
+      .limit(limit)
+      .offset(offset);
+  }
+
+  async getUserRank(serverId: string, userId: string): Promise<number> {
+    const { gt, count } = await import('drizzle-orm');
+    const userData = await this.getXpData(serverId, userId);
+    if (!userData) return 0;
+    
+    const [result] = await db.select({ count: count() })
+      .from(xpData)
+      .where(and(
+        eq(xpData.serverId, serverId),
+        gt(xpData.xp, userData.xp)
+      ));
+    
+    return (result?.count || 0) + 1;
+  }
+
+  // Reaction Role operations
+  async getReactionRoles(serverId: string): Promise<ReactionRole[]> {
+    return await db.select()
+      .from(reactionRoles)
+      .where(eq(reactionRoles.serverId, serverId));
+  }
+
+  async getReactionRole(serverId: string, messageId: string, emoji: string): Promise<ReactionRole | null> {
+    const [role] = await db.select()
+      .from(reactionRoles)
+      .where(and(
+        eq(reactionRoles.serverId, serverId),
+        eq(reactionRoles.messageId, messageId),
+        eq(reactionRoles.emoji, emoji)
+      ))
+      .limit(1);
+    return role || null;
+  }
+
+  async createReactionRole(data: InsertReactionRole): Promise<ReactionRole> {
+    const [newRole] = await db.insert(reactionRoles)
+      .values({
+        ...data,
+        createdAt: new Date()
+      })
+      .returning();
+    return newRole;
+  }
+
+  async deleteReactionRole(serverId: string, messageId: string, emoji: string): Promise<boolean> {
+    const result = await db.delete(reactionRoles)
+      .where(and(
+        eq(reactionRoles.serverId, serverId),
+        eq(reactionRoles.messageId, messageId),
+        eq(reactionRoles.emoji, emoji)
+      ));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // AFK operations
+  async getAfkUser(serverId: string, userId: string): Promise<AfkUser | null> {
+    const [user] = await db.select()
+      .from(afkUsers)
+      .where(and(
+        eq(afkUsers.serverId, serverId),
+        eq(afkUsers.userId, userId)
+      ))
+      .limit(1);
+    return user || null;
+  }
+
+  async setAfkUser(data: InsertAfkUser): Promise<AfkUser> {
+    await db.delete(afkUsers)
+      .where(and(
+        eq(afkUsers.serverId, data.serverId),
+        eq(afkUsers.userId, data.userId)
+      ));
+    
+    const [newAfk] = await db.insert(afkUsers)
+      .values({
+        ...data,
+        afkSince: new Date()
+      })
+      .returning();
+    return newAfk;
+  }
+
+  async removeAfkUser(serverId: string, userId: string): Promise<boolean> {
+    const result = await db.delete(afkUsers)
+      .where(and(
+        eq(afkUsers.serverId, serverId),
+        eq(afkUsers.userId, userId)
+      ));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Giveaway operations
+  async getActiveGiveaways(serverId: string): Promise<DiscordGiveaway[]> {
+    return await db.select()
+      .from(discordGiveaways)
+      .where(and(
+        eq(discordGiveaways.serverId, serverId),
+        eq(discordGiveaways.ended, false)
+      ));
+  }
+
+  async getGiveaway(id: number): Promise<DiscordGiveaway | null> {
+    const [giveaway] = await db.select()
+      .from(discordGiveaways)
+      .where(eq(discordGiveaways.id, id))
+      .limit(1);
+    return giveaway || null;
+  }
+
+  async getGiveawayByMessage(messageId: string): Promise<DiscordGiveaway | null> {
+    const [giveaway] = await db.select()
+      .from(discordGiveaways)
+      .where(eq(discordGiveaways.messageId, messageId))
+      .limit(1);
+    return giveaway || null;
+  }
+
+  async getEndedGiveaways(): Promise<DiscordGiveaway[]> {
+    const { lte } = await import('drizzle-orm');
+    return await db.select()
+      .from(discordGiveaways)
+      .where(and(
+        eq(discordGiveaways.ended, false),
+        lte(discordGiveaways.endTime, new Date())
+      ));
+  }
+
+  async createGiveaway(data: InsertDiscordGiveaway): Promise<DiscordGiveaway> {
+    const [newGiveaway] = await db.insert(discordGiveaways)
+      .values({
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .returning();
+    return newGiveaway;
+  }
+
+  async updateGiveaway(id: number, updates: UpdateDiscordGiveaway): Promise<DiscordGiveaway | null> {
+    const [updated] = await db.update(discordGiveaways)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(discordGiveaways.id, id))
+      .returning();
+    return updated || null;
+  }
+
+  async endGiveaway(id: number, winners: string[]): Promise<DiscordGiveaway | null> {
+    const [updated] = await db.update(discordGiveaways)
+      .set({
+        ended: true,
+        winners: JSON.stringify(winners),
+        updatedAt: new Date()
+      })
+      .where(eq(discordGiveaways.id, id))
+      .returning();
+    return updated || null;
   }
 }
 

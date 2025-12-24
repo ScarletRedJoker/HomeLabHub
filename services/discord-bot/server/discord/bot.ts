@@ -25,6 +25,7 @@ import { initializeAutoDetection, scheduleAutoDetectionScans } from './stream-au
 import { TicketChannelManager, startThreadCleanupJob } from './ticket-channel-manager';
 import { initHomelabPresence, HomelabPresenceService } from './homelab-presence';
 import { streamPoller } from '../services/stream-poller';
+import { initializeCommunityFeatures } from './community-features';
 
 // Discord bot instance
 let client: Client | null = null;
@@ -78,6 +79,11 @@ export async function startBot(storage: IStorage, broadcast: (data: any) => void
         GatewayIntentBits.MessageContent, // Required for reading message content and embeds
         GatewayIntentBits.GuildVoiceStates, // Required for voice channel functionality
         GatewayIntentBits.GuildPresences, // Required to detect when users start streaming
+        GatewayIntentBits.GuildMessageReactions, // Required for starboard reaction tracking
+      ],
+      partials: [
+        2, // Partials.Message - Required to receive events on uncached messages
+        3, // Partials.Reaction - Required to receive events on uncached reactions
       ]
     });
 
@@ -2129,6 +2135,15 @@ export async function startBot(storage: IStorage, broadcast: (data: any) => void
       } catch (presenceError) {
         console.error('[Bot] Failed to start Homelab Presence service:', presenceError);
         console.log('[Bot] Bot will use default presence instead');
+      }
+      
+      // Initialize community features (Starboard, Welcome, XP/Leveling)
+      console.log('[Bot] Initializing community features...');
+      try {
+        initializeCommunityFeatures(client!, storage);
+        console.log('[Bot] ✅ Community features initialized successfully');
+      } catch (communityError) {
+        console.error('[Bot] Failed to initialize community features:', communityError);
       }
     });
 

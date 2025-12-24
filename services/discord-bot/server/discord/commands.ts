@@ -1606,6 +1606,2283 @@ const helpCommand: Command = {
 commands.set('help', helpCommand);
 console.log('[Discord] Registered Help command');
 
+// ==================== MODERATION COMMANDS ====================
+
+// In-memory storage for warnings (in production, use database)
+const userWarnings = new Map<string, { moderator: string; reason: string; timestamp: Date }[]>();
+
+// /ban command
+const banCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('ban')
+    .setDescription('Ban a user from the server')
+    .addUserOption(option =>
+      option.setName('user')
+        .setDescription('The user to ban')
+        .setRequired(true)
+    )
+    .addStringOption(option =>
+      option.setName('reason')
+        .setDescription('Reason for the ban')
+        .setRequired(false)
+    )
+    .addIntegerOption(option =>
+      option.setName('delete_days')
+        .setDescription('Days of messages to delete (0-7)')
+        .setRequired(false)
+        .setMinValue(0)
+        .setMaxValue(7)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
+  execute: async (interaction, { storage }) => {
+    if (!interaction.isCommand()) return;
+    
+    try {
+      await interaction.deferReply();
+    } catch (error) {
+      console.error('Failed to defer ban interaction:', error);
+      return;
+    }
+    
+    try {
+      if (!interaction.guild) {
+        await interaction.editReply('❌ This command can only be used in a server.');
+        return;
+      }
+      
+      const targetUser = interaction.options.getUser('user', true);
+      const reason = interaction.options.getString('reason') || 'No reason provided';
+      const deleteDays = interaction.options.getInteger('delete_days') || 0;
+      
+      const member = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
+      
+      if (member) {
+        if (!member.bannable) {
+          await interaction.editReply('❌ I cannot ban this user. They may have higher permissions than me.');
+          return;
+        }
+        
+        if (member.id === interaction.user.id) {
+          await interaction.editReply('❌ You cannot ban yourself!');
+          return;
+        }
+      }
+      
+      await interaction.guild.members.ban(targetUser.id, {
+        deleteMessageSeconds: deleteDays * 24 * 60 * 60,
+        reason: `${reason} | Banned by ${interaction.user.tag}`
+      });
+      
+      const embed = new EmbedBuilder()
+        .setTitle('🔨 User Banned')
+        .setDescription(`**${targetUser.tag}** has been banned from the server.`)
+        .addFields(
+          { name: 'Banned User', value: `<@${targetUser.id}>`, inline: true },
+          { name: 'Moderator', value: `<@${interaction.user.id}>`, inline: true },
+          { name: 'Reason', value: reason, inline: false },
+          { name: 'Messages Deleted', value: `${deleteDays} day(s)`, inline: true }
+        )
+        .setColor('#ED4245')
+        .setThumbnail(targetUser.displayAvatarURL())
+        .setTimestamp();
+      
+      await interaction.editReply({ embeds: [embed] });
+      console.log(`[Discord] ${interaction.user.tag} banned ${targetUser.tag} in ${interaction.guild.name}`);
+      
+    } catch (error) {
+      console.error('Error executing ban command:', error);
+      await interaction.editReply('❌ Failed to ban user. Please check my permissions and try again.');
+    }
+  }
+};
+
+commands.set('ban', banCommand);
+console.log('[Discord] Registered Ban command');
+
+// /kick command
+const kickCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('kick')
+    .setDescription('Kick a user from the server')
+    .addUserOption(option =>
+      option.setName('user')
+        .setDescription('The user to kick')
+        .setRequired(true)
+    )
+    .addStringOption(option =>
+      option.setName('reason')
+        .setDescription('Reason for the kick')
+        .setRequired(false)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers),
+  execute: async (interaction, { storage }) => {
+    if (!interaction.isCommand()) return;
+    
+    try {
+      await interaction.deferReply();
+    } catch (error) {
+      console.error('Failed to defer kick interaction:', error);
+      return;
+    }
+    
+    try {
+      if (!interaction.guild) {
+        await interaction.editReply('❌ This command can only be used in a server.');
+        return;
+      }
+      
+      const targetUser = interaction.options.getUser('user', true);
+      const reason = interaction.options.getString('reason') || 'No reason provided';
+      
+      const member = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
+      
+      if (!member) {
+        await interaction.editReply('❌ User is not in this server.');
+        return;
+      }
+      
+      if (!member.kickable) {
+        await interaction.editReply('❌ I cannot kick this user. They may have higher permissions than me.');
+        return;
+      }
+      
+      if (member.id === interaction.user.id) {
+        await interaction.editReply('❌ You cannot kick yourself!');
+        return;
+      }
+      
+      await member.kick(`${reason} | Kicked by ${interaction.user.tag}`);
+      
+      const embed = new EmbedBuilder()
+        .setTitle('👢 User Kicked')
+        .setDescription(`**${targetUser.tag}** has been kicked from the server.`)
+        .addFields(
+          { name: 'Kicked User', value: `<@${targetUser.id}>`, inline: true },
+          { name: 'Moderator', value: `<@${interaction.user.id}>`, inline: true },
+          { name: 'Reason', value: reason, inline: false }
+        )
+        .setColor('#FFA500')
+        .setThumbnail(targetUser.displayAvatarURL())
+        .setTimestamp();
+      
+      await interaction.editReply({ embeds: [embed] });
+      console.log(`[Discord] ${interaction.user.tag} kicked ${targetUser.tag} in ${interaction.guild.name}`);
+      
+    } catch (error) {
+      console.error('Error executing kick command:', error);
+      await interaction.editReply('❌ Failed to kick user. Please check my permissions and try again.');
+    }
+  }
+};
+
+commands.set('kick', kickCommand);
+console.log('[Discord] Registered Kick command');
+
+// /timeout command
+const timeoutCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('timeout')
+    .setDescription('Timeout a user (mute them temporarily)')
+    .addUserOption(option =>
+      option.setName('user')
+        .setDescription('The user to timeout')
+        .setRequired(true)
+    )
+    .addStringOption(option =>
+      option.setName('duration')
+        .setDescription('Duration (e.g., 10m, 1h, 1d, 1w)')
+        .setRequired(true)
+    )
+    .addStringOption(option =>
+      option.setName('reason')
+        .setDescription('Reason for the timeout')
+        .setRequired(false)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
+  execute: async (interaction, { storage }) => {
+    if (!interaction.isCommand()) return;
+    
+    try {
+      await interaction.deferReply();
+    } catch (error) {
+      console.error('Failed to defer timeout interaction:', error);
+      return;
+    }
+    
+    try {
+      if (!interaction.guild) {
+        await interaction.editReply('❌ This command can only be used in a server.');
+        return;
+      }
+      
+      const targetUser = interaction.options.getUser('user', true);
+      const durationStr = interaction.options.getString('duration', true);
+      const reason = interaction.options.getString('reason') || 'No reason provided';
+      
+      // Parse duration string
+      const durationMatch = durationStr.match(/^(\d+)([smhdw])$/i);
+      if (!durationMatch) {
+        await interaction.editReply('❌ Invalid duration format. Use: 10s, 10m, 1h, 1d, or 1w');
+        return;
+      }
+      
+      const amount = parseInt(durationMatch[1]);
+      const unit = durationMatch[2].toLowerCase();
+      
+      let durationMs: number;
+      let durationDisplay: string;
+      
+      switch (unit) {
+        case 's':
+          durationMs = amount * 1000;
+          durationDisplay = `${amount} second(s)`;
+          break;
+        case 'm':
+          durationMs = amount * 60 * 1000;
+          durationDisplay = `${amount} minute(s)`;
+          break;
+        case 'h':
+          durationMs = amount * 60 * 60 * 1000;
+          durationDisplay = `${amount} hour(s)`;
+          break;
+        case 'd':
+          durationMs = amount * 24 * 60 * 60 * 1000;
+          durationDisplay = `${amount} day(s)`;
+          break;
+        case 'w':
+          durationMs = amount * 7 * 24 * 60 * 60 * 1000;
+          durationDisplay = `${amount} week(s)`;
+          break;
+        default:
+          await interaction.editReply('❌ Invalid duration unit.');
+          return;
+      }
+      
+      // Discord max timeout is 28 days
+      if (durationMs > 28 * 24 * 60 * 60 * 1000) {
+        await interaction.editReply('❌ Maximum timeout duration is 28 days.');
+        return;
+      }
+      
+      const member = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
+      
+      if (!member) {
+        await interaction.editReply('❌ User is not in this server.');
+        return;
+      }
+      
+      if (!member.moderatable) {
+        await interaction.editReply('❌ I cannot timeout this user. They may have higher permissions than me.');
+        return;
+      }
+      
+      if (member.id === interaction.user.id) {
+        await interaction.editReply('❌ You cannot timeout yourself!');
+        return;
+      }
+      
+      await member.timeout(durationMs, `${reason} | Timed out by ${interaction.user.tag}`);
+      
+      const embed = new EmbedBuilder()
+        .setTitle('⏰ User Timed Out')
+        .setDescription(`**${targetUser.tag}** has been timed out.`)
+        .addFields(
+          { name: 'User', value: `<@${targetUser.id}>`, inline: true },
+          { name: 'Moderator', value: `<@${interaction.user.id}>`, inline: true },
+          { name: 'Duration', value: durationDisplay, inline: true },
+          { name: 'Reason', value: reason, inline: false }
+        )
+        .setColor('#FEE75C')
+        .setThumbnail(targetUser.displayAvatarURL())
+        .setTimestamp();
+      
+      await interaction.editReply({ embeds: [embed] });
+      console.log(`[Discord] ${interaction.user.tag} timed out ${targetUser.tag} for ${durationDisplay} in ${interaction.guild.name}`);
+      
+    } catch (error) {
+      console.error('Error executing timeout command:', error);
+      await interaction.editReply('❌ Failed to timeout user. Please check my permissions and try again.');
+    }
+  }
+};
+
+commands.set('timeout', timeoutCommand);
+console.log('[Discord] Registered Timeout command');
+
+// /warn command
+const warnCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('warn')
+    .setDescription('Issue a warning to a user')
+    .addUserOption(option =>
+      option.setName('user')
+        .setDescription('The user to warn')
+        .setRequired(true)
+    )
+    .addStringOption(option =>
+      option.setName('reason')
+        .setDescription('Reason for the warning')
+        .setRequired(true)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
+  execute: async (interaction, { storage }) => {
+    if (!interaction.isCommand()) return;
+    
+    try {
+      await interaction.deferReply();
+    } catch (error) {
+      console.error('Failed to defer warn interaction:', error);
+      return;
+    }
+    
+    try {
+      if (!interaction.guild) {
+        await interaction.editReply('❌ This command can only be used in a server.');
+        return;
+      }
+      
+      const targetUser = interaction.options.getUser('user', true);
+      const reason = interaction.options.getString('reason', true);
+      
+      const warningKey = `${interaction.guild.id}-${targetUser.id}`;
+      const warnings = userWarnings.get(warningKey) || [];
+      
+      const newWarning = {
+        moderator: interaction.user.id,
+        reason,
+        timestamp: new Date()
+      };
+      
+      warnings.push(newWarning);
+      userWarnings.set(warningKey, warnings);
+      
+      const embed = new EmbedBuilder()
+        .setTitle('⚠️ Warning Issued')
+        .setDescription(`**${targetUser.tag}** has received a warning.`)
+        .addFields(
+          { name: 'Warned User', value: `<@${targetUser.id}>`, inline: true },
+          { name: 'Moderator', value: `<@${interaction.user.id}>`, inline: true },
+          { name: 'Total Warnings', value: `${warnings.length}`, inline: true },
+          { name: 'Reason', value: reason, inline: false }
+        )
+        .setColor('#FEE75C')
+        .setThumbnail(targetUser.displayAvatarURL())
+        .setTimestamp();
+      
+      await interaction.editReply({ embeds: [embed] });
+      console.log(`[Discord] ${interaction.user.tag} warned ${targetUser.tag} in ${interaction.guild.name} (total: ${warnings.length})`);
+      
+    } catch (error) {
+      console.error('Error executing warn command:', error);
+      await interaction.editReply('❌ Failed to issue warning. Please try again.');
+    }
+  }
+};
+
+commands.set('warn', warnCommand);
+console.log('[Discord] Registered Warn command');
+
+// /warnings command
+const warningsCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('warnings')
+    .setDescription('View warnings for a user')
+    .addUserOption(option =>
+      option.setName('user')
+        .setDescription('The user to check warnings for (default: yourself)')
+        .setRequired(false)
+    ),
+  execute: async (interaction, { storage }) => {
+    if (!interaction.isCommand()) return;
+    
+    try {
+      await interaction.deferReply();
+    } catch (error) {
+      console.error('Failed to defer warnings interaction:', error);
+      return;
+    }
+    
+    try {
+      if (!interaction.guild) {
+        await interaction.editReply('❌ This command can only be used in a server.');
+        return;
+      }
+      
+      const targetUser = interaction.options.getUser('user') || interaction.user;
+      const warningKey = `${interaction.guild.id}-${targetUser.id}`;
+      const warnings = userWarnings.get(warningKey) || [];
+      
+      if (warnings.length === 0) {
+        const embed = new EmbedBuilder()
+          .setTitle('📋 User Warnings')
+          .setDescription(`**${targetUser.tag}** has no warnings. 🎉`)
+          .setColor('#57F287')
+          .setThumbnail(targetUser.displayAvatarURL())
+          .setTimestamp();
+        
+        await interaction.editReply({ embeds: [embed] });
+        return;
+      }
+      
+      const embed = new EmbedBuilder()
+        .setTitle(`📋 Warnings for ${targetUser.tag}`)
+        .setDescription(`Total warnings: **${warnings.length}**`)
+        .setColor('#FEE75C')
+        .setThumbnail(targetUser.displayAvatarURL())
+        .setTimestamp();
+      
+      warnings.slice(-10).forEach((warning, index) => {
+        embed.addFields({
+          name: `Warning #${index + 1} - ${warning.timestamp.toLocaleDateString()}`,
+          value: `**Reason:** ${warning.reason}\n**Moderator:** <@${warning.moderator}>`,
+          inline: false
+        });
+      });
+      
+      if (warnings.length > 10) {
+        embed.setFooter({ text: `Showing last 10 of ${warnings.length} warnings` });
+      }
+      
+      await interaction.editReply({ embeds: [embed] });
+      
+    } catch (error) {
+      console.error('Error executing warnings command:', error);
+      await interaction.editReply('❌ Failed to retrieve warnings. Please try again.');
+    }
+  }
+};
+
+commands.set('warnings', warningsCommand);
+console.log('[Discord] Registered Warnings command');
+
+// /purge command
+const purgeCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('purge')
+    .setDescription('Delete multiple messages from the channel')
+    .addIntegerOption(option =>
+      option.setName('count')
+        .setDescription('Number of messages to delete (1-100)')
+        .setRequired(true)
+        .setMinValue(1)
+        .setMaxValue(100)
+    )
+    .addUserOption(option =>
+      option.setName('user')
+        .setDescription('Only delete messages from this user')
+        .setRequired(false)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
+  execute: async (interaction, { storage }) => {
+    if (!interaction.isCommand()) return;
+    
+    try {
+      await interaction.deferReply({ ephemeral: true });
+    } catch (error) {
+      console.error('Failed to defer purge interaction:', error);
+      return;
+    }
+    
+    try {
+      if (!interaction.guild || !interaction.channel || !interaction.channel.isTextBased()) {
+        await interaction.editReply('❌ This command can only be used in a text channel.');
+        return;
+      }
+      
+      const count = interaction.options.getInteger('count', true);
+      const targetUser = interaction.options.getUser('user');
+      
+      // Fetch messages
+      const messages = await interaction.channel.messages.fetch({ limit: 100 });
+      
+      // Filter messages if user specified
+      let messagesToDelete = [...messages.values()];
+      if (targetUser) {
+        messagesToDelete = messagesToDelete.filter(msg => msg.author.id === targetUser.id);
+      }
+      
+      // Only get messages less than 14 days old (Discord limitation)
+      const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
+      messagesToDelete = messagesToDelete.filter(msg => msg.createdTimestamp > fourteenDaysAgo);
+      
+      // Limit to requested count
+      messagesToDelete = messagesToDelete.slice(0, count);
+      
+      if (messagesToDelete.length === 0) {
+        await interaction.editReply('❌ No deletable messages found (messages must be less than 14 days old).');
+        return;
+      }
+      
+      // Bulk delete
+      if ('bulkDelete' in interaction.channel) {
+        const deleted = await interaction.channel.bulkDelete(messagesToDelete, true);
+        
+        const embed = new EmbedBuilder()
+          .setTitle('🗑️ Messages Purged')
+          .setDescription(`Successfully deleted **${deleted.size}** message(s).`)
+          .addFields(
+            { name: 'Moderator', value: `<@${interaction.user.id}>`, inline: true },
+            { name: 'Channel', value: `<#${interaction.channel.id}>`, inline: true }
+          )
+          .setColor('#57F287')
+          .setTimestamp();
+        
+        if (targetUser) {
+          embed.addFields({ name: 'Filtered User', value: `<@${targetUser.id}>`, inline: true });
+        }
+        
+        await interaction.editReply({ embeds: [embed] });
+        console.log(`[Discord] ${interaction.user.tag} purged ${deleted.size} messages in ${interaction.guild.name}`);
+      }
+      
+    } catch (error) {
+      console.error('Error executing purge command:', error);
+      await interaction.editReply('❌ Failed to purge messages. Please check my permissions and try again.');
+    }
+  }
+};
+
+commands.set('purge', purgeCommand);
+console.log('[Discord] Registered Purge command');
+
+// /slowmode command
+const slowmodeCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('slowmode')
+    .setDescription('Set slowmode for the channel')
+    .addIntegerOption(option =>
+      option.setName('seconds')
+        .setDescription('Slowmode duration in seconds (0 to disable, max 21600)')
+        .setRequired(true)
+        .setMinValue(0)
+        .setMaxValue(21600)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
+  execute: async (interaction, { storage }) => {
+    if (!interaction.isCommand()) return;
+    
+    try {
+      await interaction.deferReply();
+    } catch (error) {
+      console.error('Failed to defer slowmode interaction:', error);
+      return;
+    }
+    
+    try {
+      if (!interaction.guild || !interaction.channel) {
+        await interaction.editReply('❌ This command can only be used in a channel.');
+        return;
+      }
+      
+      const seconds = interaction.options.getInteger('seconds', true);
+      
+      if (!('setRateLimitPerUser' in interaction.channel)) {
+        await interaction.editReply('❌ Slowmode cannot be set in this channel type.');
+        return;
+      }
+      
+      await interaction.channel.setRateLimitPerUser(seconds);
+      
+      let description: string;
+      if (seconds === 0) {
+        description = 'Slowmode has been **disabled** for this channel.';
+      } else if (seconds < 60) {
+        description = `Slowmode set to **${seconds} second(s)**.`;
+      } else if (seconds < 3600) {
+        description = `Slowmode set to **${Math.floor(seconds / 60)} minute(s)**.`;
+      } else {
+        description = `Slowmode set to **${Math.floor(seconds / 3600)} hour(s)**.`;
+      }
+      
+      const embed = new EmbedBuilder()
+        .setTitle('🐌 Slowmode Updated')
+        .setDescription(description)
+        .addFields(
+          { name: 'Channel', value: `<#${interaction.channel.id}>`, inline: true },
+          { name: 'Moderator', value: `<@${interaction.user.id}>`, inline: true }
+        )
+        .setColor(seconds === 0 ? '#57F287' : '#5865F2')
+        .setTimestamp();
+      
+      await interaction.editReply({ embeds: [embed] });
+      console.log(`[Discord] ${interaction.user.tag} set slowmode to ${seconds}s in ${interaction.guild.name}`);
+      
+    } catch (error) {
+      console.error('Error executing slowmode command:', error);
+      await interaction.editReply('❌ Failed to set slowmode. Please check my permissions and try again.');
+    }
+  }
+};
+
+commands.set('slowmode', slowmodeCommand);
+console.log('[Discord] Registered Slowmode command');
+
+// ==================== UTILITY COMMANDS ====================
+
+// /userinfo command
+const userinfoCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('userinfo')
+    .setDescription('Get information about a user')
+    .addUserOption(option =>
+      option.setName('user')
+        .setDescription('The user to get information about (default: yourself)')
+        .setRequired(false)
+    ),
+  execute: async (interaction, { storage }) => {
+    if (!interaction.isCommand()) return;
+    
+    try {
+      await interaction.deferReply();
+    } catch (error) {
+      console.error('Failed to defer userinfo interaction:', error);
+      return;
+    }
+    
+    try {
+      if (!interaction.guild) {
+        await interaction.editReply('❌ This command can only be used in a server.');
+        return;
+      }
+      
+      const targetUser = interaction.options.getUser('user') || interaction.user;
+      const member = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
+      
+      const accountAge = Math.floor((Date.now() - targetUser.createdTimestamp) / (1000 * 60 * 60 * 24));
+      
+      const embed = new EmbedBuilder()
+        .setTitle(`👤 ${targetUser.tag}`)
+        .setThumbnail(targetUser.displayAvatarURL({ size: 256 }))
+        .addFields(
+          { name: '🆔 User ID', value: targetUser.id, inline: true },
+          { name: '🤖 Bot', value: targetUser.bot ? 'Yes' : 'No', inline: true },
+          { name: '📅 Account Created', value: `<t:${Math.floor(targetUser.createdTimestamp / 1000)}:R>`, inline: true }
+        )
+        .setColor('#5865F2')
+        .setTimestamp();
+      
+      if (member) {
+        const joinAge = Math.floor((Date.now() - (member.joinedTimestamp || 0)) / (1000 * 60 * 60 * 24));
+        const roles = member.roles.cache
+          .filter(role => role.id !== interaction.guild!.id)
+          .sort((a, b) => b.position - a.position)
+          .map(role => `<@&${role.id}>`)
+          .slice(0, 10);
+        
+        embed.addFields(
+          { name: '📥 Joined Server', value: `<t:${Math.floor((member.joinedTimestamp || 0) / 1000)}:R>`, inline: true },
+          { name: '📛 Nickname', value: member.nickname || 'None', inline: true },
+          { name: '🎨 Display Color', value: member.displayHexColor || '#000000', inline: true },
+          { name: `🏷️ Roles (${member.roles.cache.size - 1})`, value: roles.length > 0 ? roles.join(', ') : 'None', inline: false }
+        );
+        
+        if (member.premiumSince) {
+          embed.addFields({
+            name: '💎 Boosting Since',
+            value: `<t:${Math.floor(member.premiumSinceTimestamp! / 1000)}:R>`,
+            inline: true
+          });
+        }
+      } else {
+        embed.addFields({ name: '📥 Server Member', value: 'Not in this server', inline: true });
+      }
+      
+      await interaction.editReply({ embeds: [embed] });
+      
+    } catch (error) {
+      console.error('Error executing userinfo command:', error);
+      await interaction.editReply('❌ Failed to get user information. Please try again.');
+    }
+  }
+};
+
+commands.set('userinfo', userinfoCommand);
+console.log('[Discord] Registered Userinfo command');
+
+// /serverinfo command
+const serverinfoCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('serverinfo')
+    .setDescription('Get information about this server'),
+  execute: async (interaction, { storage }) => {
+    if (!interaction.isCommand()) return;
+    
+    try {
+      await interaction.deferReply();
+    } catch (error) {
+      console.error('Failed to defer serverinfo interaction:', error);
+      return;
+    }
+    
+    try {
+      if (!interaction.guild) {
+        await interaction.editReply('❌ This command can only be used in a server.');
+        return;
+      }
+      
+      const guild = interaction.guild;
+      await guild.fetch();
+      
+      const owner = await guild.fetchOwner().catch(() => null);
+      const channels = guild.channels.cache;
+      const textChannels = channels.filter(c => c.type === 0).size;
+      const voiceChannels = channels.filter(c => c.type === 2).size;
+      const categories = channels.filter(c => c.type === 4).size;
+      
+      const boostTier = ['None', 'Tier 1', 'Tier 2', 'Tier 3'][guild.premiumTier] || 'None';
+      
+      const embed = new EmbedBuilder()
+        .setTitle(`📊 ${guild.name}`)
+        .setThumbnail(guild.iconURL({ size: 256 }) || '')
+        .addFields(
+          { name: '🆔 Server ID', value: guild.id, inline: true },
+          { name: '👑 Owner', value: owner ? `<@${owner.id}>` : 'Unknown', inline: true },
+          { name: '📅 Created', value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:R>`, inline: true },
+          { name: '👥 Members', value: `${guild.memberCount.toLocaleString()}`, inline: true },
+          { name: '🏷️ Roles', value: `${guild.roles.cache.size}`, inline: true },
+          { name: '😀 Emojis', value: `${guild.emojis.cache.size}`, inline: true },
+          { name: '📝 Text Channels', value: `${textChannels}`, inline: true },
+          { name: '🔊 Voice Channels', value: `${voiceChannels}`, inline: true },
+          { name: '📁 Categories', value: `${categories}`, inline: true },
+          { name: '💎 Boost Level', value: boostTier, inline: true },
+          { name: '🚀 Boosts', value: `${guild.premiumSubscriptionCount || 0}`, inline: true },
+          { name: '🔒 Verification Level', value: ['None', 'Low', 'Medium', 'High', 'Very High'][guild.verificationLevel] || 'Unknown', inline: true }
+        )
+        .setColor('#5865F2')
+        .setFooter({ text: `Requested by ${interaction.user.tag}` })
+        .setTimestamp();
+      
+      if (guild.description) {
+        embed.setDescription(guild.description);
+      }
+      
+      if (guild.bannerURL()) {
+        embed.setImage(guild.bannerURL({ size: 512 }) || '');
+      }
+      
+      await interaction.editReply({ embeds: [embed] });
+      
+    } catch (error) {
+      console.error('Error executing serverinfo command:', error);
+      await interaction.editReply('❌ Failed to get server information. Please try again.');
+    }
+  }
+};
+
+commands.set('serverinfo', serverinfoCommand);
+console.log('[Discord] Registered Serverinfo command');
+
+// /avatar command
+const avatarCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('avatar')
+    .setDescription('Get a user\'s avatar in full size')
+    .addUserOption(option =>
+      option.setName('user')
+        .setDescription('The user to get the avatar of (default: yourself)')
+        .setRequired(false)
+    ),
+  execute: async (interaction, { storage }) => {
+    if (!interaction.isCommand()) return;
+    
+    try {
+      await interaction.deferReply();
+    } catch (error) {
+      console.error('Failed to defer avatar interaction:', error);
+      return;
+    }
+    
+    try {
+      const targetUser = interaction.options.getUser('user') || interaction.user;
+      
+      const avatarUrl = targetUser.displayAvatarURL({ size: 4096 });
+      
+      const embed = new EmbedBuilder()
+        .setTitle(`🖼️ ${targetUser.tag}'s Avatar`)
+        .setImage(avatarUrl)
+        .setColor('#5865F2')
+        .setTimestamp();
+      
+      const row = new ActionRowBuilder<ButtonBuilder>()
+        .addComponents(
+          new ButtonBuilder()
+            .setLabel('Open in Browser')
+            .setStyle(ButtonStyle.Link)
+            .setURL(avatarUrl)
+        );
+      
+      await interaction.editReply({ embeds: [embed], components: [row] });
+      
+    } catch (error) {
+      console.error('Error executing avatar command:', error);
+      await interaction.editReply('❌ Failed to get avatar. Please try again.');
+    }
+  }
+};
+
+commands.set('avatar', avatarCommand);
+console.log('[Discord] Registered Avatar command');
+
+// /poll command
+const pollCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('poll')
+    .setDescription('Create a poll with emoji reactions')
+    .addStringOption(option =>
+      option.setName('question')
+        .setDescription('The poll question')
+        .setRequired(true)
+    )
+    .addStringOption(option =>
+      option.setName('choices')
+        .setDescription('Comma-separated choices (e.g., "Yes, No, Maybe")')
+        .setRequired(true)
+    ),
+  execute: async (interaction, { storage }) => {
+    if (!interaction.isCommand()) return;
+    
+    try {
+      await interaction.deferReply();
+    } catch (error) {
+      console.error('Failed to defer poll interaction:', error);
+      return;
+    }
+    
+    try {
+      const question = interaction.options.getString('question', true);
+      const choicesStr = interaction.options.getString('choices', true);
+      
+      const choices = choicesStr.split(',').map(c => c.trim()).filter(c => c.length > 0);
+      
+      if (choices.length < 2) {
+        await interaction.editReply('❌ Please provide at least 2 choices separated by commas.');
+        return;
+      }
+      
+      if (choices.length > 10) {
+        await interaction.editReply('❌ Maximum 10 choices allowed.');
+        return;
+      }
+      
+      const emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
+      
+      const optionsList = choices.map((choice, index) => `${emojis[index]} ${choice}`).join('\n\n');
+      
+      const embed = new EmbedBuilder()
+        .setTitle(`📊 ${question}`)
+        .setDescription(optionsList)
+        .setColor('#5865F2')
+        .setFooter({ text: `Poll by ${interaction.user.tag} • React to vote!` })
+        .setTimestamp();
+      
+      const message = await interaction.editReply({ embeds: [embed] });
+      
+      // Add reactions
+      for (let i = 0; i < choices.length; i++) {
+        try {
+          await message.react(emojis[i]);
+        } catch (e) {
+          console.error(`Failed to add reaction ${emojis[i]}:`, e);
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error executing poll command:', error);
+      await interaction.editReply('❌ Failed to create poll. Please try again.');
+    }
+  }
+};
+
+commands.set('poll', pollCommand);
+console.log('[Discord] Registered Poll command');
+
+// ==================== FUN COMMANDS ====================
+
+// /8ball command
+const eightBallCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('8ball')
+    .setDescription('Ask the magic 8-ball a question')
+    .addStringOption(option =>
+      option.setName('question')
+        .setDescription('Your question for the 8-ball')
+        .setRequired(true)
+    ),
+  execute: async (interaction, { storage }) => {
+    if (!interaction.isCommand()) return;
+    
+    try {
+      await interaction.deferReply();
+    } catch (error) {
+      console.error('Failed to defer 8ball interaction:', error);
+      return;
+    }
+    
+    try {
+      const question = interaction.options.getString('question', true);
+      
+      const responses = [
+        { answer: 'It is certain.', type: 'positive' },
+        { answer: 'It is decidedly so.', type: 'positive' },
+        { answer: 'Without a doubt.', type: 'positive' },
+        { answer: 'Yes, definitely.', type: 'positive' },
+        { answer: 'You may rely on it.', type: 'positive' },
+        { answer: 'As I see it, yes.', type: 'positive' },
+        { answer: 'Most likely.', type: 'positive' },
+        { answer: 'Outlook good.', type: 'positive' },
+        { answer: 'Yes.', type: 'positive' },
+        { answer: 'Signs point to yes.', type: 'positive' },
+        { answer: 'Reply hazy, try again.', type: 'neutral' },
+        { answer: 'Ask again later.', type: 'neutral' },
+        { answer: 'Better not tell you now.', type: 'neutral' },
+        { answer: 'Cannot predict now.', type: 'neutral' },
+        { answer: 'Concentrate and ask again.', type: 'neutral' },
+        { answer: "Don't count on it.", type: 'negative' },
+        { answer: 'My reply is no.', type: 'negative' },
+        { answer: 'My sources say no.', type: 'negative' },
+        { answer: 'Outlook not so good.', type: 'negative' },
+        { answer: 'Very doubtful.', type: 'negative' }
+      ];
+      
+      const response = responses[Math.floor(Math.random() * responses.length)];
+      
+      const colors = {
+        positive: '#57F287',
+        neutral: '#FEE75C',
+        negative: '#ED4245'
+      };
+      
+      const embed = new EmbedBuilder()
+        .setTitle('🎱 Magic 8-Ball')
+        .addFields(
+          { name: '❓ Question', value: question, inline: false },
+          { name: '🔮 Answer', value: response.answer, inline: false }
+        )
+        .setColor(colors[response.type as keyof typeof colors])
+        .setFooter({ text: `Asked by ${interaction.user.tag}` })
+        .setTimestamp();
+      
+      await interaction.editReply({ embeds: [embed] });
+      
+    } catch (error) {
+      console.error('Error executing 8ball command:', error);
+      await interaction.editReply('❌ The magic 8-ball is cloudy. Please try again.');
+    }
+  }
+};
+
+commands.set('8ball', eightBallCommand);
+console.log('[Discord] Registered 8ball command');
+
+// /roll command
+const rollCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('roll')
+    .setDescription('Roll dice')
+    .addStringOption(option =>
+      option.setName('dice')
+        .setDescription('Dice notation (e.g., d20, 2d6, 3d8+5). Default: d20')
+        .setRequired(false)
+    ),
+  execute: async (interaction, { storage }) => {
+    if (!interaction.isCommand()) return;
+    
+    try {
+      await interaction.deferReply();
+    } catch (error) {
+      console.error('Failed to defer roll interaction:', error);
+      return;
+    }
+    
+    try {
+      const diceStr = interaction.options.getString('dice') || 'd20';
+      
+      // Parse dice notation: NdS+M or NdS-M or dS
+      const diceMatch = diceStr.match(/^(\d*)d(\d+)([+-]\d+)?$/i);
+      
+      if (!diceMatch) {
+        await interaction.editReply('❌ Invalid dice notation. Use format like: d20, 2d6, 3d8+5, d100-2');
+        return;
+      }
+      
+      const numDice = parseInt(diceMatch[1] || '1');
+      const sides = parseInt(diceMatch[2]);
+      const modifier = parseInt(diceMatch[3] || '0');
+      
+      if (numDice < 1 || numDice > 100) {
+        await interaction.editReply('❌ Number of dice must be between 1 and 100.');
+        return;
+      }
+      
+      if (sides < 2 || sides > 1000) {
+        await interaction.editReply('❌ Number of sides must be between 2 and 1000.');
+        return;
+      }
+      
+      const rolls: number[] = [];
+      for (let i = 0; i < numDice; i++) {
+        rolls.push(Math.floor(Math.random() * sides) + 1);
+      }
+      
+      const subtotal = rolls.reduce((a, b) => a + b, 0);
+      const total = subtotal + modifier;
+      
+      let modifierStr = '';
+      if (modifier !== 0) {
+        modifierStr = modifier > 0 ? ` + ${modifier}` : ` - ${Math.abs(modifier)}`;
+      }
+      
+      const embed = new EmbedBuilder()
+        .setTitle('🎲 Dice Roll')
+        .setDescription(`Rolling **${diceStr}**`)
+        .addFields(
+          { name: '🎯 Rolls', value: rolls.join(', '), inline: true },
+          { name: '📊 Total', value: `**${total}**${modifierStr ? ` (${subtotal}${modifierStr})` : ''}`, inline: true }
+        )
+        .setColor('#5865F2')
+        .setFooter({ text: `Rolled by ${interaction.user.tag}` })
+        .setTimestamp();
+      
+      // Special styling for nat 20 or nat 1 on d20
+      if (numDice === 1 && sides === 20 && modifier === 0) {
+        if (rolls[0] === 20) {
+          embed.setColor('#FFD700').setTitle('🎲 NATURAL 20! 🌟');
+        } else if (rolls[0] === 1) {
+          embed.setColor('#ED4245').setTitle('🎲 Critical Fail! 💀');
+        }
+      }
+      
+      await interaction.editReply({ embeds: [embed] });
+      
+    } catch (error) {
+      console.error('Error executing roll command:', error);
+      await interaction.editReply('❌ Failed to roll dice. Please try again.');
+    }
+  }
+};
+
+commands.set('roll', rollCommand);
+console.log('[Discord] Registered Roll command');
+
+// /coinflip command
+const coinflipCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('coinflip')
+    .setDescription('Flip a coin'),
+  execute: async (interaction, { storage }) => {
+    if (!interaction.isCommand()) return;
+    
+    try {
+      await interaction.deferReply();
+    } catch (error) {
+      console.error('Failed to defer coinflip interaction:', error);
+      return;
+    }
+    
+    try {
+      const result = Math.random() < 0.5 ? 'Heads' : 'Tails';
+      const emoji = result === 'Heads' ? '👑' : '🔢';
+      
+      const embed = new EmbedBuilder()
+        .setTitle('🪙 Coin Flip')
+        .setDescription(`The coin lands on...\n\n# ${emoji} ${result}!`)
+        .setColor(result === 'Heads' ? '#FFD700' : '#C0C0C0')
+        .setFooter({ text: `Flipped by ${interaction.user.tag}` })
+        .setTimestamp();
+      
+      await interaction.editReply({ embeds: [embed] });
+      
+    } catch (error) {
+      console.error('Error executing coinflip command:', error);
+      await interaction.editReply('❌ The coin rolled away! Please try again.');
+    }
+  }
+};
+
+commands.set('coinflip', coinflipCommand);
+console.log('[Discord] Registered Coinflip command');
+
+// /choose command
+const chooseCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('choose')
+    .setDescription('Let the bot choose from a list of options')
+    .addStringOption(option =>
+      option.setName('options')
+        .setDescription('Comma-separated options (e.g., "Pizza, Burger, Tacos")')
+        .setRequired(true)
+    ),
+  execute: async (interaction, { storage }) => {
+    if (!interaction.isCommand()) return;
+    
+    try {
+      await interaction.deferReply();
+    } catch (error) {
+      console.error('Failed to defer choose interaction:', error);
+      return;
+    }
+    
+    try {
+      const optionsStr = interaction.options.getString('options', true);
+      const options = optionsStr.split(',').map(o => o.trim()).filter(o => o.length > 0);
+      
+      if (options.length < 2) {
+        await interaction.editReply('❌ Please provide at least 2 options separated by commas.');
+        return;
+      }
+      
+      const choice = options[Math.floor(Math.random() * options.length)];
+      
+      const embed = new EmbedBuilder()
+        .setTitle('🤔 I Choose...')
+        .setDescription(`From the options:\n${options.map(o => `• ${o}`).join('\n')}\n\n**I choose:** 🎯 **${choice}**`)
+        .setColor('#5865F2')
+        .setFooter({ text: `Asked by ${interaction.user.tag}` })
+        .setTimestamp();
+      
+      await interaction.editReply({ embeds: [embed] });
+      
+    } catch (error) {
+      console.error('Error executing choose command:', error);
+      await interaction.editReply('❌ I couldn\'t make a decision. Please try again.');
+    }
+  }
+};
+
+commands.set('choose', chooseCommand);
+console.log('[Discord] Registered Choose command');
+
+import { calculateLevel, calculateXpForLevel, calculateProgressToNextLevel, replaceWelcomeVariables } from './community-features';
+
+// /starboard command
+const starboardCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('starboard')
+    .setDescription('Configure the starboard system')
+    .addSubcommand(subcommand =>
+      subcommand.setName('setup')
+        .setDescription('Set up the starboard channel and settings')
+        .addChannelOption(option =>
+          option.setName('channel')
+            .setDescription('The channel to post starred messages to')
+            .setRequired(true)
+        )
+        .addIntegerOption(option =>
+          option.setName('threshold')
+            .setDescription('Minimum reactions needed (default: 3)')
+            .setMinValue(1)
+            .setMaxValue(50)
+            .setRequired(false)
+        )
+        .addStringOption(option =>
+          option.setName('emoji')
+            .setDescription('The emoji to track (default: ⭐)')
+            .setRequired(false)
+        )
+    )
+    .addSubcommand(subcommand =>
+      subcommand.setName('disable')
+        .setDescription('Disable the starboard')
+    )
+    .addSubcommand(subcommand =>
+      subcommand.setName('status')
+        .setDescription('View current starboard settings')
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild) as SlashCommandSubcommandsOnlyBuilder,
+  execute: async (interaction, { storage }) => {
+    if (!interaction.isCommand() || !interaction.guildId) return;
+    
+    try {
+      await interaction.deferReply({ ephemeral: true });
+    } catch (error) {
+      console.error('Failed to defer starboard interaction:', error);
+      return;
+    }
+    
+    const subcommand = interaction.options.getSubcommand();
+    
+    try {
+      if (subcommand === 'setup') {
+        const channel = interaction.options.getChannel('channel', true);
+        const threshold = interaction.options.getInteger('threshold') || 3;
+        const emoji = interaction.options.getString('emoji') || '⭐';
+        
+        let settings = await storage.getBotSettings(interaction.guildId);
+        if (!settings) {
+          settings = await storage.createBotSettings({ serverId: interaction.guildId });
+        }
+        
+        await storage.updateBotSettings(interaction.guildId, {
+          starboardChannelId: channel.id,
+          starboardThreshold: threshold,
+          starboardEmoji: emoji,
+          starboardEnabled: true
+        });
+        
+        const embed = new EmbedBuilder()
+          .setTitle('⭐ Starboard Configured!')
+          .setDescription(`Starboard has been set up successfully.`)
+          .addFields(
+            { name: 'Channel', value: `<#${channel.id}>`, inline: true },
+            { name: 'Threshold', value: `${threshold} reactions`, inline: true },
+            { name: 'Emoji', value: emoji, inline: true }
+          )
+          .setColor('#FFD700')
+          .setTimestamp();
+        
+        await interaction.editReply({ embeds: [embed] });
+      } else if (subcommand === 'disable') {
+        await storage.updateBotSettings(interaction.guildId, { starboardEnabled: false });
+        await interaction.editReply('⭐ Starboard has been disabled.');
+      } else if (subcommand === 'status') {
+        const settings = await storage.getBotSettings(interaction.guildId);
+        
+        if (!settings?.starboardEnabled) {
+          await interaction.editReply('⭐ Starboard is currently disabled.');
+          return;
+        }
+        
+        const embed = new EmbedBuilder()
+          .setTitle('⭐ Starboard Status')
+          .addFields(
+            { name: 'Status', value: '✅ Enabled', inline: true },
+            { name: 'Channel', value: settings.starboardChannelId ? `<#${settings.starboardChannelId}>` : 'Not set', inline: true },
+            { name: 'Threshold', value: `${settings.starboardThreshold || 3} reactions`, inline: true },
+            { name: 'Emoji', value: settings.starboardEmoji || '⭐', inline: true }
+          )
+          .setColor('#FFD700')
+          .setTimestamp();
+        
+        await interaction.editReply({ embeds: [embed] });
+      }
+    } catch (error) {
+      console.error('Error executing starboard command:', error);
+      await interaction.editReply('❌ Failed to update starboard settings.');
+    }
+  }
+};
+
+commands.set('starboard', starboardCommand);
+console.log('[Discord] Registered Starboard command');
+
+// /welcome command
+const welcomeCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('welcome')
+    .setDescription('Configure welcome/goodbye messages')
+    .addSubcommand(subcommand =>
+      subcommand.setName('setup')
+        .setDescription('Set up the welcome channel and message')
+        .addChannelOption(option =>
+          option.setName('channel')
+            .setDescription('The channel to send welcome messages to')
+            .setRequired(true)
+        )
+        .addStringOption(option =>
+          option.setName('message')
+            .setDescription('Welcome message (use {user}, {server}, {memberCount})')
+            .setRequired(false)
+        )
+    )
+    .addSubcommand(subcommand =>
+      subcommand.setName('goodbye')
+        .setDescription('Set the goodbye message')
+        .addStringOption(option =>
+          option.setName('message')
+            .setDescription('Goodbye message (use {user}, {server}, {memberCount})')
+            .setRequired(true)
+        )
+    )
+    .addSubcommand(subcommand =>
+      subcommand.setName('test')
+        .setDescription('Preview your welcome message')
+    )
+    .addSubcommand(subcommand =>
+      subcommand.setName('toggle')
+        .setDescription('Enable or disable welcome/goodbye messages')
+        .addStringOption(option =>
+          option.setName('type')
+            .setDescription('Which type to toggle')
+            .setRequired(true)
+            .addChoices(
+              { name: 'Welcome', value: 'welcome' },
+              { name: 'Goodbye', value: 'goodbye' }
+            )
+        )
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild) as SlashCommandSubcommandsOnlyBuilder,
+  execute: async (interaction, { storage }) => {
+    if (!interaction.isCommand() || !interaction.guildId || !interaction.guild) return;
+    
+    try {
+      await interaction.deferReply({ ephemeral: true });
+    } catch (error) {
+      console.error('Failed to defer welcome interaction:', error);
+      return;
+    }
+    
+    const subcommand = interaction.options.getSubcommand();
+    
+    try {
+      let settings = await storage.getBotSettings(interaction.guildId);
+      if (!settings) {
+        settings = await storage.createBotSettings({ serverId: interaction.guildId });
+      }
+      
+      if (subcommand === 'setup') {
+        const channel = interaction.options.getChannel('channel', true);
+        const message = interaction.options.getString('message') || 'Welcome to {server}, {user}! You are member #{memberCount}.';
+        
+        await storage.updateBotSettings(interaction.guildId, {
+          welcomeChannelId: channel.id,
+          welcomeMessageTemplate: message,
+          welcomeEnabled: true
+        });
+        
+        const embed = new EmbedBuilder()
+          .setTitle('👋 Welcome Messages Configured!')
+          .setDescription(`Welcome messages will be sent to <#${channel.id}>`)
+          .addFields({ name: 'Message Template', value: message })
+          .setColor('#57F287')
+          .setTimestamp();
+        
+        await interaction.editReply({ embeds: [embed] });
+      } else if (subcommand === 'goodbye') {
+        const message = interaction.options.getString('message', true);
+        
+        await storage.updateBotSettings(interaction.guildId, {
+          goodbyeMessageTemplate: message,
+          goodbyeEnabled: true
+        });
+        
+        await interaction.editReply(`✅ Goodbye message updated to: ${message}`);
+      } else if (subcommand === 'test') {
+        const member = await interaction.guild.members.fetch(interaction.user.id);
+        const template = settings.welcomeMessageTemplate || 'Welcome to {server}, {user}! You are member #{memberCount}.';
+        const previewMessage = replaceWelcomeVariables(template, member);
+        
+        const embed = new EmbedBuilder()
+          .setTitle('👋 Welcome!')
+          .setDescription(previewMessage)
+          .setColor('#57F287')
+          .setThumbnail(interaction.user.displayAvatarURL({ size: 256 }))
+          .setFooter({ text: `Member #${interaction.guild.memberCount}` })
+          .setTimestamp();
+        
+        await interaction.editReply({ content: '**Preview of your welcome message:**', embeds: [embed] });
+      } else if (subcommand === 'toggle') {
+        const type = interaction.options.getString('type', true);
+        
+        if (type === 'welcome') {
+          const newState = !settings.welcomeEnabled;
+          await storage.updateBotSettings(interaction.guildId, { welcomeEnabled: newState });
+          await interaction.editReply(`👋 Welcome messages are now ${newState ? 'enabled ✅' : 'disabled ❌'}`);
+        } else {
+          const newState = !settings.goodbyeEnabled;
+          await storage.updateBotSettings(interaction.guildId, { goodbyeEnabled: newState });
+          await interaction.editReply(`👋 Goodbye messages are now ${newState ? 'enabled ✅' : 'disabled ❌'}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error executing welcome command:', error);
+      await interaction.editReply('❌ Failed to update welcome settings.');
+    }
+  }
+};
+
+commands.set('welcome', welcomeCommand);
+console.log('[Discord] Registered Welcome command');
+
+// /autorole command
+const autoroleCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('autorole')
+    .setDescription('Manage automatic role assignment on join')
+    .addSubcommand(subcommand =>
+      subcommand.setName('add')
+        .setDescription('Add a role to be auto-assigned on join')
+        .addRoleOption(option =>
+          option.setName('role')
+            .setDescription('The role to auto-assign')
+            .setRequired(true)
+        )
+    )
+    .addSubcommand(subcommand =>
+      subcommand.setName('remove')
+        .setDescription('Remove a role from auto-assignment')
+        .addRoleOption(option =>
+          option.setName('role')
+            .setDescription('The role to remove from auto-assignment')
+            .setRequired(true)
+        )
+    )
+    .addSubcommand(subcommand =>
+      subcommand.setName('list')
+        .setDescription('List all auto-assigned roles')
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles) as SlashCommandSubcommandsOnlyBuilder,
+  execute: async (interaction, { storage }) => {
+    if (!interaction.isCommand() || !interaction.guildId || !interaction.guild) return;
+    
+    try {
+      await interaction.deferReply({ ephemeral: true });
+    } catch (error) {
+      console.error('Failed to defer autorole interaction:', error);
+      return;
+    }
+    
+    const subcommand = interaction.options.getSubcommand();
+    
+    try {
+      let settings = await storage.getBotSettings(interaction.guildId);
+      if (!settings) {
+        settings = await storage.createBotSettings({ serverId: interaction.guildId });
+      }
+      
+      let roleIds: string[] = [];
+      try {
+        roleIds = settings.autoRoleIds ? JSON.parse(settings.autoRoleIds) : [];
+      } catch (e) {
+        roleIds = [];
+      }
+      
+      if (subcommand === 'add') {
+        const role = interaction.options.getRole('role', true);
+        
+        if (roleIds.includes(role.id)) {
+          await interaction.editReply(`❌ ${role.name} is already in the autorole list.`);
+          return;
+        }
+        
+        const botMember = interaction.guild.members.me;
+        if (botMember && role.position >= botMember.roles.highest.position) {
+          await interaction.editReply(`❌ I cannot assign ${role.name} because it's equal to or higher than my highest role.`);
+          return;
+        }
+        
+        roleIds.push(role.id);
+        await storage.updateBotSettings(interaction.guildId, { autoRoleIds: JSON.stringify(roleIds) });
+        
+        await interaction.editReply(`✅ Added **${role.name}** to autoroles. New members will receive this role automatically.`);
+      } else if (subcommand === 'remove') {
+        const role = interaction.options.getRole('role', true);
+        
+        if (!roleIds.includes(role.id)) {
+          await interaction.editReply(`❌ ${role.name} is not in the autorole list.`);
+          return;
+        }
+        
+        roleIds = roleIds.filter(id => id !== role.id);
+        await storage.updateBotSettings(interaction.guildId, { autoRoleIds: JSON.stringify(roleIds) });
+        
+        await interaction.editReply(`✅ Removed **${role.name}** from autoroles.`);
+      } else if (subcommand === 'list') {
+        if (roleIds.length === 0) {
+          await interaction.editReply('📋 No autoroles configured. Use `/autorole add` to add roles.');
+          return;
+        }
+        
+        const roleList = roleIds.map(id => `<@&${id}>`).join('\n');
+        
+        const embed = new EmbedBuilder()
+          .setTitle('📋 Auto-Assigned Roles')
+          .setDescription(`The following roles are automatically assigned to new members:\n\n${roleList}`)
+          .setColor('#5865F2')
+          .setFooter({ text: `${roleIds.length} role(s) configured` })
+          .setTimestamp();
+        
+        await interaction.editReply({ embeds: [embed] });
+      }
+    } catch (error) {
+      console.error('Error executing autorole command:', error);
+      await interaction.editReply('❌ Failed to update autorole settings.');
+    }
+  }
+};
+
+commands.set('autorole', autoroleCommand);
+console.log('[Discord] Registered Autorole command');
+
+// /rank command
+const rankCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('rank')
+    .setDescription('Check your or another user\'s XP and level')
+    .addUserOption(option =>
+      option.setName('user')
+        .setDescription('The user to check (defaults to yourself)')
+        .setRequired(false)
+    ),
+  execute: async (interaction, { storage }) => {
+    if (!interaction.isCommand() || !interaction.guildId) return;
+    
+    try {
+      await interaction.deferReply();
+    } catch (error) {
+      console.error('Failed to defer rank interaction:', error);
+      return;
+    }
+    
+    try {
+      const settings = await storage.getBotSettings(interaction.guildId);
+      if (!settings?.xpEnabled) {
+        await interaction.editReply('❌ The leveling system is not enabled on this server.');
+        return;
+      }
+      
+      const targetUser = interaction.options.getUser('user') || interaction.user;
+      const userData = await storage.getXpData(interaction.guildId, targetUser.id);
+      
+      if (!userData) {
+        await interaction.editReply(`${targetUser.id === interaction.user.id ? 'You have' : `${targetUser.username} has`} no XP yet. Start chatting to earn XP!`);
+        return;
+      }
+      
+      const rank = await storage.getUserRank(interaction.guildId, targetUser.id);
+      const progress = calculateProgressToNextLevel(userData.xp, userData.level);
+      const xpForNextLevel = Math.floor(calculateXpForLevel(userData.level + 1));
+      const progressBar = '█'.repeat(Math.floor(progress / 10)) + '░'.repeat(10 - Math.floor(progress / 10));
+      
+      const embed = new EmbedBuilder()
+        .setTitle(`📊 ${targetUser.username}'s Rank`)
+        .setThumbnail(targetUser.displayAvatarURL({ size: 256 }))
+        .addFields(
+          { name: 'Rank', value: `#${rank}`, inline: true },
+          { name: 'Level', value: `${userData.level}`, inline: true },
+          { name: 'Total XP', value: `${userData.xp.toLocaleString()}`, inline: true },
+          { name: 'Progress to Next Level', value: `${progressBar} ${progress}%\n${userData.xp.toLocaleString()} / ${xpForNextLevel.toLocaleString()} XP`, inline: false },
+          { name: 'Messages', value: `${(userData.totalMessages || 0).toLocaleString()}`, inline: true }
+        )
+        .setColor('#5865F2')
+        .setFooter({ text: `Keep chatting to level up!` })
+        .setTimestamp();
+      
+      await interaction.editReply({ embeds: [embed] });
+    } catch (error) {
+      console.error('Error executing rank command:', error);
+      await interaction.editReply('❌ Failed to fetch rank information.');
+    }
+  }
+};
+
+commands.set('rank', rankCommand);
+console.log('[Discord] Registered Rank command');
+
+// /leaderboard command
+const leaderboardCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('leaderboard')
+    .setDescription('View the server XP leaderboard')
+    .addIntegerOption(option =>
+      option.setName('page')
+        .setDescription('Page number (default: 1)')
+        .setMinValue(1)
+        .setRequired(false)
+    ),
+  execute: async (interaction, { storage }) => {
+    if (!interaction.isCommand() || !interaction.guildId) return;
+    
+    try {
+      await interaction.deferReply();
+    } catch (error) {
+      console.error('Failed to defer leaderboard interaction:', error);
+      return;
+    }
+    
+    try {
+      const settings = await storage.getBotSettings(interaction.guildId);
+      if (!settings?.xpEnabled) {
+        await interaction.editReply('❌ The leveling system is not enabled on this server.');
+        return;
+      }
+      
+      const page = interaction.options.getInteger('page') || 1;
+      const perPage = 10;
+      const offset = (page - 1) * perPage;
+      
+      const leaderboard = await storage.getServerLeaderboard(interaction.guildId, perPage, offset);
+      
+      if (leaderboard.length === 0) {
+        await interaction.editReply(page === 1 
+          ? '📊 No one has earned XP yet. Start chatting to be the first!'
+          : '📊 No more entries on this page.');
+        return;
+      }
+      
+      const leaderboardEntries = leaderboard.map((entry, index) => {
+        const position = offset + index + 1;
+        const medal = position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : `**${position}.**`;
+        return `${medal} <@${entry.userId}> - Level ${entry.level} (${entry.xp.toLocaleString()} XP)`;
+      }).join('\n');
+      
+      const embed = new EmbedBuilder()
+        .setTitle(`🏆 ${interaction.guild?.name || 'Server'} Leaderboard`)
+        .setDescription(leaderboardEntries)
+        .setColor('#FFD700')
+        .setFooter({ text: `Page ${page} • Use /leaderboard page:${page + 1} for more` })
+        .setTimestamp();
+      
+      await interaction.editReply({ embeds: [embed] });
+    } catch (error) {
+      console.error('Error executing leaderboard command:', error);
+      await interaction.editReply('❌ Failed to fetch leaderboard.');
+    }
+  }
+};
+
+commands.set('leaderboard', leaderboardCommand);
+console.log('[Discord] Registered Leaderboard command');
+
+// /xp command (admin)
+const xpCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('xp')
+    .setDescription('Manage the XP/leveling system')
+    .addSubcommand(subcommand =>
+      subcommand.setName('enable')
+        .setDescription('Enable the XP system')
+    )
+    .addSubcommand(subcommand =>
+      subcommand.setName('disable')
+        .setDescription('Disable the XP system')
+    )
+    .addSubcommand(subcommand =>
+      subcommand.setName('settings')
+        .setDescription('Configure XP settings')
+        .addIntegerOption(option =>
+          option.setName('cooldown')
+            .setDescription('Cooldown between XP gains in seconds (default: 60)')
+            .setMinValue(10)
+            .setMaxValue(600)
+            .setRequired(false)
+        )
+        .addIntegerOption(option =>
+          option.setName('min_xp')
+            .setDescription('Minimum XP per message (default: 15)')
+            .setMinValue(1)
+            .setMaxValue(100)
+            .setRequired(false)
+        )
+        .addIntegerOption(option =>
+          option.setName('max_xp')
+            .setDescription('Maximum XP per message (default: 25)')
+            .setMinValue(1)
+            .setMaxValue(100)
+            .setRequired(false)
+        )
+        .addChannelOption(option =>
+          option.setName('announce_channel')
+            .setDescription('Channel for level-up announcements (leave empty for same channel)')
+            .setRequired(false)
+        )
+    )
+    .addSubcommand(subcommand =>
+      subcommand.setName('levelrole')
+        .setDescription('Set a role reward for reaching a level')
+        .addIntegerOption(option =>
+          option.setName('level')
+            .setDescription('The level to assign the role at')
+            .setMinValue(1)
+            .setRequired(true)
+        )
+        .addRoleOption(option =>
+          option.setName('role')
+            .setDescription('The role to assign (leave empty to remove)')
+            .setRequired(false)
+        )
+    )
+    .addSubcommand(subcommand =>
+      subcommand.setName('status')
+        .setDescription('View current XP system settings')
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild) as SlashCommandSubcommandsOnlyBuilder,
+  execute: async (interaction, { storage }) => {
+    if (!interaction.isCommand() || !interaction.guildId) return;
+    
+    try {
+      await interaction.deferReply({ ephemeral: true });
+    } catch (error) {
+      console.error('Failed to defer xp interaction:', error);
+      return;
+    }
+    
+    const subcommand = interaction.options.getSubcommand();
+    
+    try {
+      let settings = await storage.getBotSettings(interaction.guildId);
+      if (!settings) {
+        settings = await storage.createBotSettings({ serverId: interaction.guildId });
+      }
+      
+      if (subcommand === 'enable') {
+        await storage.updateBotSettings(interaction.guildId, { xpEnabled: true });
+        await interaction.editReply('✅ XP system has been enabled! Members will now earn XP from chatting.');
+      } else if (subcommand === 'disable') {
+        await storage.updateBotSettings(interaction.guildId, { xpEnabled: false });
+        await interaction.editReply('❌ XP system has been disabled.');
+      } else if (subcommand === 'settings') {
+        const cooldown = interaction.options.getInteger('cooldown');
+        const minXp = interaction.options.getInteger('min_xp');
+        const maxXp = interaction.options.getInteger('max_xp');
+        const announceChannel = interaction.options.getChannel('announce_channel');
+        
+        const updates: any = {};
+        if (cooldown !== null) updates.xpCooldownSeconds = cooldown;
+        if (minXp !== null) updates.xpMinAmount = minXp;
+        if (maxXp !== null) updates.xpMaxAmount = maxXp;
+        if (announceChannel) updates.levelUpChannelId = announceChannel.id;
+        
+        if (Object.keys(updates).length === 0) {
+          await interaction.editReply('❌ Please provide at least one setting to change.');
+          return;
+        }
+        
+        await storage.updateBotSettings(interaction.guildId, updates);
+        
+        const changes = [];
+        if (cooldown !== null) changes.push(`Cooldown: ${cooldown}s`);
+        if (minXp !== null) changes.push(`Min XP: ${minXp}`);
+        if (maxXp !== null) changes.push(`Max XP: ${maxXp}`);
+        if (announceChannel) changes.push(`Announce Channel: <#${announceChannel.id}>`);
+        
+        await interaction.editReply(`✅ XP settings updated:\n${changes.join('\n')}`);
+      } else if (subcommand === 'levelrole') {
+        const level = interaction.options.getInteger('level', true);
+        const role = interaction.options.getRole('role');
+        
+        let levelRoles: Record<string, string> = {};
+        try {
+          levelRoles = settings.levelRoles ? JSON.parse(settings.levelRoles) : {};
+        } catch (e) {
+          levelRoles = {};
+        }
+        
+        if (role) {
+          levelRoles[level.toString()] = role.id;
+          await storage.updateBotSettings(interaction.guildId, { levelRoles: JSON.stringify(levelRoles) });
+          await interaction.editReply(`✅ Members reaching level ${level} will now receive the **${role.name}** role.`);
+        } else {
+          delete levelRoles[level.toString()];
+          await storage.updateBotSettings(interaction.guildId, { levelRoles: JSON.stringify(levelRoles) });
+          await interaction.editReply(`✅ Removed level role reward for level ${level}.`);
+        }
+      } else if (subcommand === 'status') {
+        let levelRoles: Record<string, string> = {};
+        try {
+          levelRoles = settings.levelRoles ? JSON.parse(settings.levelRoles) : {};
+        } catch (e) {
+          levelRoles = {};
+        }
+        
+        const roleRewards = Object.entries(levelRoles)
+          .sort(([a], [b]) => parseInt(a) - parseInt(b))
+          .map(([lvl, roleId]) => `Level ${lvl}: <@&${roleId}>`)
+          .join('\n') || 'None configured';
+        
+        const embed = new EmbedBuilder()
+          .setTitle('📊 XP System Status')
+          .addFields(
+            { name: 'Status', value: settings.xpEnabled ? '✅ Enabled' : '❌ Disabled', inline: true },
+            { name: 'Cooldown', value: `${settings.xpCooldownSeconds || 60}s`, inline: true },
+            { name: 'XP Range', value: `${settings.xpMinAmount || 15}-${settings.xpMaxAmount || 25}`, inline: true },
+            { name: 'Announce Channel', value: settings.levelUpChannelId ? `<#${settings.levelUpChannelId}>` : 'Same channel', inline: true },
+            { name: 'Level Roles', value: roleRewards, inline: false }
+          )
+          .setColor('#5865F2')
+          .setTimestamp();
+        
+        await interaction.editReply({ embeds: [embed] });
+      }
+    } catch (error) {
+      console.error('Error executing xp command:', error);
+      await interaction.editReply('❌ Failed to update XP settings.');
+    }
+  }
+};
+
+commands.set('xp', xpCommand);
+console.log('[Discord] Registered XP command');
+
+// Reaction Role command
+const reactionRoleCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('reactionrole')
+    .setDescription('Manage reaction roles')
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('create')
+        .setDescription('Create a reaction role')
+        .addStringOption(option =>
+          option.setName('message_id')
+            .setDescription('The message ID to add the reaction role to')
+            .setRequired(true))
+        .addStringOption(option =>
+          option.setName('emoji')
+            .setDescription('The emoji to react with')
+            .setRequired(true))
+        .addRoleOption(option =>
+          option.setName('role')
+            .setDescription('The role to assign')
+            .setRequired(true)))
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('remove')
+        .setDescription('Remove a reaction role')
+        .addStringOption(option =>
+          option.setName('message_id')
+            .setDescription('The message ID')
+            .setRequired(true))
+        .addStringOption(option =>
+          option.setName('emoji')
+            .setDescription('The emoji')
+            .setRequired(true)))
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('list')
+        .setDescription('List all reaction roles')) as SlashCommandSubcommandsOnlyBuilder,
+
+  async execute(interaction: ChatInputCommandInteraction, context: CommandContext) {
+    const subcommand = interaction.options.getSubcommand();
+    const serverId = interaction.guildId!;
+    
+    await interaction.deferReply({ ephemeral: true });
+    
+    try {
+      if (subcommand === 'create') {
+        const messageId = interaction.options.getString('message_id', true);
+        const emoji = interaction.options.getString('emoji', true);
+        const role = interaction.options.getRole('role', true);
+        
+        const existingRole = await context.storage.getReactionRole(serverId, messageId, emoji);
+        if (existingRole) {
+          await interaction.editReply('❌ A reaction role with that emoji already exists on this message.');
+          return;
+        }
+        
+        let channel = interaction.channel;
+        let message;
+        
+        try {
+          if (channel && channel.isTextBased()) {
+            message = await channel.messages.fetch(messageId).catch(() => null);
+          }
+          
+          if (!message && interaction.guild) {
+            for (const [, ch] of interaction.guild.channels.cache) {
+              if (ch.isTextBased()) {
+                message = await ch.messages.fetch(messageId).catch(() => null);
+                if (message) {
+                  channel = ch;
+                  break;
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error('[ReactionRole] Error fetching message:', error);
+        }
+        
+        if (!message) {
+          await interaction.editReply('❌ Could not find a message with that ID in any accessible channel.');
+          return;
+        }
+        
+        await context.storage.createReactionRole({
+          serverId,
+          messageId,
+          channelId: channel!.id,
+          emoji,
+          roleId: role.id
+        });
+        
+        try {
+          await message.react(emoji);
+        } catch (error) {
+          console.error('[ReactionRole] Could not add reaction:', error);
+        }
+        
+        await interaction.editReply(`✅ Reaction role created! React with ${emoji} to get <@&${role.id}>`);
+        console.log(`[ReactionRole] Created: ${emoji} -> ${role.name} on message ${messageId}`);
+        
+      } else if (subcommand === 'remove') {
+        const messageId = interaction.options.getString('message_id', true);
+        const emoji = interaction.options.getString('emoji', true);
+        
+        const deleted = await context.storage.deleteReactionRole(serverId, messageId, emoji);
+        
+        if (deleted) {
+          await interaction.editReply(`✅ Reaction role with ${emoji} removed.`);
+          console.log(`[ReactionRole] Removed: ${emoji} from message ${messageId}`);
+        } else {
+          await interaction.editReply('❌ No reaction role found with that emoji on this message.');
+        }
+        
+      } else if (subcommand === 'list') {
+        const reactionRoles = await context.storage.getReactionRoles(serverId);
+        
+        if (reactionRoles.length === 0) {
+          await interaction.editReply('No reaction roles configured for this server.');
+          return;
+        }
+        
+        const embed = new EmbedBuilder()
+          .setTitle('🎭 Reaction Roles')
+          .setColor('#5865F2')
+          .setDescription(
+            reactionRoles.map(rr => 
+              `${rr.emoji} → <@&${rr.roleId}>\nMessage: \`${rr.messageId}\` in <#${rr.channelId}>`
+            ).join('\n\n')
+          )
+          .setFooter({ text: `${reactionRoles.length} reaction role(s) configured` })
+          .setTimestamp();
+        
+        await interaction.editReply({ embeds: [embed] });
+      }
+    } catch (error) {
+      console.error('Error executing reactionrole command:', error);
+      await interaction.editReply('❌ Failed to execute reaction role command.');
+    }
+  }
+};
+
+commands.set('reactionrole', reactionRoleCommand);
+console.log('[Discord] Registered reactionrole command');
+
+// AFK command
+const afkCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('afk')
+    .setDescription('Set your AFK status')
+    .addStringOption(option =>
+      option.setName('reason')
+        .setDescription('Reason for being AFK')
+        .setRequired(false)) as SlashCommandOptionsOnlyBuilder,
+
+  async execute(interaction: ChatInputCommandInteraction, context: CommandContext) {
+    const reason = interaction.options.getString('reason') || 'AFK';
+    const serverId = interaction.guildId!;
+    const userId = interaction.user.id;
+    
+    await interaction.deferReply();
+    
+    try {
+      await context.storage.setAfkUser({
+        serverId,
+        userId,
+        username: interaction.user.username,
+        reason
+      });
+      
+      if (interaction.member && 'setNickname' in interaction.member) {
+        try {
+          const currentNick = interaction.member.displayName || interaction.user.username;
+          if (!currentNick.startsWith('[AFK]')) {
+            const newNick = `[AFK] ${currentNick}`.substring(0, 32);
+            await interaction.member.setNickname(newNick).catch(() => {});
+          }
+        } catch (error) {
+          // Bot might not have permission to change nicknames
+        }
+      }
+      
+      const embed = new EmbedBuilder()
+        .setDescription(`💤 **${interaction.user.username}** is now AFK: ${reason}`)
+        .setColor('#FFA500')
+        .setTimestamp();
+      
+      await interaction.editReply({ embeds: [embed] });
+      console.log(`[AFK] ${interaction.user.username} set AFK: ${reason}`);
+      
+    } catch (error) {
+      console.error('Error executing afk command:', error);
+      await interaction.editReply('❌ Failed to set AFK status.');
+    }
+  }
+};
+
+commands.set('afk', afkCommand);
+console.log('[Discord] Registered afk command');
+
+// Helper function to parse duration strings
+function parseDuration(durationStr: string): number | null {
+  const regex = /^(\d+)(s|m|h|d)$/i;
+  const match = durationStr.match(regex);
+  
+  if (!match) return null;
+  
+  const value = parseInt(match[1]);
+  const unit = match[2].toLowerCase();
+  
+  switch (unit) {
+    case 's': return value * 1000;
+    case 'm': return value * 60 * 1000;
+    case 'h': return value * 60 * 60 * 1000;
+    case 'd': return value * 24 * 60 * 60 * 1000;
+    default: return null;
+  }
+}
+
+// Helper function to format time remaining
+function formatTimeRemaining(endTime: Date): string {
+  const now = Date.now();
+  const end = new Date(endTime).getTime();
+  const diff = end - now;
+  
+  if (diff <= 0) return 'Ended';
+  
+  const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+  const hours = Math.floor((diff % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+  const minutes = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
+  const seconds = Math.floor((diff % (60 * 1000)) / 1000);
+  
+  const parts = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0) parts.push(`${minutes}m`);
+  if (seconds > 0 && days === 0) parts.push(`${seconds}s`);
+  
+  return parts.join(' ') || 'Ending soon';
+}
+
+// Giveaway command
+const giveawayCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('giveaway')
+    .setDescription('Manage giveaways')
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('start')
+        .setDescription('Start a new giveaway')
+        .addStringOption(option =>
+          option.setName('duration')
+            .setDescription('Duration (e.g., 1h, 30m, 1d)')
+            .setRequired(true))
+        .addIntegerOption(option =>
+          option.setName('winners')
+            .setDescription('Number of winners')
+            .setRequired(true)
+            .setMinValue(1)
+            .setMaxValue(20))
+        .addStringOption(option =>
+          option.setName('prize')
+            .setDescription('What are you giving away?')
+            .setRequired(true)))
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('end')
+        .setDescription('End a giveaway early')
+        .addStringOption(option =>
+          option.setName('message_id')
+            .setDescription('Giveaway message ID (uses most recent if not provided)')
+            .setRequired(false)))
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('reroll')
+        .setDescription('Pick new winner(s)')
+        .addStringOption(option =>
+          option.setName('message_id')
+            .setDescription('Giveaway message ID (uses most recent if not provided)')
+            .setRequired(false)))
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('list')
+        .setDescription('List active giveaways')) as SlashCommandSubcommandsOnlyBuilder,
+
+  async execute(interaction: ChatInputCommandInteraction, context: CommandContext) {
+    const subcommand = interaction.options.getSubcommand();
+    const serverId = interaction.guildId!;
+    
+    await interaction.deferReply({ ephemeral: subcommand !== 'start' });
+    
+    try {
+      if (subcommand === 'start') {
+        const durationStr = interaction.options.getString('duration', true);
+        const winnerCount = interaction.options.getInteger('winners', true);
+        const prize = interaction.options.getString('prize', true);
+        
+        const durationMs = parseDuration(durationStr);
+        if (!durationMs) {
+          await interaction.editReply('❌ Invalid duration format. Use: 30s, 5m, 2h, 1d');
+          return;
+        }
+        
+        const endTime = new Date(Date.now() + durationMs);
+        
+        const embed = new EmbedBuilder()
+          .setTitle('🎉 GIVEAWAY 🎉')
+          .setDescription(`**${prize}**\n\nReact with 🎉 to enter!\nHosted by: ${interaction.user}`)
+          .addFields(
+            { name: 'Winners', value: `${winnerCount}`, inline: true },
+            { name: 'Ends', value: `<t:${Math.floor(endTime.getTime() / 1000)}:R>`, inline: true }
+          )
+          .setColor('#FF69B4')
+          .setFooter({ text: `Ends at` })
+          .setTimestamp(endTime);
+        
+        await interaction.editReply({ content: '🎉 Giveaway created!', embeds: [embed] });
+        
+        const reply = await interaction.fetchReply();
+        await reply.react('🎉');
+        
+        await context.storage.createGiveaway({
+          serverId,
+          channelId: interaction.channelId,
+          messageId: reply.id,
+          prize,
+          hostId: interaction.user.id,
+          endTime,
+          winnerCount,
+          ended: false,
+          winners: null
+        });
+        
+        console.log(`[Giveaway] Started: "${prize}" by ${interaction.user.username}, ends ${endTime}`);
+        
+      } else if (subcommand === 'end') {
+        const messageId = interaction.options.getString('message_id');
+        let giveaway;
+        
+        if (messageId) {
+          giveaway = await context.storage.getGiveawayByMessage(messageId);
+        } else {
+          const activeGiveaways = await context.storage.getActiveGiveaways(serverId);
+          giveaway = activeGiveaways[0];
+        }
+        
+        if (!giveaway) {
+          await interaction.editReply('❌ No active giveaway found.');
+          return;
+        }
+        
+        const winners = await pickGiveawayWinners(interaction.client, giveaway);
+        await context.storage.endGiveaway(giveaway.id, winners);
+        
+        await announceGiveawayWinners(interaction.client, giveaway, winners);
+        
+        await interaction.editReply(`✅ Giveaway ended! Winners: ${winners.length > 0 ? winners.map(w => `<@${w}>`).join(', ') : 'No valid entries'}`);
+        console.log(`[Giveaway] Ended early: ${giveaway.prize}, winners: ${winners.join(', ')}`);
+        
+      } else if (subcommand === 'reroll') {
+        const messageId = interaction.options.getString('message_id');
+        let giveaway;
+        
+        if (messageId) {
+          giveaway = await context.storage.getGiveawayByMessage(messageId);
+        } else {
+          const activeGiveaways = await context.storage.getActiveGiveaways(serverId);
+          if (activeGiveaways.length === 0) {
+            const { desc } = await import('drizzle-orm');
+            giveaway = await context.storage.getGiveawayByMessage(messageId || '');
+          }
+          giveaway = activeGiveaways[0];
+        }
+        
+        if (!giveaway) {
+          await interaction.editReply('❌ No giveaway found to reroll.');
+          return;
+        }
+        
+        const newWinners = await pickGiveawayWinners(interaction.client, giveaway);
+        await context.storage.updateGiveaway(giveaway.id, { winners: JSON.stringify(newWinners) });
+        
+        await announceGiveawayWinners(interaction.client, giveaway, newWinners, true);
+        
+        await interaction.editReply(`✅ Rerolled! New winners: ${newWinners.length > 0 ? newWinners.map(w => `<@${w}>`).join(', ') : 'No valid entries'}`);
+        console.log(`[Giveaway] Rerolled: ${giveaway.prize}, new winners: ${newWinners.join(', ')}`);
+        
+      } else if (subcommand === 'list') {
+        const giveaways = await context.storage.getActiveGiveaways(serverId);
+        
+        if (giveaways.length === 0) {
+          await interaction.editReply('No active giveaways.');
+          return;
+        }
+        
+        const embed = new EmbedBuilder()
+          .setTitle('🎉 Active Giveaways')
+          .setColor('#FF69B4')
+          .setDescription(
+            giveaways.map(g => 
+              `**${g.prize}**\nEnds: <t:${Math.floor(new Date(g.endTime).getTime() / 1000)}:R>\nWinners: ${g.winnerCount} | Channel: <#${g.channelId}>`
+            ).join('\n\n')
+          )
+          .setFooter({ text: `${giveaways.length} active giveaway(s)` })
+          .setTimestamp();
+        
+        await interaction.editReply({ embeds: [embed] });
+      }
+    } catch (error) {
+      console.error('Error executing giveaway command:', error);
+      await interaction.editReply('❌ Failed to execute giveaway command.');
+    }
+  }
+};
+
+// Helper function to pick giveaway winners
+async function pickGiveawayWinners(client: Client, giveaway: any): Promise<string[]> {
+  try {
+    const guild = await client.guilds.fetch(giveaway.serverId);
+    const channel = await guild.channels.fetch(giveaway.channelId);
+    
+    if (!channel || !channel.isTextBased()) return [];
+    
+    const message = await channel.messages.fetch(giveaway.messageId);
+    const reaction = message.reactions.cache.get('🎉');
+    
+    if (!reaction) return [];
+    
+    const users = await reaction.users.fetch();
+    const validUsers = users.filter(u => !u.bot).map(u => u.id);
+    
+    if (validUsers.length === 0) return [];
+    
+    const shuffled = validUsers.sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, Math.min(giveaway.winnerCount, shuffled.length));
+  } catch (error) {
+    console.error('[Giveaway] Error picking winners:', error);
+    return [];
+  }
+}
+
+// Helper function to announce giveaway winners
+async function announceGiveawayWinners(client: Client, giveaway: any, winners: string[], isReroll: boolean = false): Promise<void> {
+  try {
+    const guild = await client.guilds.fetch(giveaway.serverId);
+    const channel = await guild.channels.fetch(giveaway.channelId);
+    
+    if (!channel || !channel.isTextBased()) return;
+    
+    const message = await channel.messages.fetch(giveaway.messageId);
+    
+    const endedEmbed = new EmbedBuilder()
+      .setTitle('🎉 GIVEAWAY ENDED 🎉')
+      .setDescription(`**${giveaway.prize}**\n\n${winners.length > 0 ? `Winner(s): ${winners.map(w => `<@${w}>`).join(', ')}` : 'No valid entries!'}`)
+      .setColor('#808080')
+      .setFooter({ text: 'Ended' })
+      .setTimestamp();
+    
+    await message.edit({ embeds: [endedEmbed] });
+    
+    if (winners.length > 0) {
+      const announceText = isReroll 
+        ? `🎉 Congratulations ${winners.map(w => `<@${w}>`).join(', ')}! You are the new winner(s) of **${giveaway.prize}**!`
+        : `🎉 Congratulations ${winners.map(w => `<@${w}>`).join(', ')}! You won **${giveaway.prize}**!`;
+      
+      await channel.send(announceText);
+    }
+  } catch (error) {
+    console.error('[Giveaway] Error announcing winners:', error);
+  }
+}
+
+commands.set('giveaway', giveawayCommand);
+console.log('[Discord] Registered giveaway command');
+
+// Export giveaway helper functions for scheduled job
+export { pickGiveawayWinners, announceGiveawayWinners };
+
 // Register developer commands (imported in bot.ts and registered there)
 // Developer commands will be imported and added to the collection in bot.ts
 

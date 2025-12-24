@@ -47,6 +47,26 @@ export const botSettings = pgTable("bot_settings", {
   threadChannelId: text("thread_channel_id"), // Specific channel to monitor for threads (null = all channels)
   threadAutoCreate: boolean("thread_auto_create").default(true), // Auto-create tickets from new threads
   threadBidirectionalSync: boolean("thread_bidirectional_sync").default(true), // Sync messages both ways
+  // Starboard settings
+  starboardChannelId: text("starboard_channel_id"), // Channel to post starred messages
+  starboardThreshold: integer("starboard_threshold").default(3), // Minimum reactions to trigger starboard
+  starboardEmoji: text("starboard_emoji").default("⭐"), // Emoji to track for starboard
+  starboardEnabled: boolean("starboard_enabled").default(false),
+  // Welcome/Goodbye settings
+  welcomeChannelId: text("welcome_channel_id"), // Channel to send welcome messages
+  welcomeMessageTemplate: text("welcome_message_template").default("Welcome to {server}, {user}! You are member #{memberCount}."),
+  goodbyeMessageTemplate: text("goodbye_message_template").default("Goodbye {user}, we'll miss you!"),
+  welcomeEnabled: boolean("welcome_enabled").default(false),
+  goodbyeEnabled: boolean("goodbye_enabled").default(false),
+  autoRoleIds: text("auto_role_ids"), // JSON array of role IDs to auto-assign on join
+  // Leveling/XP settings
+  xpEnabled: boolean("xp_enabled").default(false),
+  levelUpChannelId: text("level_up_channel_id"), // Channel for level-up announcements (null = same channel)
+  levelUpMessage: text("level_up_message").default("🎉 Congratulations {user}! You've reached level {level}!"),
+  levelRoles: text("level_roles"), // JSON object mapping level numbers to role IDs
+  xpCooldownSeconds: integer("xp_cooldown_seconds").default(60), // Cooldown between XP awards
+  xpMinAmount: integer("xp_min_amount").default(15), // Minimum XP per message
+  xpMaxAmount: integer("xp_max_amount").default(25), // Maximum XP per message
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -765,6 +785,33 @@ export const userWarnings = pgTable("user_warnings", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Starred Messages - tracks messages posted to starboard to prevent duplicates
+export const starredMessages = pgTable("starred_messages", {
+  id: serial("id").primaryKey(),
+  serverId: text("server_id").notNull(),
+  originalMessageId: text("original_message_id").notNull(), // Original message ID
+  originalChannelId: text("original_channel_id").notNull(), // Original channel ID
+  starboardMessageId: text("starboard_message_id").notNull(), // Message ID in starboard channel
+  authorId: text("author_id").notNull(), // Original message author
+  starCount: integer("star_count").default(0), // Current star count
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// XP Data - tracks user XP and levels per server
+export const xpData = pgTable("xp_data", {
+  id: serial("id").primaryKey(),
+  serverId: text("server_id").notNull(),
+  userId: text("user_id").notNull(), // Discord user ID
+  username: text("username"), // Cached username for display
+  xp: integer("xp").default(0).notNull(),
+  level: integer("level").default(0).notNull(),
+  lastMessageAt: timestamp("last_message_at"), // For cooldown tracking
+  totalMessages: integer("total_messages").default(0), // Message count for stats
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Guild Provisioning Status - tracks auto-setup progress for new servers
 export const guildProvisioningStatus = pgTable("guild_provisioning_status", {
   id: serial("id").primaryKey(),
@@ -867,3 +914,100 @@ export const insertGuildProvisioningStatusSchema = createInsertSchema(guildProvi
 });
 export type InsertGuildProvisioningStatus = z.infer<typeof insertGuildProvisioningStatusSchema>;
 export type GuildProvisioningStatus = typeof guildProvisioningStatus.$inferSelect;
+
+// Starred Messages validation schemas
+export const insertStarredMessageSchema = createInsertSchema(starredMessages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+export type InsertStarredMessage = z.infer<typeof insertStarredMessageSchema>;
+export type StarredMessage = typeof starredMessages.$inferSelect;
+
+// XP Data validation schemas
+export const insertXpDataSchema = createInsertSchema(xpData).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+export type InsertXpData = z.infer<typeof insertXpDataSchema>;
+export type XpData = typeof xpData.$inferSelect;
+
+export const updateXpDataSchema = createInsertSchema(xpData).omit({
+  id: true,
+  serverId: true,
+  userId: true,
+  createdAt: true,
+  updatedAt: true
+}).partial();
+export type UpdateXpData = z.infer<typeof updateXpDataSchema>;
+
+// Reaction Roles - tracks reaction role assignments
+export const reactionRoles = pgTable("reaction_roles", {
+  id: serial("id").primaryKey(),
+  serverId: text("server_id").notNull(),
+  messageId: text("message_id").notNull(),
+  channelId: text("channel_id").notNull(),
+  emoji: text("emoji").notNull(),
+  roleId: text("role_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Reaction Roles validation schemas
+export const insertReactionRoleSchema = createInsertSchema(reactionRoles).omit({
+  id: true,
+  createdAt: true
+});
+export type InsertReactionRole = z.infer<typeof insertReactionRoleSchema>;
+export type ReactionRole = typeof reactionRoles.$inferSelect;
+
+// AFK Users - tracks users who are AFK
+export const afkUsers = pgTable("afk_users", {
+  id: serial("id").primaryKey(),
+  serverId: text("server_id").notNull(),
+  userId: text("user_id").notNull(),
+  username: text("username"),
+  reason: text("reason"),
+  afkSince: timestamp("afk_since").defaultNow().notNull(),
+});
+
+// AFK Users validation schemas
+export const insertAfkUserSchema = createInsertSchema(afkUsers).omit({
+  id: true,
+  afkSince: true
+});
+export type InsertAfkUser = z.infer<typeof insertAfkUserSchema>;
+export type AfkUser = typeof afkUsers.$inferSelect;
+
+// Discord Giveaways - tracks active and ended giveaways
+export const discordGiveaways = pgTable("discord_giveaways", {
+  id: serial("id").primaryKey(),
+  serverId: text("server_id").notNull(),
+  channelId: text("channel_id").notNull(),
+  messageId: text("message_id"),
+  prize: text("prize").notNull(),
+  hostId: text("host_id").notNull(),
+  endTime: timestamp("end_time").notNull(),
+  winnerCount: integer("winner_count").default(1).notNull(),
+  ended: boolean("ended").default(false).notNull(),
+  winners: text("winners"), // JSON array of winner user IDs
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Discord Giveaways validation schemas
+export const insertDiscordGiveawaySchema = createInsertSchema(discordGiveaways).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+export type InsertDiscordGiveaway = z.infer<typeof insertDiscordGiveawaySchema>;
+export type DiscordGiveaway = typeof discordGiveaways.$inferSelect;
+
+export const updateDiscordGiveawaySchema = createInsertSchema(discordGiveaways).omit({
+  id: true,
+  serverId: true,
+  createdAt: true,
+  updatedAt: true
+}).partial();
+export type UpdateDiscordGiveaway = z.infer<typeof updateDiscordGiveawaySchema>;
