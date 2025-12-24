@@ -20,7 +20,7 @@ echo "Running database migrations..."
 if [ -f "node_modules/.bin/drizzle-kit" ]; then
     echo "  Using drizzle-kit to sync schema..."
     # Use --force to skip interactive prompts in production
-    npx drizzle-kit push --config=drizzle.config.ts --force
+    npx drizzle-kit push:pg --config=drizzle.config.ts
     echo "✓ Database schema synchronized"
 else
     echo "⚠ drizzle-kit not found, skipping migrations"

@@ -8,7 +8,7 @@
     "build": "vite build && node esbuild.config.mjs",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push:pg"
   },
   "dependencies": {
     "@googleapis/youtube": "^29.0.0",
