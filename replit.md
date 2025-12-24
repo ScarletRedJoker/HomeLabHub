@@ -108,6 +108,24 @@ Inside Windows:
 - GPU passthrough: NVIDIA with vfio-pci binding
 - Sunshine ports: 47984-48010 (TCP/UDP)
 
+### Storage & File Sharing
+Run the setup script for storage and network sharing:
+```bash
+cd /opt/homelab/HomeLabHub/deploy/local/scripts
+./setup-vm-storage-sharing.sh
+```
+
+**Options:**
+1. **virtio-fs shared folder** - Share `/srv/vm-share` between host and VM (includes 1TB HDD)
+2. **Tailscale subnet routing** - Access NAS (192.168.0.185) from anywhere on Tailscale
+
+**In Windows (after running setup):**
+1. Install WinFSP: https://github.com/winfsp/winfsp/releases
+2. Install virtio-win-guest-tools.exe
+3. Start "VirtIO-FS Service" in Services
+4. Shared folder appears as Z: drive
+5. Run `tailscale up --accept-routes` for NAS access
+
 ## Local Ubuntu Server (host.evindrake.net)
 
 ### NAS Configuration
