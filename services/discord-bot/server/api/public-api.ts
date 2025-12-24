@@ -180,13 +180,20 @@ router.get('/starboard', async (req: Request, res: Response) => {
       .first(limit)
       .map(msg => {
         const embed = msg.embeds[0];
+        let stars = 0;
         const starMatch = msg.content.match(/(\d+)/);
+        if (starMatch) {
+          stars = parseInt(starMatch[1]);
+        } else if (embed.footer?.text) {
+          const footerMatch = embed.footer.text.match(/(\d+)/);
+          if (footerMatch) stars = parseInt(footerMatch[1]);
+        }
         
         return {
           content: embed.description || '',
           author: embed.author?.name || 'Unknown',
           authorAvatar: embed.author?.iconURL || null,
-          stars: starMatch ? parseInt(starMatch[1]) : 0,
+          stars,
           messageUrl: embed.url || null,
           timestamp: msg.createdAt.toISOString(),
           attachments: embed.image ? [embed.image.url] : [],

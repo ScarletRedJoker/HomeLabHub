@@ -68,14 +68,14 @@ function parseRelativeTime(timeStr: string): Date | null {
 function getRepeatCron(repeat: string): string | null {
   const lower = repeat.toLowerCase();
   switch (lower) {
-    case 'daily':
-      return '0 * * * *';
-    case 'weekly':
-      return '0 * * * 0';
-    case 'monthly':
-      return '0 0 1 * *';
     case 'hourly':
-      return '0 * * * *';
+      return 'HOURLY';
+    case 'daily':
+      return 'DAILY';
+    case 'weekly':
+      return 'WEEKLY';
+    case 'monthly':
+      return 'MONTHLY';
     default:
       if (/^[\d\*\/\-\,]+\s+[\d\*\/\-\,]+\s+[\d\*\/\-\,]+\s+[\d\*\/\-\,]+\s+[\d\*\/\-\,]+$/.test(repeat)) {
         return repeat;
@@ -85,25 +85,32 @@ function getRepeatCron(repeat: string): string | null {
 }
 
 function calculateNextRun(cronExpression: string, fromDate: Date = new Date()): Date {
-  const parts = cronExpression.split(' ');
-  if (parts.length !== 5) return new Date(fromDate.getTime() + 24 * 60 * 60 * 1000);
-  
   const next = new Date(fromDate);
   
-  if (parts[3] === '1' && parts[4] === '*') {
-    next.setMonth(next.getMonth() + 1);
-    next.setDate(1);
-    next.setHours(0, 0, 0, 0);
-  } else if (parts[4] === '0') {
-    const daysUntilSunday = (7 - next.getDay()) % 7 || 7;
-    next.setDate(next.getDate() + daysUntilSunday);
-    next.setHours(0, 0, 0, 0);
-  } else {
-    next.setDate(next.getDate() + 1);
-    next.setHours(0, 0, 0, 0);
+  switch (cronExpression) {
+    case 'HOURLY':
+      next.setHours(next.getHours() + 1);
+      next.setMinutes(0, 0, 0);
+      return next;
+    case 'DAILY':
+      next.setDate(next.getDate() + 1);
+      next.setHours(0, 0, 0, 0);
+      return next;
+    case 'WEEKLY':
+      const daysUntilSunday = (7 - next.getDay()) % 7 || 7;
+      next.setDate(next.getDate() + daysUntilSunday);
+      next.setHours(0, 0, 0, 0);
+      return next;
+    case 'MONTHLY':
+      next.setMonth(next.getMonth() + 1);
+      next.setDate(1);
+      next.setHours(0, 0, 0, 0);
+      return next;
+    default:
+      next.setDate(next.getDate() + 1);
+      next.setHours(0, 0, 0, 0);
+      return next;
   }
-  
-  return next;
 }
 
 const scheduleCommand = {
