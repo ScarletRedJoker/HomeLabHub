@@ -108,23 +108,33 @@ Inside Windows:
 - GPU passthrough: NVIDIA with vfio-pci binding
 - Sunshine ports: 47984-48010 (TCP/UDP)
 
-### Storage & File Sharing
-Run the setup script for storage and network sharing:
+### Storage Options (in order of simplicity)
+
+**Option 1: Direct Disk Passthrough (RECOMMENDED)**
+Pass a physical disk directly to the VM. Simple, reliable, fast.
 ```bash
-cd /opt/homelab/HomeLabHub/deploy/local/scripts
-./setup-vm-storage-sharing.sh
+virsh shutdown RDPWindows
+virsh edit RDPWindows
+# Add inside <devices>:
+#   <disk type='block' device='disk'>
+#     <driver name='qemu' type='raw'/>
+#     <source dev='/dev/disk/by-id/ata-WDC_WD10EZEX-00BN5A0_WD-WCC3F3UDCXUK'/>
+#     <target dev='sde' bus='sata'/>
+#   </disk>
+virsh start RDPWindows
 ```
+Note: Host loses access while VM is running. Unmount first with `sudo umount /media/evin/1TB`
 
-**Options:**
-1. **virtio-fs shared folder** - Share `/srv/vm-share` between host and VM (includes 1TB HDD)
-2. **Tailscale subnet routing** - Access NAS (192.168.0.185) from anywhere on Tailscale
+**Option 2: NAS via Tailscale Subnet Routing**
+Already configured - access NAS from anywhere on Tailscale.
+- From Windows: `\\192.168.0.185\networkshare`
+- Run `tailscale up --accept-routes` in Windows first
 
-**In Windows (after running setup):**
-1. Install WinFSP: https://github.com/winfsp/winfsp/releases
-2. Install virtio-win-guest-tools.exe
-3. Start "VirtIO-FS Service" in Services
-4. Shared folder appears as Z: drive
-5. Run `tailscale up --accept-routes` for NAS access
+**Option 3: SMB Share (if needed)**
+Share host folders via Samba - requires firewall config.
+
+**Option 4: virtio-fs (advanced)**
+Requires virtiofsd installed, complex setup, can break boot if misconfigured.
 
 ## Local Ubuntu Server (host.evindrake.net)
 
