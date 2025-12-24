@@ -1261,7 +1261,7 @@ def get_quality_config(host_id):
     """
     try:
         from models.gaming import SunshineHost
-        from services.database_service import db_service
+        from services.db_service import db_service
         
         if not db_service or not db_service.is_available:
             return jsonify({
