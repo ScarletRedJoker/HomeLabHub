@@ -140,6 +140,13 @@ print_section "Stream Bot - Kick (OPTIONAL)"
 check_optional "KICK_CLIENT_ID" "Kick OAuth client ID"
 check_optional "KICK_CLIENT_SECRET" "Kick OAuth client secret"
 
+print_section "Inter-Service Communication (REQUIRED)"
+check_required "STREAM_BOT_WEBHOOK_SECRET" "Webhook secret for Stream Bot → Discord Bot"
+check_optional "DISCORD_BOT_URL" "Discord Bot internal URL (defaults to http://homelab-discord-bot:4000)"
+
+print_section "Discord Community Features (OPTIONAL)"
+check_optional "RIG_CITY_SERVER_ID" "Discord server ID for rig-city.com public API"
+
 print_section "Code Server (REQUIRED)"
 check_required "CODE_SERVER_PASSWORD" "Code-server web password"
 
