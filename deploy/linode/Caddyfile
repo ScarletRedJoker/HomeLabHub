@@ -13,7 +13,6 @@ stream.rig-city.com {
     reverse_proxy stream-bot:5000 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-Proto {scheme}
         header_up Upgrade {http.request.header.Upgrade}
         header_up Connection {http.request.header.Connection}
     }
@@ -23,7 +22,6 @@ discord.rig-city.com {
     reverse_proxy discord-bot:4000 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-Proto {scheme}
         header_up Upgrade {http.request.header.Upgrade}
         header_up Connection {http.request.header.Connection}
     }
@@ -104,15 +102,12 @@ plex.evindrake.net {
     # Home server WireGuard IP: 10.200.0.2
     # 
     # CRITICAL for Plex auth: 
-    # - Pass X-Real-IP and X-Forwarded-For so Plex sees the real client IP
-    # - Plex binds auth tokens to client IPs - without these headers, token validation fails (401)
+    # - Caddy automatically passes X-Forwarded-For and X-Forwarded-Proto
+    # - Plex binds auth tokens to client IPs - these headers are needed for token validation
     # - Do NOT set X-Plex-* headers manually - let them pass through naturally
-    #   (setting them to empty values breaks auth since clients send tokens in query strings)
     reverse_proxy 10.200.0.2:32400 {
         # Pass real client IP for Plex token/IP binding
         header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
         
         # Timeouts for large media files
         transport http {
@@ -143,8 +138,6 @@ game.evindrake.net {
         reverse_proxy 10.200.0.2:47990 {
             header_up Host {host}
             header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
             transport http {
                 tls
                 tls_insecure_skip_verify
