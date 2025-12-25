@@ -11129,3 +11129,36 @@ body {
   margin: 0;
   padding: 0;
 }
+
+/* ========================================
+   MOBILE FIX: Disable blurry text effects
+   ======================================== */
+@media (max-width: 768px) {
+    /* Disable text-shadow on mobile for crisp text */
+    .terminal,
+    .terminal a,
+    .terminal h1,
+    .terminal h5,
+    a,
+    a:hover {
+        text-shadow: none !important;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+    
+    /* Simplify box-shadows for performance */
+    .terminal {
+        box-shadow: 0 0 8px rgba(57, 255, 20, 0.2) !important;
+    }
+    
+    /* Ensure links are readable and not blurry */
+    .terminal a {
+        color: #39ff14 !important;
+        text-decoration: underline;
+        font-weight: normal;
+    }
+    
+    .terminal a:hover {
+        color: #7fff00 !important;
+    }
+}

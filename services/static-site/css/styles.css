@@ -12467,3 +12467,50 @@ button:focus-visible,
     outline: 3px solid #00ff88;
     outline-offset: 2px;
 }
+
+/* ========================================
+   MOBILE FIX: Disable blurry text effects
+   ======================================== */
+@media (max-width: 768px) {
+    /* Disable text-shadow on mobile for crisp text */
+    .terminal,
+    .terminal a,
+    .terminal h1,
+    .terminal h2,
+    .terminal h5,
+    .terminal-cursor::after,
+    .prompt-user,
+    .card-title,
+    .navbar-brand,
+    .nav-link,
+    .nav-link:hover,
+    .nav-link.active,
+    a,
+    a:hover {
+        text-shadow: none !important;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+    
+    /* Disable transforms that cause blur */
+    .card:hover,
+    .navbar-brand:hover,
+    .btn-primary:hover {
+        transform: none !important;
+    }
+    
+    /* Simplify box-shadows for performance */
+    .terminal {
+        box-shadow: 0 0 10px rgba(255, 40, 81, 0.3) !important;
+    }
+    
+    .card {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+    }
+    
+    /* Ensure links are readable */
+    .terminal a {
+        color: #ff5073 !important;
+        text-decoration: underline;
+    }
+}
