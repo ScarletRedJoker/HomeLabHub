@@ -331,24 +331,73 @@ a:hover {
   text-decoration: underline;
 }
 
-/* Tables */
+/* Tables - Full Dark Theme */
 .table {
   color: var(--pro-text-primary) !important;
+  background-color: var(--pro-bg-secondary) !important;
+  --bs-table-bg: var(--pro-bg-secondary) !important;
+  --bs-table-color: var(--pro-text-primary) !important;
+  --bs-table-border-color: var(--pro-border) !important;
+  --bs-table-striped-bg: var(--pro-bg-tertiary) !important;
+  --bs-table-hover-bg: var(--pro-bg-tertiary) !important;
+  border-color: var(--pro-border) !important;
+}
+
+.table thead {
+  background-color: var(--pro-bg-tertiary) !important;
 }
 
 .table thead th {
   color: var(--pro-text-primary) !important;
   border-color: var(--pro-border) !important;
-  background-color: var(--pro-bg-tertiary);
+  background-color: var(--pro-bg-tertiary) !important;
+  font-weight: 600;
+  padding: 12px 16px;
+}
+
+.table tbody {
+  background-color: var(--pro-bg-secondary) !important;
+}
+
+.table tbody tr {
+  background-color: var(--pro-bg-secondary) !important;
+  border-color: var(--pro-border) !important;
 }
 
 .table tbody td {
   color: var(--pro-text-primary) !important;
   border-color: var(--pro-border) !important;
+  background-color: var(--pro-bg-secondary) !important;
+  padding: 12px 16px;
 }
 
+.table tbody tr:hover,
 .table tbody tr:hover td {
-  background-color: var(--pro-bg-tertiary);
+  background-color: var(--pro-bg-tertiary) !important;
+}
+
+.table-striped tbody tr:nth-of-type(odd) td,
+.table-striped tbody tr:nth-of-type(odd) {
+  background-color: rgba(33, 38, 45, 0.5) !important;
+}
+
+.table-dark, .table-dark td, .table-dark th {
+  background-color: var(--pro-bg-secondary) !important;
+  color: var(--pro-text-primary) !important;
+  border-color: var(--pro-border) !important;
+}
+
+/* Override Bootstrap table background classes */
+.table > :not(caption) > * > * {
+  background-color: var(--pro-bg-secondary) !important;
+  color: var(--pro-text-primary) !important;
+  border-bottom-color: var(--pro-border) !important;
+}
+
+/* Table container cards */
+.table-responsive {
+  background-color: var(--pro-bg-secondary) !important;
+  border-radius: 8px;
 }
 
 /* Code blocks */

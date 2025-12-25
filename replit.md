@@ -39,6 +39,15 @@ The system is deployed across two independent servers:
 -   **Local Ubuntu**: Hosts local homelab services like Plex, MinIO, and Home Assistant.
 Each server has its own deployment script, ensuring separation of concerns.
 
+### Tailscale Connectivity (Linode)
+Linode requires a Tailscale sidecar container to reach local services running on the Ubuntu homelab:
+- **Plex** (100.110.227.25:32400) - Media streaming
+- **Home Assistant** (100.110.227.25:8123) - Home automation
+- **MinIO** (100.110.227.25:9000) - Object storage
+- **KVM/Sunshine** (100.118.44.102) - Gaming VM
+
+The `tailscale` container in `deploy/linode/docker-compose.yml` runs with `network_mode: host`, allowing all other containers on the Linode to route traffic through the Tailscale network. Requires `TAILSCALE_AUTHKEY` in `.env`.
+
 ### Database Schema
 A shared PostgreSQL instance is used, with separate databases for each service:
 -   `homelab_jarvis`: Used by the Dashboard for AI conversations, Docker data, and audit logs.
