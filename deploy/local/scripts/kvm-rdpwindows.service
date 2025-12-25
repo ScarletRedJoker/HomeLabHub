@@ -1,0 +1,19 @@
+[Unit]
+Description=KVM Gaming VM (RDPWindows) with GPU Passthrough
+Documentation=https://github.com/ScarletRedJoker/HomeLabHub
+After=network-online.target libvirtd.service
+Wants=network-online.target
+Requires=libvirtd.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStartPre=/usr/local/sbin/kvm-rdpwindows.sh preflight
+ExecStart=/usr/local/sbin/kvm-rdpwindows.sh start
+ExecStop=/usr/local/sbin/kvm-rdpwindows.sh stop
+ExecReload=/usr/local/sbin/kvm-rdpwindows.sh restart
+TimeoutStartSec=120
+TimeoutStopSec=90
+
+[Install]
+WantedBy=multi-user.target

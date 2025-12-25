@@ -1,0 +1,8 @@
+[Unit]
+Description=KVM Gaming VM Health Check
+Documentation=https://github.com/ScarletRedJoker/HomeLabHub
+After=kvm-rdpwindows.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/kvm-rdpwindows.sh health

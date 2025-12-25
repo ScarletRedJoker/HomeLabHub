@@ -1,0 +1,30 @@
+# Network bridge configuration for KVM gaming VM
+# This gives the VM a real LAN IP so local devices can connect directly
+#
+# INSTALLATION:
+# 1. Identify your physical NIC: ip link show (look for eno1, enp3s0, etc.)
+# 2. Update 'enp3s0' below to match your NIC name
+# 3. Copy to /etc/netplan/01-bridge.yaml
+# 4. sudo netplan apply (WARNING: briefly drops network)
+#
+# After applying, your VM will get an IP like 192.168.0.x via DHCP
+
+network:
+  version: 2
+  renderer: networkd
+  
+  ethernets:
+    # Replace 'enp3s0' with your actual NIC name
+    enp3s0:
+      dhcp4: false
+      dhcp6: false
+  
+  bridges:
+    br0:
+      interfaces:
+        - enp3s0
+      dhcp4: true
+      dhcp6: false
+      parameters:
+        stp: false
+        forward-delay: 0

@@ -1,0 +1,11 @@
+[Unit]
+Description=KVM Gaming VM Health Check Timer
+Documentation=https://github.com/ScarletRedJoker/HomeLabHub
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=10min
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target
