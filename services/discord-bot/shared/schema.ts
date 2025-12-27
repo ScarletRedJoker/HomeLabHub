@@ -1166,16 +1166,49 @@ export const updateScheduledMessageSchema = createInsertSchema(scheduledMessages
 }).partial();
 export type UpdateScheduledMessage = z.infer<typeof updateScheduledMessageSchema>;
 
-// Custom Commands - stores custom commands for servers
+// Custom Commands - stores custom commands for servers (enhanced for powerful command engine)
 export const customCommands = pgTable("custom_commands", {
   id: serial("id").primaryKey(),
   serverId: text("server_id").notNull(),
   trigger: text("trigger").notNull(), // The command trigger (without prefix)
-  response: text("response").notNull(), // Response text with variable support
+  aliases: text("aliases"), // JSON array of aliases e.g., ["cmd", "c"]
+  description: text("description"), // Command description for help
+  category: text("category").default("Custom"), // Category for organizing in help
+  response: text("response"), // Response text with variable support
   embedJson: text("embed_json"), // JSON string for embed response
+  
+  // Command type and behavior
+  commandType: text("command_type").default("prefix").notNull(), // prefix, slash, both
+  isEnabled: boolean("is_enabled").default(true).notNull(),
+  isHidden: boolean("is_hidden").default(false).notNull(), // Hidden from help
+  
+  // Permissions and requirements
+  requiredRoleIds: text("required_role_ids"), // JSON array of role IDs (any of these)
+  deniedRoleIds: text("denied_role_ids"), // JSON array of roles that can't use command
+  requiredChannelIds: text("required_channel_ids"), // JSON array - only usable in these channels
+  requiredPermissions: text("required_permissions"), // JSON array of Discord permissions
+  
+  // Cooldowns
+  cooldownSeconds: integer("cooldown_seconds").default(0), // Per-user cooldown
+  globalCooldownSeconds: integer("global_cooldown_seconds").default(0), // Server-wide cooldown
+  
+  // Response settings
+  deleteUserMessage: boolean("delete_user_message").default(false), // Delete triggering message
+  deleteResponseAfter: integer("delete_response_after"), // Delete response after X seconds (null = don't delete)
+  ephemeral: boolean("ephemeral").default(false), // Ephemeral response for slash commands
+  mentionUser: boolean("mention_user").default(false), // Mention user in response
+  
+  // Actions - for button/interaction responses
+  actionsJson: text("actions_json"), // JSON array of actions [{type, data}]
+  
+  // Draft/publish workflow
+  isDraft: boolean("is_draft").default(false).notNull(),
+  publishedAt: timestamp("published_at"),
+  
   createdBy: text("created_by").notNull(), // Discord user ID
   createdByUsername: text("created_by_username"), // Cached username
   usageCount: integer("usage_count").default(0).notNull(),
+  lastUsedAt: timestamp("last_used_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1184,6 +1217,8 @@ export const customCommands = pgTable("custom_commands", {
 export const insertCustomCommandSchema = createInsertSchema(customCommands).omit({
   id: true,
   usageCount: true,
+  lastUsedAt: true,
+  publishedAt: true,
   createdAt: true,
   updatedAt: true
 });
@@ -1193,7 +1228,6 @@ export type CustomCommand = typeof customCommands.$inferSelect;
 export const updateCustomCommandSchema = createInsertSchema(customCommands).omit({
   id: true,
   serverId: true,
-  trigger: true,
   createdBy: true,
   createdAt: true,
   updatedAt: true
@@ -1274,3 +1308,241 @@ export const updateMediaRequestSchema = createInsertSchema(mediaRequests).omit({
   updatedAt: true
 }).partial();
 export type UpdateMediaRequest = z.infer<typeof updateMediaRequestSchema>;
+
+// =============================================
+// GUILD CUSTOMIZATION SYSTEM
+// =============================================
+
+// Guild Bot Profiles - per-server bot identity (nickname, avatar)
+export const guildBotProfiles = pgTable("guild_bot_profiles", {
+  id: serial("id").primaryKey(),
+  serverId: text("server_id").notNull().unique(),
+  
+  // Bot identity
+  nickname: text("nickname"), // Custom nickname for this server (null = use default)
+  avatarUrl: text("avatar_url"), // URL to custom avatar image
+  avatarAssetId: text("avatar_asset_id"), // Reference to uploaded asset in MinIO/storage
+  
+  // Sync status
+  nicknameSyncedAt: timestamp("nickname_synced_at"),
+  avatarSyncedAt: timestamp("avatar_synced_at"),
+  lastSyncError: text("last_sync_error"),
+  
+  // Settings
+  autoSyncEnabled: boolean("auto_sync_enabled").default(true),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertGuildBotProfileSchema = createInsertSchema(guildBotProfiles).omit({
+  id: true,
+  nicknameSyncedAt: true,
+  avatarSyncedAt: true,
+  createdAt: true,
+  updatedAt: true
+});
+export type InsertGuildBotProfile = z.infer<typeof insertGuildBotProfileSchema>;
+export type GuildBotProfile = typeof guildBotProfiles.$inferSelect;
+
+export const updateGuildBotProfileSchema = createInsertSchema(guildBotProfiles).omit({
+  id: true,
+  serverId: true,
+  createdAt: true,
+  updatedAt: true
+}).partial();
+export type UpdateGuildBotProfile = z.infer<typeof updateGuildBotProfileSchema>;
+
+// Command Cooldowns - tracks command usage cooldowns
+export const commandCooldowns = pgTable("command_cooldowns", {
+  id: serial("id").primaryKey(),
+  serverId: text("server_id").notNull(),
+  commandId: integer("command_id").notNull(), // Reference to customCommands
+  userId: text("user_id"), // null for global cooldowns
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCommandCooldownSchema = createInsertSchema(commandCooldowns).omit({
+  id: true,
+  createdAt: true
+});
+export type InsertCommandCooldown = z.infer<typeof insertCommandCooldownSchema>;
+export type CommandCooldown = typeof commandCooldowns.$inferSelect;
+
+// Command Variables - custom variables for command responses
+export const commandVariables = pgTable("command_variables", {
+  id: serial("id").primaryKey(),
+  serverId: text("server_id").notNull(),
+  name: text("name").notNull(), // Variable name e.g., "server_rules_url"
+  value: text("value").notNull(), // Variable value
+  description: text("description"), // What this variable is for
+  isGlobal: boolean("is_global").default(false), // Available to all commands
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCommandVariableSchema = createInsertSchema(commandVariables).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+export type InsertCommandVariable = z.infer<typeof insertCommandVariableSchema>;
+export type CommandVariable = typeof commandVariables.$inferSelect;
+
+// Template Catalog - shareable command/embed templates
+export const templateCatalog = pgTable("template_catalog", {
+  id: serial("id").primaryKey(),
+  
+  // Template metadata
+  name: text("name").notNull(),
+  description: text("description"),
+  category: text("category").notNull().default("General"), // Pokemon TCG, Moderation, Fun, etc.
+  tags: text("tags"), // JSON array of tags for searching
+  
+  // Template content
+  templateType: text("template_type").notNull(), // command, embed, panel, workflow
+  templateJson: text("template_json").notNull(), // Full template configuration
+  previewImageUrl: text("preview_image_url"), // Preview screenshot
+  
+  // Origin
+  isOfficial: boolean("is_official").default(false), // Official Nebula Command template
+  sourceServerId: text("source_server_id"), // Server that shared this template
+  createdBy: text("created_by"), // Discord user ID
+  createdByUsername: text("created_by_username"),
+  
+  // Stats
+  installCount: integer("install_count").default(0),
+  rating: integer("rating"), // Average rating 1-5
+  ratingCount: integer("rating_count").default(0),
+  
+  // Visibility
+  isPublic: boolean("is_public").default(false), // Available in public catalog
+  isEnabled: boolean("is_enabled").default(true),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertTemplateCatalogSchema = createInsertSchema(templateCatalog).omit({
+  id: true,
+  installCount: true,
+  rating: true,
+  ratingCount: true,
+  createdAt: true,
+  updatedAt: true
+});
+export type InsertTemplateCatalog = z.infer<typeof insertTemplateCatalogSchema>;
+export type TemplateCatalog = typeof templateCatalog.$inferSelect;
+
+// Installed Templates - tracks which templates are installed per server
+export const installedTemplates = pgTable("installed_templates", {
+  id: serial("id").primaryKey(),
+  serverId: text("server_id").notNull(),
+  templateId: integer("template_id").notNull(), // Reference to templateCatalog
+  customizations: text("customizations"), // JSON of customizations made to template
+  installedBy: text("installed_by"), // Discord user ID
+  installedAt: timestamp("installed_at").defaultNow(),
+  lastUpdatedAt: timestamp("last_updated_at"),
+});
+
+export const insertInstalledTemplateSchema = createInsertSchema(installedTemplates).omit({
+  id: true,
+  installedAt: true,
+  lastUpdatedAt: true
+});
+export type InsertInstalledTemplate = z.infer<typeof insertInstalledTemplateSchema>;
+export type InstalledTemplate = typeof installedTemplates.$inferSelect;
+
+// Custom Help Settings - per-server help customization
+export const customHelpSettings = pgTable("custom_help_settings", {
+  id: serial("id").primaryKey(),
+  serverId: text("server_id").notNull().unique(),
+  
+  // Help embed appearance
+  title: text("title").default("Help Menu"),
+  description: text("description"),
+  color: text("color").default("#5865F2"),
+  footerText: text("footer_text"),
+  thumbnailUrl: text("thumbnail_url"),
+  
+  // Category display
+  showCategories: boolean("show_categories").default(true),
+  categoryOrder: text("category_order"), // JSON array of category names in order
+  hiddenCategories: text("hidden_categories"), // JSON array of hidden category names
+  
+  // Command display
+  showCommandCount: boolean("show_command_count").default(true),
+  showCommandUsage: boolean("show_command_usage").default(true),
+  showPermissions: boolean("show_permissions").default(false),
+  
+  // Behavior
+  ephemeral: boolean("ephemeral").default(false), // Ephemeral help response
+  paginationEnabled: boolean("pagination_enabled").default(true),
+  commandsPerPage: integer("commands_per_page").default(10),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCustomHelpSettingsSchema = createInsertSchema(customHelpSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+export type InsertCustomHelpSettings = z.infer<typeof insertCustomHelpSettingsSchema>;
+export type CustomHelpSettings = typeof customHelpSettings.$inferSelect;
+
+// Interaction Actions - reusable action definitions for buttons, selects, modals
+export const interactionActions = pgTable("interaction_actions", {
+  id: serial("id").primaryKey(),
+  serverId: text("server_id").notNull(),
+  name: text("name").notNull(), // Unique name for this action in server
+  description: text("description"),
+  
+  // Action type and configuration
+  actionType: text("action_type").notNull(), // send_message, send_embed, assign_role, remove_role, create_thread, open_modal, create_ticket, webhook, etc.
+  actionConfig: text("action_config").notNull(), // JSON configuration for the action
+  
+  // Chain actions together
+  nextActionId: integer("next_action_id"), // For action pipelines
+  
+  // Requirements
+  requiredRoleIds: text("required_role_ids"), // JSON array
+  requiredPermissions: text("required_permissions"), // JSON array
+  
+  isEnabled: boolean("is_enabled").default(true),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertInteractionActionSchema = createInsertSchema(interactionActions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+export type InsertInteractionAction = z.infer<typeof insertInteractionActionSchema>;
+export type InteractionAction = typeof interactionActions.$inferSelect;
+
+// Command Analytics - tracks command usage for insights
+export const commandAnalytics = pgTable("command_analytics", {
+  id: serial("id").primaryKey(),
+  serverId: text("server_id").notNull(),
+  commandId: integer("command_id"), // null for built-in commands
+  commandName: text("command_name").notNull(),
+  userId: text("user_id").notNull(),
+  channelId: text("channel_id"),
+  success: boolean("success").default(true),
+  errorMessage: text("error_message"),
+  responseTimeMs: integer("response_time_ms"),
+  usedAt: timestamp("used_at").defaultNow(),
+});
+
+export const insertCommandAnalyticsSchema = createInsertSchema(commandAnalytics).omit({
+  id: true,
+  usedAt: true
+});
+export type InsertCommandAnalytics = z.infer<typeof insertCommandAnalyticsSchema>;
+export type CommandAnalytics = typeof commandAnalytics.$inferSelect;
