@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Rnd } from 'react-rnd';
-import { useParams } from 'wouter';
+import { useServerContext } from '@/contexts/ServerContext';
 
 type DragData = { x: number; y: number };
 type ResizeRef = { style: { width: string; height: string } };
@@ -59,8 +59,8 @@ interface WelcomeCardTemplate {
 const CANVAS_SCALE = 0.75;
 
 export default function WelcomeCardDesigner() {
-  const params = useParams<{ serverId: string }>();
-  const serverId = params.serverId || '';
+  const { selectedServerId } = useServerContext();
+  const serverId = selectedServerId || '';
   
   const [template, setTemplate] = useState<WelcomeCardTemplate>({
     serverId,

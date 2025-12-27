@@ -30,6 +30,11 @@ import { initializeModerationFeatures, handleAutoMod } from './moderation-featur
 import { registerScheduledCommands, calculateNextRun } from './scheduled-commands';
 import { commandEngine } from '../services/commandEngine';
 import { guildIdentityService } from '../services/guildIdentityService';
+import { welcomeCardRenderer } from '../services/welcomeCardRenderer';
+import { welcomeCardTemplates, botSettings } from '@shared/schema';
+import { eq, and } from 'drizzle-orm';
+import { db } from '../db';
+import { AttachmentBuilder } from 'discord.js';
 
 // Discord bot instance
 let client: Client | null = null;
@@ -2678,12 +2683,6 @@ export async function startBot(storage: IStorage, broadcast: (data: any) => void
       
       // Send welcome card if configured
       try {
-        const { welcomeCardTemplates, botSettings } = await import('@shared/schema');
-        const { eq, and } = await import('drizzle-orm');
-        const { db } = await import('../db');
-        const { welcomeCardRenderer } = await import('../services/welcomeCardRenderer');
-        const { AttachmentBuilder } = await import('discord.js');
-        
         // Check if welcome cards are enabled for this server
         const [settings] = await db
           .select({ 
