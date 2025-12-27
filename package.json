@@ -38,6 +38,7 @@
     "@discord-player/extractor": "^7.1.0",
     "@discordjs/opus": "^0.10.0",
     "@discordjs/voice": "^0.18.0",
+    "@napi-rs/canvas": "^0.1.88",
     "@octokit/rest": "^22.0.0",
     "@vitest/ui": "^4.0.9",
     "discord-player": "^7.1.0",
@@ -50,6 +51,7 @@
     "p-limit": "^7.2.0",
     "p-retry": "^7.1.0",
     "play-dl": "^1.9.7",
+    "react-rnd": "^10.5.2",
     "vitest": "^4.0.9",
     "ytdl-core": "^4.11.5"
   }

@@ -52,6 +52,7 @@ import { isDeveloperMiddleware } from "./middleware/developerAuth";
 import { startRetentionService, stopRetentionService } from "./services/retention-service";
 import { commandEngine } from "./services/commandEngine";
 import { guildIdentityService } from "./services/guildIdentityService";
+import welcomeCardsRoutes from "./routes/welcomeCards";
 
 // Configure multer for embed image uploads
 const EMBED_IMAGES_DIR = path.join(process.cwd(), 'attached_assets', 'embed-images');
@@ -3785,6 +3786,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount public API routes for website integration (rig-city.com)
   app.use('/api/public', publicApiRoutes);
+
+  // Mount welcome cards routes
+  app.use('/api', welcomeCardsRoutes);
 
   // Start background services
   startRetentionService();

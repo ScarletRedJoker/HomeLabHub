@@ -1546,3 +1546,128 @@ export const insertCommandAnalyticsSchema = createInsertSchema(commandAnalytics)
 });
 export type InsertCommandAnalytics = z.infer<typeof insertCommandAnalyticsSchema>;
 export type CommandAnalytics = typeof commandAnalytics.$inferSelect;
+
+// Welcome Card Templates - visual welcome card designs per server
+export const welcomeCardTemplates = pgTable("welcome_card_templates", {
+  id: serial("id").primaryKey(),
+  serverId: text("server_id").notNull(),
+  name: text("name").notNull().default("Default Welcome Card"),
+  isActive: boolean("is_active").default(true),
+  
+  // Canvas settings
+  width: integer("width").default(800),
+  height: integer("height").default(400),
+  
+  // Background settings
+  backgroundType: text("background_type").default("solid"), // solid, gradient, image
+  backgroundColor: text("background_color").default("#1a1a2e"),
+  backgroundGradient: text("background_gradient"), // JSON: {start, end, direction}
+  backgroundImage: text("background_image"), // URL or base64
+  backgroundBlur: integer("background_blur").default(0),
+  backgroundOpacity: integer("background_opacity").default(100),
+  
+  // Border settings
+  borderEnabled: boolean("border_enabled").default(false),
+  borderColor: text("border_color").default("#ffffff"),
+  borderWidth: integer("border_width").default(2),
+  borderRadius: integer("border_radius").default(20),
+  
+  // Elements stored as JSON array
+  elements: text("elements").default("[]"), // JSON array of WelcomeCardElement objects
+  
+  // Message settings
+  welcomeMessage: text("welcome_message").default("Welcome to {server}!"),
+  channelId: text("channel_id"), // Override botSettings welcomeChannelId
+  
+  // Metadata
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertWelcomeCardTemplateSchema = createInsertSchema(welcomeCardTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+export type InsertWelcomeCardTemplate = z.infer<typeof insertWelcomeCardTemplateSchema>;
+export type WelcomeCardTemplate = typeof welcomeCardTemplates.$inferSelect;
+
+// Welcome Card Element Types
+export interface WelcomeCardElement {
+  id: string;
+  type: "avatar" | "text" | "shape" | "image";
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  zIndex: number;
+  
+  // Avatar-specific
+  avatarStyle?: "circle" | "rounded" | "square";
+  avatarBorderColor?: string;
+  avatarBorderWidth?: number;
+  
+  // Text-specific
+  text?: string; // Supports variables: {username}, {server}, {memberCount}, {date}
+  fontFamily?: string;
+  fontSize?: number;
+  fontColor?: string;
+  fontWeight?: "normal" | "bold";
+  textAlign?: "left" | "center" | "right";
+  textShadow?: boolean;
+  textShadowColor?: string;
+  
+  // Shape-specific
+  shapeType?: "rectangle" | "circle" | "line";
+  shapeFill?: string;
+  shapeStroke?: string;
+  shapeStrokeWidth?: number;
+  shapeOpacity?: number;
+  
+  // Image-specific
+  imageUrl?: string;
+  imageOpacity?: number;
+}
+
+// Voice Channel Stats - tracking voice activity
+export const voiceStats = pgTable("voice_stats", {
+  id: serial("id").primaryKey(),
+  serverId: text("server_id").notNull(),
+  userId: text("user_id").notNull(),
+  channelId: text("channel_id").notNull(),
+  sessionStart: timestamp("session_start").defaultNow(),
+  sessionEnd: timestamp("session_end"),
+  durationSeconds: integer("duration_seconds").default(0),
+  date: text("date").notNull(), // YYYY-MM-DD for daily aggregation
+});
+
+export const insertVoiceStatsSchema = createInsertSchema(voiceStats).omit({
+  id: true
+});
+export type InsertVoiceStats = z.infer<typeof insertVoiceStatsSchema>;
+export type VoiceStats = typeof voiceStats.$inferSelect;
+
+// Moderation Logs - detailed mod action tracking
+export const modLogs = pgTable("mod_logs", {
+  id: serial("id").primaryKey(),
+  serverId: text("server_id").notNull(),
+  moderatorId: text("moderator_id").notNull(),
+  moderatorName: text("moderator_name").notNull(),
+  targetId: text("target_id"), // User being moderated
+  targetName: text("target_name"),
+  action: text("action").notNull(), // ban, kick, timeout, warn, mute, unmute, role_add, role_remove
+  reason: text("reason"),
+  duration: text("duration"), // For timeouts
+  channelId: text("channel_id"),
+  messageId: text("message_id"),
+  metadata: text("metadata"), // JSON for additional context
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertModLogSchema = createInsertSchema(modLogs).omit({
+  id: true,
+  createdAt: true
+});
+export type InsertModLog = z.infer<typeof insertModLogSchema>;
+export type ModLog = typeof modLogs.$inferSelect;

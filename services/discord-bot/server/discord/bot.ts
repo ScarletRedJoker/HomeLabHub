@@ -2675,6 +2675,75 @@ export async function startBot(storage: IStorage, broadcast: (data: any) => void
           timestamp: new Date().toISOString()
         }
       });
+      
+      // Send welcome card if configured
+      try {
+        const { welcomeCardTemplates, botSettings } = await import('@shared/schema');
+        const { eq, and } = await import('drizzle-orm');
+        const { db } = await import('../db');
+        const { welcomeCardRenderer } = await import('../services/welcomeCardRenderer');
+        const { AttachmentBuilder } = await import('discord.js');
+        
+        // Check if welcome cards are enabled for this server
+        const [settings] = await db
+          .select({ 
+            welcomeEnabled: botSettings.welcomeEnabled,
+            welcomeChannelId: botSettings.welcomeChannelId
+          })
+          .from(botSettings)
+          .where(eq(botSettings.serverId, member.guild.id));
+        
+        if (!settings?.welcomeEnabled || !settings?.welcomeChannelId) {
+          return;
+        }
+        
+        // Get active welcome card template
+        const [template] = await db
+          .select()
+          .from(welcomeCardTemplates)
+          .where(
+            and(
+              eq(welcomeCardTemplates.serverId, member.guild.id),
+              eq(welcomeCardTemplates.isActive, true)
+            )
+          )
+          .limit(1);
+        
+        if (!template) {
+          console.log(`[WelcomeCard] No active template found for ${member.guild.name}`);
+          return;
+        }
+        
+        // Generate welcome card image
+        const imageBuffer = await welcomeCardRenderer.renderCard(template, member);
+        
+        // Get the welcome channel
+        const channelId = template.channelId || settings.welcomeChannelId;
+        const channel = member.guild.channels.cache.get(channelId);
+        
+        if (!channel || !channel.isTextBased()) {
+          console.error(`[WelcomeCard] Invalid channel ${channelId} for ${member.guild.name}`);
+          return;
+        }
+        
+        // Interpolate welcome message
+        const welcomeMessage = (template.welcomeMessage || 'Welcome to {server}!')
+          .replace(/{username}/gi, member.user.username)
+          .replace(/{user}/gi, `<@${member.user.id}>`)
+          .replace(/{server}/gi, member.guild.name)
+          .replace(/{memberCount}/gi, member.guild.memberCount.toString());
+        
+        // Send the welcome card
+        const attachment = new AttachmentBuilder(imageBuffer, { name: 'welcome-card.png' });
+        await (channel as any).send({
+          content: welcomeMessage,
+          files: [attachment]
+        });
+        
+        console.log(`[WelcomeCard] Sent welcome card for ${member.user.tag} in ${member.guild.name}`);
+      } catch (error) {
+        console.error(`[WelcomeCard] Error sending welcome card for ${member.user.tag}:`, error);
+      }
     });
 
     // Handle guild member remove (members leaving/being kicked)
