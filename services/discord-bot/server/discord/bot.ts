@@ -35,6 +35,7 @@ import { welcomeCardTemplates, botSettings } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { db } from '../db';
 import { AttachmentBuilder } from 'discord.js';
+import { workflowEngine, EventContext } from '../services/workflowEngine';
 
 // Discord bot instance
 let client: Client | null = null;
@@ -1975,6 +1976,40 @@ export async function startBot(storage: IStorage, broadcast: (data: any) => void
           }
         }
       }
+      
+      // Trigger workflows for button clicks (fire-and-forget)
+      if (interaction.isButton() && interaction.guild?.id) {
+        try {
+          workflowEngine.handleEvent({
+            eventType: 'button_click',
+            userId: interaction.user.id,
+            channelId: interaction.channel?.id,
+            guildId: interaction.guild.id,
+            customId: interaction.customId,
+            member: interaction.member as any,
+            client: client!
+          }).catch(console.error);
+        } catch (workflowError) {
+          console.error('[WorkflowEngine] Error triggering button_click workflow:', workflowError);
+        }
+      }
+      
+      // Trigger workflows for select menu interactions (fire-and-forget)
+      if (interaction.isStringSelectMenu() && interaction.guild?.id) {
+        try {
+          workflowEngine.handleEvent({
+            eventType: 'select_menu',
+            userId: interaction.user.id,
+            channelId: interaction.channel?.id,
+            guildId: interaction.guild.id,
+            customId: interaction.customId,
+            member: interaction.member as any,
+            client: client!
+          }).catch(console.error);
+        } catch (workflowError) {
+          console.error('[WorkflowEngine] Error triggering select_menu workflow:', workflowError);
+        }
+      }
     });
     
     // Handle messages in ticket channels/threads
@@ -2106,6 +2141,24 @@ export async function startBot(storage: IStorage, broadcast: (data: any) => void
         
       } catch (error) {
         console.error('[Discord Message] Error syncing message to database:', error);
+      }
+      
+      // Trigger workflows for message_received (fire-and-forget)
+      if (message.guild?.id) {
+        try {
+          workflowEngine.handleEvent({
+            eventType: 'message_received',
+            userId: message.author.id,
+            channelId: message.channel.id,
+            guildId: message.guild.id,
+            messageId: message.id,
+            messageContent: message.content,
+            member: message.member ?? undefined,
+            client: client!
+          }).catch(console.error);
+        } catch (workflowError) {
+          console.error('[WorkflowEngine] Error triggering message_received workflow:', workflowError);
+        }
       }
     });
 
@@ -2439,6 +2492,112 @@ export async function startBot(storage: IStorage, broadcast: (data: any) => void
       await handlePresenceUpdate(storage, oldPresence, newPresence);
     });
 
+    // Handle member join for workflows
+    client.on(Events.GuildMemberAdd, async (member) => {
+      try {
+        workflowEngine.handleEvent({
+          eventType: 'member_join',
+          userId: member.id,
+          guildId: member.guild.id,
+          member: member,
+          client: client!
+        }).catch(console.error);
+      } catch (workflowError) {
+        console.error('[WorkflowEngine] Error triggering member_join workflow:', workflowError);
+      }
+    });
+
+    // Handle member leave for workflows
+    client.on(Events.GuildMemberRemove, async (member) => {
+      try {
+        workflowEngine.handleEvent({
+          eventType: 'member_leave',
+          userId: member.id,
+          guildId: member.guild.id,
+          client: client!
+        }).catch(console.error);
+      } catch (workflowError) {
+        console.error('[WorkflowEngine] Error triggering member_leave workflow:', workflowError);
+      }
+    });
+
+    // Handle reaction add for workflows
+    client.on(Events.MessageReactionAdd, async (reaction, user) => {
+      if (reaction.message.guild?.id) {
+        try {
+          workflowEngine.handleEvent({
+            eventType: 'reaction_add',
+            userId: user.id,
+            channelId: reaction.message.channel.id,
+            guildId: reaction.message.guild.id,
+            messageId: reaction.message.id,
+            emoji: reaction.emoji.name ?? undefined,
+            client: client!
+          }).catch(console.error);
+        } catch (workflowError) {
+          console.error('[WorkflowEngine] Error triggering reaction_add workflow:', workflowError);
+        }
+      }
+    });
+
+    // Handle voice state updates for workflows
+    client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
+      try {
+        // If user joined a voice channel
+        if (!oldState.channel && newState.channel) {
+          workflowEngine.handleEvent({
+            eventType: 'voice_join',
+            userId: newState.member?.id,
+            guildId: newState.guild.id,
+            voiceChannelId: newState.channel.id,
+            client: client!
+          }).catch(console.error);
+        }
+        // If user left a voice channel
+        if (oldState.channel && !newState.channel) {
+          workflowEngine.handleEvent({
+            eventType: 'voice_leave',
+            userId: oldState.member?.id,
+            guildId: oldState.guild.id,
+            voiceChannelId: oldState.channel.id,
+            client: client!
+          }).catch(console.error);
+        }
+      } catch (workflowError) {
+        console.error('[WorkflowEngine] Error triggering voice workflow:', workflowError);
+      }
+    });
+
+    // Handle member update for role changes
+    client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
+      try {
+        const addedRoles = newMember.roles.cache.filter(role => !oldMember.roles.cache.has(role.id));
+        const removedRoles = oldMember.roles.cache.filter(role => !newMember.roles.cache.has(role.id));
+        
+        addedRoles.forEach(role => {
+          workflowEngine.handleEvent({
+            eventType: 'role_add',
+            userId: newMember.id,
+            guildId: newMember.guild.id,
+            roleId: role.id,
+            client: client!
+          }).catch(console.error);
+        });
+        
+        removedRoles.forEach(role => {
+          workflowEngine.handleEvent({
+            eventType: 'role_remove',
+            userId: newMember.id,
+            guildId: newMember.guild.id,
+            roleId: role.id,
+            client: client!
+          }).catch(console.error);
+        });
+      } catch (workflowError) {
+        console.error('[WorkflowEngine] Error triggering role workflow:', workflowError);
+      }
+    });
+
     // Handle ready event
     client.once(Events.ClientReady, async (readyClient) => {
       console.log(`Discord bot ready! Logged in as ${readyClient.user.tag}`);
@@ -2527,6 +2686,15 @@ export async function startBot(storage: IStorage, broadcast: (data: any) => void
       // interactionCreate handler. All interaction handling is already done
       // in the main handler above (line 67).
       // registerCommands(client!, storage, broadcast);
+      
+      // Initialize workflow engine for automation
+      console.log('[WorkflowEngine] Initializing workflow engine...');
+      try {
+        await workflowEngine.initialize();
+        console.log('[WorkflowEngine] ✅ Workflow engine initialized successfully');
+      } catch (workflowError) {
+        console.error('[WorkflowEngine] Failed to initialize workflow engine:', workflowError);
+      }
       
       // Start background jobs for ticket system hardening
       console.log('[Bot] Starting ticket system safeguard background jobs...');

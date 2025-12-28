@@ -20,7 +20,8 @@ import {
   User,
   BarChart3,
   Terminal,
-  UserPlus
+  UserPlus,
+  Workflow
 } from "lucide-react";
 
 import OverviewTab from "@/components/tabs/OverviewTab";
@@ -29,6 +30,7 @@ import StreamNotificationsTab from "@/components/tabs/StreamNotificationsTab";
 import AnalyticsTab from "@/components/tabs/AnalyticsTab";
 import CustomCommandsPage from "@/pages/CustomCommandsPage";
 import WelcomeCardDesigner from "@/pages/WelcomeCardDesigner";
+import InteractionStudio from "@/pages/InteractionStudio";
 
 /**
  * DashboardShell Component
@@ -242,6 +244,14 @@ export default function DashboardShell() {
                         <UserPlus className="h-4 w-4 mr-2" />
                         <span>Welcome</span>
                       </TabsTrigger>
+                      <TabsTrigger 
+                        value="workflows" 
+                        className="data-[state=active]:bg-discord-blue data-[state=active]:text-white flex-shrink-0 h-11 px-4"
+                        data-testid="tab-workflows"
+                      >
+                        <Workflow className="h-4 w-4 mr-2" />
+                        <span>Automations</span>
+                      </TabsTrigger>
                     </>
                   )}
                 </TabsList>
@@ -249,7 +259,7 @@ export default function DashboardShell() {
 
               {/* Desktop: Grid Layout */}
               <TabsList className="hidden md:grid w-full bg-transparent gap-2" style={{ 
-                gridTemplateColumns: isAdmin ? 'repeat(6, 1fr)' : 'repeat(1, 1fr)' 
+                gridTemplateColumns: isAdmin ? 'repeat(7, 1fr)' : 'repeat(1, 1fr)' 
               }}>
                 <TabsTrigger 
                   value="overview" 
@@ -302,6 +312,14 @@ export default function DashboardShell() {
                       <UserPlus className="h-4 w-4 mr-2" />
                       <span>Welcome</span>
                     </TabsTrigger>
+                    <TabsTrigger 
+                      value="workflows" 
+                      className="data-[state=active]:bg-discord-blue data-[state=active]:text-white h-11"
+                      data-testid="tab-workflows-desktop"
+                    >
+                      <Workflow className="h-4 w-4 mr-2" />
+                      <span>Automations</span>
+                    </TabsTrigger>
                   </>
                 )}
               </TabsList>
@@ -329,6 +347,9 @@ export default function DashboardShell() {
               </TabsContent>
               <TabsContent value="welcome-cards" className="space-y-6 mt-6">
                 <WelcomeCardDesigner />
+              </TabsContent>
+              <TabsContent value="workflows" className="space-y-6 mt-6">
+                <InteractionStudio />
               </TabsContent>
             </>
           )}
