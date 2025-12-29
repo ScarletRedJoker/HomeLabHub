@@ -60,6 +60,63 @@ WORKDIR /app
 COPY --from=builder /out .
 {expose_cmd}
 ENTRYPOINT ["dotnet", "{dll}"]
+''',
+    'typescript': '''FROM node:20-slim
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --production 2>/dev/null || true
+COPY . .
+RUN npm run build 2>/dev/null || true
+{expose_cmd}
+CMD {cmd}
+''',
+    'go': '''FROM golang:1.21 as builder
+WORKDIR /app
+COPY . .
+RUN go build -o app .
+
+FROM debian:bookworm-slim
+COPY --from=builder /app/app /usr/local/bin/app
+{expose_cmd}
+CMD ["/usr/local/bin/app"]
+''',
+    'bash': '''FROM ubuntu:22.04
+WORKDIR /app
+COPY . .
+RUN chmod +x *.sh
+{expose_cmd}
+CMD ["./main.sh"]
+''',
+    'electron': '''FROM node:20-slim
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+{expose_cmd}
+CMD ["npm", "start"]
+''',
+    'tauri': '''FROM rust:slim as builder
+WORKDIR /app
+COPY . .
+RUN apt-get update && apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev
+RUN npm install && npm run tauri build
+
+FROM debian:bookworm-slim
+COPY --from=builder /app/src-tauri/target/release/{binary} /usr/local/bin/app
+{expose_cmd}
+CMD ["/usr/local/bin/app"]
+''',
+    'gdscript': '''FROM ubuntu:22.04
+WORKDIR /app
+COPY . .
+{expose_cmd}
+CMD ["echo", "Godot projects require Godot runtime"]
+''',
+    'unity': '''FROM ubuntu:22.04
+WORKDIR /app
+COPY . .
+{expose_cmd}
+CMD ["echo", "Unity projects require Unity runtime"]
 '''
 }
 

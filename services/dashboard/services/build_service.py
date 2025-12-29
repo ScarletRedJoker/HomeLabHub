@@ -88,6 +88,76 @@ BUILD_CONFIGS = {
         'deps_file': 'project.godot',
         'artifact_patterns': ['export/*', '*.pck', '*.exe'],
         'build_dir': 'export'
+    },
+    'gdscript': {
+        'install': 'echo "No install step for GDScript"',
+        'run': 'godot --path . --editor',
+        'build': 'godot --headless --export-release "Linux/X11" export/game',
+        'test': 'godot --headless --script res://tests/run_tests.gd',
+        'entry_file': 'project.godot',
+        'deps_file': 'project.godot',
+        'artifact_patterns': ['export/*', '*.pck', '*.exe'],
+        'build_dir': 'export'
+    },
+    'typescript': {
+        'install': 'npm install',
+        'run': 'npx tsx index.ts',
+        'build': 'npm run build',
+        'test': 'npm test',
+        'entry_file': 'index.ts',
+        'deps_file': 'package.json',
+        'artifact_patterns': ['dist/*', 'build/*'],
+        'build_dir': 'dist'
+    },
+    'go': {
+        'install': 'go mod download',
+        'run': 'go run .',
+        'build': 'go build -o app .',
+        'test': 'go test ./...',
+        'entry_file': 'main.go',
+        'deps_file': 'go.mod',
+        'artifact_patterns': ['app', '*.exe'],
+        'build_dir': '.'
+    },
+    'bash': {
+        'install': 'chmod +x *.sh',
+        'run': './main.sh',
+        'build': 'tar -czf scripts.tar.gz *.sh',
+        'test': 'shellcheck *.sh',
+        'entry_file': 'main.sh',
+        'deps_file': 'main.sh',
+        'artifact_patterns': ['*.tar.gz', '*.sh'],
+        'build_dir': '.'
+    },
+    'electron': {
+        'install': 'npm install',
+        'run': 'npm start',
+        'build': 'npm run build && npm run package',
+        'test': 'npm test',
+        'entry_file': 'main.js',
+        'deps_file': 'package.json',
+        'artifact_patterns': ['dist/*', 'out/*', 'release/*'],
+        'build_dir': 'dist'
+    },
+    'tauri': {
+        'install': 'npm install && cargo fetch',
+        'run': 'npm run tauri dev',
+        'build': 'npm run tauri build',
+        'test': 'npm test',
+        'entry_file': 'src-tauri/src/main.rs',
+        'deps_file': 'package.json',
+        'artifact_patterns': ['src-tauri/target/release/*', 'src-tauri/target/release/bundle/*'],
+        'build_dir': 'src-tauri/target/release'
+    },
+    'unity': {
+        'install': 'echo "Unity projects require Unity Editor"',
+        'run': 'echo "Use Unity Editor to run"',
+        'build': 'echo "Use Unity Editor to build"',
+        'test': 'echo "Use Unity Test Runner"',
+        'entry_file': 'Assets/Scripts/Main.cs',
+        'deps_file': 'ProjectSettings/ProjectSettings.asset',
+        'artifact_patterns': ['Build/*', '*.exe', '*.app'],
+        'build_dir': 'Build'
     }
 }
 

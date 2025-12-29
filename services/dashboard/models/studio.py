@@ -25,6 +25,13 @@ class ProjectLanguage(enum.Enum):
     RUST = "rust"
     CPP = "cpp"
     CSHARP = "csharp"
+    GDSCRIPT = "gdscript"
+    TYPESCRIPT = "typescript"
+    GO = "go"
+    BASH = "bash"
+    ELECTRON = "electron"
+    TAURI = "tauri"
+    UNITY = "unity"
 
 
 class ProjectStatus(enum.Enum):
