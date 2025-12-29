@@ -3033,6 +3033,254 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Personality System - Enhanced chatbot personality with trait sliders
+  const PERSONALITY_PRESETS = [
+    {
+      id: "friendly",
+      name: "Friendly",
+      description: "Warm, welcoming, and supportive. Uses emojis and positive language.",
+      traits: { humor: 60, formality: 30, energy: 70 },
+      systemPrompt: "You are a friendly and warm chat assistant. Be helpful, kind, and supportive. Use emojis occasionally to show warmth. Keep responses brief and conversational.",
+      tone: "friendly",
+      responseStyle: "medium"
+    },
+    {
+      id: "sassy",
+      name: "Sassy",
+      description: "Witty, playful, with light sarcasm. Think comedic sidekick.",
+      traits: { humor: 90, formality: 20, energy: 80 },
+      systemPrompt: "You are a sassy, witty chat assistant with a playful attitude. Use clever comebacks, light sarcasm, and humor. Keep it fun without being mean. Responses should be brief and punchy.",
+      tone: "sarcastic",
+      responseStyle: "short"
+    },
+    {
+      id: "professional",
+      name: "Professional",
+      description: "Polite, formal, and informative. Clear and precise communication.",
+      traits: { humor: 20, formality: 90, energy: 40 },
+      systemPrompt: "You are a professional, knowledgeable assistant. Provide clear, concise, and helpful information. Maintain a polite and respectful tone. Focus on being informative and accurate.",
+      tone: "professional",
+      responseStyle: "medium"
+    },
+    {
+      id: "gamer",
+      name: "Gamer",
+      description: "High energy, uses gaming lingo, enthusiastic about games.",
+      traits: { humor: 70, formality: 10, energy: 95 },
+      systemPrompt: "You are an enthusiastic gamer chat assistant! Use gaming slang like 'GG', 'poggers', 'let's gooo'. Get hyped about wins and be encouraging after losses. Keep the energy HIGH and use lots of exclamation points!",
+      tone: "funny",
+      responseStyle: "short"
+    },
+    {
+      id: "chill",
+      name: "Chill",
+      description: "Laid-back, relaxed, casual vibes. Just vibing with chat.",
+      traits: { humor: 50, formality: 20, energy: 30 },
+      systemPrompt: "You are a chill, laid-back chat assistant. Keep things relaxed and casual. Use a calm, easygoing tone with occasional slang like 'yeah', 'cool', 'nice'. Don't stress about anything. Just vibing.",
+      tone: "friendly",
+      responseStyle: "short"
+    }
+  ];
+
+  app.get("/api/personality/presets", requireAuth, async (req, res) => {
+    try {
+      res.json(PERSONALITY_PRESETS);
+    } catch (error) {
+      console.error("Failed to get personality presets:", error);
+      res.status(500).json({ error: "Failed to get personality presets" });
+    }
+  });
+
+  app.get("/api/personality", requireAuth, async (req, res) => {
+    try {
+      const userStorage = storage.getUserStorage(req.user!.id);
+      const personalities = await userStorage.getChatbotPersonalities();
+      const settings = await userStorage.getChatbotSettings();
+      res.json({ 
+        personalities,
+        settings,
+        presets: PERSONALITY_PRESETS
+      });
+    } catch (error) {
+      console.error("Failed to get personality config:", error);
+      res.status(500).json({ error: "Failed to get personality config" });
+    }
+  });
+
+  app.post("/api/personality", requireAuth, async (req, res) => {
+    try {
+      const { 
+        name, 
+        systemPrompt, 
+        traits,
+        triggerWords,
+        responseTemplates,
+        tone,
+        responseStyle,
+        replyChance,
+        cooldown,
+        isActive,
+        presetId
+      } = req.body;
+
+      if (!name || (!systemPrompt && !presetId)) {
+        return res.status(400).json({ error: "Missing required fields: name and systemPrompt (or presetId)" });
+      }
+
+      const userStorage = storage.getUserStorage(req.user!.id);
+      
+      let finalSystemPrompt = systemPrompt;
+      let finalTone = tone || "friendly";
+      let finalResponseStyle = responseStyle || "medium";
+      let finalTraits = traits || { humor: 50, formality: 50, energy: 50 };
+
+      if (presetId) {
+        const preset = PERSONALITY_PRESETS.find(p => p.id === presetId);
+        if (preset) {
+          finalSystemPrompt = finalSystemPrompt || preset.systemPrompt;
+          finalTone = preset.tone;
+          finalResponseStyle = preset.responseStyle;
+          finalTraits = preset.traits;
+        }
+      }
+
+      if (traits && typeof traits === 'object') {
+        const traitPrompt = buildTraitPrompt(traits);
+        finalSystemPrompt += `\n\n${traitPrompt}`;
+      }
+
+      if (responseTemplates && Array.isArray(responseTemplates) && responseTemplates.length > 0) {
+        finalSystemPrompt += `\n\nWhen appropriate, you may use these response templates (replace variables in {braces}):\n${responseTemplates.map((t: string) => `- ${t}`).join('\n')}`;
+      }
+
+      const personality = await userStorage.createChatbotPersonality({
+        name,
+        systemPrompt: finalSystemPrompt,
+        temperature: 10,
+        traits: finalTraits,
+        tone: finalTone,
+        responseStyle: finalResponseStyle,
+        triggerWords: triggerWords || [],
+        replyChance: replyChance ?? 100,
+        cooldown: cooldown ?? 30,
+        isActive: isActive ?? true
+      });
+
+      res.json(personality);
+    } catch (error) {
+      console.error("Failed to create personality:", error);
+      res.status(500).json({ error: "Failed to create personality" });
+    }
+  });
+
+  app.post("/api/personality/generate", requireAuth, async (req, res) => {
+    try {
+      const { message, traits, presetId, personalityId, systemPrompt } = req.body;
+
+      if (!message) {
+        return res.status(400).json({ error: "Missing required field: message" });
+      }
+
+      const userStorage = storage.getUserStorage(req.user!.id);
+      const chatbotService = new ChatbotService(userStorage);
+
+      let personality: any;
+
+      if (personalityId) {
+        const result = await chatbotService.testChat(message, personalityId);
+        return res.json(result);
+      }
+
+      if (presetId) {
+        const preset = PERSONALITY_PRESETS.find(p => p.id === presetId);
+        if (!preset) {
+          return res.status(400).json({ error: "Invalid preset ID" });
+        }
+        personality = {
+          name: preset.name,
+          systemPrompt: preset.systemPrompt,
+          tone: preset.tone,
+          responseStyle: preset.responseStyle,
+          temperature: 10,
+          traits: preset.traits
+        };
+      } else if (traits && typeof traits === 'object') {
+        const traitPrompt = buildTraitPrompt(traits);
+        personality = {
+          name: "Custom",
+          systemPrompt: (systemPrompt || "You are a helpful chat assistant for a livestream.") + `\n\n${traitPrompt}`,
+          tone: traits.formality > 70 ? "professional" : (traits.humor > 70 ? "funny" : "friendly"),
+          responseStyle: traits.energy > 70 ? "verbose" : (traits.energy < 30 ? "short" : "medium"),
+          temperature: Math.round(10 + (traits.humor / 10)),
+          traits
+        };
+      } else {
+        personality = {
+          name: "Default",
+          systemPrompt: systemPrompt || "You are a helpful and friendly chat assistant for a livestream. Keep responses brief and engaging.",
+          tone: "friendly",
+          responseStyle: "medium",
+          temperature: 10,
+          traits: { humor: 50, formality: 50, energy: 50 }
+        };
+      }
+
+      const result = await chatbotService.testPersonality(message, personality);
+      res.json(result);
+    } catch (error) {
+      console.error("Failed to generate personality response:", error);
+      res.status(500).json({ error: "Failed to generate personality response" });
+    }
+  });
+
+  function buildTraitPrompt(traits: { humor?: number; formality?: number; energy?: number }): string {
+    const parts: string[] = [];
+
+    if (traits.humor !== undefined) {
+      if (traits.humor >= 80) {
+        parts.push("Be very humorous and entertaining. Use jokes, puns, and witty observations frequently.");
+      } else if (traits.humor >= 60) {
+        parts.push("Include light humor and occasional jokes to keep things fun.");
+      } else if (traits.humor >= 40) {
+        parts.push("Use a balanced tone with occasional light humor when appropriate.");
+      } else if (traits.humor >= 20) {
+        parts.push("Keep humor minimal, focusing more on helpful and clear responses.");
+      } else {
+        parts.push("Be serious and straightforward, avoiding humor entirely.");
+      }
+    }
+
+    if (traits.formality !== undefined) {
+      if (traits.formality >= 80) {
+        parts.push("Use formal, professional language. Avoid slang, contractions, and casual expressions.");
+      } else if (traits.formality >= 60) {
+        parts.push("Maintain a polite and professional tone while remaining approachable.");
+      } else if (traits.formality >= 40) {
+        parts.push("Use a conversational but respectful tone.");
+      } else if (traits.formality >= 20) {
+        parts.push("Be casual and relaxed in your communication style. Use contractions and informal language.");
+      } else {
+        parts.push("Be extremely casual. Use slang, abbreviations, and internet speak freely.");
+      }
+    }
+
+    if (traits.energy !== undefined) {
+      if (traits.energy >= 80) {
+        parts.push("Be SUPER enthusiastic and energetic! Use exclamation points, caps for emphasis, and convey excitement!");
+      } else if (traits.energy >= 60) {
+        parts.push("Show enthusiasm and positive energy in your responses.");
+      } else if (traits.energy >= 40) {
+        parts.push("Maintain a balanced, engaged energy level.");
+      } else if (traits.energy >= 20) {
+        parts.push("Keep a calm, relaxed vibe. Don't be too excitable.");
+      } else {
+        parts.push("Be very chill and laid-back. Low energy, relaxed responses.");
+      }
+    }
+
+    return parts.join(" ");
+  }
+
   // Polls
   app.get("/api/polls", requireAuth, async (req, res) => {
     try {

@@ -61,6 +61,12 @@ const featureItems = [
     badge: "AI",
   },
   {
+    title: "Personality",
+    url: "/personality",
+    icon: Sparkles,
+    badge: "New",
+  },
+  {
     title: "OBS Control",
     url: "/obs-control",
     icon: Video,

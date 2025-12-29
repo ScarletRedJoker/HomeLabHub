@@ -31,6 +31,7 @@ import { registerScheduledCommands, calculateNextRun } from './scheduled-command
 import { registerLevelingCommands, initializeLevelingEvents } from './features/leveling';
 import { registerCustomCommandCommands, initializeCustomCommandEvents } from './features/customCommands';
 import { registerPollCommands, handlePollButtonInteraction, handlePollSelectMenuInteraction, startPollScheduler, stopPollScheduler } from './features/polls';
+import { registerGiveawayCommands, handleGiveawayButtonInteraction, startGiveawayScheduler, stopGiveawayScheduler } from './features/giveaways';
 import { registerModerationCommands, registerAutomodConfigCommands, initializeAutomodEvents } from './features/moderation';
 import { commandEngine } from '../services/commandEngine';
 import { guildIdentityService } from '../services/guildIdentityService';
@@ -72,6 +73,7 @@ registerScheduledCommands();
 registerLevelingCommands(commands);
 registerCustomCommandCommands(commands);
 registerPollCommands(commands);
+registerGiveawayCommands(commands);
 registerModerationCommands(commands);
 registerAutomodConfigCommands(commands);
 console.log('[Discord] Total commands after all registrations:', Array.from(commands.keys()).join(', '));
@@ -2053,6 +2055,16 @@ export async function startBot(storage: IStorage, broadcast: (data: any) => void
           console.error('[Polls] Error handling poll select menu interaction:', pollError);
         }
       }
+      
+      // Handle giveaway button interactions
+      if (interaction.isButton() && interaction.customId.startsWith('giveaway_')) {
+        try {
+          const handled = await handleGiveawayButtonInteraction(interaction, storage, client!);
+          if (handled) return;
+        } catch (giveawayError) {
+          console.error('[Giveaways] Error handling giveaway button interaction:', giveawayError);
+        }
+      }
     });
     
     // Handle messages in ticket channels/threads
@@ -2922,6 +2934,15 @@ export async function startBot(storage: IStorage, broadcast: (data: any) => void
         console.log('[Bot] ✅ Poll scheduler started successfully');
       } catch (pollSchedulerError) {
         console.error('[Bot] Failed to start poll scheduler:', pollSchedulerError);
+      }
+      
+      // Start giveaway scheduler for auto-ending timed giveaways
+      console.log('[Bot] Starting giveaway scheduler...');
+      try {
+        startGiveawayScheduler(readyClient, storage);
+        console.log('[Bot] ✅ Giveaway scheduler started successfully');
+      } catch (giveawaySchedulerError) {
+        console.error('[Bot] Failed to start giveaway scheduler:', giveawaySchedulerError);
       }
       
       // Start Homelab Presence service for dynamic bot status

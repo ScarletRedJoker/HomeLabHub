@@ -1074,10 +1074,14 @@ export const discordGiveaways = pgTable("discord_giveaways", {
   channelId: text("channel_id").notNull(),
   messageId: text("message_id"),
   prize: text("prize").notNull(),
+  description: text("description"),
   hostId: text("host_id").notNull(),
+  hostUsername: text("host_username"),
   endTime: timestamp("end_time").notNull(),
   winnerCount: integer("winner_count").default(1).notNull(),
   ended: boolean("ended").default(false).notNull(),
+  requirements: text("requirements"), // JSON: { minLevel?: number, requiredRoles?: string[] }
+  entries: text("entries"), // JSON array of user IDs who entered
   winners: text("winners"), // JSON array of winner user IDs
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
