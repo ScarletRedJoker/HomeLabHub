@@ -1,0 +1,1785 @@
+{% extends "base.html" %}
+
+{% block title %}Workflow Builder - Visual Automation{% endblock %}
+
+{% block extra_head %}
+<style>
+    .workflow-container {
+        display: grid;
+        grid-template-columns: 280px 1fr 320px;
+        gap: 0;
+        height: calc(100vh - 80px);
+        background: var(--bg-primary);
+    }
+
+    .workflow-container.hide-sidebar {
+        grid-template-columns: 280px 1fr;
+    }
+
+    .node-palette {
+        background: var(--bg-secondary);
+        border-right: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .palette-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-color);
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+    }
+
+    .palette-header h3 {
+        margin: 0;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .palette-search {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .palette-search input {
+        width: 100%;
+        padding: 10px 14px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+    }
+
+    .palette-search input:focus {
+        outline: none;
+        border-color: var(--accent-blue);
+    }
+
+    .palette-categories {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px;
+    }
+
+    .palette-category {
+        margin-bottom: 16px;
+    }
+
+    .category-title {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--text-secondary);
+        padding: 8px 4px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .category-nodes {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+
+    .palette-node {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 12px 10px;
+        cursor: grab;
+        transition: all 0.2s;
+        text-align: center;
+    }
+
+    .palette-node:hover {
+        border-color: var(--accent-blue);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .palette-node:active {
+        cursor: grabbing;
+    }
+
+    .palette-node i {
+        font-size: 1.25rem;
+        margin-bottom: 6px;
+        display: block;
+    }
+
+    .palette-node span {
+        font-size: 0.7rem;
+        font-weight: 500;
+        display: block;
+    }
+
+    .palette-node[data-category="trigger"] i { color: #8B5CF6; }
+    .palette-node[data-category="action"] i { color: #3B82F6; }
+    .palette-node[data-category="condition"] i { color: #F59E0B; }
+    .palette-node[data-category="transform"] i { color: #10B981; }
+
+    .canvas-area {
+        position: relative;
+        overflow: hidden;
+        background: 
+            radial-gradient(circle at center, rgba(59, 130, 246, 0.03) 0%, transparent 70%),
+            linear-gradient(var(--border-color) 1px, transparent 1px),
+            linear-gradient(90deg, var(--border-color) 1px, transparent 1px);
+        background-size: 100% 100%, 20px 20px, 20px 20px;
+    }
+
+    .canvas-toolbar {
+        position: absolute;
+        top: 16px;
+        left: 16px;
+        display: flex;
+        gap: 8px;
+        z-index: 100;
+    }
+
+    .toolbar-btn {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 10px 16px;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+    }
+
+    .toolbar-btn:hover {
+        background: var(--bg-tertiary);
+        border-color: var(--accent-blue);
+    }
+
+    .toolbar-btn.primary {
+        background: var(--accent-blue);
+        border-color: var(--accent-blue);
+        color: white;
+    }
+
+    .toolbar-btn.success {
+        background: var(--accent-green);
+        border-color: var(--accent-green);
+        color: white;
+    }
+
+    .toolbar-btn.danger {
+        background: var(--accent-red);
+        border-color: var(--accent-red);
+        color: white;
+    }
+
+    .canvas-info {
+        position: absolute;
+        bottom: 16px;
+        left: 16px;
+        display: flex;
+        gap: 12px;
+        z-index: 100;
+    }
+
+    .info-badge {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        padding: 6px 12px;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+
+    .workflow-canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        transform-origin: 0 0;
+    }
+
+    .canvas-svg {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .canvas-svg path {
+        pointer-events: stroke;
+        cursor: pointer;
+    }
+
+    .canvas-svg path:hover {
+        stroke-width: 4;
+    }
+
+    .connection-line {
+        fill: none;
+        stroke: var(--accent-blue);
+        stroke-width: 2;
+        stroke-linecap: round;
+    }
+
+    .connection-line.temp {
+        stroke-dasharray: 5, 5;
+        opacity: 0.7;
+    }
+
+    .workflow-node {
+        position: absolute;
+        background: var(--bg-secondary);
+        border: 2px solid var(--border-color);
+        border-radius: 12px;
+        min-width: 180px;
+        cursor: move;
+        z-index: 10;
+        transition: box-shadow 0.2s, border-color 0.2s;
+    }
+
+    .workflow-node:hover {
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .workflow-node.selected {
+        border-color: var(--accent-purple);
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.3);
+    }
+
+    .workflow-node.trigger { border-top: 3px solid #8B5CF6; }
+    .workflow-node.action { border-top: 3px solid #3B82F6; }
+    .workflow-node.condition { border-top: 3px solid #F59E0B; }
+    .workflow-node.transform { border-top: 3px solid #10B981; }
+
+    .node-header {
+        padding: 12px 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .node-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+    }
+
+    .node-icon.trigger { background: rgba(139, 92, 246, 0.2); color: #8B5CF6; }
+    .node-icon.action { background: rgba(59, 130, 246, 0.2); color: #3B82F6; }
+    .node-icon.condition { background: rgba(245, 158, 11, 0.2); color: #F59E0B; }
+    .node-icon.transform { background: rgba(16, 185, 129, 0.2); color: #10B981; }
+
+    .node-title {
+        flex: 1;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .node-delete {
+        width: 24px;
+        height: 24px;
+        border-radius: 6px;
+        border: none;
+        background: transparent;
+        color: var(--text-secondary);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: all 0.2s;
+    }
+
+    .workflow-node:hover .node-delete {
+        opacity: 1;
+    }
+
+    .node-delete:hover {
+        background: rgba(248, 81, 73, 0.2);
+        color: var(--accent-red);
+    }
+
+    .node-body {
+        padding: 10px 14px;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+
+    .node-ports {
+        display: flex;
+        justify-content: space-between;
+        padding: 0 8px 8px;
+    }
+
+    .node-port {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--bg-tertiary);
+        border: 2px solid var(--border-color);
+        cursor: crosshair;
+        transition: all 0.2s;
+        position: relative;
+    }
+
+    .node-port:hover {
+        transform: scale(1.3);
+        border-color: var(--accent-blue);
+        background: var(--accent-blue);
+    }
+
+    .node-port.input {
+        margin-left: -7px;
+    }
+
+    .node-port.output {
+        margin-right: -7px;
+    }
+
+    .port-label {
+        position: absolute;
+        font-size: 0.6rem;
+        white-space: nowrap;
+        color: var(--text-secondary);
+    }
+
+    .node-port.input .port-label {
+        left: 18px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .node-port.output .port-label {
+        right: 18px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .properties-panel {
+        background: var(--bg-secondary);
+        border-left: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .properties-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+    }
+
+    .properties-header h3 {
+        margin: 0;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .properties-tabs {
+        display: flex;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .properties-tab {
+        flex: 1;
+        padding: 12px;
+        text-align: center;
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        background: none;
+        border: none;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s;
+    }
+
+    .properties-tab:hover {
+        color: var(--text-primary);
+        background: var(--bg-tertiary);
+    }
+
+    .properties-tab.active {
+        color: var(--accent-blue);
+        border-bottom-color: var(--accent-blue);
+    }
+
+    .properties-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+    }
+
+    .property-group {
+        margin-bottom: 20px;
+    }
+
+    .property-label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .property-input {
+        width: 100%;
+        padding: 10px 12px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+    }
+
+    .property-input:focus {
+        outline: none;
+        border-color: var(--accent-blue);
+    }
+
+    .property-input.textarea {
+        min-height: 100px;
+        resize: vertical;
+        font-family: 'Fira Code', monospace;
+        font-size: 0.8rem;
+    }
+
+    .property-select {
+        width: 100%;
+        padding: 10px 12px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+        cursor: pointer;
+    }
+
+    .empty-properties {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: var(--text-secondary);
+        text-align: center;
+        padding: 40px;
+    }
+
+    .empty-properties i {
+        font-size: 3rem;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    .empty-properties p {
+        font-size: 0.875rem;
+    }
+
+    .execution-history {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .execution-item {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .execution-item:hover {
+        border-color: var(--accent-blue);
+    }
+
+    .execution-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .execution-status {
+        font-size: 0.7rem;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+    }
+
+    .execution-status.completed {
+        background: rgba(63, 185, 80, 0.2);
+        color: var(--accent-green);
+    }
+
+    .execution-status.failed {
+        background: rgba(248, 81, 73, 0.2);
+        color: var(--accent-red);
+    }
+
+    .execution-status.running {
+        background: rgba(59, 130, 246, 0.2);
+        color: var(--accent-blue);
+    }
+
+    .execution-time {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+
+    .execution-duration {
+        font-size: 0.7rem;
+        color: var(--text-secondary);
+    }
+
+    .workflow-list-panel {
+        position: absolute;
+        top: 60px;
+        left: 16px;
+        width: 350px;
+        max-height: 400px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        z-index: 200;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        display: none;
+    }
+
+    .workflow-list-panel.show {
+        display: block;
+    }
+
+    .workflow-list-header {
+        padding: 16px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .workflow-list-header h4 {
+        margin: 0;
+        font-size: 0.95rem;
+    }
+
+    .workflow-list-content {
+        max-height: 320px;
+        overflow-y: auto;
+        padding: 12px;
+    }
+
+    .workflow-list-item {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .workflow-list-item:hover {
+        border-color: var(--accent-blue);
+    }
+
+    .workflow-list-item.active {
+        border-color: var(--accent-purple);
+        background: rgba(139, 92, 246, 0.1);
+    }
+
+    .workflow-list-item h5 {
+        margin: 0 0 4px;
+        font-size: 0.875rem;
+    }
+
+    .workflow-list-item p {
+        margin: 0;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+
+    .workflow-status {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+
+    .workflow-status.enabled {
+        background: var(--accent-green);
+    }
+
+    .workflow-status.disabled {
+        background: var(--text-secondary);
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 1100;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .modal.show {
+        display: flex;
+    }
+
+    .modal-content {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        width: 100%;
+        max-width: 500px;
+        animation: modalSlideIn 0.3s ease;
+    }
+
+    @keyframes modalSlideIn {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .modal-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.2rem;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 1.5rem;
+        cursor: pointer;
+    }
+
+    .modal-body {
+        padding: 24px;
+    }
+
+    .modal-footer {
+        padding: 16px 24px;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        font-size: 0.9rem;
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+        width: 100%;
+        padding: 12px 16px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-size: 0.95rem;
+    }
+
+    .btn-cancel {
+        padding: 10px 20px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        cursor: pointer;
+    }
+
+    .btn-submit {
+        padding: 10px 24px;
+        background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-weight: 500;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="workflow-container" id="workflowContainer">
+    <div class="node-palette">
+        <div class="palette-header">
+            <h3><i class="bi bi-diagram-3"></i> Node Types</h3>
+        </div>
+        <div class="palette-search">
+            <input type="text" id="nodeSearch" placeholder="Search nodes...">
+        </div>
+        <div class="palette-categories" id="paletteCategories"></div>
+    </div>
+
+    <div class="canvas-area" id="canvasArea">
+        <div class="canvas-toolbar">
+            <button class="toolbar-btn" id="btnNew" title="New Workflow">
+                <i class="bi bi-file-earmark-plus"></i> New
+            </button>
+            <button class="toolbar-btn" id="btnLoad" title="Load Workflow">
+                <i class="bi bi-folder-open"></i> Load
+            </button>
+            <button class="toolbar-btn primary" id="btnSave" title="Save Workflow">
+                <i class="bi bi-save"></i> Save
+            </button>
+            <button class="toolbar-btn success" id="btnRun" title="Run Workflow">
+                <i class="bi bi-play-fill"></i> Run
+            </button>
+            <button class="toolbar-btn" id="btnValidate" title="Validate Workflow">
+                <i class="bi bi-check-circle"></i> Validate
+            </button>
+            <button class="toolbar-btn" id="btnExport" title="Export Workflow">
+                <i class="bi bi-download"></i> Export
+            </button>
+            <button class="toolbar-btn danger" id="btnClear" title="Clear Canvas">
+                <i class="bi bi-trash"></i> Clear
+            </button>
+        </div>
+
+        <div class="workflow-canvas" id="workflowCanvas">
+            <svg class="canvas-svg" id="connectionsSvg"></svg>
+        </div>
+
+        <div class="canvas-info">
+            <span class="info-badge" id="nodeCount">Nodes: 0</span>
+            <span class="info-badge" id="connectionCount">Connections: 0</span>
+            <span class="info-badge" id="workflowName">Untitled Workflow</span>
+        </div>
+
+        <div class="workflow-list-panel" id="workflowListPanel">
+            <div class="workflow-list-header">
+                <h4>Saved Workflows</h4>
+                <button class="modal-close" onclick="toggleWorkflowList()">&times;</button>
+            </div>
+            <div class="workflow-list-content" id="workflowListContent"></div>
+        </div>
+    </div>
+
+    <div class="properties-panel" id="propertiesPanel">
+        <div class="properties-header">
+            <h3><i class="bi bi-sliders"></i> Properties</h3>
+        </div>
+        <div class="properties-tabs">
+            <button class="properties-tab active" data-tab="config">Configuration</button>
+            <button class="properties-tab" data-tab="history">History</button>
+        </div>
+        <div class="properties-content" id="propertiesContent">
+            <div class="empty-properties">
+                <i class="bi bi-mouse"></i>
+                <p>Select a node to configure its properties</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="newWorkflowModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Create New Workflow</h3>
+            <button class="modal-close" onclick="closeModal('newWorkflowModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Workflow Name</label>
+                <input type="text" id="newWorkflowName" placeholder="My Automation">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="newWorkflowDescription" rows="3" placeholder="What does this workflow do?"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Trigger Type</label>
+                <select id="newWorkflowTrigger">
+                    <option value="manual">Manual Trigger</option>
+                    <option value="webhook">Webhook</option>
+                    <option value="schedule">Schedule (Cron)</option>
+                    <option value="event">Event-based</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="closeModal('newWorkflowModal')">Cancel</button>
+            <button class="btn-submit" onclick="createNewWorkflow()">Create Workflow</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="saveWorkflowModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Save Workflow</h3>
+            <button class="modal-close" onclick="closeModal('saveWorkflowModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Workflow Name</label>
+                <input type="text" id="saveWorkflowName" placeholder="My Automation">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="saveWorkflowDescription" rows="3" placeholder="What does this workflow do?"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="closeModal('saveWorkflowModal')">Cancel</button>
+            <button class="btn-submit" onclick="saveWorkflow()">Save</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+let nodeSchemas = {};
+let currentWorkflow = null;
+let nodes = [];
+let edges = [];
+let selectedNode = null;
+let draggedNode = null;
+let connectingFrom = null;
+let tempLine = null;
+let nodeIdCounter = 0;
+let activeTab = 'config';
+
+async function init() {
+    await loadNodeTypes();
+    setupEventListeners();
+    setupDragAndDrop();
+    renderConnections();
+}
+
+async function loadNodeTypes() {
+    try {
+        const response = await fetch('/api/workflows/node-types', {
+            headers: { 'X-CSRFToken': csrfToken }
+        });
+        const data = await response.json();
+        if (data.success) {
+            nodeSchemas = data.schemas;
+            renderPalette(data.node_types, data.schemas);
+        }
+    } catch (error) {
+        console.error('Failed to load node types:', error);
+        renderDefaultPalette();
+    }
+}
+
+function renderDefaultPalette() {
+    nodeSchemas = {
+        'manual': { category: 'trigger', label: 'Manual', icon: 'bi-play-circle', color: '#8B5CF6', inputs: [], outputs: ['trigger'], config: {} },
+        'webhook': { category: 'trigger', label: 'Webhook', icon: 'bi-globe', color: '#8B5CF6', inputs: [], outputs: ['data'], config: { path: { type: 'string', label: 'Path', default: '/webhook' } } },
+        'schedule': { category: 'trigger', label: 'Schedule', icon: 'bi-clock', color: '#8B5CF6', inputs: [], outputs: ['trigger'], config: { cron: { type: 'string', label: 'Cron', default: '0 * * * *' } } },
+        'http_request': { category: 'action', label: 'HTTP Request', icon: 'bi-send', color: '#3B82F6', inputs: ['trigger'], outputs: ['response'], config: { url: { type: 'string', label: 'URL', default: '' }, method: { type: 'select', label: 'Method', options: ['GET', 'POST'], default: 'GET' } } },
+        'send_discord': { category: 'action', label: 'Discord', icon: 'bi-discord', color: '#5865F2', inputs: ['trigger'], outputs: ['success'], config: { webhook_url: { type: 'string', label: 'Webhook URL', default: '' }, content: { type: 'textarea', label: 'Message', default: '' } } },
+        'run_script': { category: 'action', label: 'Script', icon: 'bi-terminal', color: '#3B82F6', inputs: ['trigger'], outputs: ['output'], config: { command: { type: 'string', label: 'Command', default: '' } } },
+        'if_else': { category: 'condition', label: 'If/Else', icon: 'bi-signpost-split', color: '#F59E0B', inputs: ['input'], outputs: ['true', 'false'], config: { field: { type: 'string', label: 'Field', default: '' }, operator: { type: 'select', label: 'Operator', options: ['equals', 'not_equals', 'contains'], default: 'equals' }, value: { type: 'string', label: 'Value', default: '' } } },
+        'json_path': { category: 'transform', label: 'JSON Path', icon: 'bi-braces', color: '#10B981', inputs: ['input'], outputs: ['output'], config: { expression: { type: 'string', label: 'Expression', default: '$.data' } } },
+        'template': { category: 'transform', label: 'Template', icon: 'bi-file-code', color: '#10B981', inputs: ['input'], outputs: ['output'], config: { template: { type: 'textarea', label: 'Template', default: '' } } }
+    };
+    renderPalette({
+        trigger: ['manual', 'webhook', 'schedule'],
+        action: ['http_request', 'send_discord', 'run_script'],
+        condition: ['if_else'],
+        transform: ['json_path', 'template']
+    }, nodeSchemas);
+}
+
+function renderPalette(nodeTypes, schemas) {
+    const container = document.getElementById('paletteCategories');
+    container.innerHTML = '';
+
+    const categoryLabels = {
+        trigger: { label: 'Triggers', icon: 'bi-lightning-charge' },
+        action: { label: 'Actions', icon: 'bi-gear' },
+        condition: { label: 'Conditions', icon: 'bi-signpost-split' },
+        transform: { label: 'Transform', icon: 'bi-shuffle' }
+    };
+
+    for (const [category, types] of Object.entries(nodeTypes)) {
+        const categoryDiv = document.createElement('div');
+        categoryDiv.className = 'palette-category';
+        
+        const catInfo = categoryLabels[category] || { label: category, icon: 'bi-box' };
+        categoryDiv.innerHTML = `
+            <div class="category-title">
+                <i class="bi ${catInfo.icon}"></i> ${catInfo.label}
+            </div>
+            <div class="category-nodes"></div>
+        `;
+
+        const nodesContainer = categoryDiv.querySelector('.category-nodes');
+        types.forEach(type => {
+            const schema = schemas[type];
+            if (schema) {
+                const nodeEl = document.createElement('div');
+                nodeEl.className = 'palette-node';
+                nodeEl.dataset.type = type;
+                nodeEl.dataset.category = category;
+                nodeEl.draggable = true;
+                nodeEl.innerHTML = `
+                    <i class="bi ${schema.icon || 'bi-box'}"></i>
+                    <span>${schema.label || type}</span>
+                `;
+                nodesContainer.appendChild(nodeEl);
+            }
+        });
+
+        container.appendChild(categoryDiv);
+    }
+}
+
+function setupEventListeners() {
+    document.getElementById('nodeSearch').addEventListener('input', e => {
+        const query = e.target.value.toLowerCase();
+        document.querySelectorAll('.palette-node').forEach(node => {
+            const label = node.querySelector('span').textContent.toLowerCase();
+            node.style.display = label.includes(query) ? '' : 'none';
+        });
+    });
+
+    document.getElementById('btnNew').addEventListener('click', () => {
+        document.getElementById('newWorkflowName').value = '';
+        document.getElementById('newWorkflowDescription').value = '';
+        showModal('newWorkflowModal');
+    });
+
+    document.getElementById('btnLoad').addEventListener('click', () => {
+        loadWorkflowList();
+        toggleWorkflowList();
+    });
+
+    document.getElementById('btnSave').addEventListener('click', () => {
+        if (currentWorkflow) {
+            document.getElementById('saveWorkflowName').value = currentWorkflow.name;
+            document.getElementById('saveWorkflowDescription').value = currentWorkflow.description || '';
+        }
+        showModal('saveWorkflowModal');
+    });
+
+    document.getElementById('btnRun').addEventListener('click', runWorkflow);
+    document.getElementById('btnValidate').addEventListener('click', validateWorkflow);
+    document.getElementById('btnExport').addEventListener('click', exportWorkflow);
+    document.getElementById('btnClear').addEventListener('click', clearCanvas);
+
+    document.querySelectorAll('.properties-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.properties-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            activeTab = tab.dataset.tab;
+            if (activeTab === 'history') {
+                renderExecutionHistory();
+            } else if (selectedNode) {
+                renderNodeProperties(selectedNode);
+            }
+        });
+    });
+
+    document.getElementById('canvasArea').addEventListener('click', e => {
+        if (e.target.id === 'canvasArea' || e.target.classList.contains('workflow-canvas')) {
+            deselectNode();
+        }
+    });
+}
+
+function setupDragAndDrop() {
+    document.querySelectorAll('.palette-node').forEach(node => {
+        node.addEventListener('dragstart', e => {
+            e.dataTransfer.setData('nodeType', node.dataset.type);
+            e.dataTransfer.setData('category', node.dataset.category);
+        });
+    });
+
+    const canvas = document.getElementById('workflowCanvas');
+    
+    canvas.addEventListener('dragover', e => {
+        e.preventDefault();
+    });
+
+    canvas.addEventListener('drop', e => {
+        e.preventDefault();
+        const nodeType = e.dataTransfer.getData('nodeType');
+        const category = e.dataTransfer.getData('category');
+        if (nodeType) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left - 90;
+            const y = e.clientY - rect.top - 40;
+            addNode(nodeType, category, x, y);
+        }
+    });
+}
+
+function addNode(type, category, x, y) {
+    const schema = nodeSchemas[type];
+    const id = `node_${nodeIdCounter++}`;
+    
+    const config = {};
+    if (schema && schema.config) {
+        for (const [key, def] of Object.entries(schema.config)) {
+            config[key] = def.default;
+        }
+    }
+
+    const node = {
+        id,
+        type,
+        category: category || schema?.category || 'action',
+        position: { x, y },
+        data: {
+            label: schema?.label || type,
+            config
+        }
+    };
+
+    nodes.push(node);
+    renderNode(node);
+    updateCounts();
+}
+
+function renderNode(node) {
+    const canvas = document.getElementById('workflowCanvas');
+    const schema = nodeSchemas[node.type] || {};
+    
+    const nodeEl = document.createElement('div');
+    nodeEl.className = `workflow-node ${node.category}`;
+    nodeEl.id = node.id;
+    nodeEl.style.left = `${node.position.x}px`;
+    nodeEl.style.top = `${node.position.y}px`;
+    
+    const inputs = schema.inputs || [];
+    const outputs = schema.outputs || [];
+    
+    nodeEl.innerHTML = `
+        <div class="node-header">
+            <div class="node-icon ${node.category}">
+                <i class="bi ${schema.icon || 'bi-box'}"></i>
+            </div>
+            <span class="node-title">${node.data.label}</span>
+            <button class="node-delete" onclick="deleteNode('${node.id}')">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="node-body">${getNodeSummary(node)}</div>
+        <div class="node-ports">
+            <div class="input-ports">
+                ${inputs.map(input => `
+                    <div class="node-port input" data-port="${input}" data-node="${node.id}">
+                        <span class="port-label">${input}</span>
+                    </div>
+                `).join('')}
+            </div>
+            <div class="output-ports">
+                ${outputs.map(output => `
+                    <div class="node-port output" data-port="${output}" data-node="${node.id}">
+                        <span class="port-label">${output}</span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+
+    nodeEl.addEventListener('mousedown', e => {
+        if (e.target.classList.contains('node-port')) return;
+        if (e.target.classList.contains('node-delete')) return;
+        startDragging(node, e);
+    });
+
+    nodeEl.addEventListener('click', e => {
+        if (!e.target.classList.contains('node-port')) {
+            selectNode(node);
+        }
+    });
+
+    nodeEl.querySelectorAll('.node-port.output').forEach(port => {
+        port.addEventListener('mousedown', e => {
+            e.stopPropagation();
+            startConnection(node.id, port.dataset.port, e);
+        });
+    });
+
+    nodeEl.querySelectorAll('.node-port.input').forEach(port => {
+        port.addEventListener('mouseup', e => {
+            e.stopPropagation();
+            completeConnection(node.id, port.dataset.port);
+        });
+    });
+
+    canvas.appendChild(nodeEl);
+}
+
+function getNodeSummary(node) {
+    const config = node.data?.config || {};
+    if (node.type === 'http_request') {
+        return `${config.method || 'GET'} ${config.url?.substring(0, 25) || 'URL...'}`;
+    }
+    if (node.type === 'webhook') {
+        return config.path || '/webhook';
+    }
+    if (node.type === 'schedule') {
+        return config.cron || '0 * * * *';
+    }
+    if (node.type === 'send_discord') {
+        return config.content?.substring(0, 30) || 'Message...';
+    }
+    return node.type;
+}
+
+function startDragging(node, e) {
+    draggedNode = node;
+    const nodeEl = document.getElementById(node.id);
+    const rect = nodeEl.getBoundingClientRect();
+    const offsetX = e.clientX - rect.left;
+    const offsetY = e.clientY - rect.top;
+
+    const onMouseMove = (e) => {
+        const canvas = document.getElementById('workflowCanvas');
+        const canvasRect = canvas.getBoundingClientRect();
+        node.position.x = e.clientX - canvasRect.left - offsetX;
+        node.position.y = e.clientY - canvasRect.top - offsetY;
+        nodeEl.style.left = `${node.position.x}px`;
+        nodeEl.style.top = `${node.position.y}px`;
+        renderConnections();
+    };
+
+    const onMouseUp = () => {
+        draggedNode = null;
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+}
+
+function startConnection(nodeId, portId, e) {
+    connectingFrom = { nodeId, portId };
+    const svg = document.getElementById('connectionsSvg');
+    tempLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    tempLine.classList.add('connection-line', 'temp');
+    svg.appendChild(tempLine);
+
+    const onMouseMove = (e) => {
+        if (!connectingFrom) return;
+        const sourceEl = document.getElementById(connectingFrom.nodeId);
+        const sourcePort = sourceEl.querySelector(`.node-port.output[data-port="${connectingFrom.portId}"]`);
+        const sourceRect = sourcePort.getBoundingClientRect();
+        const canvasRect = document.getElementById('workflowCanvas').getBoundingClientRect();
+        
+        const x1 = sourceRect.left + sourceRect.width / 2 - canvasRect.left;
+        const y1 = sourceRect.top + sourceRect.height / 2 - canvasRect.top;
+        const x2 = e.clientX - canvasRect.left;
+        const y2 = e.clientY - canvasRect.top;
+        
+        const path = createCurvePath(x1, y1, x2, y2);
+        tempLine.setAttribute('d', path);
+    };
+
+    const onMouseUp = () => {
+        if (tempLine) {
+            tempLine.remove();
+            tempLine = null;
+        }
+        connectingFrom = null;
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+}
+
+function completeConnection(targetNodeId, targetPortId) {
+    if (!connectingFrom) return;
+    if (connectingFrom.nodeId === targetNodeId) return;
+
+    const exists = edges.some(e => 
+        e.source === connectingFrom.nodeId && 
+        e.sourceHandle === connectingFrom.portId &&
+        e.target === targetNodeId &&
+        e.targetHandle === targetPortId
+    );
+
+    if (!exists) {
+        edges.push({
+            id: `edge_${edges.length}`,
+            source: connectingFrom.nodeId,
+            sourceHandle: connectingFrom.portId,
+            target: targetNodeId,
+            targetHandle: targetPortId
+        });
+        renderConnections();
+        updateCounts();
+    }
+}
+
+function createCurvePath(x1, y1, x2, y2) {
+    const midX = (x1 + x2) / 2;
+    const cpOffset = Math.min(100, Math.abs(x2 - x1) / 2);
+    return `M ${x1} ${y1} C ${x1 + cpOffset} ${y1}, ${x2 - cpOffset} ${y2}, ${x2} ${y2}`;
+}
+
+function renderConnections() {
+    const svg = document.getElementById('connectionsSvg');
+    const canvas = document.getElementById('workflowCanvas');
+    const canvasRect = canvas.getBoundingClientRect();
+    
+    svg.innerHTML = '';
+
+    edges.forEach((edge, index) => {
+        const sourceEl = document.getElementById(edge.source);
+        const targetEl = document.getElementById(edge.target);
+        
+        if (!sourceEl || !targetEl) return;
+        
+        const sourcePort = sourceEl.querySelector(`.node-port.output[data-port="${edge.sourceHandle}"]`);
+        const targetPort = targetEl.querySelector(`.node-port.input[data-port="${edge.targetHandle}"]`);
+        
+        if (!sourcePort || !targetPort) return;
+        
+        const sourceRect = sourcePort.getBoundingClientRect();
+        const targetRect = targetPort.getBoundingClientRect();
+        
+        const x1 = sourceRect.left + sourceRect.width / 2 - canvasRect.left;
+        const y1 = sourceRect.top + sourceRect.height / 2 - canvasRect.top;
+        const x2 = targetRect.left + targetRect.width / 2 - canvasRect.left;
+        const y2 = targetRect.top + targetRect.height / 2 - canvasRect.top;
+        
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.classList.add('connection-line');
+        path.setAttribute('d', createCurvePath(x1, y1, x2, y2));
+        path.dataset.edgeIndex = index;
+        
+        path.addEventListener('click', () => {
+            if (confirm('Delete this connection?')) {
+                edges.splice(index, 1);
+                renderConnections();
+                updateCounts();
+            }
+        });
+        
+        svg.appendChild(path);
+    });
+}
+
+function selectNode(node) {
+    deselectNode();
+    selectedNode = node;
+    const nodeEl = document.getElementById(node.id);
+    if (nodeEl) nodeEl.classList.add('selected');
+    renderNodeProperties(node);
+}
+
+function deselectNode() {
+    if (selectedNode) {
+        const nodeEl = document.getElementById(selectedNode.id);
+        if (nodeEl) nodeEl.classList.remove('selected');
+    }
+    selectedNode = null;
+    document.getElementById('propertiesContent').innerHTML = `
+        <div class="empty-properties">
+            <i class="bi bi-mouse"></i>
+            <p>Select a node to configure its properties</p>
+        </div>
+    `;
+}
+
+function renderNodeProperties(node) {
+    const schema = nodeSchemas[node.type] || {};
+    const config = node.data?.config || {};
+    const container = document.getElementById('propertiesContent');
+    
+    let html = `<div class="property-group">
+        <label class="property-label">Node Type</label>
+        <input class="property-input" value="${schema.label || node.type}" disabled>
+    </div>`;
+    
+    if (schema.config) {
+        for (const [key, def] of Object.entries(schema.config)) {
+            const value = config[key] ?? def.default ?? '';
+            
+            if (def.type === 'select') {
+                html += `
+                    <div class="property-group">
+                        <label class="property-label">${def.label}</label>
+                        <select class="property-select" data-key="${key}" onchange="updateNodeConfig('${node.id}', '${key}', this.value)">
+                            ${(def.options || []).map(opt => `
+                                <option value="${opt}" ${value === opt ? 'selected' : ''}>${opt}</option>
+                            `).join('')}
+                        </select>
+                    </div>
+                `;
+            } else if (def.type === 'textarea') {
+                html += `
+                    <div class="property-group">
+                        <label class="property-label">${def.label}</label>
+                        <textarea class="property-input textarea" data-key="${key}" 
+                            onchange="updateNodeConfig('${node.id}', '${key}', this.value)">${value}</textarea>
+                    </div>
+                `;
+            } else if (def.type === 'json') {
+                html += `
+                    <div class="property-group">
+                        <label class="property-label">${def.label}</label>
+                        <textarea class="property-input textarea" data-key="${key}" 
+                            onchange="updateNodeConfig('${node.id}', '${key}', JSON.parse(this.value))">${JSON.stringify(value, null, 2)}</textarea>
+                    </div>
+                `;
+            } else if (def.type === 'boolean') {
+                html += `
+                    <div class="property-group">
+                        <label class="property-label">
+                            <input type="checkbox" ${value ? 'checked' : ''} 
+                                onchange="updateNodeConfig('${node.id}', '${key}', this.checked)">
+                            ${def.label}
+                        </label>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="property-group">
+                        <label class="property-label">${def.label}</label>
+                        <input class="property-input" type="${def.type === 'number' ? 'number' : 'text'}" 
+                            value="${value}" data-key="${key}"
+                            onchange="updateNodeConfig('${node.id}', '${key}', this.value)">
+                    </div>
+                `;
+            }
+        }
+    }
+    
+    container.innerHTML = html;
+}
+
+function updateNodeConfig(nodeId, key, value) {
+    const node = nodes.find(n => n.id === nodeId);
+    if (node) {
+        if (!node.data.config) node.data.config = {};
+        node.data.config[key] = value;
+        
+        const nodeEl = document.getElementById(nodeId);
+        const bodyEl = nodeEl?.querySelector('.node-body');
+        if (bodyEl) {
+            bodyEl.textContent = getNodeSummary(node);
+        }
+    }
+}
+
+function deleteNode(nodeId) {
+    nodes = nodes.filter(n => n.id !== nodeId);
+    edges = edges.filter(e => e.source !== nodeId && e.target !== nodeId);
+    
+    const nodeEl = document.getElementById(nodeId);
+    if (nodeEl) nodeEl.remove();
+    
+    if (selectedNode?.id === nodeId) {
+        deselectNode();
+    }
+    
+    renderConnections();
+    updateCounts();
+}
+
+function updateCounts() {
+    document.getElementById('nodeCount').textContent = `Nodes: ${nodes.length}`;
+    document.getElementById('connectionCount').textContent = `Connections: ${edges.length}`;
+}
+
+function clearCanvas() {
+    if (!confirm('Clear all nodes and connections?')) return;
+    
+    nodes.forEach(n => {
+        const el = document.getElementById(n.id);
+        if (el) el.remove();
+    });
+    
+    nodes = [];
+    edges = [];
+    selectedNode = null;
+    currentWorkflow = null;
+    
+    document.getElementById('workflowName').textContent = 'Untitled Workflow';
+    renderConnections();
+    updateCounts();
+    deselectNode();
+}
+
+async function createNewWorkflow() {
+    const name = document.getElementById('newWorkflowName').value.trim();
+    const description = document.getElementById('newWorkflowDescription').value.trim();
+    const triggerType = document.getElementById('newWorkflowTrigger').value;
+    
+    if (!name) {
+        alert('Please enter a workflow name');
+        return;
+    }
+    
+    clearCanvas();
+    
+    currentWorkflow = {
+        name,
+        description,
+        trigger_type: triggerType
+    };
+    
+    document.getElementById('workflowName').textContent = name;
+    
+    const triggerNode = {
+        manual: 'manual',
+        webhook: 'webhook',
+        schedule: 'schedule',
+        event: 'event'
+    }[triggerType] || 'manual';
+    
+    addNode(triggerNode, 'trigger', 100, 150);
+    
+    closeModal('newWorkflowModal');
+}
+
+async function saveWorkflow() {
+    const name = document.getElementById('saveWorkflowName').value.trim();
+    const description = document.getElementById('saveWorkflowDescription').value.trim();
+    
+    if (!name) {
+        alert('Please enter a workflow name');
+        return;
+    }
+    
+    const workflowData = {
+        name,
+        description,
+        nodes: nodes.map(n => ({
+            id: n.id,
+            type: n.type,
+            position: n.position,
+            data: n.data
+        })),
+        edges: edges,
+        trigger_type: currentWorkflow?.trigger_type || 'manual'
+    };
+    
+    try {
+        let response;
+        if (currentWorkflow?.id) {
+            response = await fetch(`/api/workflows/${currentWorkflow.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify(workflowData)
+            });
+        } else {
+            response = await fetch('/api/workflows', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify(workflowData)
+            });
+        }
+        
+        const data = await response.json();
+        if (data.success) {
+            currentWorkflow = data.workflow;
+            document.getElementById('workflowName').textContent = name;
+            closeModal('saveWorkflowModal');
+            showNotification('Workflow saved successfully!', 'success');
+        } else {
+            alert('Error saving workflow: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Save error:', error);
+        alert('Failed to save workflow');
+    }
+}
+
+async function loadWorkflowList() {
+    try {
+        const response = await fetch('/api/workflows', {
+            headers: { 'X-CSRFToken': csrfToken }
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            renderWorkflowList(data.workflows);
+        }
+    } catch (error) {
+        console.error('Load error:', error);
+    }
+}
+
+function renderWorkflowList(workflows) {
+    const container = document.getElementById('workflowListContent');
+    
+    if (workflows.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">No saved workflows</p>';
+        return;
+    }
+    
+    container.innerHTML = workflows.map(w => `
+        <div class="workflow-list-item ${currentWorkflow?.id === w.id ? 'active' : ''}" 
+             onclick="loadWorkflow('${w.id}')">
+            <h5>
+                <span class="workflow-status ${w.enabled ? 'enabled' : 'disabled'}"></span>
+                ${w.name}
+            </h5>
+            <p>${w.description || 'No description'}</p>
+            <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 6px;">
+                <i class="bi bi-play-circle"></i> ${w.run_count || 0} runs
+                &nbsp;&bull;&nbsp;
+                <i class="bi bi-${getTriggerIcon(w.trigger_type)}"></i> ${w.trigger_type}
+            </div>
+        </div>
+    `).join('');
+}
+
+function getTriggerIcon(type) {
+    const icons = {
+        manual: 'play-circle',
+        webhook: 'globe',
+        schedule: 'clock',
+        event: 'lightning'
+    };
+    return icons[type] || 'play-circle';
+}
+
+async function loadWorkflow(id) {
+    try {
+        const response = await fetch(`/api/workflows/${id}`, {
+            headers: { 'X-CSRFToken': csrfToken }
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            clearCanvas();
+            currentWorkflow = data.workflow;
+            
+            nodes = (data.workflow.nodes || []).map(n => ({
+                ...n,
+                category: nodeSchemas[n.type]?.category || 'action'
+            }));
+            
+            edges = data.workflow.edges || [];
+            
+            let maxId = 0;
+            nodes.forEach(n => {
+                const match = n.id.match(/node_(\d+)/);
+                if (match) maxId = Math.max(maxId, parseInt(match[1]));
+                renderNode(n);
+            });
+            nodeIdCounter = maxId + 1;
+            
+            renderConnections();
+            updateCounts();
+            document.getElementById('workflowName').textContent = data.workflow.name;
+            toggleWorkflowList();
+        }
+    } catch (error) {
+        console.error('Load error:', error);
+        alert('Failed to load workflow');
+    }
+}
+
+function toggleWorkflowList() {
+    document.getElementById('workflowListPanel').classList.toggle('show');
+}
+
+async function validateWorkflow() {
+    try {
+        const response = await fetch('/api/workflows/validate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ nodes, edges })
+        });
+        
+        const data = await response.json();
+        
+        if (data.valid) {
+            showNotification('Workflow is valid!', 'success');
+        } else {
+            showNotification('Validation errors:\n' + data.errors.join('\n'), 'error');
+        }
+    } catch (error) {
+        console.error('Validation error:', error);
+    }
+}
+
+async function runWorkflow() {
+    if (!currentWorkflow?.id) {
+        alert('Please save the workflow first');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/workflows/${currentWorkflow.id}/execute`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ trigger_data: {} })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('Workflow executed successfully!', 'success');
+            if (activeTab === 'history') {
+                renderExecutionHistory();
+            }
+        } else {
+            showNotification('Execution failed: ' + data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Execution error:', error);
+        showNotification('Failed to execute workflow', 'error');
+    }
+}
+
+async function renderExecutionHistory() {
+    if (!currentWorkflow?.id) {
+        document.getElementById('propertiesContent').innerHTML = `
+            <div class="empty-properties">
+                <i class="bi bi-clock-history"></i>
+                <p>Save workflow to see execution history</p>
+            </div>
+        `;
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/workflows/${currentWorkflow.id}/executions?limit=20`, {
+            headers: { 'X-CSRFToken': csrfToken }
+        });
+        const data = await response.json();
+        
+        if (data.success && data.executions.length > 0) {
+            const container = document.getElementById('propertiesContent');
+            container.innerHTML = `
+                <div class="execution-history">
+                    ${data.executions.map(e => `
+                        <div class="execution-item" onclick='showExecutionDetails(${JSON.stringify(e)})'>
+                            <div class="execution-header">
+                                <span class="execution-status ${e.status}">${e.status}</span>
+                                <span class="execution-duration">${e.duration_ms ? (e.duration_ms + 'ms') : '-'}</span>
+                            </div>
+                            <div class="execution-time">
+                                ${new Date(e.started_at).toLocaleString()}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } else {
+            document.getElementById('propertiesContent').innerHTML = `
+                <div class="empty-properties">
+                    <i class="bi bi-clock-history"></i>
+                    <p>No execution history yet</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('History error:', error);
+    }
+}
+
+function showExecutionDetails(execution) {
+    console.log('Execution details:', execution);
+    alert(JSON.stringify(execution, null, 2));
+}
+
+function exportWorkflow() {
+    const data = {
+        name: currentWorkflow?.name || 'Untitled',
+        description: currentWorkflow?.description || '',
+        nodes,
+        edges
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${data.name.replace(/\s+/g, '_')}_workflow.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function showModal(id) {
+    document.getElementById(id).classList.add('show');
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('show');
+}
+
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'}`;
+    notification.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 2000; max-width: 400px; animation: fadeIn 0.3s;';
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'fadeOut 0.3s';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+init();
+</script>
+{% endblock %}

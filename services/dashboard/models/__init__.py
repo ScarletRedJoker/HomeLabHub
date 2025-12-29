@@ -63,6 +63,9 @@ from .monitoring_alerts import (
 from .activity import (
     ActivityEvent, ActivitySubscription, EventSeverity, SourceService
 )
+from .automation_workflow import (
+    AutomationWorkflow, WorkflowExecution, TriggerType, ExecutionStatus
+)
 
 __all__ = [
     'Base',
@@ -170,5 +173,9 @@ __all__ = [
     'ActivityEvent',
     'ActivitySubscription',
     'EventSeverity',
-    'SourceService'
+    'SourceService',
+    'AutomationWorkflow',
+    'WorkflowExecution',
+    'TriggerType',
+    'ExecutionStatus'
 ]

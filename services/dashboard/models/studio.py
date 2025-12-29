@@ -1,5 +1,5 @@
 """Nebula Studio database models - Project Workspace Manager"""
-from sqlalchemy import String, Integer, DateTime, Text, ForeignKey, Enum as SQLEnum
+from sqlalchemy import String, Integer, DateTime, Text, ForeignKey, Enum as SQLEnum, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import Optional, List
@@ -7,6 +7,13 @@ import uuid
 from datetime import datetime
 import enum
 from . import Base
+
+
+class GitProvider(enum.Enum):
+    """Git provider types"""
+    GITHUB = "github"
+    GITLAB = "gitlab"
+    BITBUCKET = "bitbucket"
 
 
 class ProjectType(enum.Enum):
@@ -90,6 +97,11 @@ class StudioProject(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    git_repo_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    git_branch: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, default='main')
+    git_last_commit: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    git_auto_sync: Mapped[bool] = mapped_column(Boolean, default=False)
+    
     files: Mapped[List["ProjectFile"]] = relationship(
         "ProjectFile", 
         back_populates="project", 
@@ -122,7 +134,11 @@ class StudioProject(Base):
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'file_count': len(self.files) if self.files else 0,
             'build_count': len(self.builds) if self.builds else 0,
-            'deployment_count': len(self.deployments) if self.deployments else 0
+            'deployment_count': len(self.deployments) if self.deployments else 0,
+            'git_repo_url': self.git_repo_url,
+            'git_branch': self.git_branch,
+            'git_last_commit': self.git_last_commit,
+            'git_auto_sync': self.git_auto_sync
         }
 
 
@@ -251,4 +267,32 @@ class ProjectDeployment(Base):
             'url': self.url,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+class GitCredential(Base):
+    """Git credentials for repository access"""
+    __tablename__ = 'git_credentials'
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    provider: Mapped[GitProvider] = mapped_column(
+        SQLEnum(GitProvider),
+        default=GitProvider.GITHUB
+    )
+    access_token_encrypted: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f"<GitCredential(id={self.id}, name='{self.name}', provider='{self.provider.value}')>"
+    
+    def to_dict(self):
+        return {
+            'id': str(self.id),
+            'user_id': self.user_id,
+            'name': self.name,
+            'provider': self.provider.value if self.provider else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'has_token': bool(self.access_token_encrypted)
         }

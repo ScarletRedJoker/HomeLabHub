@@ -60,6 +60,7 @@ from routes.studio_routes import studio_bp, studio_web_bp
 from routes.monitoring_routes import monitoring_bp, monitoring_web_bp
 from routes.alert_routes import alert_bp, alert_web_bp
 from routes.activity_routes import activity_bp, activity_web_bp
+from routes.workflow_routes import workflow_bp, workflow_web_bp
 # DISABLED: Subscription/licensing features removed per user request - "Remove subscriptions and don't block access. I never wanted that."
 # from routes.subscription_api import subscription_bp
 from services.activity_service import activity_service
@@ -129,6 +130,7 @@ csrf.exempt(studio_bp)  # Nebula Studio API (Project Workspace Manager)
 csrf.exempt(monitoring_bp)  # System Monitoring API (real-time metrics)
 csrf.exempt(alert_bp)  # Monitoring Alerts API (threshold-based alerting)
 csrf.exempt(activity_bp)  # Activity Feed API (cross-service activity logging)
+csrf.exempt(workflow_bp)  # Workflow Builder API (visual automation)
 
 limiter.init_app(app)
 logger.info("✓ CSRF Protection and Rate Limiting initialized")
@@ -249,6 +251,8 @@ app.register_blueprint(alert_bp)
 app.register_blueprint(alert_web_bp)
 app.register_blueprint(activity_bp)
 app.register_blueprint(activity_web_bp)
+app.register_blueprint(workflow_bp)
+app.register_blueprint(workflow_web_bp)
 # DISABLED: Subscription blueprint disabled - no subscription/licensing checks
 # app.register_blueprint(subscription_bp)
 

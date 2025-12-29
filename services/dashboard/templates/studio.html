@@ -1316,6 +1316,874 @@
     .btn-templates:hover {
         background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(59, 130, 246, 0.3));
     }
+
+    .btn-git {
+        background: linear-gradient(135deg, rgba(240, 80, 50, 0.2), rgba(200, 60, 30, 0.2));
+        border: 1px solid #f05032;
+        color: #f05032;
+        position: relative;
+    }
+
+    .btn-git:hover {
+        background: linear-gradient(135deg, rgba(240, 80, 50, 0.3), rgba(200, 60, 30, 0.3));
+    }
+
+    .git-badge {
+        font-size: 0.65rem;
+        padding: 1px 5px;
+        border-radius: 8px;
+        margin-left: 4px;
+        background: var(--accent-green);
+        color: white;
+    }
+
+    .git-badge.changes {
+        background: var(--accent-orange);
+    }
+
+    .git-panel {
+        position: fixed;
+        right: 0;
+        top: 60px;
+        width: 360px;
+        height: calc(100vh - 60px);
+        background: var(--bg-secondary);
+        border-left: 1px solid var(--border-color);
+        box-shadow: -4px 0 16px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .git-panel.open {
+        transform: translateX(0);
+    }
+
+    .git-panel-header {
+        padding: 16px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .git-panel-header h4 {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 1rem;
+        color: var(--text-primary);
+    }
+
+    .git-panel-header h4 i {
+        color: #f05032;
+    }
+
+    .git-panel-close {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-size: 1.2rem;
+        padding: 4px;
+    }
+
+    .git-panel-close:hover {
+        color: var(--text-primary);
+    }
+
+    .git-status-section {
+        padding: 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .git-status-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+    }
+
+    .git-status-header h5 {
+        margin: 0;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .git-branch-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        background: var(--bg-tertiary);
+        border-radius: 12px;
+        font-size: 0.8rem;
+        color: var(--accent-blue);
+    }
+
+    .git-branch-badge i {
+        font-size: 0.75rem;
+    }
+
+    .git-actions {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        padding: 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .git-action-btn {
+        padding: 10px 12px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        font-size: 0.8rem;
+        transition: all 0.2s;
+    }
+
+    .git-action-btn:hover {
+        background: rgba(240, 80, 50, 0.1);
+        border-color: #f05032;
+    }
+
+    .git-action-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .git-action-btn.primary {
+        background: linear-gradient(135deg, #f05032, #c0392b);
+        border: none;
+        color: white;
+    }
+
+    .git-action-btn.primary:hover {
+        filter: brightness(1.1);
+    }
+
+    .git-changes-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+    }
+
+    .git-changes-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+    }
+
+    .git-changes-header h5 {
+        margin: 0;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+
+    .git-change-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        background: var(--bg-tertiary);
+        border-radius: 6px;
+        margin-bottom: 6px;
+        font-size: 0.8rem;
+    }
+
+    .git-change-status {
+        width: 18px;
+        height: 18px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+        font-weight: bold;
+        color: white;
+    }
+
+    .git-change-status.modified { background: var(--accent-orange); }
+    .git-change-status.added { background: var(--accent-green); }
+    .git-change-status.deleted { background: var(--accent-red); }
+    .git-change-status.untracked { background: var(--accent-blue); }
+
+    .git-change-file {
+        flex: 1;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .git-history-list {
+        padding: 16px;
+        overflow-y: auto;
+        max-height: 300px;
+    }
+
+    .git-commit-item {
+        padding: 12px;
+        background: var(--bg-tertiary);
+        border-radius: 8px;
+        margin-bottom: 8px;
+        position: relative;
+    }
+
+    .git-commit-item::before {
+        content: '';
+        position: absolute;
+        left: -20px;
+        top: 0;
+        bottom: -8px;
+        width: 2px;
+        background: var(--border-color);
+    }
+
+    .git-commit-item:last-child::before {
+        bottom: 50%;
+    }
+
+    .git-commit-hash {
+        font-family: monospace;
+        font-size: 0.75rem;
+        color: var(--accent-purple);
+        margin-bottom: 4px;
+    }
+
+    .git-commit-message {
+        font-size: 0.85rem;
+        color: var(--text-primary);
+        margin-bottom: 6px;
+    }
+
+    .git-commit-meta {
+        font-size: 0.7rem;
+        color: var(--text-secondary);
+        display: flex;
+        gap: 12px;
+    }
+
+    .git-not-initialized {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--text-secondary);
+    }
+
+    .git-not-initialized i {
+        font-size: 2.5rem;
+        margin-bottom: 16px;
+        color: #f05032;
+        opacity: 0.5;
+    }
+
+    .git-not-initialized h4 {
+        margin: 0 0 8px 0;
+        color: var(--text-primary);
+    }
+
+    .git-not-initialized p {
+        margin: 0 0 20px 0;
+        font-size: 0.85rem;
+    }
+
+    .git-init-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .btn-preview {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(59, 130, 246, 0.2));
+        border: 1px solid #10b981;
+        color: #10b981;
+    }
+
+    .btn-preview:hover {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(59, 130, 246, 0.3));
+    }
+
+    .btn-preview.running {
+        background: rgba(16, 185, 129, 0.3);
+        border-color: #10b981;
+        color: #10b981;
+        animation: previewPulse 2s infinite;
+    }
+
+    @keyframes previewPulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+        50% { box-shadow: 0 0 8px 2px rgba(16, 185, 129, 0.2); }
+    }
+
+    .preview-panel {
+        position: fixed;
+        right: 0;
+        top: 60px;
+        width: 50%;
+        max-width: 800px;
+        min-width: 400px;
+        height: calc(100vh - 60px);
+        background: var(--bg-secondary);
+        border-left: 1px solid var(--border-color);
+        box-shadow: -4px 0 16px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .preview-panel.open {
+        transform: translateX(0);
+    }
+
+    .preview-panel-header {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+    }
+
+    .preview-panel-header h4 {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.95rem;
+        color: var(--text-primary);
+    }
+
+    .preview-panel-header h4 i {
+        color: #10b981;
+    }
+
+    .preview-status-badge {
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 500;
+        text-transform: uppercase;
+    }
+
+    .preview-status-badge.running {
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+    }
+
+    .preview-status-badge.stopped {
+        background: rgba(107, 114, 128, 0.2);
+        color: #9CA3AF;
+    }
+
+    .preview-panel-close {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-size: 1.2rem;
+        padding: 4px;
+    }
+
+    .preview-panel-close:hover {
+        color: var(--text-primary);
+    }
+
+    .preview-controls {
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .preview-control-btn {
+        padding: 6px 12px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        color: var(--text-primary);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.8rem;
+        transition: all 0.15s;
+    }
+
+    .preview-control-btn:hover {
+        background: rgba(16, 185, 129, 0.1);
+        border-color: #10b981;
+    }
+
+    .preview-control-btn.primary {
+        background: #10b981;
+        border-color: #10b981;
+        color: white;
+    }
+
+    .preview-control-btn.primary:hover {
+        background: #059669;
+    }
+
+    .preview-control-btn.danger {
+        background: var(--accent-red);
+        border-color: var(--accent-red);
+        color: white;
+    }
+
+    .preview-control-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .preview-url-bar {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        min-width: 150px;
+    }
+
+    .preview-url-bar input {
+        flex: 1;
+        background: none;
+        border: none;
+        color: var(--text-primary);
+        font-size: 0.8rem;
+        outline: none;
+    }
+
+    .preview-url-bar a {
+        color: var(--accent-blue);
+        text-decoration: none;
+    }
+
+    .preview-url-bar a:hover {
+        text-decoration: underline;
+    }
+
+    .preview-auto-reload {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+
+    .preview-auto-reload input {
+        accent-color: #10b981;
+    }
+
+    .preview-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .preview-iframe-container {
+        flex: 1;
+        background: white;
+        position: relative;
+    }
+
+    .preview-iframe-container iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+    }
+
+    .preview-iframe-placeholder {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-tertiary);
+        color: var(--text-secondary);
+    }
+
+    .preview-iframe-placeholder i {
+        font-size: 3rem;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    .preview-logs-section {
+        height: 150px;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .preview-logs-header {
+        padding: 6px 12px;
+        background: var(--bg-tertiary);
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .preview-logs-header span {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .preview-logs-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px 12px;
+        font-family: 'Fira Code', 'Monaco', monospace;
+        font-size: 0.75rem;
+        background: #1a1a2e;
+        color: #e6e6e6;
+    }
+
+    .preview-log-line {
+        padding: 1px 0;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+
+    .preview-log-line .timestamp {
+        color: #6b7280;
+        margin-right: 8px;
+    }
+
+    .preview-log-line.error {
+        color: var(--accent-red);
+    }
+
+    .preview-log-line.warning {
+        color: var(--accent-yellow);
+    }
+
+    .preview-log-line.info {
+        color: var(--accent-blue);
+    }
+
+    .preview-logs-toggle {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-size: 0.8rem;
+        padding: 2px 6px;
+    }
+
+    .preview-logs-toggle:hover {
+        color: var(--text-primary);
+    }
+
+    .sidebar-tabs {
+        display: flex;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--bg-tertiary);
+    }
+
+    .sidebar-tab {
+        flex: 1;
+        padding: 10px 12px;
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s;
+    }
+
+    .sidebar-tab:hover {
+        color: var(--text-primary);
+        background: rgba(139, 92, 246, 0.1);
+    }
+
+    .sidebar-tab.active {
+        color: var(--accent-purple);
+        border-bottom-color: var(--accent-purple);
+        background: rgba(139, 92, 246, 0.1);
+    }
+
+    .sidebar-tab-content {
+        display: none;
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .sidebar-tab-content.active {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .packages-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .packages-search {
+        padding: 12px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .packages-search-input {
+        width: 100%;
+        padding: 8px 12px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-size: 0.85rem;
+    }
+
+    .packages-search-input:focus {
+        outline: none;
+        border-color: var(--accent-purple);
+    }
+
+    .packages-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px;
+    }
+
+    .package-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        margin-bottom: 6px;
+        transition: all 0.2s;
+    }
+
+    .package-item:hover {
+        border-color: var(--accent-blue);
+    }
+
+    .package-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .package-name {
+        font-weight: 500;
+        font-size: 0.85rem;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .package-version {
+        font-size: 0.7rem;
+        color: var(--accent-blue);
+        background: rgba(59, 130, 246, 0.15);
+        padding: 2px 6px;
+        border-radius: 6px;
+    }
+
+    .package-version.outdated {
+        color: var(--accent-orange);
+        background: rgba(245, 158, 11, 0.15);
+    }
+
+    .package-description {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin-top: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .package-actions {
+        display: flex;
+        gap: 4px;
+    }
+
+    .package-btn {
+        padding: 4px 8px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-size: 0.75rem;
+        transition: all 0.15s;
+    }
+
+    .package-btn:hover {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
+
+    .package-btn.danger:hover {
+        background: rgba(239, 68, 68, 0.2);
+        border-color: var(--accent-red);
+        color: var(--accent-red);
+    }
+
+    .package-btn.primary {
+        background: var(--accent-purple);
+        border-color: var(--accent-purple);
+        color: white;
+    }
+
+    .package-btn.primary:hover {
+        background: #7c3aed;
+    }
+
+    .packages-header {
+        padding: 8px 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--bg-tertiary);
+    }
+
+    .packages-header-title {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    .packages-empty {
+        text-align: center;
+        padding: 30px 20px;
+        color: var(--text-secondary);
+    }
+
+    .packages-empty i {
+        font-size: 2rem;
+        margin-bottom: 12px;
+        opacity: 0.5;
+    }
+
+    .packages-empty h4 {
+        margin: 0 0 6px 0;
+        font-size: 0.9rem;
+        color: var(--text-primary);
+    }
+
+    .packages-empty p {
+        margin: 0;
+        font-size: 0.8rem;
+    }
+
+    .search-results-section {
+        border-top: 1px solid var(--border-color);
+        margin-top: 8px;
+        padding-top: 8px;
+    }
+
+    .search-results-header {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        padding: 4px 12px 8px;
+    }
+
+    .package-modal-content {
+        max-width: 500px;
+    }
+
+    .package-details {
+        padding: 20px 0;
+    }
+
+    .package-detail-row {
+        display: flex;
+        align-items: flex-start;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .package-detail-label {
+        width: 100px;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        flex-shrink: 0;
+    }
+
+    .package-detail-value {
+        flex: 1;
+        font-size: 0.85rem;
+        color: var(--text-primary);
+        word-break: break-word;
+    }
+
+    .package-detail-value a {
+        color: var(--accent-blue);
+        text-decoration: none;
+    }
+
+    .package-detail-value a:hover {
+        text-decoration: underline;
+    }
+
+    .version-select {
+        padding: 6px 10px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        color: var(--text-primary);
+        font-size: 0.8rem;
+        margin-right: 8px;
+    }
+
+    .packages-loading {
+        text-align: center;
+        padding: 20px;
+        color: var(--text-secondary);
+    }
+
+    .packages-loading i {
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
 </style>
 {% endblock %}
 
@@ -1377,6 +2245,12 @@
                         <i class="bi bi-stop-fill"></i>
                     </button>
                 </div>
+                <button class="btn-action btn-preview" id="btnPreview" onclick="togglePreviewPanel()">
+                    <i class="bi bi-eye"></i> Preview
+                </button>
+                <button class="btn-action btn-git" id="btnGit" onclick="toggleGitPanel()">
+                    <i class="bi bi-git"></i> Git <span id="gitStatusBadge" class="git-badge" style="display: none;"></span>
+                </button>
                 <button class="btn-action success" id="btnDeploy" onclick="openDeployModal()">
                     <i class="bi bi-rocket-takeoff"></i> Deploy
                 </button>
@@ -1387,18 +2261,57 @@
         </div>
         <div class="workspace-content">
             <div class="file-tree">
-                <div class="file-tree-header">
-                    <span>Files</span>
-                    <div style="display: flex; gap: 4px;">
-                        <button class="btn-add-file" onclick="syncFromCodeServer()" title="Sync changes from Code Server">
-                            <i class="bi bi-arrow-repeat"></i>
-                        </button>
-                        <button class="btn-add-file" onclick="openAddFileModal()">
-                            <i class="bi bi-plus"></i> Add
-                        </button>
+                <div class="sidebar-tabs">
+                    <button class="sidebar-tab active" data-tab="files" onclick="switchSidebarTab('files')">
+                        <i class="bi bi-folder"></i> Files
+                    </button>
+                    <button class="sidebar-tab" data-tab="packages" onclick="switchSidebarTab('packages')">
+                        <i class="bi bi-box-seam"></i> Packages
+                    </button>
+                </div>
+                <div class="sidebar-tab-content active" id="filesTab">
+                    <div class="file-tree-header">
+                        <span>Explorer</span>
+                        <div style="display: flex; gap: 4px;">
+                            <button class="btn-add-file" onclick="syncFromCodeServer()" title="Sync changes from Code Server">
+                                <i class="bi bi-arrow-repeat"></i>
+                            </button>
+                            <button class="btn-add-file" onclick="openAddFileModal()">
+                                <i class="bi bi-plus"></i> Add
+                            </button>
+                        </div>
+                    </div>
+                    <div id="fileTreeContent"></div>
+                </div>
+                <div class="sidebar-tab-content" id="packagesTab">
+                    <div class="packages-panel">
+                        <div class="packages-search">
+                            <input type="text" class="packages-search-input" id="packageSearchInput" placeholder="Search packages..." onkeyup="handlePackageSearch(event)">
+                        </div>
+                        <div class="packages-header">
+                            <span class="packages-header-title">Installed Packages</span>
+                            <div style="display: flex; gap: 4px;">
+                                <button class="package-btn" onclick="checkOutdatedPackages()" title="Check for updates">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </button>
+                                <button class="package-btn primary" id="btnUpdateAll" style="display: none;" onclick="updateAllPackages()">
+                                    <i class="bi bi-arrow-up-circle"></i> Update All
+                                </button>
+                            </div>
+                        </div>
+                        <div class="packages-list" id="packagesListContent">
+                            <div class="packages-empty">
+                                <i class="bi bi-box-seam"></i>
+                                <h4>No Packages</h4>
+                                <p>Search for packages to install</p>
+                            </div>
+                        </div>
+                        <div class="search-results-section" id="searchResultsSection" style="display: none;">
+                            <div class="search-results-header">Search Results</div>
+                            <div class="packages-list" id="searchResultsList"></div>
+                        </div>
                     </div>
                 </div>
-                <div id="fileTreeContent"></div>
             </div>
             <div class="code-editor-container">
                 <div class="editor-tabs" id="editorTabs"></div>
@@ -1481,6 +2394,213 @@
         <button class="btn-create" onclick="openCreateModal()">
             <i class="bi bi-plus-lg"></i> Create New Project
         </button>
+    </div>
+</div>
+
+<div class="git-panel" id="gitPanel">
+    <div class="git-panel-header">
+        <h4><i class="bi bi-git"></i> Git Integration</h4>
+        <button class="git-panel-close" onclick="toggleGitPanel()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div id="gitPanelContent">
+        <div class="git-not-initialized" id="gitNotInitialized">
+            <i class="bi bi-git"></i>
+            <h4>Git Not Initialized</h4>
+            <p>Initialize a repository or clone from a remote URL</p>
+            <div class="git-init-actions">
+                <button class="git-action-btn primary" onclick="initGitRepo()">
+                    <i class="bi bi-plus-circle"></i> Initialize Repository
+                </button>
+                <button class="git-action-btn" onclick="openCloneModal()">
+                    <i class="bi bi-cloud-download"></i> Clone from URL
+                </button>
+            </div>
+        </div>
+        <div id="gitInitialized" style="display: none;">
+            <div class="git-status-section">
+                <div class="git-status-header">
+                    <h5>Branch</h5>
+                    <div class="git-branch-badge" id="gitBranchBadge">
+                        <i class="bi bi-diagram-2"></i>
+                        <span id="gitBranchName">main</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px; font-size: 0.8rem; color: var(--text-secondary);">
+                    <span id="gitAheadBehind"></span>
+                    <span id="gitRemoteUrl" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></span>
+                </div>
+            </div>
+            <div class="git-actions">
+                <button class="git-action-btn" onclick="openCommitModal()" id="btnGitCommit">
+                    <i class="bi bi-check2-circle"></i> Commit
+                </button>
+                <button class="git-action-btn" onclick="gitPush()" id="btnGitPush">
+                    <i class="bi bi-cloud-upload"></i> Push
+                </button>
+                <button class="git-action-btn" onclick="gitPull()" id="btnGitPull">
+                    <i class="bi bi-cloud-download"></i> Pull
+                </button>
+                <button class="git-action-btn" onclick="openBranchModal()" id="btnGitBranch">
+                    <i class="bi bi-diagram-2"></i> Branches
+                </button>
+            </div>
+            <div class="git-changes-list" id="gitChangesList">
+                <div class="git-changes-header">
+                    <h5>Changes</h5>
+                    <span id="gitChangesCount" style="font-size: 0.75rem; color: var(--text-secondary);">0 files</span>
+                </div>
+                <div id="gitChangesContent">
+                    <div style="text-align: center; padding: 20px; color: var(--text-secondary); font-size: 0.85rem;">
+                        <i class="bi bi-check-circle" style="font-size: 1.5rem; display: block; margin-bottom: 8px; color: var(--accent-green);"></i>
+                        No changes detected
+                    </div>
+                </div>
+            </div>
+            <div class="git-history-list" id="gitHistoryList">
+                <div class="git-changes-header">
+                    <h5>Recent Commits</h5>
+                    <button class="git-action-btn" onclick="loadGitHistory()" style="padding: 4px 8px; font-size: 0.7rem;">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </div>
+                <div id="gitHistoryContent"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="preview-panel" id="previewPanel">
+    <div class="preview-panel-header">
+        <h4>
+            <i class="bi bi-eye"></i> Live Preview
+            <span class="preview-status-badge stopped" id="previewStatusBadge">Stopped</span>
+        </h4>
+        <button class="preview-panel-close" onclick="togglePreviewPanel()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="preview-controls">
+        <button class="preview-control-btn primary" id="btnStartPreview" onclick="startPreview()">
+            <i class="bi bi-play-fill"></i> Start
+        </button>
+        <button class="preview-control-btn danger" id="btnStopPreview" onclick="stopPreview()" style="display: none;">
+            <i class="bi bi-stop-fill"></i> Stop
+        </button>
+        <button class="preview-control-btn" id="btnRefreshPreview" onclick="refreshPreview()" disabled>
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
+        <button class="preview-control-btn" id="btnRestartPreview" onclick="restartPreview()" disabled>
+            <i class="bi bi-arrow-repeat"></i> Restart
+        </button>
+        <div class="preview-url-bar" id="previewUrlBar">
+            <i class="bi bi-globe"></i>
+            <input type="text" id="previewUrlInput" readonly placeholder="Preview URL will appear here">
+            <a href="#" id="previewOpenNewTab" target="_blank" style="display: none;" title="Open in new tab">
+                <i class="bi bi-box-arrow-up-right"></i>
+            </a>
+        </div>
+        <div class="preview-auto-reload">
+            <input type="checkbox" id="previewAutoReload" checked>
+            <label for="previewAutoReload">Auto-sync</label>
+        </div>
+    </div>
+    <div class="preview-content">
+        <div class="preview-iframe-container">
+            <div class="preview-iframe-placeholder" id="previewPlaceholder">
+                <i class="bi bi-play-circle"></i>
+                <p>Click "Start" to launch the preview server</p>
+            </div>
+            <iframe id="previewIframe" style="display: none;"></iframe>
+        </div>
+        <div class="preview-logs-section">
+            <div class="preview-logs-header">
+                <span><i class="bi bi-terminal"></i> Server Logs</span>
+                <div>
+                    <button class="preview-logs-toggle" onclick="clearPreviewLogs()" title="Clear logs">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                    <button class="preview-logs-toggle" onclick="togglePreviewLogs()" title="Toggle logs">
+                        <i class="bi bi-chevron-down" id="previewLogsToggleIcon"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="preview-logs-content" id="previewLogsContent">
+                <div class="preview-log-line info">Server logs will appear here...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="commitModal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3><i class="bi bi-check2-circle"></i> Commit Changes</h3>
+            <button class="modal-close" onclick="closeCommitModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Commit Message</label>
+                <input type="text" id="commitMessage" placeholder="What changes did you make?">
+            </div>
+            <div class="form-group">
+                <label>Description (optional)</label>
+                <textarea id="commitDescription" rows="3" placeholder="Extended description of changes..."></textarea>
+            </div>
+            <div id="commitFilesPreview" style="max-height: 150px; overflow-y: auto; margin-top: 12px;"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="closeCommitModal()">Cancel</button>
+            <button class="btn-submit" onclick="createCommit()" id="btnCreateCommit">
+                <i class="bi bi-check2"></i> Commit
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="cloneModal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3><i class="bi bi-cloud-download"></i> Clone Repository</h3>
+            <button class="modal-close" onclick="closeCloneModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Repository URL</label>
+                <input type="text" id="cloneRepoUrl" placeholder="https://github.com/user/repo.git">
+            </div>
+            <div class="form-group">
+                <label>Branch (optional)</label>
+                <input type="text" id="cloneBranch" placeholder="main" value="main">
+            </div>
+            <div class="form-group">
+                <label>Access Token (for private repos)</label>
+                <input type="password" id="cloneAccessToken" placeholder="ghp_xxxxxxxxxxxx">
+            </div>
+            <div id="cloneOutput" style="display: none; margin-top: 12px; background: var(--bg-tertiary); border-radius: 8px; padding: 12px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 0.8rem;"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="closeCloneModal()">Cancel</button>
+            <button class="btn-submit" onclick="cloneRepository()" id="btnCloneRepo">
+                <i class="bi bi-cloud-download"></i> Clone
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="branchModal">
+    <div class="modal-content" style="max-width: 450px;">
+        <div class="modal-header">
+            <h3><i class="bi bi-diagram-2"></i> Branches</h3>
+            <button class="modal-close" onclick="closeBranchModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Create New Branch</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="newBranchName" placeholder="feature/my-feature" style="flex: 1;">
+                    <button class="btn-submit" onclick="createBranch()" style="padding: 8px 16px;">Create</button>
+                </div>
+            </div>
+            <div id="branchList" style="margin-top: 20px; max-height: 300px; overflow-y: auto;"></div>
+        </div>
     </div>
 </div>
 
@@ -1650,6 +2770,31 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<div class="modal" id="packageDetailsModal">
+    <div class="modal-content package-modal-content">
+        <div class="modal-header">
+            <h3><i class="bi bi-box-seam"></i> <span id="packageDetailName">Package</span></h3>
+            <button class="modal-close" onclick="closePackageDetailsModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="package-details" id="packageDetailsContent">
+                <div class="packages-loading">
+                    <i class="bi bi-arrow-repeat"></i> Loading package details...
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="closePackageDetailsModal()">Close</button>
+            <div style="display: flex; gap: 8px;">
+                <input type="text" class="version-select" id="packageVersionInput" placeholder="latest" style="width: 100px;">
+                <button class="btn-submit" id="btnInstallFromModal" onclick="installPackageFromModal()">
+                    <i class="bi bi-download"></i> Install
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="modal template-modal" id="templateModal">
     <div class="modal-content">
@@ -3337,6 +4482,1195 @@ async function createFromTemplate() {
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-plus-circle"></i> Use This Template';
+    }
+}
+
+let gitStatus = null;
+
+function toggleGitPanel() {
+    const panel = document.getElementById('gitPanel');
+    panel.classList.toggle('open');
+    if (panel.classList.contains('open') && currentProject) {
+        loadGitStatus();
+    }
+}
+
+async function loadGitStatus() {
+    if (!currentProject) return;
+    
+    try {
+        const response = await fetch(`/api/studio/projects/${currentProject.id}/git/status`);
+        const data = await response.json();
+        
+        if (data.success) {
+            gitStatus = data.status;
+            updateGitPanelUI();
+        }
+    } catch (error) {
+        console.error('Error loading git status:', error);
+    }
+}
+
+function updateGitPanelUI() {
+    const notInitialized = document.getElementById('gitNotInitialized');
+    const initialized = document.getElementById('gitInitialized');
+    const badge = document.getElementById('gitStatusBadge');
+    
+    if (!gitStatus || !gitStatus.initialized) {
+        notInitialized.style.display = 'block';
+        initialized.style.display = 'none';
+        badge.style.display = 'none';
+        return;
+    }
+    
+    notInitialized.style.display = 'none';
+    initialized.style.display = 'block';
+    
+    document.getElementById('gitBranchName').textContent = gitStatus.branch || 'main';
+    
+    let aheadBehind = '';
+    if (gitStatus.ahead > 0) aheadBehind += `↑${gitStatus.ahead} `;
+    if (gitStatus.behind > 0) aheadBehind += `↓${gitStatus.behind}`;
+    document.getElementById('gitAheadBehind').textContent = aheadBehind;
+    
+    if (gitStatus.remote_url) {
+        let shortUrl = gitStatus.remote_url.replace('https://github.com/', '').replace('.git', '');
+        document.getElementById('gitRemoteUrl').textContent = shortUrl;
+    } else {
+        document.getElementById('gitRemoteUrl').textContent = 'No remote';
+    }
+    
+    const totalChanges = (gitStatus.changes?.staged?.length || 0) + 
+                        (gitStatus.changes?.unstaged?.length || 0) + 
+                        (gitStatus.changes?.untracked?.length || 0);
+    
+    document.getElementById('gitChangesCount').textContent = `${totalChanges} files`;
+    
+    if (totalChanges > 0) {
+        badge.style.display = 'inline';
+        badge.textContent = totalChanges;
+        badge.classList.add('changes');
+    } else {
+        badge.style.display = 'none';
+    }
+    
+    renderChanges();
+    loadGitHistory();
+}
+
+function renderChanges() {
+    const container = document.getElementById('gitChangesContent');
+    
+    if (!gitStatus || !gitStatus.changes) {
+        container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-secondary);">No changes</div>';
+        return;
+    }
+    
+    const { staged, unstaged, untracked } = gitStatus.changes;
+    const allChanges = [
+        ...(staged || []).map(c => ({ ...c, type: 'staged' })),
+        ...(unstaged || []).map(c => ({ ...c, type: 'unstaged' })),
+        ...(untracked || []).map(f => ({ file: f, status: '?', type: 'untracked' }))
+    ];
+    
+    if (allChanges.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: var(--text-secondary); font-size: 0.85rem;">
+                <i class="bi bi-check-circle" style="font-size: 1.5rem; display: block; margin-bottom: 8px; color: var(--accent-green);"></i>
+                No changes detected
+            </div>`;
+        return;
+    }
+    
+    container.innerHTML = allChanges.map(change => {
+        let statusClass = 'untracked';
+        let statusLabel = '?';
+        
+        if (change.status === 'M') { statusClass = 'modified'; statusLabel = 'M'; }
+        else if (change.status === 'A') { statusClass = 'added'; statusLabel = 'A'; }
+        else if (change.status === 'D') { statusClass = 'deleted'; statusLabel = 'D'; }
+        else if (change.status === '?') { statusClass = 'untracked'; statusLabel = '?'; }
+        
+        return `
+            <div class="git-change-item">
+                <div class="git-change-status ${statusClass}">${statusLabel}</div>
+                <div class="git-change-file">${escapeHtml(change.file)}</div>
+            </div>`;
+    }).join('');
+}
+
+async function loadGitHistory() {
+    if (!currentProject) return;
+    
+    try {
+        const response = await fetch(`/api/studio/projects/${currentProject.id}/git/log?limit=10`);
+        const data = await response.json();
+        
+        if (data.success && data.commits) {
+            renderGitHistory(data.commits);
+        }
+    } catch (error) {
+        console.error('Error loading git history:', error);
+    }
+}
+
+function renderGitHistory(commits) {
+    const container = document.getElementById('gitHistoryContent');
+    
+    if (!commits || commits.length === 0) {
+        container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-secondary);">No commits yet</div>';
+        return;
+    }
+    
+    container.innerHTML = commits.slice(0, 5).map(commit => `
+        <div class="git-commit-item">
+            <div class="git-commit-hash">${commit.hash.substring(0, 7)}</div>
+            <div class="git-commit-message">${escapeHtml(commit.message)}</div>
+            <div class="git-commit-meta">
+                <span><i class="bi bi-person"></i> ${escapeHtml(commit.author)}</span>
+                <span><i class="bi bi-clock"></i> ${formatRelativeTime(commit.timestamp)}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+function formatRelativeTime(timestamp) {
+    const now = Math.floor(Date.now() / 1000);
+    const diff = now - timestamp;
+    
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+    
+    return new Date(timestamp * 1000).toLocaleDateString();
+}
+
+async function initGitRepo() {
+    if (!currentProject) return;
+    
+    try {
+        const response = await fetch(`/api/studio/projects/${currentProject.id}/git/init`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ branch: 'main' })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Git repository initialized!', 'success');
+            await loadGitStatus();
+        } else {
+            showToast(data.error || 'Failed to initialize git', 'error');
+        }
+    } catch (error) {
+        console.error('Error initializing git:', error);
+        showToast('Failed to initialize git', 'error');
+    }
+}
+
+function openCommitModal() {
+    document.getElementById('commitModal').classList.add('show');
+    document.getElementById('commitMessage').value = '';
+    document.getElementById('commitDescription').value = '';
+    
+    const preview = document.getElementById('commitFilesPreview');
+    if (gitStatus && gitStatus.changes) {
+        const { staged, unstaged, untracked } = gitStatus.changes;
+        const total = (staged?.length || 0) + (unstaged?.length || 0) + (untracked?.length || 0);
+        preview.innerHTML = `<div style="font-size: 0.85rem; color: var(--text-secondary);">${total} file(s) will be committed</div>`;
+    }
+}
+
+function closeCommitModal() {
+    document.getElementById('commitModal').classList.remove('show');
+}
+
+async function createCommit() {
+    if (!currentProject) return;
+    
+    const message = document.getElementById('commitMessage').value.trim();
+    const description = document.getElementById('commitDescription').value.trim();
+    
+    if (!message) {
+        showToast('Please enter a commit message', 'error');
+        return;
+    }
+    
+    const btn = document.getElementById('btnCreateCommit');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Committing...';
+    
+    try {
+        const fullMessage = description ? `${message}\n\n${description}` : message;
+        
+        const response = await fetch(`/api/studio/projects/${currentProject.id}/git/commit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: fullMessage })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Changes committed successfully!', 'success');
+            closeCommitModal();
+            await loadGitStatus();
+        } else {
+            showToast(data.message || data.error || 'Failed to commit', 'error');
+        }
+    } catch (error) {
+        console.error('Error creating commit:', error);
+        showToast('Failed to create commit', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check2"></i> Commit';
+    }
+}
+
+function openCloneModal() {
+    document.getElementById('cloneModal').classList.add('show');
+    document.getElementById('cloneRepoUrl').value = '';
+    document.getElementById('cloneBranch').value = 'main';
+    document.getElementById('cloneAccessToken').value = '';
+    document.getElementById('cloneOutput').style.display = 'none';
+    document.getElementById('cloneOutput').innerHTML = '';
+}
+
+function closeCloneModal() {
+    document.getElementById('cloneModal').classList.remove('show');
+}
+
+async function cloneRepository() {
+    if (!currentProject) return;
+    
+    const repoUrl = document.getElementById('cloneRepoUrl').value.trim();
+    const branch = document.getElementById('cloneBranch').value.trim() || 'main';
+    const accessToken = document.getElementById('cloneAccessToken').value.trim();
+    
+    if (!repoUrl) {
+        showToast('Please enter a repository URL', 'error');
+        return;
+    }
+    
+    const btn = document.getElementById('btnCloneRepo');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Cloning...';
+    
+    const output = document.getElementById('cloneOutput');
+    output.style.display = 'block';
+    output.innerHTML = '';
+    
+    try {
+        const response = await fetch(`/api/studio/projects/${currentProject.id}/git/clone`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ repo_url: repoUrl, branch, access_token: accessToken })
+        });
+        
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+            
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const data = JSON.parse(line.substring(6));
+                        if (data.type === 'log') {
+                            output.innerHTML += `<div>${escapeHtml(data.message)}</div>`;
+                            output.scrollTop = output.scrollHeight;
+                        } else if (data.type === 'complete') {
+                            if (data.success) {
+                                showToast('Repository cloned successfully!', 'success');
+                                closeCloneModal();
+                                await loadProjects();
+                                await selectProject(currentProject.id);
+                                await loadGitStatus();
+                            } else {
+                                showToast(data.result?.error || 'Clone failed', 'error');
+                            }
+                        }
+                    } catch (e) {}
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error cloning repository:', error);
+        showToast('Failed to clone repository', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-cloud-download"></i> Clone';
+    }
+}
+
+async function gitPush() {
+    if (!currentProject) return;
+    
+    const btn = document.getElementById('btnGitPush');
+    btn.disabled = true;
+    
+    showToast('Pushing to remote...', 'info');
+    
+    try {
+        const response = await fetch(`/api/studio/projects/${currentProject.id}/git/push`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ set_upstream: !gitStatus?.has_remote })
+        });
+        
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+            
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const data = JSON.parse(line.substring(6));
+                        if (data.type === 'complete') {
+                            if (data.success) {
+                                showToast('Push completed successfully!', 'success');
+                            } else {
+                                showToast(data.result?.error || 'Push failed', 'error');
+                            }
+                        }
+                    } catch (e) {}
+                }
+            }
+        }
+        
+        await loadGitStatus();
+    } catch (error) {
+        console.error('Error pushing:', error);
+        showToast('Failed to push', 'error');
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function gitPull() {
+    if (!currentProject) return;
+    
+    const btn = document.getElementById('btnGitPull');
+    btn.disabled = true;
+    
+    showToast('Pulling from remote...', 'info');
+    
+    try {
+        const response = await fetch(`/api/studio/projects/${currentProject.id}/git/pull`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+        
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+            
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const data = JSON.parse(line.substring(6));
+                        if (data.type === 'complete') {
+                            if (data.success) {
+                                showToast('Pull completed successfully!', 'success');
+                                await loadProjects();
+                                await selectProject(currentProject.id);
+                            } else {
+                                showToast(data.result?.error || 'Pull failed', 'error');
+                            }
+                        }
+                    } catch (e) {}
+                }
+            }
+        }
+        
+        await loadGitStatus();
+    } catch (error) {
+        console.error('Error pulling:', error);
+        showToast('Failed to pull', 'error');
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+function openBranchModal() {
+    document.getElementById('branchModal').classList.add('show');
+    document.getElementById('newBranchName').value = '';
+    loadBranches();
+}
+
+function closeBranchModal() {
+    document.getElementById('branchModal').classList.remove('show');
+}
+
+async function loadBranches() {
+    if (!currentProject) return;
+    
+    try {
+        const response = await fetch(`/api/studio/projects/${currentProject.id}/git/branches`);
+        const data = await response.json();
+        
+        if (data.success && data.branches) {
+            const container = document.getElementById('branchList');
+            container.innerHTML = data.branches
+                .filter(b => !b.remote)
+                .map(branch => `
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--bg-tertiary); border-radius: 8px; margin-bottom: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <i class="bi bi-${branch.current ? 'check-circle-fill' : 'diagram-2'}" style="color: ${branch.current ? 'var(--accent-green)' : 'var(--text-secondary)'}"></i>
+                            <span>${escapeHtml(branch.name)}</span>
+                        </div>
+                        ${!branch.current ? `<button class="git-action-btn" onclick="checkoutBranch('${branch.name}')" style="padding: 4px 8px; font-size: 0.75rem;">Switch</button>` : '<span style="font-size: 0.75rem; color: var(--accent-green);">Current</span>'}
+                    </div>
+                `).join('');
+        }
+    } catch (error) {
+        console.error('Error loading branches:', error);
+    }
+}
+
+async function createBranch() {
+    if (!currentProject) return;
+    
+    const branchName = document.getElementById('newBranchName').value.trim();
+    if (!branchName) {
+        showToast('Please enter a branch name', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/studio/projects/${currentProject.id}/git/checkout`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ branch: branchName, create: true })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(`Branch "${branchName}" created and checked out!`, 'success');
+            document.getElementById('newBranchName').value = '';
+            await loadBranches();
+            await loadGitStatus();
+        } else {
+            showToast(data.message || data.error || 'Failed to create branch', 'error');
+        }
+    } catch (error) {
+        console.error('Error creating branch:', error);
+        showToast('Failed to create branch', 'error');
+    }
+}
+
+async function checkoutBranch(branchName) {
+    if (!currentProject) return;
+    
+    try {
+        const response = await fetch(`/api/studio/projects/${currentProject.id}/git/checkout`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ branch: branchName })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(`Switched to branch "${branchName}"`, 'success');
+            closeBranchModal();
+            await loadProjects();
+            await selectProject(currentProject.id);
+            await loadGitStatus();
+        } else {
+            showToast(data.message || data.error || 'Failed to switch branch', 'error');
+        }
+    } catch (error) {
+        console.error('Error checking out branch:', error);
+        showToast('Failed to switch branch', 'error');
+    }
+}
+
+let previewState = {
+    running: false,
+    url: null,
+    port: null,
+    logsInterval: null,
+    logsCollapsed: false
+};
+
+function togglePreviewPanel() {
+    const panel = document.getElementById('previewPanel');
+    panel.classList.toggle('open');
+    
+    const btn = document.getElementById('btnPreview');
+    if (panel.classList.contains('open')) {
+        btn.classList.add('running');
+        checkPreviewStatus();
+    } else {
+        btn.classList.remove('running');
+        stopPreviewLogPolling();
+    }
+}
+
+async function checkPreviewStatus() {
+    if (!currentProject) return;
+    
+    try {
+        const response = await fetch(`/api/studio/projects/${currentProject.id}/preview/status`);
+        const data = await response.json();
+        
+        if (data.running) {
+            previewState.running = true;
+            previewState.url = data.url;
+            previewState.port = data.port;
+            updatePreviewUI(true, data.url);
+            startPreviewLogPolling();
+        } else {
+            previewState.running = false;
+            updatePreviewUI(false);
+        }
+    } catch (error) {
+        console.error('Error checking preview status:', error);
+    }
+}
+
+async function startPreview() {
+    if (!currentProject) {
+        showToast('No project selected', 'error');
+        return;
+    }
+    
+    const btn = document.getElementById('btnStartPreview');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Starting...';
+    
+    try {
+        await saveCurrentFile();
+        
+        const autoReload = document.getElementById('previewAutoReload').checked;
+        
+        const response = await fetch(`/api/studio/projects/${currentProject.id}/preview/start`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ auto_reload: autoReload })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            previewState.running = true;
+            previewState.url = data.url;
+            previewState.port = data.port;
+            
+            showToast(`Preview started on port ${data.port}`, 'success');
+            updatePreviewUI(true, data.url);
+            startPreviewLogPolling();
+            
+            setTimeout(() => {
+                loadPreviewIframe(data.url);
+            }, 2000);
+        } else {
+            showToast(data.error || 'Failed to start preview', 'error');
+        }
+    } catch (error) {
+        console.error('Error starting preview:', error);
+        showToast('Failed to start preview server', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-play-fill"></i> Start';
+    }
+}
+
+async function stopPreview() {
+    if (!currentProject) return;
+    
+    const btn = document.getElementById('btnStopPreview');
+    btn.disabled = true;
+    
+    try {
+        const response = await fetch(`/api/studio/projects/${currentProject.id}/preview/stop`, {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            previewState.running = false;
+            previewState.url = null;
+            previewState.port = null;
+            
+            showToast('Preview stopped', 'success');
+            updatePreviewUI(false);
+            stopPreviewLogPolling();
+        } else {
+            showToast(data.error || 'Failed to stop preview', 'error');
+        }
+    } catch (error) {
+        console.error('Error stopping preview:', error);
+        showToast('Failed to stop preview', 'error');
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function restartPreview() {
+    if (!currentProject) return;
+    
+    const btn = document.getElementById('btnRestartPreview');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Restarting...';
+    
+    try {
+        await saveCurrentFile();
+        
+        const response = await fetch(`/api/studio/projects/${currentProject.id}/preview/restart`, {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            previewState.url = data.url;
+            previewState.port = data.port;
+            
+            showToast('Preview restarted', 'success');
+            updatePreviewUI(true, data.url);
+            
+            setTimeout(() => {
+                loadPreviewIframe(data.url);
+            }, 2000);
+        } else {
+            showToast(data.error || 'Failed to restart preview', 'error');
+        }
+    } catch (error) {
+        console.error('Error restarting preview:', error);
+        showToast('Failed to restart preview', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Restart';
+    }
+}
+
+function refreshPreview() {
+    if (!previewState.running || !previewState.url) return;
+    
+    const iframe = document.getElementById('previewIframe');
+    iframe.src = previewState.url + '?t=' + Date.now();
+}
+
+function loadPreviewIframe(url) {
+    const iframe = document.getElementById('previewIframe');
+    const placeholder = document.getElementById('previewPlaceholder');
+    
+    iframe.src = url;
+    iframe.style.display = 'block';
+    placeholder.style.display = 'none';
+}
+
+function updatePreviewUI(running, url = null) {
+    const btnStart = document.getElementById('btnStartPreview');
+    const btnStop = document.getElementById('btnStopPreview');
+    const btnRefresh = document.getElementById('btnRefreshPreview');
+    const btnRestart = document.getElementById('btnRestartPreview');
+    const statusBadge = document.getElementById('previewStatusBadge');
+    const urlInput = document.getElementById('previewUrlInput');
+    const openNewTabLink = document.getElementById('previewOpenNewTab');
+    const iframe = document.getElementById('previewIframe');
+    const placeholder = document.getElementById('previewPlaceholder');
+    const previewBtn = document.getElementById('btnPreview');
+    
+    if (running) {
+        btnStart.style.display = 'none';
+        btnStop.style.display = 'flex';
+        btnRefresh.disabled = false;
+        btnRestart.disabled = false;
+        
+        statusBadge.textContent = 'Running';
+        statusBadge.className = 'preview-status-badge running';
+        
+        if (url) {
+            urlInput.value = url;
+            openNewTabLink.href = url;
+            openNewTabLink.style.display = 'inline';
+        }
+        
+        previewBtn.classList.add('running');
+    } else {
+        btnStart.style.display = 'flex';
+        btnStop.style.display = 'none';
+        btnRefresh.disabled = true;
+        btnRestart.disabled = true;
+        
+        statusBadge.textContent = 'Stopped';
+        statusBadge.className = 'preview-status-badge stopped';
+        
+        urlInput.value = '';
+        openNewTabLink.style.display = 'none';
+        
+        iframe.style.display = 'none';
+        iframe.src = '';
+        placeholder.style.display = 'flex';
+        
+        previewBtn.classList.remove('running');
+    }
+}
+
+function startPreviewLogPolling() {
+    stopPreviewLogPolling();
+    
+    fetchPreviewLogs();
+    previewState.logsInterval = setInterval(fetchPreviewLogs, 2000);
+}
+
+function stopPreviewLogPolling() {
+    if (previewState.logsInterval) {
+        clearInterval(previewState.logsInterval);
+        previewState.logsInterval = null;
+    }
+}
+
+async function fetchPreviewLogs() {
+    if (!currentProject || !previewState.running) return;
+    
+    try {
+        const response = await fetch(`/api/studio/projects/${currentProject.id}/preview/logs?limit=50`);
+        const data = await response.json();
+        
+        if (data.success && data.logs) {
+            renderPreviewLogs(data.logs);
+        }
+        
+        if (!data.is_running) {
+            previewState.running = false;
+            updatePreviewUI(false);
+            stopPreviewLogPolling();
+            showToast('Preview server stopped unexpectedly', 'warning');
+        }
+    } catch (error) {
+        console.error('Error fetching preview logs:', error);
+    }
+}
+
+function renderPreviewLogs(logs) {
+    const container = document.getElementById('previewLogsContent');
+    
+    if (logs.length === 0) {
+        container.innerHTML = '<div class="preview-log-line info">No logs available</div>';
+        return;
+    }
+    
+    container.innerHTML = logs.map(log => {
+        const level = log.level || 'info';
+        return `<div class="preview-log-line ${level}"><span class="timestamp">[${escapeHtml(log.timestamp)}]</span>${escapeHtml(log.message)}</div>`;
+    }).join('');
+    
+    container.scrollTop = container.scrollHeight;
+}
+
+function clearPreviewLogs() {
+    const container = document.getElementById('previewLogsContent');
+    container.innerHTML = '<div class="preview-log-line info">Logs cleared</div>';
+}
+
+function togglePreviewLogs() {
+    const logsSection = document.querySelector('.preview-logs-section');
+    const icon = document.getElementById('previewLogsToggleIcon');
+    
+    previewState.logsCollapsed = !previewState.logsCollapsed;
+    
+    if (previewState.logsCollapsed) {
+        logsSection.style.height = '30px';
+        icon.className = 'bi bi-chevron-up';
+    } else {
+        logsSection.style.height = '150px';
+        icon.className = 'bi bi-chevron-down';
+    }
+}
+
+async function syncPreviewFiles() {
+    if (!currentProject || !previewState.running) return;
+    
+    try {
+        await saveCurrentFile();
+        
+        const response = await fetch(`/api/studio/projects/${currentProject.id}/preview/update-files`, {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Files synced to preview', 'success');
+        }
+    } catch (error) {
+        console.error('Error syncing preview files:', error);
+    }
+}
+
+window.addEventListener('beforeunload', async () => {
+    if (currentProject && previewState.running) {
+        try {
+            await fetch(`/api/studio/projects/${currentProject.id}/preview/stop`, { method: 'POST' });
+        } catch (e) {}
+    }
+});
+
+let currentPackageManager = null;
+let installedPackages = [];
+let searchDebounceTimer = null;
+let selectedPackageForModal = null;
+
+function switchSidebarTab(tabName) {
+    document.querySelectorAll('.sidebar-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.tab === tabName);
+    });
+    
+    document.querySelectorAll('.sidebar-tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    if (tabName === 'files') {
+        document.getElementById('filesTab').classList.add('active');
+    } else if (tabName === 'packages') {
+        document.getElementById('packagesTab').classList.add('active');
+        if (currentProject) {
+            loadProjectPackages();
+        }
+    }
+}
+
+async function loadProjectPackages() {
+    if (!currentProject) return;
+    
+    const container = document.getElementById('packagesListContent');
+    container.innerHTML = '<div class="packages-loading"><i class="bi bi-arrow-repeat"></i> Loading packages...</div>';
+    
+    try {
+        const response = await fetch(`/api/studio/projects/${currentProject.id}/packages`);
+        const data = await response.json();
+        
+        if (data.success) {
+            currentPackageManager = data.manager;
+            installedPackages = data.packages || [];
+            renderInstalledPackages();
+        } else {
+            container.innerHTML = `<div class="packages-empty"><i class="bi bi-exclamation-circle"></i><h4>Error</h4><p>${data.error || 'Failed to load packages'}</p></div>`;
+        }
+    } catch (error) {
+        console.error('Error loading packages:', error);
+        container.innerHTML = '<div class="packages-empty"><i class="bi bi-exclamation-circle"></i><h4>Error</h4><p>Failed to load packages</p></div>';
+    }
+}
+
+function renderInstalledPackages() {
+    const container = document.getElementById('packagesListContent');
+    
+    if (!installedPackages || installedPackages.length === 0) {
+        container.innerHTML = `
+            <div class="packages-empty">
+                <i class="bi bi-box-seam"></i>
+                <h4>No Packages</h4>
+                <p>Search for packages to install</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = installedPackages.map(pkg => `
+        <div class="package-item">
+            <div class="package-info" onclick="showPackageDetails('${escapeHtml(pkg.name)}', '${currentPackageManager}')">
+                <div class="package-name">
+                    ${escapeHtml(pkg.name)}
+                    <span class="package-version ${pkg.is_outdated ? 'outdated' : ''}">${pkg.version || '*'}</span>
+                    ${pkg.is_outdated ? `<span class="package-version" style="background: rgba(16, 185, 129, 0.15); color: var(--accent-green);">${pkg.latest_version}</span>` : ''}
+                </div>
+                ${pkg.description ? `<div class="package-description">${escapeHtml(pkg.description)}</div>` : ''}
+            </div>
+            <div class="package-actions">
+                ${pkg.is_outdated ? `<button class="package-btn" onclick="updatePackage('${escapeHtml(pkg.name)}', '${pkg.latest_version}')" title="Update"><i class="bi bi-arrow-up-circle"></i></button>` : ''}
+                <button class="package-btn danger" onclick="uninstallPackage('${escapeHtml(pkg.name)}')" title="Remove"><i class="bi bi-trash"></i></button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function handlePackageSearch(event) {
+    const query = event.target.value.trim();
+    
+    if (searchDebounceTimer) {
+        clearTimeout(searchDebounceTimer);
+    }
+    
+    if (!query) {
+        document.getElementById('searchResultsSection').style.display = 'none';
+        return;
+    }
+    
+    searchDebounceTimer = setTimeout(() => {
+        searchPackages(query);
+    }, 500);
+}
+
+async function searchPackages(query) {
+    if (!currentPackageManager || !query) return;
+    
+    const section = document.getElementById('searchResultsSection');
+    const container = document.getElementById('searchResultsList');
+    
+    section.style.display = 'block';
+    container.innerHTML = '<div class="packages-loading"><i class="bi bi-arrow-repeat"></i> Searching...</div>';
+    
+    try {
+        const response = await fetch(`/api/studio/packages/search?q=${encodeURIComponent(query)}&manager=${currentPackageManager}`);
+        const data = await response.json();
+        
+        if (data.success && data.results && data.results.length > 0) {
+            container.innerHTML = data.results.map(pkg => `
+                <div class="package-item">
+                    <div class="package-info" onclick="showPackageDetails('${escapeHtml(pkg.name)}', '${currentPackageManager}')">
+                        <div class="package-name">
+                            ${escapeHtml(pkg.name)}
+                            ${pkg.version ? `<span class="package-version">${pkg.version}</span>` : ''}
+                        </div>
+                        ${pkg.description ? `<div class="package-description">${escapeHtml(pkg.description)}</div>` : ''}
+                    </div>
+                    <div class="package-actions">
+                        <button class="package-btn primary" onclick="installPackage('${escapeHtml(pkg.name)}', '${pkg.version || ''}')" title="Install">
+                            <i class="bi bi-download"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = '<div class="packages-empty"><i class="bi bi-search"></i><h4>No Results</h4><p>No packages found</p></div>';
+        }
+    } catch (error) {
+        console.error('Error searching packages:', error);
+        container.innerHTML = '<div class="packages-empty"><i class="bi bi-exclamation-circle"></i><h4>Error</h4><p>Search failed</p></div>';
+    }
+}
+
+async function installPackage(name, version) {
+    if (!currentProject) return;
+    
+    showToast(`Installing ${name}...`, 'info');
+    
+    try {
+        const response = await fetch(`/api/studio/projects/${currentProject.id}/packages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, version: version || null })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(`${name} added to ${data.deps_file}`, 'success');
+            loadProjectPackages();
+            reloadFileTree();
+        } else {
+            showToast(data.error || 'Install failed', 'error');
+        }
+    } catch (error) {
+        console.error('Error installing package:', error);
+        showToast('Install failed', 'error');
+    }
+}
+
+async function uninstallPackage(name) {
+    if (!currentProject) return;
+    
+    if (!confirm(`Remove ${name}?`)) return;
+    
+    showToast(`Removing ${name}...`, 'info');
+    
+    try {
+        const response = await fetch(`/api/studio/projects/${currentProject.id}/packages/${encodeURIComponent(name)}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(`${name} removed`, 'success');
+            loadProjectPackages();
+            reloadFileTree();
+        } else {
+            showToast(data.error || 'Remove failed', 'error');
+        }
+    } catch (error) {
+        console.error('Error uninstalling package:', error);
+        showToast('Remove failed', 'error');
+    }
+}
+
+async function updatePackage(name, version) {
+    await installPackage(name, version);
+}
+
+async function checkOutdatedPackages() {
+    if (!currentProject) return;
+    
+    showToast('Checking for updates...', 'info');
+    
+    try {
+        const response = await fetch(`/api/studio/projects/${currentProject.id}/packages/outdated`);
+        const data = await response.json();
+        
+        if (data.success) {
+            installedPackages = data.packages || [];
+            renderInstalledPackages();
+            
+            const outdatedCount = data.outdated_count || 0;
+            if (outdatedCount > 0) {
+                document.getElementById('btnUpdateAll').style.display = 'inline-flex';
+                showToast(`${outdatedCount} package(s) can be updated`, 'info');
+            } else {
+                document.getElementById('btnUpdateAll').style.display = 'none';
+                showToast('All packages are up to date', 'success');
+            }
+        }
+    } catch (error) {
+        console.error('Error checking outdated:', error);
+        showToast('Failed to check for updates', 'error');
+    }
+}
+
+async function updateAllPackages() {
+    if (!currentProject) return;
+    
+    const outdated = installedPackages.filter(p => p.is_outdated);
+    if (outdated.length === 0) {
+        showToast('No packages to update', 'info');
+        return;
+    }
+    
+    showToast(`Updating ${outdated.length} packages...`, 'info');
+    
+    for (const pkg of outdated) {
+        try {
+            await fetch(`/api/studio/projects/${currentProject.id}/packages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: pkg.name, version: pkg.latest_version })
+            });
+        } catch (error) {
+            console.error(`Error updating ${pkg.name}:`, error);
+        }
+    }
+    
+    showToast('Packages updated', 'success');
+    loadProjectPackages();
+    reloadFileTree();
+    document.getElementById('btnUpdateAll').style.display = 'none';
+}
+
+async function showPackageDetails(name, manager) {
+    selectedPackageForModal = { name, manager };
+    
+    document.getElementById('packageDetailName').textContent = name;
+    document.getElementById('packageDetailsContent').innerHTML = '<div class="packages-loading"><i class="bi bi-arrow-repeat"></i> Loading package details...</div>';
+    document.getElementById('packageVersionInput').value = '';
+    document.getElementById('packageDetailsModal').classList.add('show');
+    
+    try {
+        const response = await fetch(`/api/studio/packages/info?name=${encodeURIComponent(name)}&manager=${manager}`);
+        const data = await response.json();
+        
+        if (data.success && data.package) {
+            const pkg = data.package;
+            document.getElementById('packageVersionInput').value = pkg.version || '';
+            
+            document.getElementById('packageDetailsContent').innerHTML = `
+                <div class="package-detail-row">
+                    <span class="package-detail-label">Name</span>
+                    <span class="package-detail-value">${escapeHtml(pkg.name)}</span>
+                </div>
+                <div class="package-detail-row">
+                    <span class="package-detail-label">Version</span>
+                    <span class="package-detail-value">${escapeHtml(pkg.version || 'latest')}</span>
+                </div>
+                <div class="package-detail-row">
+                    <span class="package-detail-label">Description</span>
+                    <span class="package-detail-value">${escapeHtml(pkg.description || 'No description')}</span>
+                </div>
+                ${pkg.homepage ? `
+                <div class="package-detail-row">
+                    <span class="package-detail-label">Homepage</span>
+                    <span class="package-detail-value"><a href="${escapeHtml(pkg.homepage)}" target="_blank">${escapeHtml(pkg.homepage)}</a></span>
+                </div>
+                ` : ''}
+                ${pkg.license ? `
+                <div class="package-detail-row">
+                    <span class="package-detail-label">License</span>
+                    <span class="package-detail-value">${escapeHtml(pkg.license)}</span>
+                </div>
+                ` : ''}
+                ${pkg.author ? `
+                <div class="package-detail-row">
+                    <span class="package-detail-label">Author</span>
+                    <span class="package-detail-value">${escapeHtml(pkg.author)}</span>
+                </div>
+                ` : ''}
+                ${pkg.keywords ? `
+                <div class="package-detail-row">
+                    <span class="package-detail-label">Keywords</span>
+                    <span class="package-detail-value">${escapeHtml(pkg.keywords)}</span>
+                </div>
+                ` : ''}
+            `;
+        } else {
+            document.getElementById('packageDetailsContent').innerHTML = '<div class="packages-empty"><i class="bi bi-exclamation-circle"></i><h4>Error</h4><p>Failed to load package details</p></div>';
+        }
+    } catch (error) {
+        console.error('Error loading package details:', error);
+        document.getElementById('packageDetailsContent').innerHTML = '<div class="packages-empty"><i class="bi bi-exclamation-circle"></i><h4>Error</h4><p>Failed to load package details</p></div>';
+    }
+}
+
+function closePackageDetailsModal() {
+    document.getElementById('packageDetailsModal').classList.remove('show');
+    selectedPackageForModal = null;
+}
+
+function installPackageFromModal() {
+    if (!selectedPackageForModal) return;
+    
+    const version = document.getElementById('packageVersionInput').value.trim() || null;
+    installPackage(selectedPackageForModal.name, version);
+    closePackageDetailsModal();
+}
+
+async function reloadFileTree() {
+    if (!currentProject) return;
+    
+    try {
+        const response = await fetch(`/api/studio/projects/${currentProject.id}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            currentProject = data.project;
+            renderFileTree();
+        }
+    } catch (error) {
+        console.error('Error reloading file tree:', error);
     }
 }
 </script>

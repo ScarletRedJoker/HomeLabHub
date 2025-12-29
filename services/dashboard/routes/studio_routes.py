@@ -2372,3 +2372,1279 @@ def sync_from_filesystem(project_id):
             'success': False,
             'error': str(e)
         }), 500
+
+
+@studio_bp.route('/projects/<project_id>/git/init', methods=['POST'])
+@require_auth
+def git_init(project_id):
+    """
+    POST /api/studio/projects/<id>/git/init
+    Initialize a git repository for the project
+    """
+    try:
+        from models.studio import StudioProject, ProjectFile
+        from services.git_service import git_service
+        
+        data = request.get_json() or {}
+        branch = data.get('branch', 'main')
+        
+        session_ctx = get_db_session()
+        if not session_ctx:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        with session_ctx as session:
+            project = session.query(StudioProject).filter_by(id=project_id).first()
+            if not project:
+                return jsonify({'success': False, 'error': 'Project not found'}), 404
+            
+            files = session.query(ProjectFile).filter_by(project_id=project_id).all()
+            files_data = [{'file_path': f.file_path, 'content': f.content} for f in files]
+            
+            git_service.sync_files_to_workspace(project_id, files_data)
+            
+            success, message = git_service.init_repository(project_id, branch)
+            
+            if success:
+                project.git_branch = branch
+                session.flush()
+            
+            return jsonify({
+                'success': success,
+                'message': message,
+                'branch': branch
+            }), 200 if success else 500
+            
+    except Exception as e:
+        logger.error(f"Error initializing git: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@studio_bp.route('/projects/<project_id>/git/clone', methods=['POST'])
+@require_auth
+def git_clone(project_id):
+    """
+    POST /api/studio/projects/<id>/git/clone
+    Clone a repository for the project
+    """
+    from flask import Response
+    
+    try:
+        from models.studio import StudioProject, ProjectFile
+        from services.git_service import git_service
+        import json
+        
+        data = request.get_json() or {}
+        repo_url = data.get('repo_url')
+        branch = data.get('branch', 'main')
+        access_token = data.get('access_token')
+        
+        if not repo_url:
+            return jsonify({'success': False, 'error': 'Repository URL is required'}), 400
+        
+        session_ctx = get_db_session()
+        if not session_ctx:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        with session_ctx as session:
+            project = session.query(StudioProject).filter_by(id=project_id).first()
+            if not project:
+                return jsonify({'success': False, 'error': 'Project not found'}), 404
+        
+        def generate():
+            final_result = {'success': False}
+            
+            yield f"data: {json.dumps({'type': 'start', 'message': 'Starting clone operation'})}\n\n"
+            
+            try:
+                generator = git_service.clone_repository(project_id, repo_url, branch, access_token)
+                
+                for log_line in generator:
+                    if isinstance(log_line, str):
+                        yield f"data: {json.dumps({'type': 'log', 'message': log_line})}\n\n"
+                    elif isinstance(log_line, dict):
+                        final_result = log_line
+                
+            except Exception as e:
+                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+                final_result = {'success': False, 'error': str(e)}
+            
+            if final_result.get('success'):
+                session_ctx = get_db_session()
+                if session_ctx:
+                    with session_ctx as session:
+                        project = session.query(StudioProject).filter_by(id=project_id).first()
+                        if project:
+                            project.git_repo_url = repo_url
+                            project.git_branch = final_result.get('branch', branch)
+                            project.git_last_commit = final_result.get('commit')
+                            
+                            workspace_files = git_service.get_workspace_files(project_id)
+                            for file_path in workspace_files:
+                                content = git_service.read_file(project_id, file_path)
+                                if content is not None:
+                                    existing = session.query(ProjectFile).filter_by(
+                                        project_id=project_id,
+                                        file_path=file_path
+                                    ).first()
+                                    
+                                    if existing:
+                                        existing.content = content
+                                    else:
+                                        new_file = ProjectFile(
+                                            project_id=uuid.UUID(project_id),
+                                            file_path=file_path,
+                                            content=content,
+                                            language=_detect_language(file_path)
+                                        )
+                                        session.add(new_file)
+                            
+                            session.flush()
+            
+            yield f"data: {json.dumps({'type': 'complete', 'success': final_result.get('success', False), 'result': final_result})}\n\n"
+        
+        return Response(generate(), mimetype='text/event-stream')
+        
+    except Exception as e:
+        logger.error(f"Error cloning repository: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@studio_bp.route('/projects/<project_id>/git/status', methods=['GET'])
+@require_auth
+def git_status(project_id):
+    """
+    GET /api/studio/projects/<id>/git/status
+    Get git status for the project
+    """
+    try:
+        from models.studio import StudioProject
+        from services.git_service import git_service
+        
+        session_ctx = get_db_session()
+        if not session_ctx:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        with session_ctx as session:
+            project = session.query(StudioProject).filter_by(id=project_id).first()
+            if not project:
+                return jsonify({'success': False, 'error': 'Project not found'}), 404
+        
+        status = git_service.get_status(project_id)
+        
+        return jsonify({
+            'success': True,
+            'status': status
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting git status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@studio_bp.route('/projects/<project_id>/git/commit', methods=['POST'])
+@require_auth
+def git_commit(project_id):
+    """
+    POST /api/studio/projects/<id>/git/commit
+    Create a commit
+    """
+    try:
+        from models.studio import StudioProject, ProjectFile
+        from services.git_service import git_service
+        
+        data = request.get_json() or {}
+        message = data.get('message')
+        author = data.get('author')
+        
+        if not message:
+            return jsonify({'success': False, 'error': 'Commit message is required'}), 400
+        
+        session_ctx = get_db_session()
+        if not session_ctx:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        with session_ctx as session:
+            project = session.query(StudioProject).filter_by(id=project_id).first()
+            if not project:
+                return jsonify({'success': False, 'error': 'Project not found'}), 404
+            
+            files = session.query(ProjectFile).filter_by(project_id=project_id).all()
+            files_data = [{'file_path': f.file_path, 'content': f.content} for f in files]
+            
+            git_service.sync_files_to_workspace(project_id, files_data)
+        
+        success, result_message, commit_hash = git_service.commit(project_id, message, author)
+        
+        if success and commit_hash:
+            session_ctx = get_db_session()
+            if session_ctx:
+                with session_ctx as session:
+                    project = session.query(StudioProject).filter_by(id=project_id).first()
+                    if project:
+                        project.git_last_commit = commit_hash
+                        session.flush()
+        
+        return jsonify({
+            'success': success,
+            'message': result_message,
+            'commit': commit_hash
+        }), 200 if success else 400
+        
+    except Exception as e:
+        logger.error(f"Error creating commit: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@studio_bp.route('/projects/<project_id>/git/push', methods=['POST'])
+@require_auth
+def git_push(project_id):
+    """
+    POST /api/studio/projects/<id>/git/push
+    Push changes to remote
+    """
+    from flask import Response
+    
+    try:
+        from models.studio import StudioProject
+        from services.git_service import git_service
+        import json
+        
+        data = request.get_json() or {}
+        remote = data.get('remote', 'origin')
+        branch = data.get('branch')
+        access_token = data.get('access_token')
+        set_upstream = data.get('set_upstream', False)
+        
+        session_ctx = get_db_session()
+        if not session_ctx:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        with session_ctx as session:
+            project = session.query(StudioProject).filter_by(id=project_id).first()
+            if not project:
+                return jsonify({'success': False, 'error': 'Project not found'}), 404
+        
+        def generate():
+            final_result = {'success': False}
+            
+            yield f"data: {json.dumps({'type': 'start', 'message': 'Starting push operation'})}\n\n"
+            
+            try:
+                generator = git_service.push(project_id, remote, branch, access_token, set_upstream)
+                
+                for log_line in generator:
+                    if isinstance(log_line, str):
+                        yield f"data: {json.dumps({'type': 'log', 'message': log_line})}\n\n"
+                    elif isinstance(log_line, dict):
+                        final_result = log_line
+                
+            except Exception as e:
+                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+                final_result = {'success': False, 'error': str(e)}
+            
+            yield f"data: {json.dumps({'type': 'complete', 'success': final_result.get('success', False), 'result': final_result})}\n\n"
+        
+        return Response(generate(), mimetype='text/event-stream')
+        
+    except Exception as e:
+        logger.error(f"Error pushing to remote: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@studio_bp.route('/projects/<project_id>/git/pull', methods=['POST'])
+@require_auth
+def git_pull(project_id):
+    """
+    POST /api/studio/projects/<id>/git/pull
+    Pull changes from remote
+    """
+    from flask import Response
+    
+    try:
+        from models.studio import StudioProject, ProjectFile
+        from services.git_service import git_service
+        import json
+        
+        data = request.get_json() or {}
+        remote = data.get('remote', 'origin')
+        branch = data.get('branch')
+        access_token = data.get('access_token')
+        
+        session_ctx = get_db_session()
+        if not session_ctx:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        with session_ctx as session:
+            project = session.query(StudioProject).filter_by(id=project_id).first()
+            if not project:
+                return jsonify({'success': False, 'error': 'Project not found'}), 404
+        
+        def generate():
+            final_result = {'success': False}
+            
+            yield f"data: {json.dumps({'type': 'start', 'message': 'Starting pull operation'})}\n\n"
+            
+            try:
+                generator = git_service.pull(project_id, remote, branch, access_token)
+                
+                for log_line in generator:
+                    if isinstance(log_line, str):
+                        yield f"data: {json.dumps({'type': 'log', 'message': log_line})}\n\n"
+                    elif isinstance(log_line, dict):
+                        final_result = log_line
+                
+            except Exception as e:
+                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+                final_result = {'success': False, 'error': str(e)}
+            
+            if final_result.get('success'):
+                session_ctx = get_db_session()
+                if session_ctx:
+                    with session_ctx as session:
+                        project = session.query(StudioProject).filter_by(id=project_id).first()
+                        if project:
+                            project.git_last_commit = final_result.get('commit')
+                            
+                            workspace_files = git_service.get_workspace_files(project_id)
+                            for file_path in workspace_files:
+                                content = git_service.read_file(project_id, file_path)
+                                if content is not None:
+                                    existing = session.query(ProjectFile).filter_by(
+                                        project_id=project_id,
+                                        file_path=file_path
+                                    ).first()
+                                    
+                                    if existing:
+                                        existing.content = content
+                                    else:
+                                        new_file = ProjectFile(
+                                            project_id=uuid.UUID(project_id),
+                                            file_path=file_path,
+                                            content=content,
+                                            language=_detect_language(file_path)
+                                        )
+                                        session.add(new_file)
+                            
+                            session.flush()
+            
+            yield f"data: {json.dumps({'type': 'complete', 'success': final_result.get('success', False), 'result': final_result})}\n\n"
+        
+        return Response(generate(), mimetype='text/event-stream')
+        
+    except Exception as e:
+        logger.error(f"Error pulling from remote: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@studio_bp.route('/projects/<project_id>/git/log', methods=['GET'])
+@require_auth
+def git_log(project_id):
+    """
+    GET /api/studio/projects/<id>/git/log
+    Get commit history
+    """
+    try:
+        from models.studio import StudioProject
+        from services.git_service import git_service
+        
+        limit = request.args.get('limit', 50, type=int)
+        
+        session_ctx = get_db_session()
+        if not session_ctx:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        with session_ctx as session:
+            project = session.query(StudioProject).filter_by(id=project_id).first()
+            if not project:
+                return jsonify({'success': False, 'error': 'Project not found'}), 404
+        
+        success, commits = git_service.get_log(project_id, limit)
+        
+        return jsonify({
+            'success': success,
+            'commits': commits
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting git log: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@studio_bp.route('/projects/<project_id>/git/diff', methods=['GET'])
+@require_auth
+def git_diff(project_id):
+    """
+    GET /api/studio/projects/<id>/git/diff
+    Get current diff
+    """
+    try:
+        from models.studio import StudioProject
+        from services.git_service import git_service
+        
+        staged = request.args.get('staged', 'false').lower() == 'true'
+        
+        session_ctx = get_db_session()
+        if not session_ctx:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        with session_ctx as session:
+            project = session.query(StudioProject).filter_by(id=project_id).first()
+            if not project:
+                return jsonify({'success': False, 'error': 'Project not found'}), 404
+        
+        success, diff = git_service.get_diff(project_id, staged)
+        
+        return jsonify({
+            'success': success,
+            'diff': diff
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting git diff: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@studio_bp.route('/projects/<project_id>/git/branches', methods=['GET'])
+@require_auth
+def git_branches(project_id):
+    """
+    GET /api/studio/projects/<id>/git/branches
+    Get list of branches
+    """
+    try:
+        from models.studio import StudioProject
+        from services.git_service import git_service
+        
+        session_ctx = get_db_session()
+        if not session_ctx:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        with session_ctx as session:
+            project = session.query(StudioProject).filter_by(id=project_id).first()
+            if not project:
+                return jsonify({'success': False, 'error': 'Project not found'}), 404
+        
+        success, branches = git_service.get_branches(project_id)
+        
+        return jsonify({
+            'success': success,
+            'branches': branches
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting branches: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@studio_bp.route('/projects/<project_id>/git/checkout', methods=['POST'])
+@require_auth
+def git_checkout(project_id):
+    """
+    POST /api/studio/projects/<id>/git/checkout
+    Checkout a branch
+    """
+    try:
+        from models.studio import StudioProject, ProjectFile
+        from services.git_service import git_service
+        
+        data = request.get_json() or {}
+        branch = data.get('branch')
+        create = data.get('create', False)
+        
+        if not branch:
+            return jsonify({'success': False, 'error': 'Branch name is required'}), 400
+        
+        session_ctx = get_db_session()
+        if not session_ctx:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        with session_ctx as session:
+            project = session.query(StudioProject).filter_by(id=project_id).first()
+            if not project:
+                return jsonify({'success': False, 'error': 'Project not found'}), 404
+        
+        success, message = git_service.checkout_branch(project_id, branch, create)
+        
+        if success:
+            session_ctx = get_db_session()
+            if session_ctx:
+                with session_ctx as session:
+                    project = session.query(StudioProject).filter_by(id=project_id).first()
+                    if project:
+                        project.git_branch = branch
+                        
+                        workspace_files = git_service.get_workspace_files(project_id)
+                        for file_path in workspace_files:
+                            content = git_service.read_file(project_id, file_path)
+                            if content is not None:
+                                existing = session.query(ProjectFile).filter_by(
+                                    project_id=project_id,
+                                    file_path=file_path
+                                ).first()
+                                
+                                if existing:
+                                    existing.content = content
+                                else:
+                                    new_file = ProjectFile(
+                                        project_id=uuid.UUID(project_id),
+                                        file_path=file_path,
+                                        content=content,
+                                        language=_detect_language(file_path)
+                                    )
+                                    session.add(new_file)
+                        
+                        session.flush()
+        
+        return jsonify({
+            'success': success,
+            'message': message,
+            'branch': branch
+        }), 200 if success else 400
+        
+    except Exception as e:
+        logger.error(f"Error checking out branch: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@studio_bp.route('/projects/<project_id>/git/remote', methods=['POST'])
+@require_auth
+def git_set_remote(project_id):
+    """
+    POST /api/studio/projects/<id>/git/remote
+    Set remote URL
+    """
+    try:
+        from models.studio import StudioProject
+        from services.git_service import git_service
+        
+        data = request.get_json() or {}
+        url = data.get('url')
+        name = data.get('name', 'origin')
+        
+        if not url:
+            return jsonify({'success': False, 'error': 'Remote URL is required'}), 400
+        
+        session_ctx = get_db_session()
+        if not session_ctx:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        with session_ctx as session:
+            project = session.query(StudioProject).filter_by(id=project_id).first()
+            if not project:
+                return jsonify({'success': False, 'error': 'Project not found'}), 404
+        
+        success, message = git_service.set_remote(project_id, url, name)
+        
+        if success:
+            session_ctx = get_db_session()
+            if session_ctx:
+                with session_ctx as session:
+                    project = session.query(StudioProject).filter_by(id=project_id).first()
+                    if project:
+                        project.git_repo_url = url
+                        session.flush()
+        
+        return jsonify({
+            'success': success,
+            'message': message
+        }), 200 if success else 400
+        
+    except Exception as e:
+        logger.error(f"Error setting remote: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@studio_bp.route('/projects/<project_id>/preview/start', methods=['POST'])
+@require_auth
+def start_preview(project_id):
+    """
+    POST /api/studio/projects/<id>/preview/start
+    Start a live preview server for the project
+    
+    Request body (optional):
+    {
+        "auto_reload": true
+    }
+    """
+    try:
+        from models.studio import StudioProject, ProjectFile
+        from services.preview_service import preview_service
+        
+        data = request.get_json() or {}
+        auto_reload = data.get('auto_reload', True)
+        
+        session_ctx = get_db_session()
+        if not session_ctx:
+            return jsonify({
+                'success': False,
+                'error': 'Database not available'
+            }), 503
+        
+        with session_ctx as session:
+            project = session.query(StudioProject).filter_by(id=project_id).first()
+            
+            if not project:
+                return jsonify({
+                    'success': False,
+                    'error': 'Project not found'
+                }), 404
+            
+            language = project.language.value
+            files = session.query(ProjectFile).filter_by(project_id=project_id).all()
+            files_data = [f.to_dict() for f in files]
+        
+        result = preview_service.start_preview(
+            project_id=project_id,
+            language=language,
+            files=files_data,
+            auto_reload=auto_reload
+        )
+        
+        return jsonify(result), 200 if result.get('success') else 500
+        
+    except Exception as e:
+        logger.error(f"Error starting preview: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@studio_bp.route('/projects/<project_id>/preview/stop', methods=['POST'])
+@require_auth
+def stop_preview(project_id):
+    """
+    POST /api/studio/projects/<id>/preview/stop
+    Stop the live preview server for the project
+    """
+    try:
+        from services.preview_service import preview_service
+        
+        result = preview_service.stop_preview(project_id)
+        
+        return jsonify(result), 200 if result.get('success') else 404
+        
+    except Exception as e:
+        logger.error(f"Error stopping preview: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@studio_bp.route('/projects/<project_id>/preview/status', methods=['GET'])
+@require_auth
+def get_preview_status(project_id):
+    """
+    GET /api/studio/projects/<id>/preview/status
+    Get the status of the preview server
+    """
+    try:
+        from services.preview_service import preview_service
+        
+        status = preview_service.get_status(project_id)
+        
+        return jsonify({
+            'success': True,
+            **status
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting preview status: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@studio_bp.route('/projects/<project_id>/preview/logs', methods=['GET'])
+@require_auth
+def get_preview_logs(project_id):
+    """
+    GET /api/studio/projects/<id>/preview/logs
+    Get logs from the preview server
+    
+    Query params:
+    - limit: Maximum number of log lines to return (default: 100)
+    """
+    try:
+        from services.preview_service import preview_service
+        
+        limit = request.args.get('limit', 100, type=int)
+        result = preview_service.get_logs(project_id, limit)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error getting preview logs: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'logs': []
+        }), 500
+
+
+@studio_bp.route('/projects/<project_id>/preview/health', methods=['GET'])
+@require_auth
+def preview_health_check(project_id):
+    """
+    GET /api/studio/projects/<id>/preview/health
+    Health check for the preview server
+    """
+    try:
+        from services.preview_service import preview_service
+        
+        health = preview_service.health_check(project_id)
+        
+        return jsonify({
+            'success': True,
+            **health
+        })
+        
+    except Exception as e:
+        logger.error(f"Error checking preview health: {e}")
+        return jsonify({
+            'success': False,
+            'healthy': False,
+            'reason': str(e)
+        }), 500
+
+
+@studio_bp.route('/projects/<project_id>/preview/restart', methods=['POST'])
+@require_auth
+def restart_preview(project_id):
+    """
+    POST /api/studio/projects/<id>/preview/restart
+    Restart the preview server with fresh files
+    """
+    try:
+        from models.studio import StudioProject, ProjectFile
+        from services.preview_service import preview_service
+        
+        session_ctx = get_db_session()
+        if not session_ctx:
+            return jsonify({
+                'success': False,
+                'error': 'Database not available'
+            }), 503
+        
+        with session_ctx as session:
+            project = session.query(StudioProject).filter_by(id=project_id).first()
+            
+            if not project:
+                return jsonify({
+                    'success': False,
+                    'error': 'Project not found'
+                }), 404
+            
+            language = project.language.value
+            files = session.query(ProjectFile).filter_by(project_id=project_id).all()
+            files_data = [f.to_dict() for f in files]
+        
+        result = preview_service.restart_preview(project_id, language, files_data)
+        
+        return jsonify(result), 200 if result.get('success') else 500
+        
+    except Exception as e:
+        logger.error(f"Error restarting preview: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@studio_bp.route('/projects/<project_id>/preview/update-files', methods=['POST'])
+@require_auth
+def update_preview_files(project_id):
+    """
+    POST /api/studio/projects/<id>/preview/update-files
+    Update files in the running preview (triggers auto-reload)
+    """
+    try:
+        from models.studio import StudioProject, ProjectFile
+        from services.preview_service import preview_service
+        
+        session_ctx = get_db_session()
+        if not session_ctx:
+            return jsonify({
+                'success': False,
+                'error': 'Database not available'
+            }), 503
+        
+        with session_ctx as session:
+            project = session.query(StudioProject).filter_by(id=project_id).first()
+            
+            if not project:
+                return jsonify({
+                    'success': False,
+                    'error': 'Project not found'
+                }), 404
+            
+            files = session.query(ProjectFile).filter_by(project_id=project_id).all()
+            files_data = [f.to_dict() for f in files]
+        
+        result = preview_service.update_files(project_id, files_data)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error updating preview files: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@studio_bp.route('/previews', methods=['GET'])
+@require_auth
+def list_running_previews():
+    """
+    GET /api/studio/previews
+    List all running preview servers
+    """
+    try:
+        from services.preview_service import preview_service
+        
+        previews = preview_service.list_running_previews()
+        
+        return jsonify({
+            'success': True,
+            'previews': previews
+        })
+        
+    except Exception as e:
+        logger.error(f"Error listing previews: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'previews': []
+        }), 500
+
+
+@studio_bp.route('/projects/<project_id>/packages', methods=['GET'])
+@require_auth
+def list_packages(project_id):
+    """
+    GET /api/studio/projects/<id>/packages
+    List installed packages for a project
+    """
+    try:
+        from models.studio import StudioProject, ProjectFile
+        from services.package_service import package_service, PackageManager
+        
+        session_ctx = get_db_session()
+        if not session_ctx:
+            return jsonify({
+                'success': False,
+                'error': 'Database not available'
+            }), 503
+        
+        with session_ctx as session:
+            project = session.query(StudioProject).filter_by(id=project_id).first()
+            
+            if not project:
+                return jsonify({
+                    'success': False,
+                    'error': 'Project not found'
+                }), 404
+            
+            language = project.language.value
+            manager = package_service.get_manager_for_language(language)
+            
+            if not manager:
+                return jsonify({
+                    'success': True,
+                    'packages': [],
+                    'manager': None,
+                    'message': f'No package manager for language: {language}'
+                })
+            
+            deps_file = package_service.get_deps_file(manager)
+            deps_content = None
+            
+            for file in session.query(ProjectFile).filter_by(project_id=project_id).all():
+                if file.path.endswith(deps_file) or file.path == deps_file:
+                    deps_content = file.content
+                    break
+            
+            if not deps_content:
+                return jsonify({
+                    'success': True,
+                    'packages': [],
+                    'manager': manager.value,
+                    'deps_file': deps_file,
+                    'message': f'No {deps_file} found'
+                })
+            
+            packages = package_service.parse_packages(deps_content, manager)
+            
+            return jsonify({
+                'success': True,
+                'packages': [p.to_dict() for p in packages],
+                'manager': manager.value,
+                'deps_file': deps_file
+            })
+            
+    except Exception as e:
+        logger.error(f"Error listing packages: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@studio_bp.route('/projects/<project_id>/packages', methods=['POST'])
+@require_auth
+def install_package(project_id):
+    """
+    POST /api/studio/projects/<id>/packages
+    Install a package for a project
+    """
+    try:
+        from models.studio import StudioProject, ProjectFile
+        from services.package_service import package_service, PackageManager
+        
+        data = request.get_json() or {}
+        package_name = data.get('name')
+        version = data.get('version')
+        
+        if not package_name:
+            return jsonify({
+                'success': False,
+                'error': 'Package name is required'
+            }), 400
+        
+        session_ctx = get_db_session()
+        if not session_ctx:
+            return jsonify({
+                'success': False,
+                'error': 'Database not available'
+            }), 503
+        
+        with session_ctx as session:
+            project = session.query(StudioProject).filter_by(id=project_id).first()
+            
+            if not project:
+                return jsonify({
+                    'success': False,
+                    'error': 'Project not found'
+                }), 404
+            
+            language = project.language.value
+            manager = package_service.get_manager_for_language(language)
+            
+            if not manager:
+                return jsonify({
+                    'success': False,
+                    'error': f'No package manager for language: {language}'
+                }), 400
+            
+            deps_file = package_service.get_deps_file(manager)
+            deps_file_obj = None
+            
+            for file in session.query(ProjectFile).filter_by(project_id=project_id).all():
+                if file.path.endswith(deps_file) or file.path == deps_file:
+                    deps_file_obj = file
+                    break
+            
+            if deps_file_obj:
+                new_content = package_service.update_deps_file(
+                    deps_file_obj.content or '',
+                    package_name,
+                    version,
+                    manager,
+                    'add'
+                )
+                deps_file_obj.content = new_content
+                deps_file_obj.updated_at = datetime.utcnow()
+            else:
+                initial_content = ''
+                if manager == PackageManager.NPM:
+                    initial_content = json.dumps({
+                        'name': project.name.lower().replace(' ', '-'),
+                        'version': '1.0.0',
+                        'dependencies': {}
+                    }, indent=2)
+                
+                new_content = package_service.update_deps_file(
+                    initial_content,
+                    package_name,
+                    version,
+                    manager,
+                    'add'
+                )
+                
+                new_file = ProjectFile(
+                    project_id=uuid.UUID(project_id),
+                    path=deps_file,
+                    content=new_content,
+                    file_type='config'
+                )
+                session.add(new_file)
+            
+            session.flush()
+            
+            install_cmd = package_service.generate_install_command(package_name, version, manager)
+            
+            return jsonify({
+                'success': True,
+                'message': f'Package {package_name} added to {deps_file}',
+                'install_command': install_cmd,
+                'deps_file': deps_file,
+                'manager': manager.value
+            }), 201
+            
+    except Exception as e:
+        logger.error(f"Error installing package: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@studio_bp.route('/projects/<project_id>/packages/<package_name>', methods=['DELETE'])
+@require_auth
+def uninstall_package(project_id, package_name):
+    """
+    DELETE /api/studio/projects/<id>/packages/<name>
+    Uninstall a package from a project
+    """
+    try:
+        from models.studio import StudioProject, ProjectFile
+        from services.package_service import package_service
+        
+        session_ctx = get_db_session()
+        if not session_ctx:
+            return jsonify({
+                'success': False,
+                'error': 'Database not available'
+            }), 503
+        
+        with session_ctx as session:
+            project = session.query(StudioProject).filter_by(id=project_id).first()
+            
+            if not project:
+                return jsonify({
+                    'success': False,
+                    'error': 'Project not found'
+                }), 404
+            
+            language = project.language.value
+            manager = package_service.get_manager_for_language(language)
+            
+            if not manager:
+                return jsonify({
+                    'success': False,
+                    'error': f'No package manager for language: {language}'
+                }), 400
+            
+            deps_file = package_service.get_deps_file(manager)
+            deps_file_obj = None
+            
+            for file in session.query(ProjectFile).filter_by(project_id=project_id).all():
+                if file.path.endswith(deps_file) or file.path == deps_file:
+                    deps_file_obj = file
+                    break
+            
+            if not deps_file_obj:
+                return jsonify({
+                    'success': False,
+                    'error': f'No {deps_file} found'
+                }), 404
+            
+            new_content = package_service.update_deps_file(
+                deps_file_obj.content or '',
+                package_name,
+                None,
+                manager,
+                'remove'
+            )
+            deps_file_obj.content = new_content
+            deps_file_obj.updated_at = datetime.utcnow()
+            session.flush()
+            
+            uninstall_cmd = package_service.generate_uninstall_command(package_name, manager)
+            
+            return jsonify({
+                'success': True,
+                'message': f'Package {package_name} removed from {deps_file}',
+                'uninstall_command': uninstall_cmd,
+                'deps_file': deps_file,
+                'manager': manager.value
+            })
+            
+    except Exception as e:
+        logger.error(f"Error uninstalling package: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@studio_bp.route('/packages/search', methods=['GET'])
+@require_auth
+def search_packages():
+    """
+    GET /api/studio/packages/search
+    Search package registries
+    """
+    try:
+        from services.package_service import package_service, PackageManager
+        
+        query = request.args.get('q', '')
+        manager_str = request.args.get('manager', 'pip')
+        limit = min(int(request.args.get('limit', 20)), 50)
+        
+        if not query:
+            return jsonify({
+                'success': False,
+                'error': 'Search query is required'
+            }), 400
+        
+        try:
+            manager = PackageManager(manager_str)
+        except ValueError:
+            return jsonify({
+                'success': False,
+                'error': f'Invalid package manager: {manager_str}'
+            }), 400
+        
+        results = package_service.search_packages(query, manager, limit)
+        
+        return jsonify({
+            'success': True,
+            'results': results,
+            'query': query,
+            'manager': manager_str
+        })
+        
+    except Exception as e:
+        logger.error(f"Error searching packages: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@studio_bp.route('/packages/info', methods=['GET'])
+@require_auth
+def get_package_info():
+    """
+    GET /api/studio/packages/info
+    Get detailed package information
+    """
+    try:
+        from services.package_service import package_service, PackageManager
+        
+        name = request.args.get('name', '')
+        manager_str = request.args.get('manager', 'pip')
+        
+        if not name:
+            return jsonify({
+                'success': False,
+                'error': 'Package name is required'
+            }), 400
+        
+        try:
+            manager = PackageManager(manager_str)
+        except ValueError:
+            return jsonify({
+                'success': False,
+                'error': f'Invalid package manager: {manager_str}'
+            }), 400
+        
+        info = package_service.get_package_info(name, manager)
+        
+        if not info:
+            return jsonify({
+                'success': False,
+                'error': f'Package not found: {name}'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'package': info
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting package info: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@studio_bp.route('/projects/<project_id>/packages/outdated', methods=['GET'])
+@require_auth
+def check_outdated_packages(project_id):
+    """
+    GET /api/studio/projects/<id>/packages/outdated
+    Check for outdated packages in a project
+    """
+    try:
+        from models.studio import StudioProject, ProjectFile
+        from services.package_service import package_service
+        
+        session_ctx = get_db_session()
+        if not session_ctx:
+            return jsonify({
+                'success': False,
+                'error': 'Database not available'
+            }), 503
+        
+        with session_ctx as session:
+            project = session.query(StudioProject).filter_by(id=project_id).first()
+            
+            if not project:
+                return jsonify({
+                    'success': False,
+                    'error': 'Project not found'
+                }), 404
+            
+            language = project.language.value
+            manager = package_service.get_manager_for_language(language)
+            
+            if not manager:
+                return jsonify({
+                    'success': True,
+                    'packages': [],
+                    'outdated_count': 0,
+                    'message': f'No package manager for language: {language}'
+                })
+            
+            deps_file = package_service.get_deps_file(manager)
+            deps_content = None
+            
+            for file in session.query(ProjectFile).filter_by(project_id=project_id).all():
+                if file.path.endswith(deps_file) or file.path == deps_file:
+                    deps_content = file.content
+                    break
+            
+            if not deps_content:
+                return jsonify({
+                    'success': True,
+                    'packages': [],
+                    'outdated_count': 0,
+                    'message': f'No {deps_file} found'
+                })
+            
+            packages = package_service.parse_packages(deps_content, manager)
+            packages = package_service.check_outdated(packages, manager)
+            
+            outdated = [p for p in packages if p.is_outdated]
+            
+            return jsonify({
+                'success': True,
+                'packages': [p.to_dict() for p in packages],
+                'outdated': [p.to_dict() for p in outdated],
+                'outdated_count': len(outdated),
+                'manager': manager.value,
+                'deps_file': deps_file
+            })
+            
+    except Exception as e:
+        logger.error(f"Error checking outdated packages: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
