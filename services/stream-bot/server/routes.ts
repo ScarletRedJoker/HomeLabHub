@@ -47,6 +47,10 @@ import { speechToTextService } from "./speech-to-text-service";
 import adminRoutes from "./admin-routes";
 import presenceRoutes from "./presence-routes";
 
+function broadcastStreamAlert(userId: string, data: any): void {
+  botManager.broadcastStreamAlert(userId, data);
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/auth", oauthSignInRoutes);
   app.use("/api/admin", adminRoutes);
@@ -2568,6 +2572,191 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to get milestone progress:", error);
       res.status(500).json({ error: "Failed to get milestone progress" });
+    }
+  });
+
+  // Stream Alerts (OBS overlay-style alerts)
+  app.get("/api/stream-alerts", requireAuth, async (req, res) => {
+    try {
+      const userStorage = storage.getUserStorage(req.user!.id);
+      const alerts = await userStorage.getStreamAlerts();
+      res.json(alerts);
+    } catch (error) {
+      console.error("Failed to get stream alerts:", error);
+      res.status(500).json({ error: "Failed to get stream alerts" });
+    }
+  });
+
+  app.get("/api/stream-alerts/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userStorage = storage.getUserStorage(req.user!.id);
+      const alert = await userStorage.getStreamAlert(id);
+      
+      if (!alert) {
+        return res.status(404).json({ error: "Stream alert not found" });
+      }
+      
+      res.json(alert);
+    } catch (error) {
+      console.error("Failed to get stream alert:", error);
+      res.status(500).json({ error: "Failed to get stream alert" });
+    }
+  });
+
+  app.post("/api/stream-alerts", requireAuth, async (req, res) => {
+    try {
+      const userStorage = storage.getUserStorage(req.user!.id);
+      
+      const existingAlert = await userStorage.getStreamAlertByType(req.body.alertType);
+      if (existingAlert) {
+        return res.status(400).json({ error: "Alert type already exists. Use PUT to update." });
+      }
+      
+      const alert = await userStorage.createStreamAlert({
+        ...req.body,
+        userId: req.user!.id,
+      });
+      res.status(201).json(alert);
+    } catch (error) {
+      console.error("Failed to create stream alert:", error);
+      res.status(500).json({ error: "Failed to create stream alert" });
+    }
+  });
+
+  app.put("/api/stream-alerts/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userStorage = storage.getUserStorage(req.user!.id);
+      
+      const existingAlert = await userStorage.getStreamAlert(id);
+      if (!existingAlert) {
+        return res.status(404).json({ error: "Stream alert not found" });
+      }
+      
+      const alert = await userStorage.updateStreamAlert(id, req.body);
+      res.json(alert);
+    } catch (error) {
+      console.error("Failed to update stream alert:", error);
+      res.status(500).json({ error: "Failed to update stream alert" });
+    }
+  });
+
+  app.delete("/api/stream-alerts/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userStorage = storage.getUserStorage(req.user!.id);
+      
+      const existingAlert = await userStorage.getStreamAlert(id);
+      if (!existingAlert) {
+        return res.status(404).json({ error: "Stream alert not found" });
+      }
+      
+      await userStorage.deleteStreamAlert(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete stream alert:", error);
+      res.status(500).json({ error: "Failed to delete stream alert" });
+    }
+  });
+
+  app.get("/api/stream-alerts-history", requireAuth, async (req, res) => {
+    try {
+      const { type, limit = "50" } = req.query;
+      const userStorage = storage.getUserStorage(req.user!.id);
+      const history = await userStorage.getStreamAlertHistory(
+        type as string | undefined,
+        parseInt(limit as string)
+      );
+      res.json(history);
+    } catch (error) {
+      console.error("Failed to get stream alert history:", error);
+      res.status(500).json({ error: "Failed to get stream alert history" });
+    }
+  });
+
+  app.post("/api/stream-alerts/test", requireAuth, async (req, res) => {
+    try {
+      const { alertType, platform = "twitch" } = req.body;
+      
+      if (!alertType || !["follow", "sub", "donation", "raid", "bits", "host"].includes(alertType)) {
+        return res.status(400).json({ error: "Invalid alert type" });
+      }
+      
+      const userStorage = storage.getUserStorage(req.user!.id);
+      const alert = await userStorage.getStreamAlertByType(alertType);
+      
+      if (!alert) {
+        return res.status(404).json({ error: "Alert configuration not found" });
+      }
+      
+      const testData = {
+        alertId: alert.id,
+        userId: req.user!.id,
+        platform,
+        triggeredBy: "TestUser",
+        alertType,
+        amount: alertType === "donation" || alertType === "bits" ? 100 : alertType === "raid" ? 50 : undefined,
+        message: "This is a test alert message!",
+        tier: alertType === "sub" ? "Tier 1" : undefined,
+        months: alertType === "sub" ? 1 : undefined,
+      };
+      
+      broadcastStreamAlert(req.user!.id, {
+        type: "stream_alert",
+        alert: alert,
+        data: testData,
+      });
+      
+      res.json({ success: true, message: "Test alert sent" });
+    } catch (error) {
+      console.error("Failed to test stream alert:", error);
+      res.status(500).json({ error: "Failed to test stream alert" });
+    }
+  });
+
+  app.post("/api/stream-alerts/initialize-defaults", requireAuth, async (req, res) => {
+    try {
+      const userStorage = storage.getUserStorage(req.user!.id);
+      const existingAlerts = await userStorage.getStreamAlerts();
+      
+      const defaultAlerts = [
+        { alertType: "follow", textTemplate: "🎉 {user} just followed!", duration: 5, animation: "bounce" as const },
+        { alertType: "sub", textTemplate: "💜 {user} subscribed! {tier} for {months} months!", duration: 7, animation: "zoom" as const },
+        { alertType: "donation", textTemplate: "💰 {user} donated ${amount}! {message}", duration: 8, animation: "slide" as const },
+        { alertType: "raid", textTemplate: "🚀 {user} is raiding with {amount} viewers!", duration: 10, animation: "shake" as const },
+        { alertType: "bits", textTemplate: "✨ {user} cheered {amount} bits! {message}", duration: 6, animation: "bounce" as const },
+        { alertType: "host", textTemplate: "📺 {user} is hosting with {amount} viewers!", duration: 5, animation: "fade" as const },
+      ];
+      
+      const createdAlerts = [];
+      for (const defaults of defaultAlerts) {
+        const existing = existingAlerts.find(a => a.alertType === defaults.alertType);
+        if (!existing) {
+          const alert = await userStorage.createStreamAlert({
+            ...defaults,
+            userId: req.user!.id,
+            enabled: true,
+            fontSize: 32,
+            fontColor: "#ffffff",
+            backgroundColor: "transparent",
+            ttsEnabled: false,
+            ttsVoice: "en-US",
+            minAmount: 0,
+            volume: 50,
+          });
+          createdAlerts.push(alert);
+        }
+      }
+      
+      res.json({ 
+        success: true, 
+        created: createdAlerts.length,
+        message: `Initialized ${createdAlerts.length} default alerts`
+      });
+    } catch (error) {
+      console.error("Failed to initialize default stream alerts:", error);
+      res.status(500).json({ error: "Failed to initialize default stream alerts" });
     }
   });
 

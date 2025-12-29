@@ -146,6 +146,11 @@ import {
   type OnboardingStatus,
   type InsertOnboardingStatus,
   type UpdateOnboardingStatus,
+  type Poll,
+  type InsertPoll,
+  type UpdatePoll,
+  type PollVote,
+  type InsertPollVote,
   users,
   discordUsers,
   servers,
@@ -206,7 +211,9 @@ import {
   userPurchases,
   scheduledPosts,
   onboardingProgress,
-  onboardingStatus
+  onboardingStatus,
+  discordPolls,
+  discordPollVotes
 } from "@shared/schema";
 import { IStorage } from "./storage";
 import { db } from "./db";
@@ -2971,6 +2978,81 @@ export class DatabaseStorage implements IStorage {
       .where(eq(onboardingStatus.serverId, serverId))
       .returning();
     return updated;
+  }
+
+  // Poll operations
+  async getPoll(id: number): Promise<Poll | null> {
+    const [poll] = await db.select().from(discordPolls).where(eq(discordPolls.id, id));
+    return poll || null;
+  }
+
+  async getActivePolls(serverId: string): Promise<Poll[]> {
+    return await db.select()
+      .from(discordPolls)
+      .where(and(
+        eq(discordPolls.serverId, serverId),
+        eq(discordPolls.ended, false)
+      ))
+      .orderBy(desc(discordPolls.createdAt));
+  }
+
+  async getExpiredPolls(): Promise<Poll[]> {
+    const now = new Date();
+    return await db.select()
+      .from(discordPolls)
+      .where(and(
+        eq(discordPolls.ended, false),
+        lte(discordPolls.endsAt, now)
+      ));
+  }
+
+  async createPoll(data: InsertPoll): Promise<Poll> {
+    const [poll] = await db.insert(discordPolls)
+      .values({
+        ...data,
+        createdAt: new Date()
+      })
+      .returning();
+    return poll;
+  }
+
+  async updatePoll(id: number, updates: UpdatePoll): Promise<Poll | null> {
+    const [poll] = await db.update(discordPolls)
+      .set(updates)
+      .where(eq(discordPolls.id, id))
+      .returning();
+    return poll || null;
+  }
+
+  async deletePoll(id: number): Promise<boolean> {
+    const result = await db.delete(discordPolls).where(eq(discordPolls.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // Poll Vote operations
+  async getPollVoteByUser(pollId: number, odUserId: string): Promise<PollVote | null> {
+    const [vote] = await db.select()
+      .from(discordPollVotes)
+      .where(and(
+        eq(discordPollVotes.pollId, pollId),
+        eq(discordPollVotes.odUserId, odUserId)
+      ));
+    return vote || null;
+  }
+
+  async createPollVote(data: InsertPollVote): Promise<PollVote> {
+    const [vote] = await db.insert(discordPollVotes)
+      .values({
+        ...data,
+        votedAt: new Date()
+      })
+      .returning();
+    return vote;
+  }
+
+  async deletePollVote(id: number): Promise<boolean> {
+    const result = await db.delete(discordPollVotes).where(eq(discordPollVotes.id, id));
+    return (result.rowCount || 0) > 0;
   }
 }
 

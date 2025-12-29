@@ -28,8 +28,11 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Save, Bell, Sparkles, Users, Target, TestTube, History } from "lucide-react";
+import { Loader2, Save, Bell, Sparkles, Users, Target, TestTube, History, Monitor, Play, Volume2, Image, Type, Copy, ExternalLink, RefreshCw, Eye } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Slider } from "@/components/ui/slider";
 import { z } from "zod";
+import { AlertPreview } from "@/components/AlertPreview";
 
 const alertSettingsSchema = z.object({
   enableFollowerAlerts: z.boolean(),
@@ -54,10 +57,51 @@ interface AlertHistory {
   metadata?: any;
 }
 
+interface StreamAlert {
+  id: number;
+  visitorId: number;
+  alertType: string;
+  enabled: boolean;
+  soundUrl: string | null;
+  imageUrl: string | null;
+  duration: number;
+  animation: string;
+  textTemplate: string;
+  fontSize: number;
+  fontColor: string;
+  backgroundColor: string;
+  ttsEnabled: boolean;
+  ttsVoice: string;
+  minAmount: number;
+  volume: number;
+  createdAt: string;
+}
+
+const ALERT_TYPES = [
+  { value: "follow", label: "Follow", icon: "👋", description: "New follower alerts" },
+  { value: "sub", label: "Subscription", icon: "⭐", description: "New and resub alerts" },
+  { value: "donation", label: "Donation", icon: "💰", description: "Donation alerts" },
+  { value: "raid", label: "Raid", icon: "🚀", description: "Incoming raid alerts" },
+  { value: "bits", label: "Bits", icon: "💎", description: "Cheer/bits alerts" },
+  { value: "host", label: "Host", icon: "📺", description: "Host alerts" },
+];
+
+const ANIMATIONS = [
+  { value: "fade", label: "Fade" },
+  { value: "slide", label: "Slide" },
+  { value: "bounce", label: "Bounce" },
+  { value: "zoom", label: "Zoom" },
+  { value: "flip", label: "Flip" },
+  { value: "shake", label: "Shake" },
+];
+
 export default function Alerts() {
   const { toast } = useToast();
   const [historyFilter, setHistoryFilter] = useState<string>("all");
   const [newThreshold, setNewThreshold] = useState<string>("");
+  const [selectedAlertType, setSelectedAlertType] = useState<string>("follow");
+  const [overlayUrl, setOverlayUrl] = useState<string>("");
+  const [editingAlert, setEditingAlert] = useState<StreamAlert | null>(null);
 
   const { data: settings, isLoading } = useQuery<AlertSettingsFormValues | null>({
     queryKey: ["/api/alerts/settings"],
@@ -71,6 +115,16 @@ export default function Alerts() {
       return await res.json();
     },
   });
+
+  const { data: streamAlerts = [], isLoading: streamAlertsLoading } = useQuery<StreamAlert[]>({
+    queryKey: ["/api/stream-alerts"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/stream-alerts");
+      return await res.json();
+    },
+  });
+
+  const currentStreamAlert = streamAlerts.find(a => a.alertType === selectedAlertType);
 
   const form = useForm<AlertSettingsFormValues>({
     resolver: zodResolver(alertSettingsSchema),
@@ -141,6 +195,59 @@ export default function Alerts() {
     },
   });
 
+  const updateStreamAlertMutation = useMutation({
+    mutationFn: async (data: Partial<StreamAlert> & { alertType: string }) => {
+      return await apiRequest("PUT", `/api/stream-alerts/${data.alertType}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/stream-alerts"] });
+      toast({ title: "Alert updated", description: "Stream alert configuration saved." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to save alert settings.", variant: "destructive" });
+    },
+  });
+
+  const testStreamAlertMutation = useMutation({
+    mutationFn: async (alertType: string) => {
+      return await apiRequest("POST", "/api/stream-alerts/test", { alertType });
+    },
+    onSuccess: () => {
+      toast({ title: "Test alert sent", description: "Check your overlay to see the alert." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to send test alert.", variant: "destructive" });
+    },
+  });
+
+  const generateOverlayUrlMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/overlay/generate-token", { platform: "alerts", expiresIn: 30 * 24 * 60 * 60 });
+      return await res.json();
+    },
+    onSuccess: (data: any) => {
+      const baseUrl = window.location.origin;
+      setOverlayUrl(`${baseUrl}${data.overlayUrl}`);
+      toast({ title: "Overlay URL generated", description: "Copy the URL to use in OBS." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to generate overlay URL.", variant: "destructive" });
+    },
+  });
+
+  const initializeDefaultsMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", "/api/stream-alerts/initialize-defaults");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/stream-alerts"] });
+      toast({ title: "Defaults initialized", description: "Default alert configurations created." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to initialize defaults.", variant: "destructive" });
+    },
+  });
+
   const onSubmit = (data: AlertSettingsFormValues) => {
     updateMutation.mutate(data);
   };
@@ -196,6 +303,17 @@ export default function Alerts() {
     );
   }
 
+  const handleSaveStreamAlert = (alertType: string, updates: Partial<StreamAlert>) => {
+    updateStreamAlertMutation.mutate({ alertType, ...updates });
+  };
+
+  const copyOverlayUrl = () => {
+    if (overlayUrl) {
+      navigator.clipboard.writeText(overlayUrl);
+      toast({ title: "Copied", description: "Overlay URL copied to clipboard." });
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div>
@@ -205,6 +323,19 @@ export default function Alerts() {
         </p>
       </div>
 
+      <Tabs defaultValue="chat" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsTrigger value="chat" className="flex items-center gap-2">
+            <Bell className="h-4 w-4" />
+            Chat Alerts
+          </TabsTrigger>
+          <TabsTrigger value="overlay" className="flex items-center gap-2">
+            <Monitor className="h-4 w-4" />
+            OBS Overlay
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="chat" className="space-y-6">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <Card>
@@ -563,6 +694,356 @@ export default function Alerts() {
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="overlay" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Monitor className="h-5 w-5" />
+                OBS Browser Source URL
+              </CardTitle>
+              <CardDescription>
+                Add this URL as a browser source in OBS to display alerts on your stream
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Input
+                  value={overlayUrl}
+                  readOnly
+                  placeholder="Click 'Generate URL' to create your overlay link"
+                  className="font-mono text-sm"
+                />
+                <Button
+                  variant="outline"
+                  onClick={copyOverlayUrl}
+                  disabled={!overlayUrl}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+                <Button
+                  onClick={() => window.open(overlayUrl, '_blank')}
+                  disabled={!overlayUrl}
+                  variant="outline"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => generateOverlayUrlMutation.mutate()}
+                  disabled={generateOverlayUrlMutation.isPending}
+                >
+                  {generateOverlayUrlMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  Generate URL
+                </Button>
+                {streamAlerts.length === 0 && (
+                  <Button
+                    variant="outline"
+                    onClick={() => initializeDefaultsMutation.mutate()}
+                    disabled={initializeDefaultsMutation.isPending}
+                  >
+                    {initializeDefaultsMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : null}
+                    Initialize Defaults
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Recommended OBS settings: Width 1920, Height 1080, transparent background
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5" />
+                Alert Configurations
+              </CardTitle>
+              <CardDescription>
+                Configure each alert type with custom images, sounds, and animations
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex flex-wrap gap-2">
+                {ALERT_TYPES.map((type) => {
+                  const alertConfig = streamAlerts.find(a => a.alertType === type.value);
+                  return (
+                    <Button
+                      key={type.value}
+                      variant={selectedAlertType === type.value ? "default" : "outline"}
+                      onClick={() => setSelectedAlertType(type.value)}
+                      className="flex items-center gap-2"
+                    >
+                      <span>{type.icon}</span>
+                      <span>{type.label}</span>
+                      {alertConfig?.enabled && (
+                        <Badge variant="secondary" className="ml-1 text-xs">On</Badge>
+                      )}
+                    </Button>
+                  );
+                })}
+              </div>
+
+              {currentStreamAlert ? (
+                <div className="space-y-4 p-4 border rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-lg font-semibold">
+                      {ALERT_TYPES.find(t => t.value === selectedAlertType)?.icon}{" "}
+                      {ALERT_TYPES.find(t => t.value === selectedAlertType)?.label} Alert
+                    </Label>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={currentStreamAlert.enabled}
+                          onCheckedChange={(enabled) => handleSaveStreamAlert(selectedAlertType, { enabled })}
+                        />
+                        <Label>Enabled</Label>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => testStreamAlertMutation.mutate(selectedAlertType)}
+                        disabled={testStreamAlertMutation.isPending}
+                      >
+                        {testStreamAlertMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Play className="h-4 w-4" />
+                        )}
+                        <span className="ml-2">Test</span>
+                      </Button>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Image className="h-4 w-4" />
+                        Image URL
+                      </Label>
+                      <Input
+                        value={currentStreamAlert.imageUrl || ""}
+                        onChange={(e) => handleSaveStreamAlert(selectedAlertType, { imageUrl: e.target.value })}
+                        placeholder="https://example.com/alert.gif"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Volume2 className="h-4 w-4" />
+                        Sound URL
+                      </Label>
+                      <Input
+                        value={currentStreamAlert.soundUrl || ""}
+                        onChange={(e) => handleSaveStreamAlert(selectedAlertType, { soundUrl: e.target.value })}
+                        placeholder="https://example.com/alert.mp3"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Type className="h-4 w-4" />
+                      Text Template
+                    </Label>
+                    <Textarea
+                      value={currentStreamAlert.textTemplate}
+                      onChange={(e) => handleSaveStreamAlert(selectedAlertType, { textTemplate: e.target.value })}
+                      placeholder="Thank you {user} for the follow!"
+                      rows={2}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Variables: {"{user}"}, {"{amount}"}, {"{message}"}, {"{tier}"}, {"{months}"}, {"{platform}"}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Animation</Label>
+                      <Select
+                        value={currentStreamAlert.animation}
+                        onValueChange={(animation) => handleSaveStreamAlert(selectedAlertType, { animation })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ANIMATIONS.map((anim) => (
+                            <SelectItem key={anim.value} value={anim.value}>
+                              {anim.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Duration (seconds)</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={60}
+                        value={currentStreamAlert.duration}
+                        onChange={(e) => handleSaveStreamAlert(selectedAlertType, { duration: parseInt(e.target.value) || 5 })}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Font Size (px)</Label>
+                      <Input
+                        type="number"
+                        min={12}
+                        max={120}
+                        value={currentStreamAlert.fontSize}
+                        onChange={(e) => handleSaveStreamAlert(selectedAlertType, { fontSize: parseInt(e.target.value) || 32 })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Font Color</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="color"
+                          value={currentStreamAlert.fontColor}
+                          onChange={(e) => handleSaveStreamAlert(selectedAlertType, { fontColor: e.target.value })}
+                          className="w-12 h-10 p-1"
+                        />
+                        <Input
+                          value={currentStreamAlert.fontColor}
+                          onChange={(e) => handleSaveStreamAlert(selectedAlertType, { fontColor: e.target.value })}
+                          className="flex-1"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Background Color</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="color"
+                          value={currentStreamAlert.backgroundColor === "transparent" ? "#000000" : currentStreamAlert.backgroundColor}
+                          onChange={(e) => handleSaveStreamAlert(selectedAlertType, { backgroundColor: e.target.value })}
+                          className="w-12 h-10 p-1"
+                        />
+                        <Input
+                          value={currentStreamAlert.backgroundColor}
+                          onChange={(e) => handleSaveStreamAlert(selectedAlertType, { backgroundColor: e.target.value })}
+                          placeholder="transparent"
+                          className="flex-1"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Volume ({currentStreamAlert.volume}%)</Label>
+                      <Slider
+                        value={[currentStreamAlert.volume]}
+                        onValueChange={([volume]) => handleSaveStreamAlert(selectedAlertType, { volume })}
+                        min={0}
+                        max={100}
+                        step={5}
+                        className="mt-2"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <Label>Text-to-Speech</Label>
+                      <p className="text-xs text-muted-foreground">Read alert message aloud</p>
+                    </div>
+                    <Switch
+                      checked={currentStreamAlert.ttsEnabled}
+                      onCheckedChange={(ttsEnabled) => handleSaveStreamAlert(selectedAlertType, { ttsEnabled })}
+                    />
+                  </div>
+
+                  <Card className="bg-muted/50">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Eye className="h-4 w-4" />
+                        Alert Preview
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <AlertPreview 
+                        alert={{
+                          alertType: selectedAlertType,
+                          enabled: currentStreamAlert.enabled,
+                          soundUrl: currentStreamAlert.soundUrl,
+                          imageUrl: currentStreamAlert.imageUrl,
+                          duration: currentStreamAlert.duration,
+                          animation: currentStreamAlert.animation,
+                          textTemplate: currentStreamAlert.textTemplate,
+                          fontSize: currentStreamAlert.fontSize,
+                          fontColor: currentStreamAlert.fontColor,
+                          backgroundColor: currentStreamAlert.backgroundColor,
+                          ttsEnabled: currentStreamAlert.ttsEnabled,
+                          ttsVoice: currentStreamAlert.ttsVoice,
+                          minAmount: currentStreamAlert.minAmount,
+                          volume: currentStreamAlert.volume,
+                        }}
+                        sampleData={{
+                          user: "TestUser123",
+                          amount: selectedAlertType === "donation" ? 5 : selectedAlertType === "bits" ? 100 : selectedAlertType === "raid" ? 42 : undefined,
+                          message: selectedAlertType === "donation" || selectedAlertType === "bits" ? "Great stream!" : undefined,
+                          tier: selectedAlertType === "sub" ? "Tier 1" : undefined,
+                          months: selectedAlertType === "sub" ? 3 : undefined,
+                        }}
+                      />
+                    </CardContent>
+                  </Card>
+
+                  {(selectedAlertType === "donation" || selectedAlertType === "bits") && (
+                    <div className="space-y-2">
+                      <Label>Minimum Amount</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={currentStreamAlert.minAmount}
+                        onChange={(e) => handleSaveStreamAlert(selectedAlertType, { minAmount: parseInt(e.target.value) || 0 })}
+                        placeholder="0"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Only show alerts for amounts equal to or greater than this value
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : streamAlertsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground mb-4">No alert configurations found.</p>
+                  <Button
+                    onClick={() => initializeDefaultsMutation.mutate()}
+                    disabled={initializeDefaultsMutation.isPending}
+                  >
+                    {initializeDefaultsMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : null}
+                    Initialize Default Alerts
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -298,6 +298,10 @@ export class BotManager {
     });
   }
 
+  broadcastStreamAlert(userId: string, alertData: any): void {
+    this.broadcastToUser(userId, alertData);
+  }
+
   private handleBotEvent(event: any): void {
     // Broadcast event to user's WebSocket clients
     this.broadcastToUser(event.userId, {

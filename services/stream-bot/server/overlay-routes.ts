@@ -3,6 +3,7 @@ import { requireAuth } from "./auth/middleware";
 import { createOverlayToken, verifyOverlayToken } from "./crypto-utils";
 import { spotifyServiceMultiUser } from "./spotify-service-multiuser";
 import { youtubeServiceMultiUser } from "./youtube-service-multiuser";
+import { storage } from "./storage";
 
 const router = Router();
 
@@ -34,13 +35,13 @@ router.post('/generate-token', requireAuth, async (req, res) => {
   try {
     const { platform, expiresIn } = req.body;
 
-    if (!platform || !['spotify', 'youtube'].includes(platform)) {
-      return res.status(400).json({ error: 'Invalid platform. Must be spotify or youtube.' });
+    if (!platform || !['spotify', 'youtube', 'alerts'].includes(platform)) {
+      return res.status(400).json({ error: 'Invalid platform. Must be spotify, youtube, or alerts.' });
     }
 
     const userId = req.user!.id;
 
-    // Check if user has this platform connected
+    // Check if user has this platform connected (skip for alerts as it doesn't require a platform)
     if (platform === 'spotify') {
       const connected = await spotifyServiceMultiUser.isConnected(userId);
       if (!connected) {
@@ -52,6 +53,7 @@ router.post('/generate-token', requireAuth, async (req, res) => {
         return res.status(400).json({ error: 'YouTube not connected. Please connect YouTube first.' });
       }
     }
+    // alerts platform doesn't require any connection - always allowed
 
     // Generate signed token (default 24 hours, max 30 days)
     const maxExpiry = 30 * 24 * 60 * 60; // 30 days
@@ -62,6 +64,7 @@ router.post('/generate-token', requireAuth, async (req, res) => {
     const overlayUrls: Record<string, string> = {
       spotify: `/overlay/spotify?token=${token}`,
       youtube: `/overlay/youtube?token=${token}`,
+      alerts: `/overlay/stream-alerts?token=${token}`,
     };
 
     const overlayUrl = overlayUrls[platform];
@@ -112,6 +115,15 @@ router.get('/:platform/data', async (req, res) => {
     if (platform === 'youtube') {
       const livestream = await youtubeServiceMultiUser.getCurrentLivestream(userId);
       return res.json(livestream);
+    }
+
+    if (platform === 'alerts') {
+      const userStorage = storage.getUserStorage(userId);
+      const alerts = await userStorage.getStreamAlerts();
+      return res.json({
+        alerts: alerts.filter(a => a.enabled),
+        userId,
+      });
     }
 
     return res.status(400).json({ error: 'Invalid platform' });

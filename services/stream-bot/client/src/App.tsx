@@ -40,6 +40,7 @@ import NotFound from "@/pages/not-found";
 import SpotifyOverlay from "@/pages/spotify-overlay";
 import YouTubeOverlay from "@/pages/youtube-overlay";
 import CustomOverlay from "@/pages/custom-overlay";
+import StreamAlertsOverlay from "@/pages/stream-alerts-overlay";
 import './styles/candy-theme.css';
 
 function AuthRouter() {
@@ -52,6 +53,7 @@ function AuthRouter() {
       <Route path="/overlay/youtube" component={YouTubeOverlay} />
       <Route path="/youtube-overlay" component={YouTubeOverlay} />
       <Route path="/overlay/custom" component={CustomOverlay} />
+      <Route path="/overlay/stream-alerts" component={StreamAlertsOverlay} />
       {/* Public fact feed - accessible without authentication */}
       <Route path="/fact-feed" component={FactFeed} />
       <Route>

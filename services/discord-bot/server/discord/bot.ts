@@ -30,6 +30,7 @@ import { initializeModerationFeatures, handleAutoMod } from './moderation-featur
 import { registerScheduledCommands, calculateNextRun } from './scheduled-commands';
 import { registerLevelingCommands, initializeLevelingEvents } from './features/leveling';
 import { registerCustomCommandCommands, initializeCustomCommandEvents } from './features/customCommands';
+import { registerPollCommands, handlePollButtonInteraction, handlePollSelectMenuInteraction, startPollScheduler, stopPollScheduler } from './features/polls';
 import { commandEngine } from '../services/commandEngine';
 import { guildIdentityService } from '../services/guildIdentityService';
 import { welcomeCardRenderer } from '../services/welcomeCardRenderer';
@@ -69,6 +70,7 @@ console.log('[Discord] Registered developer commands:', developerCommands.map(c 
 registerScheduledCommands();
 registerLevelingCommands(commands);
 registerCustomCommandCommands(commands);
+registerPollCommands(commands);
 console.log('[Discord] Total commands after all registrations:', Array.from(commands.keys()).join(', '));
 
 export async function startBot(storage: IStorage, broadcast: (data: any) => void): Promise<void> {
@@ -2028,6 +2030,26 @@ export async function startBot(storage: IStorage, broadcast: (data: any) => void
           console.error('[WorkflowEngine] Error triggering select_menu workflow:', workflowError);
         }
       }
+      
+      // Handle poll button interactions
+      if (interaction.isButton() && interaction.customId.startsWith('poll_')) {
+        try {
+          const handled = await handlePollButtonInteraction(interaction, storage, client!);
+          if (handled) return;
+        } catch (pollError) {
+          console.error('[Polls] Error handling poll button interaction:', pollError);
+        }
+      }
+      
+      // Handle poll select menu interactions
+      if (interaction.isStringSelectMenu() && interaction.customId.startsWith('poll_')) {
+        try {
+          const handled = await handlePollSelectMenuInteraction(interaction, storage, client!);
+          if (handled) return;
+        } catch (pollError) {
+          console.error('[Polls] Error handling poll select menu interaction:', pollError);
+        }
+      }
     });
     
     // Handle messages in ticket channels/threads
@@ -2888,6 +2910,15 @@ export async function startBot(storage: IStorage, broadcast: (data: any) => void
         console.log('[Bot] ✅ SLA monitor started successfully');
       } catch (slaError) {
         console.error('[Bot] Failed to start SLA monitor:', slaError);
+      }
+      
+      // Start poll scheduler for auto-ending timed polls
+      console.log('[Bot] Starting poll scheduler...');
+      try {
+        startPollScheduler(readyClient, storage);
+        console.log('[Bot] ✅ Poll scheduler started successfully');
+      } catch (pollSchedulerError) {
+        console.error('[Bot] Failed to start poll scheduler:', pollSchedulerError);
       }
       
       // Start Homelab Presence service for dynamic bot status

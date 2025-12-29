@@ -55,11 +55,16 @@ import type {
   AlertSettings,
   AlertHistory,
   Milestone,
+  StreamAlert,
+  StreamAlertHistory,
   InsertAlertSettings,
   InsertAlertHistory,
   InsertMilestone,
+  InsertStreamAlert,
+  InsertStreamAlertHistory,
   UpdateAlertSettings,
   UpdateMilestone,
+  UpdateStreamAlert,
 } from "@shared/schema";
 
 export class UserStorage {
@@ -520,6 +525,40 @@ export class UserStorage {
 
   async updateMilestone(id: string, data: UpdateMilestone): Promise<Milestone> {
     return storage.updateMilestone(this.userId, id, data);
+  }
+
+  // Stream Alerts (OBS overlay-style alerts)
+  async getStreamAlerts(): Promise<StreamAlert[]> {
+    return storage.getStreamAlerts(this.userId);
+  }
+
+  async getStreamAlert(id: string): Promise<StreamAlert | undefined> {
+    return storage.getStreamAlert(this.userId, id);
+  }
+
+  async getStreamAlertByType(alertType: string): Promise<StreamAlert | undefined> {
+    return storage.getStreamAlertByType(this.userId, alertType);
+  }
+
+  async createStreamAlert(data: InsertStreamAlert): Promise<StreamAlert> {
+    return storage.createStreamAlert(this.userId, data);
+  }
+
+  async updateStreamAlert(id: string, data: UpdateStreamAlert): Promise<StreamAlert> {
+    return storage.updateStreamAlert(this.userId, id, data);
+  }
+
+  async deleteStreamAlert(id: string): Promise<void> {
+    return storage.deleteStreamAlert(this.userId, id);
+  }
+
+  // Stream Alert History
+  async getStreamAlertHistory(alertType?: string, limit?: number): Promise<StreamAlertHistory[]> {
+    return storage.getStreamAlertHistory(this.userId, alertType, limit);
+  }
+
+  async createStreamAlertHistory(data: InsertStreamAlertHistory): Promise<StreamAlertHistory> {
+    return storage.createStreamAlertHistory(data);
   }
 }
 

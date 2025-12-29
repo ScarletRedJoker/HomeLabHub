@@ -2579,3 +2579,80 @@ export const updateOnboardingStatusSchema = createInsertSchema(onboardingStatus)
   updatedAt: true
 }).partial();
 export type UpdateOnboardingStatus = z.infer<typeof updateOnboardingStatusSchema>;
+
+// =============================================
+// POLLS / VOTING SYSTEM
+// =============================================
+
+// Poll types
+export type PollType = 'single' | 'multiple' | 'ranked';
+
+// Discord Polls table - stores Discord bot poll definitions
+export const discordPolls = pgTable("discord_polls", {
+  id: serial("id").primaryKey(),
+  serverId: text("server_id").notNull(),
+  channelId: text("channel_id").notNull(),
+  messageId: text("message_id"),
+  question: text("question").notNull(),
+  pollType: text("poll_type").notNull().default("single"),
+  options: text("options").notNull(),
+  votes: text("votes").default("{}"),
+  createdBy: text("created_by").notNull(),
+  createdByUsername: text("created_by_username"),
+  endsAt: timestamp("ends_at"),
+  ended: boolean("ended").default(false),
+  anonymous: boolean("anonymous").default(false),
+  maxChoices: integer("max_choices").default(1),
+  allowedRoles: text("allowed_roles"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Discord Poll Votes table - tracks individual votes for non-anonymous polls
+export const discordPollVotes = pgTable("discord_poll_votes", {
+  id: serial("id").primaryKey(),
+  pollId: integer("poll_id").notNull().references(() => discordPolls.id, { onDelete: "cascade" }),
+  odUserId: text("od_user_id").notNull(),
+  odUsername: text("od_username"),
+  optionIndices: text("option_indices").notNull(),
+  votedAt: timestamp("voted_at").defaultNow(),
+});
+
+// Keep aliases for backwards compatibility
+export const polls = discordPolls;
+export const pollVotes = discordPollVotes;
+
+// Polls validation schemas
+export const insertPollSchema = createInsertSchema(polls).omit({
+  id: true,
+  createdAt: true
+});
+export type InsertPoll = z.infer<typeof insertPollSchema>;
+export type Poll = typeof polls.$inferSelect;
+
+export const updatePollSchema = createInsertSchema(polls).omit({
+  id: true,
+  serverId: true,
+  channelId: true,
+  createdBy: true,
+  createdAt: true
+}).partial();
+export type UpdatePoll = z.infer<typeof updatePollSchema>;
+
+// Poll Votes validation schemas
+export const insertPollVoteSchema = createInsertSchema(pollVotes).omit({
+  id: true,
+  votedAt: true
+});
+export type InsertPollVote = z.infer<typeof insertPollVoteSchema>;
+export type PollVote = typeof pollVotes.$inferSelect;
+
+// Poll option interface for JSON storage
+export interface PollOption {
+  text: string;
+  emoji?: string;
+}
+
+// Poll votes structure for JSON storage
+export interface PollVotesData {
+  [optionIndex: string]: string[];
+}

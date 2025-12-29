@@ -1,6 +1,6 @@
 """Unified Activity Feed database models"""
 from sqlalchemy import String, Integer, DateTime, Text, Boolean, Index, Enum as SQLEnum
-from sqlalchemy.dialects.postgresql import UUID, JSON
+from sqlalchemy.dialects.postgresql import UUID, JSON, ENUM
 from sqlalchemy.orm import Mapped, mapped_column
 import uuid
 from datetime import datetime
@@ -29,23 +29,39 @@ class SourceService(enum.Enum):
     MONITORING = "monitoring"
 
 
+sourceservice_enum = ENUM(
+    'dashboard', 'discord', 'stream', 'jarvis', 'docker', 'studio', 
+    'system', 'deployment', 'monitoring',
+    name='sourceservice',
+    create_type=False
+)
+
+eventseverity_enum = ENUM(
+    'info', 'warning', 'error', 'success',
+    name='eventseverity',
+    create_type=False
+)
+
+
 class ActivityEvent(Base):
     """Unified activity event for cross-service activity tracking"""
     __tablename__ = 'activity_events'
     
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     event_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
-    source_service: Mapped[SourceService] = mapped_column(
-        SQLEnum(SourceService),
+    source_service: Mapped[str] = mapped_column(
+        sourceservice_enum,
         nullable=False,
         index=True
     )
+    actor: Mapped[str] = mapped_column(String(255), nullable=True, index=True)
+    target: Mapped[str] = mapped_column(String(255), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=True)
     event_metadata: Mapped[dict] = mapped_column(JSON, nullable=True, default=dict)
-    severity: Mapped[EventSeverity] = mapped_column(
-        SQLEnum(EventSeverity),
-        default=EventSeverity.INFO,
+    severity: Mapped[str] = mapped_column(
+        eventseverity_enum,
+        default='info',
         nullable=False,
         index=True
     )
@@ -61,6 +77,8 @@ class ActivityEvent(Base):
         Index('ix_activity_events_severity_created', 'severity', 'created_at'),
         Index('ix_activity_events_user_created', 'user_id', 'created_at'),
         Index('ix_activity_events_year_month', 'year_month'),
+        Index('ix_activity_events_actor', 'actor'),
+        Index('ix_activity_events_target', 'target'),
     )
     
     def __init__(self, **kwargs):
@@ -69,17 +87,19 @@ class ActivityEvent(Base):
             self.year_month = self.created_at.strftime('%Y-%m')
     
     def __repr__(self):
-        return f"<ActivityEvent(id={self.id}, type='{self.event_type}', source='{self.source_service.value}')>"
+        return f"<ActivityEvent(id={self.id}, type='{self.event_type}', source='{self.source_service}')>"
     
     def to_dict(self):
         return {
             'id': str(self.id),
             'event_type': self.event_type,
-            'source_service': self.source_service.value if self.source_service else None,
+            'source_service': self.source_service,
+            'actor': self.actor,
+            'target': self.target,
             'title': self.title,
             'description': self.description,
             'metadata': self.event_metadata,
-            'severity': self.severity.value if self.severity else 'info',
+            'severity': self.severity or 'info',
             'user_id': self.user_id,
             'icon': self.icon or 'activity',
             'created_at': self.created_at.isoformat() if self.created_at else None,

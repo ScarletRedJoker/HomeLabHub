@@ -635,6 +635,63 @@ export const milestones = pgTable("milestones", {
   ),
 }));
 
+// Stream Alerts - OBS overlay-style alerts for followers/subs/donations/raids/bits
+export const streamAlerts = pgTable("stream_alerts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  alertType: text("alert_type").notNull(), // 'follow', 'sub', 'donation', 'raid', 'bits', 'host'
+  enabled: boolean("enabled").default(true).notNull(),
+  soundUrl: text("sound_url"), // URL to the alert sound
+  imageUrl: text("image_url"), // URL to the alert image/GIF
+  duration: integer("duration").default(5).notNull(), // Duration in seconds to show alert
+  animation: text("animation").default("fade").notNull(), // 'fade', 'slide', 'bounce', 'zoom', 'flip', 'shake'
+  textTemplate: text("text_template").notNull(), // Template with variables like {user}, {amount}, {message}
+  fontSize: integer("font_size").default(32).notNull(), // Font size for alert text
+  fontColor: text("font_color").default("#ffffff").notNull(), // Color for alert text
+  backgroundColor: text("background_color").default("transparent").notNull(), // Background color
+  ttsEnabled: boolean("tts_enabled").default(false).notNull(), // Text-to-speech enabled
+  ttsVoice: text("tts_voice").default("en-US").notNull(), // TTS voice/language
+  minAmount: integer("min_amount").default(0).notNull(), // Minimum amount to trigger (for donations/bits)
+  volume: integer("volume").default(50).notNull(), // Sound volume 0-100
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  userAlertTypeIdx: uniqueIndex("stream_alerts_user_id_alert_type_unique").on(table.userId, table.alertType),
+}));
+
+// Stream Alert History - History of triggered stream alerts
+export const streamAlertHistory = pgTable("stream_alert_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  alertId: varchar("alert_id").notNull().references(() => streamAlerts.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  platform: text("platform").notNull(), // 'twitch', 'youtube', 'kick'
+  triggeredBy: text("triggered_by").notNull(), // Username that triggered the alert
+  alertType: text("alert_type").notNull(), // 'follow', 'sub', 'donation', 'raid', 'bits', 'host'
+  amount: integer("amount"), // Amount for donations/bits/raid viewers
+  message: text("message"), // Optional message from the user
+  tier: text("tier"), // Sub tier for subscription alerts
+  months: integer("months"), // Months subscribed
+  triggeredAt: timestamp("triggered_at").defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("stream_alert_history_user_id_idx").on(table.userId),
+  alertIdIdx: index("stream_alert_history_alert_id_idx").on(table.alertId),
+  triggeredAtIdx: index("stream_alert_history_triggered_at_idx").on(table.triggeredAt),
+}));
+
+// Alert Queue - Persistent queue for alerts waiting to be displayed
+export const alertQueue = pgTable("alert_queue", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  alertType: text("alert_type").notNull(), // 'follow', 'sub', 'donation', 'raid', 'bits', 'host'
+  data: jsonb("data").notNull(), // Alert-specific data: { triggeredBy, amount, message, tier, months, platform }
+  played: boolean("played").default(false).notNull(), // Whether the alert has been displayed
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("alert_queue_user_id_idx").on(table.userId),
+  playedIdx: index("alert_queue_played_idx").on(table.played),
+  createdAtIdx: index("alert_queue_created_at_idx").on(table.createdAt),
+}));
+
 // Chatbot Settings - AI chatbot personality and configuration
 export const chatbotSettings = pgTable("chatbot_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1569,6 +1626,50 @@ export const insertMilestoneSchema = createInsertSchema(milestones, {
   createdAt: true,
 });
 
+export const insertStreamAlertSchema = createInsertSchema(streamAlerts, {
+  alertType: z.enum(["follow", "sub", "donation", "raid", "bits", "host"]),
+  textTemplate: z.string().min(1, "Text template is required").max(500, "Text template too long"),
+  animation: z.enum(["fade", "slide", "bounce", "zoom", "flip", "shake"]),
+  duration: z.coerce.number().min(1).max(60),
+  fontSize: z.coerce.number().min(10).max(100),
+  fontColor: z.string().regex(/^#[0-9A-Fa-f]{6}$|^transparent$/, "Invalid color format"),
+  backgroundColor: z.string().max(50),
+  volume: z.coerce.number().min(0).max(100),
+  minAmount: z.coerce.number().min(0),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAlertQueueSchema = createInsertSchema(alertQueue, {
+  alertType: z.enum(["follow", "sub", "donation", "raid", "bits", "host"]),
+  data: z.object({
+    triggeredBy: z.string(),
+    amount: z.number().optional(),
+    message: z.string().optional(),
+    tier: z.string().optional(),
+    months: z.number().optional(),
+    platform: z.string(),
+  }),
+}).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertStreamAlertHistorySchema = createInsertSchema(streamAlertHistory, {
+  platform: z.enum(["twitch", "youtube", "kick"]),
+  alertType: z.enum(["follow", "sub", "donation", "raid", "bits", "host"]),
+  triggeredBy: z.string().min(1, "Triggered by is required").max(100, "Username too long"),
+  amount: z.coerce.number().min(0).optional(),
+  message: z.string().max(500, "Message too long").optional(),
+  tier: z.string().max(20).optional(),
+  months: z.coerce.number().min(0).optional(),
+}).omit({
+  id: true,
+  triggeredAt: true,
+});
+
 export const insertChatbotSettingsSchema = createInsertSchema(chatbotSettings, {
   personality: z.enum(["friendly", "snarky", "professional", "enthusiastic", "chill", "custom"]),
   customPersonalityPrompt: z.string().max(1000, "Personality prompt too long").optional(),
@@ -1897,6 +1998,8 @@ export const updatePredictionSchema = insertPredictionSchema.partial();
 export const updatePredictionBetSchema = insertPredictionBetSchema.partial();
 export const updateAlertSettingsSchema = insertAlertSettingsSchema.partial();
 export const updateMilestoneSchema = insertMilestoneSchema.partial();
+export const updateStreamAlertSchema = insertStreamAlertSchema.partial();
+export const updateStreamAlertHistorySchema = insertStreamAlertHistorySchema.partial();
 export const updateChatbotSettingsSchema = insertChatbotSettingsSchema.partial();
 export const updateChatbotResponseSchema = insertChatbotResponseSchema.partial();
 export const updateChatbotContextSchema = insertChatbotContextSchema.partial();
@@ -1962,6 +2065,9 @@ export type PredictionBet = typeof predictionBets.$inferSelect;
 export type AlertSettings = typeof alertSettings.$inferSelect;
 export type AlertHistory = typeof alertHistory.$inferSelect;
 export type Milestone = typeof milestones.$inferSelect;
+export type StreamAlert = typeof streamAlerts.$inferSelect;
+export type StreamAlertHistory = typeof streamAlertHistory.$inferSelect;
+export type AlertQueue = typeof alertQueue.$inferSelect;
 export type ChatbotSettings = typeof chatbotSettings.$inferSelect;
 export type ChatbotResponse = typeof chatbotResponses.$inferSelect;
 export type ChatbotContext = typeof chatbotContext.$inferSelect;
@@ -2033,6 +2139,9 @@ export type InsertPredictionBet = z.infer<typeof insertPredictionBetSchema>;
 export type InsertAlertSettings = z.infer<typeof insertAlertSettingsSchema>;
 export type InsertAlertHistory = z.infer<typeof insertAlertHistorySchema>;
 export type InsertMilestone = z.infer<typeof insertMilestoneSchema>;
+export type InsertStreamAlert = z.infer<typeof insertStreamAlertSchema>;
+export type InsertAlertQueue = z.infer<typeof insertAlertQueueSchema>;
+export type InsertStreamAlertHistory = z.infer<typeof insertStreamAlertHistorySchema>;
 export type InsertChatbotSettings = z.infer<typeof insertChatbotSettingsSchema>;
 export type InsertChatbotResponse = z.infer<typeof insertChatbotResponseSchema>;
 export type InsertChatbotContext = z.infer<typeof insertChatbotContextSchema>;
@@ -2090,6 +2199,8 @@ export type UpdatePrediction = z.infer<typeof updatePredictionSchema>;
 export type UpdatePredictionBet = z.infer<typeof updatePredictionBetSchema>;
 export type UpdateAlertSettings = z.infer<typeof updateAlertSettingsSchema>;
 export type UpdateMilestone = z.infer<typeof updateMilestoneSchema>;
+export type UpdateStreamAlert = z.infer<typeof updateStreamAlertSchema>;
+export type UpdateStreamAlertHistory = z.infer<typeof updateStreamAlertHistorySchema>;
 export type UpdateOBSConnection = z.infer<typeof updateOBSConnectionSchema>;
 export type UpdateOBSAutomation = z.infer<typeof updateOBSAutomationSchema>;
 

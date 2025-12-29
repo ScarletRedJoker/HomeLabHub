@@ -24,6 +24,8 @@ import {
   alertSettings,
   alertHistory,
   milestones,
+  streamAlerts,
+  streamAlertHistory,
   chatbotSettings,
   chatbotResponses,
   chatbotContext,
@@ -55,6 +57,8 @@ import {
   type AlertSettings,
   type AlertHistory,
   type Milestone,
+  type StreamAlert,
+  type StreamAlertHistory,
   type ChatbotSettings,
   type ChatbotResponse,
   type ChatbotContext,
@@ -86,6 +90,8 @@ import {
   type InsertAlertSettings,
   type InsertAlertHistory,
   type InsertMilestone,
+  type InsertStreamAlert,
+  type InsertStreamAlertHistory,
   type InsertChatbotSettings,
   type InsertChatbotResponse,
   type InsertChatbotContext,
@@ -107,6 +113,7 @@ import {
   type UpdateCurrencyReward,
   type UpdateAlertSettings,
   type UpdateMilestone,
+  type UpdateStreamAlert,
   type UpdatePoll,
   type UpdatePrediction,
   type UpdatePredictionBet,
@@ -270,6 +277,18 @@ export interface IStorage {
   getMilestone(userId: string, milestoneType: string, threshold: number): Promise<Milestone | undefined>;
   createMilestone(data: InsertMilestone): Promise<Milestone>;
   updateMilestone(userId: string, id: string, data: UpdateMilestone): Promise<Milestone>;
+
+  // Stream Alerts (OBS overlay-style alerts)
+  getStreamAlerts(userId: string): Promise<StreamAlert[]>;
+  getStreamAlert(userId: string, id: string): Promise<StreamAlert | undefined>;
+  getStreamAlertByType(userId: string, alertType: string): Promise<StreamAlert | undefined>;
+  createStreamAlert(userId: string, data: InsertStreamAlert): Promise<StreamAlert>;
+  updateStreamAlert(userId: string, id: string, data: UpdateStreamAlert): Promise<StreamAlert>;
+  deleteStreamAlert(userId: string, id: string): Promise<void>;
+
+  // Stream Alert History
+  getStreamAlertHistory(userId: string, alertType?: string, limit?: number): Promise<StreamAlertHistory[]>;
+  createStreamAlertHistory(data: InsertStreamAlertHistory): Promise<StreamAlertHistory>;
 
   // Chatbot Settings
   getChatbotSettings(userId: string): Promise<ChatbotSettings | undefined>;
@@ -1621,6 +1640,114 @@ export class DatabaseStorage implements IStorage {
       )
       .returning();
     return milestone;
+  }
+
+  // Stream Alerts (OBS overlay-style alerts)
+  async getStreamAlerts(userId: string): Promise<StreamAlert[]> {
+    return await db
+      .select()
+      .from(streamAlerts)
+      .where(eq(streamAlerts.userId, userId))
+      .orderBy(streamAlerts.alertType);
+  }
+
+  async getStreamAlert(userId: string, id: string): Promise<StreamAlert | undefined> {
+    const [alert] = await db
+      .select()
+      .from(streamAlerts)
+      .where(
+        and(
+          eq(streamAlerts.userId, userId),
+          eq(streamAlerts.id, id)
+        )
+      )
+      .limit(1);
+    return alert || undefined;
+  }
+
+  async getStreamAlertByType(userId: string, alertType: string): Promise<StreamAlert | undefined> {
+    const [alert] = await db
+      .select()
+      .from(streamAlerts)
+      .where(
+        and(
+          eq(streamAlerts.userId, userId),
+          eq(streamAlerts.alertType, alertType)
+        )
+      )
+      .limit(1);
+    return alert || undefined;
+  }
+
+  async createStreamAlert(userId: string, data: InsertStreamAlert): Promise<StreamAlert> {
+    const [alert] = await db
+      .insert(streamAlerts)
+      .values({
+        ...data,
+        userId,
+      })
+      .returning();
+    return alert;
+  }
+
+  async updateStreamAlert(userId: string, id: string, data: UpdateStreamAlert): Promise<StreamAlert> {
+    const [alert] = await db
+      .update(streamAlerts)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(streamAlerts.userId, userId),
+          eq(streamAlerts.id, id)
+        )
+      )
+      .returning();
+    return alert;
+  }
+
+  async deleteStreamAlert(userId: string, id: string): Promise<void> {
+    await db
+      .delete(streamAlerts)
+      .where(
+        and(
+          eq(streamAlerts.userId, userId),
+          eq(streamAlerts.id, id)
+        )
+      );
+  }
+
+  // Stream Alert History
+  async getStreamAlertHistory(userId: string, alertType?: string, limit: number = 50): Promise<StreamAlertHistory[]> {
+    if (alertType) {
+      return await db
+        .select()
+        .from(streamAlertHistory)
+        .where(
+          and(
+            eq(streamAlertHistory.userId, userId),
+            eq(streamAlertHistory.alertType, alertType)
+          )
+        )
+        .orderBy(desc(streamAlertHistory.triggeredAt))
+        .limit(limit);
+    }
+
+    return await db
+      .select()
+      .from(streamAlertHistory)
+      .where(eq(streamAlertHistory.userId, userId))
+      .orderBy(desc(streamAlertHistory.triggeredAt))
+      .limit(limit);
+  }
+
+  async createStreamAlertHistory(data: InsertStreamAlertHistory): Promise<StreamAlertHistory> {
+    const [history] = await db
+      .insert(streamAlertHistory)
+      .values(data)
+      .returning();
+    return history;
   }
 
   // Chatbot Settings

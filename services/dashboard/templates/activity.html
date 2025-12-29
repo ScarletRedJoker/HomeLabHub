@@ -2,6 +2,10 @@
 
 {% block title %}Activity Feed - Dashboard{% endblock %}
 
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     .activity-container {
@@ -393,6 +397,46 @@
             gap: 6px;
         }
     }
+
+    .charts-section {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    @media (max-width: 1200px) {
+        .charts-section {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .chart-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 16px;
+    }
+
+    .chart-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .chart-card-title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .chart-wrapper {
+        height: 180px;
+        position: relative;
+    }
 </style>
 {% endblock %}
 
@@ -418,6 +462,25 @@
                     <div class="value" id="errorEvents">0</div>
                     <div class="label">Errors</div>
                 </div>
+            </div>
+        </div>
+
+        <div class="sidebar-section">
+            <h4><i class="bi bi-search"></i> Search</h4>
+            <div class="filter-group">
+                <input type="text" class="filter-select" id="searchInput" placeholder="Search activities..." oninput="debounceSearch()">
+            </div>
+        </div>
+
+        <div class="sidebar-section">
+            <h4><i class="bi bi-calendar3"></i> Date Range</h4>
+            <div class="filter-group">
+                <label>Start Date</label>
+                <input type="date" class="filter-select" id="startDateFilter">
+            </div>
+            <div class="filter-group">
+                <label>End Date</label>
+                <input type="date" class="filter-select" id="endDateFilter">
             </div>
         </div>
 
@@ -467,33 +530,60 @@
         </div>
     </aside>
 
-    <main class="activity-main">
-        <div class="activity-header">
-            <h3>
-                <i class="bi bi-activity"></i>
-                Activity Feed
-            </h3>
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <button class="mobile-filter-btn" onclick="toggleMobileFilters()">
-                    <i class="bi bi-funnel"></i> Filters
-                </button>
-                <div class="live-indicator" id="liveIndicator" style="display: none;">
-                    <span class="live-dot"></span>
-                    <span>Live</span>
+    <main class="activity-main" style="display: flex; flex-direction: column; gap: 16px; overflow: hidden;">
+        <div class="charts-section">
+            <div class="chart-card">
+                <div class="chart-card-header">
+                    <span class="chart-card-title">
+                        <i class="bi bi-graph-up"></i>
+                        Activity Over Time
+                    </span>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="timelineChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-card-header">
+                    <span class="chart-card-title">
+                        <i class="bi bi-pie-chart"></i>
+                        By Service
+                    </span>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="serviceChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <div class="activity-timeline" id="activityTimeline">
-            <div class="loading-state" id="loadingState">
-                <div class="spinner-border"></div>
+        <div class="activity-main" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px;">
+            <div class="activity-header">
+                <h3>
+                    <i class="bi bi-activity"></i>
+                    Activity Feed
+                </h3>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button class="mobile-filter-btn" onclick="toggleMobileFilters()">
+                        <i class="bi bi-funnel"></i> Filters
+                    </button>
+                    <div class="live-indicator" id="liveIndicator" style="display: none;">
+                        <span class="live-dot"></span>
+                        <span>Live</span>
+                    </div>
+                </div>
             </div>
-        </div>
 
-        <div class="load-more" id="loadMore" style="display: none;">
-            <button class="load-more-btn" onclick="loadMore()">
-                Load More Events
-            </button>
+            <div class="activity-timeline" id="activityTimeline">
+                <div class="loading-state" id="loadingState">
+                    <div class="spinner-border"></div>
+                </div>
+            </div>
+
+            <div class="load-more" id="loadMore" style="display: none;">
+                <button class="load-more-btn" onclick="loadMore()">
+                    Load More Events
+                </button>
+            </div>
         </div>
     </main>
 </div>
@@ -508,6 +598,9 @@ let currentOffset = 0;
 let currentLimit = 50;
 let hasMore = false;
 let eventSource = null;
+let timelineChart = null;
+let serviceChart = null;
+let searchTimeout = null;
 
 const iconMap = {
     'deployment': 'rocket-takeoff',
@@ -585,6 +678,117 @@ async function loadEventTypes() {
     }
 }
 
+function debounceSearch() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        loadEvents(false);
+    }, 300);
+}
+
+async function loadSummary() {
+    try {
+        const response = await fetchWithAuth('/api/activity/summary?days=7');
+        const data = await response.json();
+        
+        if (data.success && data.summary) {
+            updateCharts(data.summary);
+        }
+    } catch (error) {
+        console.error('Error loading summary:', error);
+    }
+}
+
+function initCharts() {
+    const timelineCtx = document.getElementById('timelineChart');
+    if (timelineCtx) {
+        timelineChart = new Chart(timelineCtx.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Events',
+                    data: [],
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(48, 54, 61, 0.5)' },
+                        ticks: { color: '#8b949e', maxTicksLimit: 7 }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(48, 54, 61, 0.5)' },
+                        ticks: { color: '#8b949e' }
+                    }
+                }
+            }
+        });
+    }
+
+    const serviceCtx = document.getElementById('serviceChart');
+    if (serviceCtx) {
+        serviceChart = new Chart(serviceCtx.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: [],
+                datasets: [{
+                    data: [],
+                    backgroundColor: [
+                        '#3b82f6', '#5865F2', '#9146FF', '#3fb950',
+                        '#0D94DD', '#f59e0b', '#f85149', '#8b949e', '#a78bfa'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { color: '#8b949e', boxWidth: 12, padding: 8, font: { size: 10 } }
+                    }
+                }
+            }
+        });
+    }
+}
+
+function updateCharts(summary) {
+    if (timelineChart && summary.timeline) {
+        timelineChart.data.labels = summary.timeline.map(d => d.label);
+        timelineChart.data.datasets[0].data = summary.timeline.map(d => d.count);
+        timelineChart.update();
+    }
+    
+    if (serviceChart && summary.by_source) {
+        const labels = [];
+        const data = [];
+        
+        Object.entries(summary.by_source).forEach(([source, count]) => {
+            if (count > 0) {
+                labels.push(source.charAt(0).toUpperCase() + source.slice(1));
+                data.push(count);
+            }
+        });
+        
+        serviceChart.data.labels = labels;
+        serviceChart.data.datasets[0].data = data;
+        serviceChart.update();
+    }
+}
+
 async function loadEvents(append = false) {
     try {
         if (!append) {
@@ -595,11 +799,17 @@ async function loadEvents(append = false) {
         const source = document.getElementById('sourceFilter').value;
         const severity = document.getElementById('severityFilter').value;
         const type = document.getElementById('typeFilter').value;
+        const search = document.getElementById('searchInput')?.value || '';
+        const startDate = document.getElementById('startDateFilter')?.value || '';
+        const endDate = document.getElementById('endDateFilter')?.value || '';
         
         let url = `/api/activity?limit=${currentLimit}&offset=${currentOffset}&grouped=true`;
         if (source) url += `&source=${source}`;
         if (severity) url += `&severity=${severity}`;
         if (type) url += `&type=${type}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (startDate) url += `&start_date=${startDate}`;
+        if (endDate) url += `&end_date=${endDate}`;
         
         const response = await fetchWithAuth(url);
         const data = await response.json();
@@ -743,6 +953,7 @@ function connectSSE() {
             if (message.type === 'event' && message.data) {
                 prependNewEvent(message.data);
                 loadStatistics();
+                loadSummary();
             }
         } catch (error) {
             console.error('SSE parse error:', error);
@@ -799,12 +1010,20 @@ function prependNewEvent(event) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    initCharts();
     loadStatistics();
     loadEventTypes();
     loadEvents();
+    loadSummary();
     connectSSE();
     
-    setInterval(loadStatistics, 60000);
+    document.getElementById('startDateFilter')?.addEventListener('change', () => loadEvents(false));
+    document.getElementById('endDateFilter')?.addEventListener('change', () => loadEvents(false));
+    
+    setInterval(() => {
+        loadStatistics();
+        loadSummary();
+    }, 60000);
 });
 
 window.addEventListener('beforeunload', () => {

@@ -83,7 +83,12 @@ import {
   type InsertMediaRequest,
   type UpdateMediaRequest,
   type LevelReward,
-  type InsertLevelReward
+  type InsertLevelReward,
+  type Poll,
+  type InsertPoll,
+  type UpdatePoll,
+  type PollVote,
+  type InsertPollVote
 } from "@shared/schema";
 
 // Define the storage interface
@@ -331,6 +336,19 @@ export interface IStorage {
   denyMediaRequest(id: number, approvedBy: string, approvedByUsername: string, reason?: string): Promise<MediaRequest | null>;
   markMediaRequestDownloaded(id: number, downloadedBy: string, downloadedByUsername: string): Promise<MediaRequest | null>;
   deleteMediaRequest(id: number): Promise<boolean>;
+  
+  // Poll operations
+  getPoll(id: number): Promise<Poll | null>;
+  getActivePolls(serverId: string): Promise<Poll[]>;
+  getExpiredPolls(): Promise<Poll[]>;
+  createPoll(data: InsertPoll): Promise<Poll>;
+  updatePoll(id: number, updates: UpdatePoll): Promise<Poll | null>;
+  deletePoll(id: number): Promise<boolean>;
+  
+  // Poll Vote operations
+  getPollVoteByUser(pollId: number, odUserId: string): Promise<PollVote | null>;
+  createPollVote(data: InsertPollVote): Promise<PollVote>;
+  deletePollVote(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -1560,6 +1578,44 @@ export class MemStorage implements IStorage {
   
   async createInviteRecord(data: InsertInviteTracker): Promise<InviteTracker> {
     throw new Error('createInviteRecord not implemented in MemStorage - use DatabaseStorage');
+  }
+  
+  // Poll operations (stub implementations for MemStorage)
+  async getPoll(id: number): Promise<Poll | null> {
+    throw new Error('getPoll not implemented in MemStorage - use DatabaseStorage');
+  }
+  
+  async getActivePolls(serverId: string): Promise<Poll[]> {
+    throw new Error('getActivePolls not implemented in MemStorage - use DatabaseStorage');
+  }
+  
+  async getExpiredPolls(): Promise<Poll[]> {
+    throw new Error('getExpiredPolls not implemented in MemStorage - use DatabaseStorage');
+  }
+  
+  async createPoll(data: InsertPoll): Promise<Poll> {
+    throw new Error('createPoll not implemented in MemStorage - use DatabaseStorage');
+  }
+  
+  async updatePoll(id: number, updates: UpdatePoll): Promise<Poll | null> {
+    throw new Error('updatePoll not implemented in MemStorage - use DatabaseStorage');
+  }
+  
+  async deletePoll(id: number): Promise<boolean> {
+    throw new Error('deletePoll not implemented in MemStorage - use DatabaseStorage');
+  }
+  
+  // Poll Vote operations (stub implementations for MemStorage)
+  async getPollVoteByUser(pollId: number, odUserId: string): Promise<PollVote | null> {
+    throw new Error('getPollVoteByUser not implemented in MemStorage - use DatabaseStorage');
+  }
+  
+  async createPollVote(data: InsertPollVote): Promise<PollVote> {
+    throw new Error('createPollVote not implemented in MemStorage - use DatabaseStorage');
+  }
+  
+  async deletePollVote(id: number): Promise<boolean> {
+    throw new Error('deletePollVote not implemented in MemStorage - use DatabaseStorage');
   }
 }
 

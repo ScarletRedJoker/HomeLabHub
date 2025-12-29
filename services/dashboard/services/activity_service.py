@@ -104,23 +104,22 @@ class ActivityService:
         metadata: dict = None,
         severity: str = 'info',
         user_id: str = None,
-        icon: str = None
+        icon: str = None,
+        actor: str = None,
+        target: str = None
     ) -> Optional[Dict[str, Any]]:
         """Log unified activity event to database"""
         try:
             from models.activity import ActivityEvent, EventSeverity, SourceService
             
-            severity_enum = EventSeverity.INFO
-            for s in EventSeverity:
-                if s.value == severity:
-                    severity_enum = s
-                    break
+            valid_severities = ['info', 'warning', 'error', 'success']
+            severity_val = severity.lower() if severity and severity.lower() in valid_severities else 'info'
             
-            source_enum = SourceService.DASHBOARD
-            for src in SourceService:
-                if src.value == source_service:
-                    source_enum = src
-                    break
+            valid_sources = ['dashboard', 'discord', 'stream', 'jarvis', 'docker', 'studio', 'system', 'deployment', 'monitoring']
+            source_val = source_service.lower() if source_service and source_service.lower() in valid_sources else 'dashboard'
+            
+            event_actor = actor or (metadata.get('actor') if metadata else None) or user_id
+            event_target = target or (metadata.get('target') if metadata else None)
             
             session_ctx = self._get_db_session()
             if not session_ctx:
@@ -130,13 +129,15 @@ class ActivityService:
             with session_ctx as session:
                 event = ActivityEvent(
                     event_type=event_type,
-                    source_service=source_enum,
+                    source_service=source_val,
                     title=title,
                     description=description,
                     event_metadata=metadata or {},
-                    severity=severity_enum,
+                    severity=severity_val,
                     user_id=user_id,
-                    icon=icon or self.get_icon(event_type)
+                    icon=icon or self.get_icon(event_type),
+                    actor=event_actor,
+                    target=event_target
                 )
                 session.add(event)
                 session.flush()
@@ -161,7 +162,8 @@ class ActivityService:
         severity: str = None,
         user_id: str = None,
         start_date: datetime = None,
-        end_date: datetime = None
+        end_date: datetime = None,
+        search: str = None
     ) -> Dict[str, Any]:
         """Query events with filters and pagination"""
         try:
@@ -204,6 +206,14 @@ class ActivityService:
                 if end_date:
                     query = query.filter(ActivityEvent.created_at <= end_date)
                 
+                if search:
+                    search_term = f"%{search}%"
+                    query = query.filter(
+                        (ActivityEvent.title.ilike(search_term)) |
+                        (ActivityEvent.description.ilike(search_term)) |
+                        (ActivityEvent.event_type.ilike(search_term))
+                    )
+                
                 total = query.count()
                 
                 events = query.order_by(ActivityEvent.created_at.desc()).offset(offset).limit(limit).all()
@@ -230,13 +240,21 @@ class ActivityService:
         self,
         limit: int = 100,
         source_service: str = None,
-        severity: str = None
+        severity: str = None,
+        event_type: str = None,
+        start_date: datetime = None,
+        end_date: datetime = None,
+        search: str = None
     ) -> Dict[str, List[Dict]]:
         """Get events grouped by date for timeline view"""
         result = self.get_events(
             limit=limit,
             source_service=source_service,
-            severity=severity
+            severity=severity,
+            event_type=event_type,
+            start_date=start_date,
+            end_date=end_date,
+            search=search
         )
         
         grouped = {}
