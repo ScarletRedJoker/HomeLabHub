@@ -1,0 +1,823 @@
+{% extends "base.html" %}
+
+{% block title %}Activity Feed - Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .activity-container {
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        gap: 20px;
+        height: calc(100vh - 100px);
+        padding: 20px;
+    }
+
+    @media (max-width: 992px) {
+        .activity-container {
+            grid-template-columns: 1fr;
+        }
+        
+        .activity-sidebar {
+            display: none;
+        }
+        
+        .activity-sidebar.show {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1000;
+            background: var(--bg-secondary);
+            padding: 20px;
+            overflow-y: auto;
+        }
+    }
+
+    .activity-sidebar {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 20px;
+        height: fit-content;
+    }
+
+    .sidebar-section {
+        margin-bottom: 24px;
+    }
+
+    .sidebar-section h4 {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-secondary);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .stat-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    .stat-box {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 12px;
+        text-align: center;
+    }
+
+    .stat-box .value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .stat-box .label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin-top: 4px;
+    }
+
+    .stat-box.info .value { color: var(--accent-blue); }
+    .stat-box.success .value { color: var(--accent-green); }
+    .stat-box.warning .value { color: var(--accent-yellow); }
+    .stat-box.error .value { color: var(--accent-red); }
+
+    .filter-group {
+        margin-bottom: 16px;
+    }
+
+    .filter-group label {
+        display: block;
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-bottom: 6px;
+    }
+
+    .filter-select {
+        width: 100%;
+        padding: 8px 12px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+    }
+
+    .filter-select:focus {
+        outline: none;
+        border-color: var(--accent-blue);
+    }
+
+    .filter-btn {
+        width: 100%;
+        padding: 10px;
+        background: var(--accent-blue);
+        border: none;
+        border-radius: 6px;
+        color: white;
+        font-weight: 500;
+        cursor: pointer;
+        margin-top: 12px;
+    }
+
+    .filter-btn:hover {
+        background: #2563eb;
+    }
+
+    .clear-btn {
+        width: 100%;
+        padding: 8px;
+        background: transparent;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        cursor: pointer;
+        margin-top: 8px;
+    }
+
+    .clear-btn:hover {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
+
+    .activity-main {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .activity-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+    }
+
+    .activity-header h3 {
+        margin: 0;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .live-indicator {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        color: var(--accent-green);
+    }
+
+    .live-dot {
+        width: 8px;
+        height: 8px;
+        background: var(--accent-green);
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    .activity-timeline {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0;
+    }
+
+    .date-group {
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .date-header {
+        position: sticky;
+        top: 0;
+        background: var(--bg-tertiary);
+        padding: 10px 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .date-count {
+        background: var(--bg-secondary);
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 0.7rem;
+    }
+
+    .activity-item {
+        display: flex;
+        gap: 16px;
+        padding: 16px 20px;
+        border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+        transition: background 0.15s;
+    }
+
+    .activity-item:hover {
+        background: var(--bg-tertiary);
+    }
+
+    .activity-item:last-child {
+        border-bottom: none;
+    }
+
+    .activity-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-size: 1.1rem;
+    }
+
+    .activity-icon.info {
+        background: rgba(59, 130, 246, 0.15);
+        color: var(--accent-blue);
+    }
+
+    .activity-icon.success {
+        background: rgba(63, 185, 80, 0.15);
+        color: var(--accent-green);
+    }
+
+    .activity-icon.warning {
+        background: rgba(210, 153, 34, 0.15);
+        color: var(--accent-yellow);
+    }
+
+    .activity-icon.error {
+        background: rgba(248, 81, 73, 0.15);
+        color: var(--accent-red);
+    }
+
+    .activity-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .activity-title {
+        font-weight: 500;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .activity-source {
+        font-size: 0.7rem;
+        padding: 2px 6px;
+        border-radius: 4px;
+        background: var(--bg-tertiary);
+        color: var(--text-secondary);
+        text-transform: uppercase;
+    }
+
+    .activity-description {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-bottom: 6px;
+    }
+
+    .activity-meta {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+
+    .activity-meta span {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .activity-time {
+        color: var(--text-secondary);
+        font-size: 0.75rem;
+        white-space: nowrap;
+    }
+
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 20px;
+        text-align: center;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        color: var(--text-secondary);
+        margin-bottom: 16px;
+    }
+
+    .empty-state h4 {
+        margin-bottom: 8px;
+        color: var(--text-primary);
+    }
+
+    .empty-state p {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .loading-state {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+    }
+
+    .load-more {
+        padding: 16px;
+        text-align: center;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .load-more-btn {
+        padding: 10px 24px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        color: var(--text-primary);
+        cursor: pointer;
+        font-size: 0.875rem;
+    }
+
+    .load-more-btn:hover {
+        background: var(--border-color);
+    }
+
+    .mobile-filter-btn {
+        display: none;
+        padding: 8px 16px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        color: var(--text-primary);
+        cursor: pointer;
+    }
+
+    @media (max-width: 992px) {
+        .mobile-filter-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="activity-container">
+    <aside class="activity-sidebar" id="activitySidebar">
+        <div class="sidebar-section">
+            <h4><i class="bi bi-bar-chart"></i> Statistics</h4>
+            <div class="stat-grid">
+                <div class="stat-box info">
+                    <div class="value" id="totalEvents">0</div>
+                    <div class="label">Total</div>
+                </div>
+                <div class="stat-box success">
+                    <div class="value" id="todayEvents">0</div>
+                    <div class="label">Today</div>
+                </div>
+                <div class="stat-box warning">
+                    <div class="value" id="warningEvents">0</div>
+                    <div class="label">Warnings</div>
+                </div>
+                <div class="stat-box error">
+                    <div class="value" id="errorEvents">0</div>
+                    <div class="label">Errors</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar-section">
+            <h4><i class="bi bi-funnel"></i> Filters</h4>
+            
+            <div class="filter-group">
+                <label>Source Service</label>
+                <select class="filter-select" id="sourceFilter">
+                    <option value="">All Sources</option>
+                    <option value="dashboard">Dashboard</option>
+                    <option value="discord">Discord</option>
+                    <option value="stream">Stream</option>
+                    <option value="jarvis">Jarvis</option>
+                    <option value="docker">Docker</option>
+                    <option value="studio">Studio</option>
+                    <option value="deployment">Deployment</option>
+                    <option value="monitoring">Monitoring</option>
+                    <option value="system">System</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Severity</label>
+                <select class="filter-select" id="severityFilter">
+                    <option value="">All Severities</option>
+                    <option value="info">Info</option>
+                    <option value="success">Success</option>
+                    <option value="warning">Warning</option>
+                    <option value="error">Error</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Event Type</label>
+                <select class="filter-select" id="typeFilter">
+                    <option value="">All Types</option>
+                </select>
+            </div>
+
+            <button class="filter-btn" onclick="applyFilters()">
+                <i class="bi bi-funnel"></i> Apply Filters
+            </button>
+            <button class="clear-btn" onclick="clearFilters()">
+                Clear Filters
+            </button>
+        </div>
+    </aside>
+
+    <main class="activity-main">
+        <div class="activity-header">
+            <h3>
+                <i class="bi bi-activity"></i>
+                Activity Feed
+            </h3>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <button class="mobile-filter-btn" onclick="toggleMobileFilters()">
+                    <i class="bi bi-funnel"></i> Filters
+                </button>
+                <div class="live-indicator" id="liveIndicator" style="display: none;">
+                    <span class="live-dot"></span>
+                    <span>Live</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="activity-timeline" id="activityTimeline">
+            <div class="loading-state" id="loadingState">
+                <div class="spinner-border"></div>
+            </div>
+        </div>
+
+        <div class="load-more" id="loadMore" style="display: none;">
+            <button class="load-more-btn" onclick="loadMore()">
+                Load More Events
+            </button>
+        </div>
+    </main>
+</div>
+
+{% block extra_head %}{% endblock %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+let currentOffset = 0;
+let currentLimit = 50;
+let hasMore = false;
+let eventSource = null;
+
+const iconMap = {
+    'deployment': 'rocket-takeoff',
+    'container_start': 'play-circle',
+    'container_stop': 'stop-circle',
+    'container_restart': 'arrow-repeat',
+    'container_error': 'exclamation-triangle',
+    'build': 'hammer',
+    'build_success': 'check-circle',
+    'build_failed': 'x-circle',
+    'service_health': 'heart-pulse',
+    'service_up': 'arrow-up-circle',
+    'service_down': 'arrow-down-circle',
+    'alert': 'bell',
+    'warning': 'exclamation-circle',
+    'error': 'x-octagon',
+    'user_action': 'person',
+    'ai_response': 'robot',
+    'code_generation': 'code-slash',
+    'discord_event': 'discord',
+    'stream_event': 'broadcast',
+    'studio_event': 'terminal',
+    'monitoring': 'activity',
+    'default': 'info-circle'
+};
+
+function getIcon(eventType) {
+    return iconMap[eventType] || iconMap['default'];
+}
+
+async function fetchWithAuth(url, options = {}) {
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers
+    };
+    if (CSRF_TOKEN) {
+        headers['X-CSRFToken'] = CSRF_TOKEN;
+    }
+    return fetch(url, { ...options, headers, credentials: 'same-origin' });
+}
+
+async function loadStatistics() {
+    try {
+        const response = await fetchWithAuth('/api/activity/statistics');
+        const data = await response.json();
+        
+        if (data.success && data.statistics) {
+            const stats = data.statistics;
+            document.getElementById('totalEvents').textContent = stats.total || 0;
+            document.getElementById('todayEvents').textContent = stats.today || 0;
+            document.getElementById('warningEvents').textContent = stats.by_severity?.warning || 0;
+            document.getElementById('errorEvents').textContent = stats.by_severity?.error || 0;
+        }
+    } catch (error) {
+        console.error('Error loading statistics:', error);
+    }
+}
+
+async function loadEventTypes() {
+    try {
+        const response = await fetchWithAuth('/api/activity/types');
+        const data = await response.json();
+        
+        if (data.success && data.types) {
+            const select = document.getElementById('typeFilter');
+            data.types.forEach(type => {
+                const option = document.createElement('option');
+                option.value = type;
+                option.textContent = type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading event types:', error);
+    }
+}
+
+async function loadEvents(append = false) {
+    try {
+        if (!append) {
+            document.getElementById('loadingState').style.display = 'flex';
+            currentOffset = 0;
+        }
+        
+        const source = document.getElementById('sourceFilter').value;
+        const severity = document.getElementById('severityFilter').value;
+        const type = document.getElementById('typeFilter').value;
+        
+        let url = `/api/activity?limit=${currentLimit}&offset=${currentOffset}&grouped=true`;
+        if (source) url += `&source=${source}`;
+        if (severity) url += `&severity=${severity}`;
+        if (type) url += `&type=${type}`;
+        
+        const response = await fetchWithAuth(url);
+        const data = await response.json();
+        
+        document.getElementById('loadingState').style.display = 'none';
+        
+        if (data.success) {
+            renderTimeline(data.grouped || [], append);
+            hasMore = (currentOffset + currentLimit) < data.total;
+            document.getElementById('loadMore').style.display = hasMore ? 'block' : 'none';
+        }
+    } catch (error) {
+        console.error('Error loading events:', error);
+        document.getElementById('loadingState').style.display = 'none';
+        renderEmptyState('Error loading events');
+    }
+}
+
+function renderTimeline(groups, append = false) {
+    const timeline = document.getElementById('activityTimeline');
+    
+    if (!append) {
+        timeline.innerHTML = '';
+    }
+    
+    if (groups.length === 0 && !append) {
+        renderEmptyState('No activity events found');
+        return;
+    }
+    
+    groups.forEach(group => {
+        const dateGroup = document.createElement('div');
+        dateGroup.className = 'date-group';
+        dateGroup.innerHTML = `
+            <div class="date-header">
+                <i class="bi bi-calendar3"></i>
+                ${group.display_date}
+                <span class="date-count">${group.events.length} events</span>
+            </div>
+        `;
+        
+        group.events.forEach(event => {
+            dateGroup.appendChild(createEventElement(event));
+        });
+        
+        timeline.appendChild(dateGroup);
+    });
+}
+
+function createEventElement(event) {
+    const item = document.createElement('div');
+    item.className = 'activity-item';
+    item.dataset.eventId = event.id;
+    
+    const icon = event.icon || getIcon(event.event_type);
+    const severity = event.severity || 'info';
+    
+    item.innerHTML = `
+        <div class="activity-icon ${severity}">
+            <i class="bi bi-${icon}"></i>
+        </div>
+        <div class="activity-content">
+            <div class="activity-title">
+                ${escapeHtml(event.title)}
+                <span class="activity-source">${event.source_service || 'system'}</span>
+            </div>
+            ${event.description ? `<div class="activity-description">${escapeHtml(event.description)}</div>` : ''}
+            <div class="activity-meta">
+                <span><i class="bi bi-tag"></i> ${event.event_type}</span>
+                ${event.metadata?.container_name ? `<span><i class="bi bi-box"></i> ${event.metadata.container_name}</span>` : ''}
+                ${event.metadata?.project_name ? `<span><i class="bi bi-folder"></i> ${event.metadata.project_name}</span>` : ''}
+            </div>
+        </div>
+        <div class="activity-time">
+            ${event.time_display || ''}<br>
+            <small>${event.time_ago || ''}</small>
+        </div>
+    `;
+    
+    return item;
+}
+
+function renderEmptyState(message) {
+    const timeline = document.getElementById('activityTimeline');
+    timeline.innerHTML = `
+        <div class="empty-state">
+            <i class="bi bi-inbox"></i>
+            <h4>No Activity</h4>
+            <p>${message}</p>
+        </div>
+    `;
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function applyFilters() {
+    loadEvents(false);
+    
+    if (window.innerWidth <= 992) {
+        document.getElementById('activitySidebar').classList.remove('show');
+    }
+}
+
+function clearFilters() {
+    document.getElementById('sourceFilter').value = '';
+    document.getElementById('severityFilter').value = '';
+    document.getElementById('typeFilter').value = '';
+    loadEvents(false);
+}
+
+function loadMore() {
+    currentOffset += currentLimit;
+    loadEvents(true);
+}
+
+function toggleMobileFilters() {
+    document.getElementById('activitySidebar').classList.toggle('show');
+}
+
+function connectSSE() {
+    if (eventSource) {
+        eventSource.close();
+    }
+    
+    eventSource = new EventSource('/api/activity/stream');
+    
+    eventSource.onopen = () => {
+        document.getElementById('liveIndicator').style.display = 'flex';
+        console.log('SSE connected');
+    };
+    
+    eventSource.onmessage = (e) => {
+        try {
+            const message = JSON.parse(e.data);
+            
+            if (message.type === 'event' && message.data) {
+                prependNewEvent(message.data);
+                loadStatistics();
+            }
+        } catch (error) {
+            console.error('SSE parse error:', error);
+        }
+    };
+    
+    eventSource.onerror = () => {
+        document.getElementById('liveIndicator').style.display = 'none';
+        console.log('SSE disconnected, reconnecting...');
+        setTimeout(connectSSE, 5000);
+    };
+}
+
+function prependNewEvent(event) {
+    const timeline = document.getElementById('activityTimeline');
+    const emptyState = timeline.querySelector('.empty-state');
+    
+    if (emptyState) {
+        timeline.innerHTML = '';
+    }
+    
+    const now = new Date();
+    const dateKey = now.toISOString().split('T')[0];
+    const displayDate = 'Today';
+    
+    let dateGroup = timeline.querySelector(`.date-group[data-date="${dateKey}"]`);
+    
+    if (!dateGroup) {
+        dateGroup = document.createElement('div');
+        dateGroup.className = 'date-group';
+        dateGroup.dataset.date = dateKey;
+        dateGroup.innerHTML = `
+            <div class="date-header">
+                <i class="bi bi-calendar3"></i>
+                ${displayDate}
+                <span class="date-count">1 event</span>
+            </div>
+        `;
+        timeline.insertBefore(dateGroup, timeline.firstChild);
+    } else {
+        const countSpan = dateGroup.querySelector('.date-count');
+        const currentCount = parseInt(countSpan.textContent) || 0;
+        countSpan.textContent = `${currentCount + 1} events`;
+    }
+    
+    event.time_display = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    event.time_ago = 'just now';
+    
+    const eventElement = createEventElement(event);
+    eventElement.style.animation = 'fadeIn 0.3s ease';
+    
+    const header = dateGroup.querySelector('.date-header');
+    header.insertAdjacentElement('afterend', eventElement);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadStatistics();
+    loadEventTypes();
+    loadEvents();
+    connectSSE();
+    
+    setInterval(loadStatistics, 60000);
+});
+
+window.addEventListener('beforeunload', () => {
+    if (eventSource) {
+        eventSource.close();
+    }
+});
+</script>
+
+<style>
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+{% endblock %}

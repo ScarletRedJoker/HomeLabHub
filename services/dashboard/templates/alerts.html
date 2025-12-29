@@ -1,0 +1,1313 @@
+{% extends "base.html" %}
+
+{% block title %}Monitoring Alerts - Dashboard{% endblock %}
+
+{% block extra_head %}
+<style>
+    .alerts-container {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        padding: 0 4px;
+    }
+
+    .alerts-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .alerts-header h2 {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .quick-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+    }
+
+    .stat-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        transition: all 0.2s;
+    }
+
+    .stat-card:hover {
+        border-color: var(--accent-blue);
+        transform: translateY(-2px);
+    }
+
+    .stat-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .stat-card-title {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .stat-card-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+    }
+
+    .stat-card-icon.alerts { background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); }
+    .stat-card-icon.active { background: rgba(63, 185, 80, 0.15); color: var(--accent-green); }
+    .stat-card-icon.triggered { background: rgba(248, 81, 73, 0.15); color: var(--accent-red); }
+    .stat-card-icon.pending { background: rgba(251, 191, 36, 0.15); color: var(--accent-yellow); }
+
+    .stat-card-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        line-height: 1;
+    }
+
+    .alerts-section {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 20px;
+    }
+
+    @media (max-width: 1200px) {
+        .alerts-section {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .alerts-list-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .alerts-list-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%);
+    }
+
+    .alerts-list-header h3 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .alert-item {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background 0.2s;
+    }
+
+    .alert-item:last-child {
+        border-bottom: none;
+    }
+
+    .alert-item:hover {
+        background: var(--bg-tertiary);
+    }
+
+    .alert-info {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex: 1;
+    }
+
+    .alert-type-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+    }
+
+    .alert-type-icon.cpu { background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); }
+    .alert-type-icon.memory { background: rgba(139, 92, 246, 0.15); color: var(--accent-purple); }
+    .alert-type-icon.disk { background: rgba(251, 191, 36, 0.15); color: var(--accent-yellow); }
+    .alert-type-icon.service { background: rgba(63, 185, 80, 0.15); color: var(--accent-green); }
+    .alert-type-icon.custom { background: rgba(248, 81, 73, 0.15); color: var(--accent-red); }
+
+    .alert-details {
+        flex: 1;
+    }
+
+    .alert-name {
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin-bottom: 4px;
+    }
+
+    .alert-meta {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .alert-status {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+
+    .status-dot.active { background: var(--accent-green); }
+    .status-dot.inactive { background: var(--text-secondary); }
+
+    .alert-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        border: 1px solid var(--border-color);
+        background: var(--bg-tertiary);
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-icon:hover {
+        border-color: var(--accent-blue);
+        color: var(--accent-blue);
+    }
+
+    .btn-icon.danger:hover {
+        border-color: var(--accent-red);
+        color: var(--accent-red);
+    }
+
+    .history-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .history-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-color);
+        background: linear-gradient(135deg, rgba(248, 81, 73, 0.05) 0%, rgba(251, 191, 36, 0.05) 100%);
+    }
+
+    .history-header h3 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .history-list {
+        max-height: 500px;
+        overflow-y: auto;
+    }
+
+    .history-item {
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--border-color);
+        position: relative;
+    }
+
+    .history-item:last-child {
+        border-bottom: none;
+    }
+
+    .history-item::before {
+        content: '';
+        position: absolute;
+        left: 20px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--border-color);
+    }
+
+    .history-item:last-child::before {
+        display: none;
+    }
+
+    .history-dot {
+        position: absolute;
+        left: 16px;
+        top: 18px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--accent-red);
+        border: 2px solid var(--bg-secondary);
+        z-index: 1;
+    }
+
+    .history-dot.acknowledged {
+        background: var(--accent-yellow);
+    }
+
+    .history-dot.resolved {
+        background: var(--accent-green);
+    }
+
+    .history-content {
+        margin-left: 20px;
+    }
+
+    .history-title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 4px;
+    }
+
+    .history-meta {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
+
+    .history-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+    }
+
+    .btn-small {
+        padding: 4px 10px;
+        font-size: 0.75rem;
+        border-radius: 4px;
+        border: 1px solid var(--border-color);
+        background: var(--bg-tertiary);
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-small:hover {
+        border-color: var(--accent-blue);
+        color: var(--accent-blue);
+    }
+
+    .btn-primary {
+        background: var(--accent-blue);
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 500;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: background 0.2s;
+    }
+
+    .btn-primary:hover {
+        background: #2563eb;
+    }
+
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+    }
+
+    .modal-overlay.show {
+        display: flex;
+    }
+
+    .modal {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        width: 90%;
+        max-width: 600px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .modal-close {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        border: none;
+        background: var(--bg-tertiary);
+        color: var(--text-secondary);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-close:hover {
+        color: var(--text-primary);
+    }
+
+    .modal-body {
+        padding: 24px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 500;
+        margin-bottom: 8px;
+        color: var(--text-secondary);
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px 14px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-size: 0.9rem;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--accent-blue);
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .form-row-3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 16px;
+    }
+
+    .notification-section {
+        background: var(--bg-tertiary);
+        border-radius: 8px;
+        padding: 16px;
+        margin-top: 8px;
+    }
+
+    .notification-item {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        margin-bottom: 12px;
+    }
+
+    .notification-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .notification-item .form-control {
+        flex: 1;
+    }
+
+    .modal-footer {
+        padding: 16px 24px;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+    }
+
+    .btn-secondary {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        padding: 10px 20px;
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-weight: 500;
+        cursor: pointer;
+    }
+
+    .btn-secondary:hover {
+        background: var(--border-color);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--text-secondary);
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--accent-blue);
+    }
+
+    .toggle-switch {
+        position: relative;
+        width: 44px;
+        height: 24px;
+        background: var(--bg-tertiary);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .toggle-switch.active {
+        background: var(--accent-green);
+    }
+
+    .toggle-switch::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 20px;
+        height: 20px;
+        background: white;
+        border-radius: 50%;
+        transition: transform 0.2s;
+    }
+
+    .toggle-switch.active::after {
+        transform: translateX(20px);
+    }
+
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: var(--text-secondary);
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid var(--border-color);
+        border-top-color: var(--accent-blue);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    .btn-success {
+        background: var(--accent-green);
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 500;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: background 0.2s;
+    }
+
+    .btn-success:hover {
+        background: #2da44e;
+    }
+
+    .status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        background: var(--bg-tertiary);
+        border-radius: 6px;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+
+    .monitor-status {
+        display: flex;
+        align-items: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="alerts-container">
+    <div class="alerts-header">
+        <h2><i class="bi bi-bell"></i> Monitoring Alerts</h2>
+        <div class="header-actions" style="display: flex; gap: 12px; align-items: center;">
+            <div class="monitor-status" id="monitorStatus">
+                <span class="status-indicator" id="monitorIndicator">
+                    <span class="status-dot inactive"></span>
+                    <span id="monitorLabel">Monitor: Off</span>
+                </span>
+            </div>
+            <button class="btn-secondary" id="monitorToggleBtn" onclick="toggleMonitor()">
+                <i class="bi bi-play-circle"></i> Start Monitor
+            </button>
+            <button class="btn-primary" onclick="openCreateModal()">
+                <i class="bi bi-plus-lg"></i> Create Alert
+            </button>
+        </div>
+    </div>
+
+    <div class="quick-stats" id="statsContainer">
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <span class="stat-card-title">Total Alerts</span>
+                <div class="stat-card-icon alerts"><i class="bi bi-bell"></i></div>
+            </div>
+            <div class="stat-card-value" id="statTotal">-</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <span class="stat-card-title">Active</span>
+                <div class="stat-card-icon active"><i class="bi bi-check-circle"></i></div>
+            </div>
+            <div class="stat-card-value" id="statActive">-</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <span class="stat-card-title">Triggered (24h)</span>
+                <div class="stat-card-icon triggered"><i class="bi bi-exclamation-triangle"></i></div>
+            </div>
+            <div class="stat-card-value" id="statTriggered">-</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <span class="stat-card-title">Unacknowledged</span>
+                <div class="stat-card-icon pending"><i class="bi bi-clock-history"></i></div>
+            </div>
+            <div class="stat-card-value" id="statPending">-</div>
+        </div>
+    </div>
+
+    <div class="alerts-section">
+        <div class="alerts-list-card">
+            <div class="alerts-list-header">
+                <h3><i class="bi bi-list-ul"></i> Alert Rules</h3>
+                <button class="btn-icon" onclick="checkAlerts()" title="Check Alerts Now">
+                    <i class="bi bi-arrow-repeat"></i>
+                </button>
+            </div>
+            <div class="alerts-list" id="alertsList">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading alerts...
+                </div>
+            </div>
+        </div>
+
+        <div class="history-card">
+            <div class="history-header">
+                <h3><i class="bi bi-clock-history"></i> Recent Activity</h3>
+            </div>
+            <div class="history-list" id="historyList">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading history...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="alertModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="modalTitle">Create Alert</h3>
+            <button class="modal-close" onclick="closeModal()">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="alertForm" onsubmit="saveAlert(event)">
+                <input type="hidden" id="alertId" value="">
+                
+                <div class="form-group">
+                    <label for="alertName">Alert Name</label>
+                    <input type="text" class="form-control" id="alertName" placeholder="e.g., High CPU Usage" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="alertDescription">Description</label>
+                    <textarea class="form-control" id="alertDescription" rows="2" placeholder="Optional description"></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="alertType">Alert Type</label>
+                        <select class="form-control" id="alertType" required>
+                            <option value="cpu">CPU</option>
+                            <option value="memory">Memory</option>
+                            <option value="disk">Disk</option>
+                            <option value="service">Service</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="alertTarget">Target (optional)</label>
+                        <input type="text" class="form-control" id="alertTarget" placeholder="e.g., /dev/sda1">
+                    </div>
+                </div>
+                
+                <div class="form-row-3">
+                    <div class="form-group">
+                        <label for="alertCondition">Condition</label>
+                        <select class="form-control" id="alertCondition" required>
+                            <option value="gt">Greater Than</option>
+                            <option value="lt">Less Than</option>
+                            <option value="eq">Equal To</option>
+                            <option value="gte">Greater or Equal</option>
+                            <option value="lte">Less or Equal</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="alertThreshold">Threshold (%)</label>
+                        <input type="number" class="form-control" id="alertThreshold" value="80" min="0" max="100" step="0.1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="alertCooldown">Cooldown (min)</label>
+                        <input type="number" class="form-control" id="alertCooldown" value="5" min="1" max="1440" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <span class="checkbox-group">
+                            <input type="checkbox" id="alertEnabled" checked>
+                            Enable this alert
+                        </span>
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label>Notifications</label>
+                    <div class="notification-section" id="notificationsContainer">
+                        <div class="notification-item" data-index="0">
+                            <select class="form-control" style="width: 140px;" id="notifType0">
+                                <option value="discord_webhook">Discord</option>
+                                <option value="email">Email</option>
+                                <option value="slack_webhook">Slack</option>
+                            </select>
+                            <input type="text" class="form-control" id="notifDest0" placeholder="Webhook URL or email">
+                            <button type="button" class="btn-icon danger" onclick="removeNotification(0)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-small" onclick="addNotification()" style="margin-top: 12px;">
+                        <i class="bi bi-plus"></i> Add Notification
+                    </button>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn-primary" onclick="saveAlert(event)">
+                <i class="bi bi-check"></i> Save Alert
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let alerts = [];
+    let history = [];
+    let notificationIndex = 1;
+
+    async function loadStats() {
+        try {
+            const response = await fetch('/api/alerts/stats');
+            const data = await response.json();
+            
+            if (data.success) {
+                const stats = data.stats;
+                document.getElementById('statTotal').textContent = stats.total_alerts;
+                document.getElementById('statActive').textContent = stats.enabled_alerts;
+                document.getElementById('statTriggered').textContent = stats.recent_triggers;
+                document.getElementById('statPending').textContent = stats.unacknowledged;
+                
+                updateMonitorUI(stats.monitor_running);
+            }
+        } catch (error) {
+            console.error('Error loading stats:', error);
+        }
+    }
+    
+    function updateMonitorUI(running) {
+        const indicator = document.getElementById('monitorIndicator');
+        const label = document.getElementById('monitorLabel');
+        const btn = document.getElementById('monitorToggleBtn');
+        
+        if (running) {
+            indicator.innerHTML = '<span class="status-dot active" style="animation: pulse 2s infinite;"></span><span>Monitor: Running</span>';
+            btn.innerHTML = '<i class="bi bi-pause-circle"></i> Stop Monitor';
+            btn.classList.remove('btn-secondary');
+            btn.classList.add('btn-success');
+        } else {
+            indicator.innerHTML = '<span class="status-dot inactive"></span><span>Monitor: Off</span>';
+            btn.innerHTML = '<i class="bi bi-play-circle"></i> Start Monitor';
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-secondary');
+        }
+    }
+    
+    async function toggleMonitor() {
+        const btn = document.getElementById('monitorToggleBtn');
+        const isRunning = btn.classList.contains('btn-success');
+        
+        try {
+            const endpoint = isRunning ? '/api/alerts/monitor/stop' : '/api/alerts/monitor/start';
+            const response = await fetch(endpoint, { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ interval: 60 })
+            });
+            const result = await response.json();
+            
+            if (result.success) {
+                updateMonitorUI(!isRunning);
+                showToast(result.message || (isRunning ? 'Monitor stopped' : 'Monitor started'), 'success');
+            } else {
+                showToast(result.message || result.error || 'Failed to toggle monitor', 'error');
+            }
+        } catch (error) {
+            console.error('Error toggling monitor:', error);
+            showToast('Error toggling monitor', 'error');
+        }
+    }
+
+    async function loadAlerts() {
+        const container = document.getElementById('alertsList');
+        
+        try {
+            const response = await fetch('/api/alerts');
+            const data = await response.json();
+            
+            if (data.success) {
+                alerts = data.alerts;
+                renderAlerts();
+            } else {
+                container.innerHTML = '<div class="empty-state"><i class="bi bi-exclamation-circle"></i><p>Failed to load alerts</p></div>';
+            }
+        } catch (error) {
+            console.error('Error loading alerts:', error);
+            container.innerHTML = '<div class="empty-state"><i class="bi bi-wifi-off"></i><p>Connection error</p></div>';
+        }
+    }
+
+    function renderAlerts() {
+        const container = document.getElementById('alertsList');
+        
+        if (alerts.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="bi bi-bell-slash"></i>
+                    <p>No alerts configured</p>
+                    <button class="btn-primary" onclick="openCreateModal()" style="margin-top: 12px;">
+                        <i class="bi bi-plus-lg"></i> Create Your First Alert
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        
+        const typeIcons = {
+            cpu: '<i class="bi bi-cpu"></i>',
+            memory: '<i class="bi bi-memory"></i>',
+            disk: '<i class="bi bi-hdd"></i>',
+            service: '<i class="bi bi-gear"></i>',
+            custom: '<i class="bi bi-sliders"></i>'
+        };
+        
+        const conditionLabels = {
+            gt: '>',
+            lt: '<',
+            eq: '=',
+            ne: '≠',
+            gte: '≥',
+            lte: '≤'
+        };
+        
+        container.innerHTML = alerts.map(alert => `
+            <div class="alert-item">
+                <div class="alert-info">
+                    <div class="alert-type-icon ${alert.alert_type}">
+                        ${typeIcons[alert.alert_type] || '<i class="bi bi-bell"></i>'}
+                    </div>
+                    <div class="alert-details">
+                        <div class="alert-name">${escapeHtml(alert.name)}</div>
+                        <div class="alert-meta">
+                            <span class="alert-status">
+                                <span class="status-dot ${alert.enabled ? 'active' : 'inactive'}"></span>
+                                ${alert.enabled ? 'Active' : 'Disabled'}
+                            </span>
+                            <span>${alert.alert_type.toUpperCase()} ${conditionLabels[alert.condition] || alert.condition} ${alert.threshold}%</span>
+                            <span>Triggered: ${alert.trigger_count || 0}x</span>
+                            ${alert.target ? `<span>Target: ${escapeHtml(alert.target)}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+                <div class="alert-actions">
+                    <button class="btn-icon" onclick="testAlert('${alert.id}')" title="Test Alert">
+                        <i class="bi bi-send"></i>
+                    </button>
+                    <button class="btn-icon" onclick="toggleAlert('${alert.id}')" title="${alert.enabled ? 'Disable' : 'Enable'}">
+                        <i class="bi bi-${alert.enabled ? 'pause' : 'play'}"></i>
+                    </button>
+                    <button class="btn-icon" onclick="editAlert('${alert.id}')" title="Edit">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn-icon danger" onclick="deleteAlert('${alert.id}')" title="Delete">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function loadHistory() {
+        const container = document.getElementById('historyList');
+        
+        try {
+            const response = await fetch('/api/alerts/history?limit=20');
+            const data = await response.json();
+            
+            if (data.success) {
+                history = data.history;
+                renderHistory();
+            } else {
+                container.innerHTML = '<div class="empty-state"><i class="bi bi-clock"></i><p>No history</p></div>';
+            }
+        } catch (error) {
+            console.error('Error loading history:', error);
+            container.innerHTML = '<div class="empty-state"><i class="bi bi-wifi-off"></i><p>Connection error</p></div>';
+        }
+    }
+
+    function renderHistory() {
+        const container = document.getElementById('historyList');
+        
+        if (history.length === 0) {
+            container.innerHTML = '<div class="empty-state"><i class="bi bi-clock"></i><p>No alert history yet</p></div>';
+            return;
+        }
+        
+        container.innerHTML = history.map(item => {
+            const statusClass = item.resolved_at ? 'resolved' : (item.acknowledged ? 'acknowledged' : '');
+            const time = new Date(item.triggered_at).toLocaleString();
+            
+            return `
+                <div class="history-item">
+                    <div class="history-dot ${statusClass}"></div>
+                    <div class="history-content">
+                        <div class="history-title">${escapeHtml(item.alert_name || 'Unknown Alert')}</div>
+                        <div class="history-meta">
+                            <span>${time}</span> · 
+                            <span>Value: ${item.value?.toFixed(1)}%</span> · 
+                            <span>Threshold: ${item.threshold?.toFixed(1)}%</span>
+                        </div>
+                        ${!item.resolved_at ? `
+                            <div class="history-actions">
+                                ${!item.acknowledged ? `
+                                    <button class="btn-small" onclick="acknowledgeHistory('${item.id}')">
+                                        <i class="bi bi-check"></i> Acknowledge
+                                    </button>
+                                ` : ''}
+                                <button class="btn-small" onclick="resolveHistory('${item.id}')">
+                                    <i class="bi bi-check-circle"></i> Resolve
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function openCreateModal() {
+        document.getElementById('modalTitle').textContent = 'Create Alert';
+        document.getElementById('alertId').value = '';
+        document.getElementById('alertForm').reset();
+        document.getElementById('alertEnabled').checked = true;
+        resetNotifications();
+        document.getElementById('alertModal').classList.add('show');
+    }
+
+    function closeModal() {
+        document.getElementById('alertModal').classList.remove('show');
+    }
+
+    function resetNotifications() {
+        const container = document.getElementById('notificationsContainer');
+        container.innerHTML = `
+            <div class="notification-item" data-index="0">
+                <select class="form-control" style="width: 140px;" id="notifType0">
+                    <option value="discord_webhook">Discord</option>
+                    <option value="email">Email</option>
+                    <option value="slack_webhook">Slack</option>
+                </select>
+                <input type="text" class="form-control" id="notifDest0" placeholder="Webhook URL or email">
+                <button type="button" class="btn-icon danger" onclick="removeNotification(0)">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        `;
+        notificationIndex = 1;
+    }
+
+    function addNotification() {
+        const container = document.getElementById('notificationsContainer');
+        const div = document.createElement('div');
+        div.className = 'notification-item';
+        div.dataset.index = notificationIndex;
+        div.innerHTML = `
+            <select class="form-control" style="width: 140px;" id="notifType${notificationIndex}">
+                <option value="discord_webhook">Discord</option>
+                <option value="email">Email</option>
+                <option value="slack_webhook">Slack</option>
+            </select>
+            <input type="text" class="form-control" id="notifDest${notificationIndex}" placeholder="Webhook URL or email">
+            <button type="button" class="btn-icon danger" onclick="removeNotification(${notificationIndex})">
+                <i class="bi bi-trash"></i>
+            </button>
+        `;
+        container.appendChild(div);
+        notificationIndex++;
+    }
+
+    function removeNotification(index) {
+        const container = document.getElementById('notificationsContainer');
+        const item = container.querySelector(`[data-index="${index}"]`);
+        if (item && container.children.length > 1) {
+            item.remove();
+        }
+    }
+
+    function editAlert(id) {
+        const alert = alerts.find(a => a.id === id);
+        if (!alert) return;
+        
+        document.getElementById('modalTitle').textContent = 'Edit Alert';
+        document.getElementById('alertId').value = id;
+        document.getElementById('alertName').value = alert.name || '';
+        document.getElementById('alertDescription').value = alert.description || '';
+        document.getElementById('alertType').value = alert.alert_type || 'cpu';
+        document.getElementById('alertTarget').value = alert.target || '';
+        document.getElementById('alertCondition').value = alert.condition || 'gt';
+        document.getElementById('alertThreshold').value = alert.threshold || 80;
+        document.getElementById('alertCooldown').value = alert.cooldown_minutes || 5;
+        document.getElementById('alertEnabled').checked = alert.enabled !== false;
+        
+        const container = document.getElementById('notificationsContainer');
+        container.innerHTML = '';
+        notificationIndex = 0;
+        
+        if (alert.notifications && alert.notifications.length > 0) {
+            alert.notifications.forEach((notif, idx) => {
+                addNotification();
+                document.getElementById(`notifType${idx}`).value = notif.notification_type || 'discord_webhook';
+                document.getElementById(`notifDest${idx}`).value = notif.destination || '';
+            });
+        } else {
+            addNotification();
+        }
+        
+        document.getElementById('alertModal').classList.add('show');
+    }
+
+    async function saveAlert(event) {
+        event.preventDefault();
+        
+        const id = document.getElementById('alertId').value;
+        const notifications = [];
+        const container = document.getElementById('notificationsContainer');
+        container.querySelectorAll('.notification-item').forEach(item => {
+            const idx = item.dataset.index;
+            const type = document.getElementById(`notifType${idx}`)?.value;
+            const dest = document.getElementById(`notifDest${idx}`)?.value;
+            if (type && dest) {
+                notifications.push({
+                    notification_type: type,
+                    destination: dest,
+                    enabled: true
+                });
+            }
+        });
+        
+        const data = {
+            name: document.getElementById('alertName').value,
+            description: document.getElementById('alertDescription').value,
+            alert_type: document.getElementById('alertType').value,
+            target: document.getElementById('alertTarget').value || null,
+            condition: document.getElementById('alertCondition').value,
+            threshold: parseFloat(document.getElementById('alertThreshold').value),
+            cooldown_minutes: parseInt(document.getElementById('alertCooldown').value),
+            enabled: document.getElementById('alertEnabled').checked,
+            notifications: notifications
+        };
+        
+        try {
+            const url = id ? `/api/alerts/${id}` : '/api/alerts';
+            const method = id ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                closeModal();
+                loadAlerts();
+                loadStats();
+                showToast(id ? 'Alert updated successfully' : 'Alert created successfully', 'success');
+            } else {
+                showToast(result.error || 'Failed to save alert', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving alert:', error);
+            showToast('Error saving alert', 'error');
+        }
+    }
+
+    async function deleteAlert(id) {
+        if (!confirm('Are you sure you want to delete this alert?')) return;
+        
+        try {
+            const response = await fetch(`/api/alerts/${id}`, { method: 'DELETE' });
+            const result = await response.json();
+            
+            if (result.success) {
+                loadAlerts();
+                loadStats();
+                showToast('Alert deleted', 'success');
+            } else {
+                showToast(result.error || 'Failed to delete', 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting alert:', error);
+            showToast('Error deleting alert', 'error');
+        }
+    }
+
+    async function toggleAlert(id) {
+        try {
+            const response = await fetch(`/api/alerts/${id}/toggle`, { method: 'POST' });
+            const result = await response.json();
+            
+            if (result.success) {
+                loadAlerts();
+                loadStats();
+            } else {
+                showToast(result.error || 'Failed to toggle', 'error');
+            }
+        } catch (error) {
+            console.error('Error toggling alert:', error);
+            showToast('Error toggling alert', 'error');
+        }
+    }
+
+    async function testAlert(id) {
+        try {
+            const response = await fetch(`/api/alerts/${id}/test`, { method: 'POST' });
+            const result = await response.json();
+            
+            if (result.success) {
+                showToast('Test notification sent!', 'success');
+            } else {
+                showToast(result.error || 'Failed to send test', 'error');
+            }
+        } catch (error) {
+            console.error('Error testing alert:', error);
+            showToast('Error sending test notification', 'error');
+        }
+    }
+
+    async function checkAlerts() {
+        try {
+            const response = await fetch('/api/alerts/check', { method: 'POST' });
+            const result = await response.json();
+            
+            if (result.success) {
+                loadHistory();
+                loadStats();
+                showToast(`Checked ${result.checked} alerts, ${result.triggered} triggered`, 'success');
+            } else {
+                showToast(result.error || 'Failed to check alerts', 'error');
+            }
+        } catch (error) {
+            console.error('Error checking alerts:', error);
+            showToast('Error checking alerts', 'error');
+        }
+    }
+
+    async function acknowledgeHistory(id) {
+        try {
+            const response = await fetch(`/api/alerts/history/${id}/acknowledge`, { method: 'POST' });
+            const result = await response.json();
+            
+            if (result.success) {
+                loadHistory();
+                loadStats();
+                showToast('Alert acknowledged', 'success');
+            } else {
+                showToast(result.error || 'Failed to acknowledge', 'error');
+            }
+        } catch (error) {
+            console.error('Error acknowledging:', error);
+            showToast('Error acknowledging alert', 'error');
+        }
+    }
+
+    async function resolveHistory(id) {
+        try {
+            const response = await fetch(`/api/alerts/history/${id}/resolve`, { method: 'POST' });
+            const result = await response.json();
+            
+            if (result.success) {
+                loadHistory();
+                loadStats();
+                showToast('Alert resolved', 'success');
+            } else {
+                showToast(result.error || 'Failed to resolve', 'error');
+            }
+        } catch (error) {
+            console.error('Error resolving:', error);
+            showToast('Error resolving alert', 'error');
+        }
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            background: var(--bg-secondary);
+            border: 1px solid ${type === 'success' ? 'var(--accent-green)' : type === 'error' ? 'var(--accent-red)' : 'var(--accent-blue)'};
+            color: var(--text-primary);
+            border-radius: 8px;
+            z-index: 3000;
+            animation: slideIn 0.3s ease;
+        `;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.animation = 'fadeOut 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadStats();
+        loadAlerts();
+        loadHistory();
+        
+        setInterval(loadStats, 60000);
+    });
+</script>
+
+<style>
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes fadeOut {
+        from { opacity: 1; }
+        to { opacity: 0; }
+    }
+</style>
+{% endblock %}

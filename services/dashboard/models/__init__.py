@@ -56,6 +56,13 @@ from .studio import (
     ProjectType, ProjectLanguage, ProjectStatus, BuildStatus as StudioBuildStatus,
     DeploymentTarget, DeploymentStatus as StudioDeploymentStatus
 )
+from .monitoring_alerts import (
+    MonitoringAlert, MonitoringAlertNotification, MonitoringAlertHistory,
+    AlertType, AlertCondition, NotificationType
+)
+from .activity import (
+    ActivityEvent, ActivitySubscription, EventSeverity, SourceService
+)
 
 __all__ = [
     'Base',
@@ -153,5 +160,15 @@ __all__ = [
     'ProjectStatus',
     'StudioBuildStatus',
     'DeploymentTarget',
-    'StudioDeploymentStatus'
+    'StudioDeploymentStatus',
+    'MonitoringAlert',
+    'MonitoringAlertNotification',
+    'MonitoringAlertHistory',
+    'AlertType',
+    'AlertCondition',
+    'NotificationType',
+    'ActivityEvent',
+    'ActivitySubscription',
+    'EventSeverity',
+    'SourceService'
 ]

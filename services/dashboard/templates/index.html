@@ -344,10 +344,266 @@
         </div>
     </div>
 </div>
+
+<!-- Activity Feed Widget -->
+<div class="diagnostic-panel cosmic-glass-card cosmic-fade-in mt-3">
+    <div class="diagnostic-header">
+        <span class="status-led active blink"></span>
+        <h5 style="margin: 0; font-weight: 600; font-size: clamp(0.9rem, 2.5vw, 1rem);">ACTIVITY FEED</h5>
+        <div style="margin-left: auto; display: flex; align-items: center; gap: 12px;">
+            <div class="activity-stats-mini" id="activityStatsMini">
+                <span class="stat-pill info" title="Events Today"><i class="bi bi-calendar3"></i> <span id="activityToday">0</span></span>
+                <span class="stat-pill warning" title="Warnings"><i class="bi bi-exclamation-triangle"></i> <span id="activityWarnings">0</span></span>
+                <span class="stat-pill error" title="Errors"><i class="bi bi-x-circle"></i> <span id="activityErrors">0</span></span>
+            </div>
+            <a href="/activity" class="btn btn-sm btn-outline-primary" style="font-size: 0.75rem;">
+                <i class="bi bi-arrow-right"></i> View All
+            </a>
+        </div>
+    </div>
+    <div class="activity-widget-content" id="activityWidgetContent">
+        <div class="activity-widget-loading">
+            <div class="spinner-border spinner-border-sm"></div>
+            <span>Loading activity...</span>
+        </div>
+    </div>
+</div>
+
+<style>
+.activity-stats-mini {
+    display: flex;
+    gap: 8px;
+}
+
+.stat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.stat-pill.info {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--accent-blue);
+}
+
+.stat-pill.warning {
+    background: rgba(210, 153, 34, 0.15);
+    color: var(--accent-yellow);
+}
+
+.stat-pill.error {
+    background: rgba(248, 81, 73, 0.15);
+    color: var(--accent-red);
+}
+
+.activity-widget-content {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.activity-widget-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 30px;
+    color: var(--text-secondary);
+}
+
+.activity-widget-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    transition: background 0.15s;
+}
+
+.activity-widget-item:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.activity-widget-item:last-child {
+    border-bottom: none;
+}
+
+.activity-widget-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.9rem;
+}
+
+.activity-widget-icon.info {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--accent-blue);
+}
+
+.activity-widget-icon.success {
+    background: rgba(63, 185, 80, 0.15);
+    color: var(--accent-green);
+}
+
+.activity-widget-icon.warning {
+    background: rgba(210, 153, 34, 0.15);
+    color: var(--accent-yellow);
+}
+
+.activity-widget-icon.error {
+    background: rgba(248, 81, 73, 0.15);
+    color: var(--accent-red);
+}
+
+.activity-widget-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.activity-widget-title {
+    font-weight: 500;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 2px;
+}
+
+.activity-widget-source {
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.activity-widget-desc {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.activity-widget-time {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.activity-widget-empty {
+    text-align: center;
+    padding: 30px;
+    color: var(--text-secondary);
+}
+
+.activity-widget-empty i {
+    font-size: 2rem;
+    margin-bottom: 8px;
+    display: block;
+}
+
+@media (max-width: 768px) {
+    .activity-stats-mini {
+        display: none;
+    }
+}
+</style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+async function loadActivityWidget() {
+    try {
+        const [eventsRes, statsRes] = await Promise.all([
+            fetch('/api/activity?limit=5&grouped=false', { credentials: 'include' }),
+            fetch('/api/activity/statistics', { credentials: 'include' })
+        ]);
+        
+        const eventsData = await eventsRes.json();
+        const statsData = await statsRes.json();
+        
+        if (statsData.success && statsData.statistics) {
+            document.getElementById('activityToday').textContent = statsData.statistics.today || 0;
+            document.getElementById('activityWarnings').textContent = statsData.statistics.by_severity?.warning || 0;
+            document.getElementById('activityErrors').textContent = statsData.statistics.by_severity?.error || 0;
+        }
+        
+        const container = document.getElementById('activityWidgetContent');
+        
+        if (eventsData.success && eventsData.events && eventsData.events.length > 0) {
+            container.innerHTML = eventsData.events.map(event => {
+                const icon = event.icon || 'info-circle';
+                const severity = event.severity || 'info';
+                const timeAgo = getTimeAgo(event.created_at);
+                
+                return `
+                    <div class="activity-widget-item">
+                        <div class="activity-widget-icon ${severity}">
+                            <i class="bi bi-${icon}"></i>
+                        </div>
+                        <div class="activity-widget-details">
+                            <div class="activity-widget-title">
+                                ${escapeHtml(event.title)}
+                                <span class="activity-widget-source">${event.source_service || 'system'}</span>
+                            </div>
+                            ${event.description ? `<div class="activity-widget-desc">${escapeHtml(event.description)}</div>` : ''}
+                        </div>
+                        <div class="activity-widget-time">${timeAgo}</div>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            container.innerHTML = `
+                <div class="activity-widget-empty">
+                    <i class="bi bi-inbox"></i>
+                    <div>No recent activity</div>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Failed to load activity widget:', error);
+        document.getElementById('activityWidgetContent').innerHTML = `
+            <div class="activity-widget-empty">
+                <i class="bi bi-exclamation-circle"></i>
+                <div>Could not load activity</div>
+            </div>
+        `;
+    }
+}
+
+function getTimeAgo(dateStr) {
+    if (!dateStr) return '';
+    try {
+        const date = new Date(dateStr);
+        const now = new Date();
+        const seconds = Math.floor((now - date) / 1000);
+        
+        if (seconds < 60) return 'just now';
+        if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+        if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+        return `${Math.floor(seconds / 86400)}d ago`;
+    } catch {
+        return '';
+    }
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 async function runHealthCheck() {
     const btn = event.target.closest('.quick-action-btn');
     const originalContent = btn.innerHTML;
