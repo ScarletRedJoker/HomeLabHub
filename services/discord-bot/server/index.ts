@@ -189,11 +189,20 @@ const apiLimiter = rateLimit({
 });
 
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5, // only 5 login attempts per 15 minutes
+  windowMs: 5 * 60 * 1000, // 5 minutes (reduced from 15)
+  max: 20, // 20 login attempts per 5 minutes (increased from 5)
   message: 'Too many login attempts, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => {
+    // Use X-Forwarded-For if behind proxy, otherwise use req.ip
+    const forwarded = req.headers['x-forwarded-for'];
+    if (forwarded) {
+      const ip = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(',')[0].trim();
+      return ip;
+    }
+    return req.ip || 'unknown';
+  },
 });
 
 /**
