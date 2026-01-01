@@ -81,7 +81,7 @@ def get_remediation_plan(service_name):
     try:
         from services.jarvis_remediator import jarvis_remediator
         
-        issue = request.args.get('issue')
+        issue = request.args.get('issue') or ''
         result = jarvis_remediator.generate_remediation_plan(service_name, issue)
         
         status_code = 200 if result.get('success') else 404
@@ -109,10 +109,10 @@ def get_remediation_history():
     try:
         from services.jarvis_remediator import jarvis_remediator
         
-        service_name = request.args.get('service')
+        service_filter: str | None = request.args.get('service')
         limit = int(request.args.get('limit', 10))
         
-        history = jarvis_remediator.get_remediation_history(service_name, limit)
+        history = jarvis_remediator.get_remediation_history(service_filter, limit)
         
         return jsonify({
             'success': True,
@@ -182,8 +182,8 @@ def get_anomalies():
             current_anomalies = []
         
         historical = anomaly_detector.get_anomaly_events(
-            service_name=service_name,
-            severity=severity,
+            service_name=service_name or '',
+            severity=severity or '',
             hours=hours
         )
         
@@ -319,9 +319,9 @@ def enhanced_chat():
         result = enhanced_ai_service.chat(
             message=message,
             conversation_history=conversation_history,
-            model=model,
+            model=model or 'gpt-4o',
             use_cache=use_cache,
-            user_id=user_id
+            user_id=user_id or 'anonymous'
         )
         
         status_code = 200 if result.get('success') else 500
@@ -377,8 +377,8 @@ def get_usage_stats():
         from services.enhanced_ai_service import enhanced_ai_service
         
         days = int(request.args.get('days', 30))
-        model_id = request.args.get('model')
-        provider = request.args.get('provider')
+        model_id = request.args.get('model') or ''
+        provider = request.args.get('provider') or ''
         
         stats = enhanced_ai_service.get_usage_stats(days, model_id, provider)
         

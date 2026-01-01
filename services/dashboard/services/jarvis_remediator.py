@@ -151,7 +151,7 @@ Format your response as a structured analysis."""
             'diagnosed_at': datetime.utcnow().isoformat()
         }
     
-    def generate_remediation_plan(self, service_name: str, issue_description: str = None) -> Dict:
+    def generate_remediation_plan(self, service_name: str, issue_description: Optional[str] = None) -> Dict:
         """
         Generate an AI-powered remediation plan
         
@@ -254,7 +254,7 @@ Only use actions from the Available Actions list. Respond with valid JSON only."
             'generated_at': datetime.utcnow().isoformat()
         }
     
-    def execute_remediation(self, service_name: str, plan: Dict = None, dry_run: bool = False) -> Dict:
+    def execute_remediation(self, service_name: str, plan: Optional[Dict] = None, dry_run: bool = False) -> Dict:
         """
         Execute a remediation plan for a service
         
@@ -286,7 +286,8 @@ Only use actions from the Available Actions list. Respond with valid JSON only."
         actions_taken = []
         overall_success = True
         
-        for step in plan.get('steps', []):
+        plan_dict = plan if plan else {}
+        for step in plan_dict.get('steps', []):
             action_type = step.get('action')
             action_result = RemediationAction(
                 action_type=action_type,
@@ -361,7 +362,7 @@ Only use actions from the Available Actions list. Respond with valid JSON only."
         remediation_record = self._save_remediation_history(
             service_name=service_name,
             container_name=container_name,
-            plan=plan,
+            plan=plan_dict,
             actions_taken=actions_taken,
             success=overall_success and health_after.get('healthy', False),
             logs_before=logs_before,
@@ -380,7 +381,7 @@ Only use actions from the Available Actions list. Respond with valid JSON only."
             'completed_at': datetime.utcnow().isoformat()
         }
     
-    def get_remediation_history(self, service_name: str = None, limit: int = 10) -> List[Dict]:
+    def get_remediation_history(self, service_name: Optional[str] = None, limit: int = 10) -> List[Dict]:
         """
         Get remediation history for a service or all services
         
