@@ -26,7 +26,7 @@ services:
       retries: 3
 
   qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:4.6.0
+    image: lscr.io/linuxserver/qbittorrent:4.5.5
     container_name: qbittorrent
     network_mode: "container:gluetun-vpn"
     depends_on:
@@ -37,12 +37,10 @@ services:
       - PGID=1000
       - TZ=America/New_York
       - WEBUI_PORT=8080
-      - WEBUI_PASSWORD=${WEBUI_PASSWORD:-adminadmin}
     volumes:
       - qbt-config:/config
       - /srv/media/downloads:/downloads
       - /srv/media/torrents:/torrents
-      - ./custom-cont-init.d:/custom-cont-init.d:ro
     restart: unless-stopped
 
 volumes:
