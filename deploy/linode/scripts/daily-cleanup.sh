@@ -38,9 +38,9 @@ find /var/log -name "*.[0-9]" -mtime +${DAYS_TO_KEEP_LOGS} -delete 2>/dev/null |
 log "Cleaning apt cache..."
 apt-get clean 2>/dev/null || true
 
-# Clean npm cache
+# Clean npm cache (with timeout to prevent hanging)
 log "Cleaning npm cache..."
-npm cache clean --force 2>/dev/null || true
+timeout 30 npm cache clean --force 2>/dev/null || true
 
 # Clean temp files
 log "Cleaning temp files..."
