@@ -25,6 +25,7 @@ import History from "@/pages/history";
 import Commands from "@/pages/commands";
 import Moderation from "@/pages/moderation";
 import Giveaways from "@/pages/giveaways";
+import Announcements from "@/pages/announcements";
 import Clips from "@/pages/clips";
 import Shoutouts from "@/pages/shoutouts";
 import Games from "@/pages/games";
@@ -106,6 +107,7 @@ function ProtectedRouter() {
               <Route path="/commands" component={Commands} />
               <Route path="/moderation" component={Moderation} />
               <Route path="/giveaways" component={Giveaways} />
+              <Route path="/announcements" component={Announcements} />
               <Route path="/clips" component={Clips} />
               <Route path="/shoutouts" component={Shoutouts} />
               <Route path="/games" component={Games} />

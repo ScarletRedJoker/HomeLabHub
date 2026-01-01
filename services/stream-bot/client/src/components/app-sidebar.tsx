@@ -1,4 +1,4 @@
-import { Home, Settings, Activity, Zap, History, MessageSquare, Shield, Trophy, Megaphone, BarChart3, Gamepad2, Coins, Music, Vote, Bell, Bot, Sparkles, Video, Layers, Lightbulb, Film } from "lucide-react";
+import { Home, Settings, Zap, Layers, Radio, Lightbulb, Video, Clock, MessageSquare, Trophy, Coins, Gamepad2, Vote, Music, Bell, Shield, BarChart3, Sparkles, Bot, Film, Megaphone } from "lucide-react";
 import { SiTwitch, SiYoutube, SiKick } from "react-icons/si";
 import {
   Sidebar,
@@ -12,6 +12,11 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 
@@ -19,123 +24,84 @@ interface FeatureFlags {
   obs: boolean;
 }
 
-const botControlItems = [
+const coreItems = [
   {
     title: "Dashboard",
     url: "/",
     icon: Home,
+    description: "Overview and platform connections",
   },
   {
-    title: "Quick Trigger",
+    title: "Generate Fact",
     url: "/trigger",
     icon: Zap,
-  },
-  {
-    title: "Activity",
-    url: "/activity",
-    icon: Activity,
-  },
-  {
-    title: "History",
-    url: "/history",
-    icon: History,
+    description: "Post facts to your platforms",
   },
   {
     title: "Fact Feed",
     url: "/fact-feed",
     icon: Lightbulb,
+    description: "View your personalized facts",
+  },
+  {
+    title: "Announcements",
+    url: "/announcements",
+    icon: Radio,
+    badge: "New",
+    description: "Schedule announcements",
+  },
+  {
+    title: "Overlays",
+    url: "/overlay-editor",
+    icon: Layers,
+    description: "OBS overlay editor",
   },
 ];
 
-const featureItems = [
+const configItems = [
+  {
+    title: "Settings",
+    url: "/settings",
+    icon: Settings,
+    description: "Bot configuration",
+  },
+];
+
+const comingSoonItems = [
   {
     title: "Commands",
-    url: "/commands",
     icon: MessageSquare,
-    badge: "Popular",
-  },
-  {
-    title: "AI Chatbot",
-    url: "/chatbot",
-    icon: Bot,
-    badge: "AI",
-  },
-  {
-    title: "Personality",
-    url: "/personality",
-    icon: Sparkles,
-    badge: "New",
-  },
-  {
-    title: "OBS Control",
-    url: "/obs-control",
-    icon: Video,
-    badge: "New",
-  },
-  {
-    title: "Overlay Editor",
-    url: "/overlay-editor",
-    icon: Layers,
-    badge: "New",
+    description: "Custom chat commands",
   },
   {
     title: "Giveaways",
-    url: "/giveaways",
     icon: Trophy,
-  },
-  {
-    title: "Clips",
-    url: "/clips",
-    icon: Film,
-    badge: "New",
-  },
-  {
-    title: "Shoutouts",
-    url: "/shoutouts",
-    icon: Megaphone,
-  },
-  {
-    title: "Games",
-    url: "/games",
-    icon: Gamepad2,
+    description: "Run viewer giveaways",
   },
   {
     title: "Currency",
-    url: "/currency",
     icon: Coins,
+    description: "Custom points system",
+  },
+  {
+    title: "Games",
+    icon: Gamepad2,
+    description: "Interactive chat games",
   },
   {
     title: "Polls",
-    url: "/polls",
     icon: Vote,
+    description: "Create viewer polls",
   },
   {
     title: "Song Requests",
-    url: "/song-requests",
     icon: Music,
-  },
-  {
-    title: "Alerts",
-    url: "/alerts",
-    icon: Bell,
-  },
-  {
-    title: "Moderation",
-    url: "/moderation",
-    icon: Shield,
-  },
-];
-
-const analyticsItems = [
-  {
-    title: "Statistics",
-    url: "/statistics",
-    icon: BarChart3,
+    description: "Music request system",
   },
   {
     title: "Analytics",
-    url: "/analytics",
-    icon: Sparkles,
+    icon: BarChart3,
+    description: "Stream analytics",
   },
 ];
 
@@ -163,123 +129,126 @@ const platformItems = [
 export function AppSidebar() {
   const [location] = useLocation();
 
-  // Check if OBS feature is enabled
   const { data: features } = useQuery<FeatureFlags>({
     queryKey: ["/api/features"],
     retry: false,
   });
 
-  // Filter feature items based on enabled features
-  const visibleFeatureItems = featureItems.filter((item) => {
-    // Hide OBS Control if OBS feature is not enabled
-    if (item.url === "/obs-control" && features && !features.obs) {
-      return false;
-    }
-    return true;
-  });
-
   return (
     <Sidebar data-testid="sidebar-main" className="border-r">
       <SidebarContent className="gap-0">
-        {/* Bot Control Section */}
+        {/* Core Features Section */}
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-4 py-2">
-            Bot Control
+            Stream Bot
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {botControlItems.map((item) => (
+              {coreItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location === item.url}
-                    data-testid={`link-${item.title.toLowerCase().replace(" ", "-")}`}
-                  >
-                    <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === item.url}
+                        data-testid={`link-${item.title.toLowerCase().replace(" ", "-")}`}
+                      >
+                        <Link href={item.url}>
+                          <item.icon className="h-4 w-4" />
+                          <span className="flex-1">{item.title}</span>
+                          {item.badge && (
+                            <Badge variant="secondary" className="ml-auto text-xs px-1.5 py-0 bg-candy-pink/20 text-candy-pink">
+                              {item.badge}
+                            </Badge>
+                          )}
+                        </Link>
+                      </SidebarMenuButton>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      <p>{item.description}</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </SidebarMenuItem>
               ))}
+              
+              {features?.obs && (
+                <SidebarMenuItem>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === "/obs-control"}
+                        data-testid="link-obs-control"
+                      >
+                        <Link href="/obs-control">
+                          <Video className="h-4 w-4" />
+                          <span>OBS Control</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      <p>Control OBS remotely</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Features Section */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-4 py-2">
-            Features
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {visibleFeatureItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location === item.url}
-                    data-testid={`link-${item.title.toLowerCase().replace(" ", "-")}`}
-                  >
-                    <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span className="flex-1">{item.title}</span>
-                      {item.badge && (
-                        <Badge variant="secondary" className="ml-auto text-xs px-1.5 py-0">
-                          {item.badge}
-                        </Badge>
-                      )}
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Analytics Section */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-4 py-2">
-            Analytics
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {analyticsItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location === item.url}
-                    data-testid={`link-${item.title.toLowerCase().replace(" ", "-")}`}
-                  >
-                    <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Settings Section */}
+        {/* Configuration Section */}
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-4 py-2">
             Configuration
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={location === "/settings"}
-                  data-testid="link-settings"
-                >
-                  <Link href="/settings">
-                    <Settings className="h-4 w-4" />
-                    <span>Settings</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {configItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location === item.url}
+                    data-testid={`link-${item.title.toLowerCase()}`}
+                  >
+                    <Link href={item.url}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Coming Soon Section */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-4 py-2">
+            Coming Soon
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {comingSoonItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <SidebarMenuButton
+                        className="cursor-not-allowed opacity-50"
+                        data-testid={`coming-soon-${item.title.toLowerCase().replace(" ", "-")}`}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        <span className="flex-1">{item.title}</span>
+                        <Clock className="h-3 w-3 text-muted-foreground" />
+                      </SidebarMenuButton>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      <p className="font-medium">{item.title}</p>
+                      <p className="text-xs text-muted-foreground">{item.description}</p>
+                      <p className="text-xs text-candy-pink mt-1">Coming Soon!</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -309,7 +278,7 @@ export function AppSidebar() {
 
       <SidebarFooter className="p-4 border-t">
         <div className="text-xs text-muted-foreground text-center">
-          <div className="font-medium">StreamBot</div>
+          <div className="font-medium candy-gradient-text">StreamBot</div>
           <div className="mt-0.5">AI-Powered Engagement</div>
         </div>
       </SidebarFooter>

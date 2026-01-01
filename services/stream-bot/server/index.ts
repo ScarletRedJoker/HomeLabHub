@@ -266,6 +266,11 @@ app.use((req, res, next) => {
   startWebhookRetryService();
   log('Webhook retry service started');
 
+  // Initialize announcement scheduler for scheduled messages
+  const { startAnnouncementScheduler } = await import('./announcement-scheduler');
+  startAnnouncementScheduler();
+  log('Announcement scheduler started');
+
   // Check OpenAI availability for fact generation (manual triggers and scheduled intervals)
   try {
     const openaiModule = await import('./openai');
@@ -322,6 +327,10 @@ app.use((req, res, next) => {
     // Stop webhook retry service
     const { stopWebhookRetryService } = await import('./webhook-retry-service');
     stopWebhookRetryService();
+
+    // Stop announcement scheduler
+    const { stopAnnouncementScheduler } = await import('./announcement-scheduler');
+    stopAnnouncementScheduler();
     
     server.close(async () => {
       try {

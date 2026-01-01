@@ -42,6 +42,111 @@ router.get("/servers/:serverId/onboarding", isAuthenticated, async (req: Request
   }
 });
 
+type FeatureStatus = 'configured' | 'not_configured' | 'partial';
+
+interface FeatureConfig {
+  id: string;
+  name: string;
+  description: string;
+  status: FeatureStatus;
+  tab: string;
+}
+
+router.get("/servers/:serverId/onboarding-status", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const { serverId } = req.params;
+    
+    const [
+      botSettings,
+      ticketCategories,
+      streamSettings,
+      economySettings,
+      automodRules
+    ] = await Promise.all([
+      dbStorage.getBotSettings(serverId),
+      dbStorage.getTicketCategoriesByServerId(serverId),
+      dbStorage.getStreamNotificationSettings(serverId),
+      dbStorage.getEconomySettings(serverId),
+      dbStorage.getAutomodRules(serverId)
+    ]);
+
+    const features: FeatureConfig[] = [
+      {
+        id: 'welcome',
+        name: 'Welcome Messages',
+        description: 'Greet new members with custom messages',
+        status: botSettings?.welcomeEnabled && botSettings?.welcomeChannelId ? 'configured' : 
+               botSettings?.welcomeEnabled ? 'partial' : 'not_configured',
+        tab: 'welcome-cards'
+      },
+      {
+        id: 'moderation',
+        name: 'Auto Moderation',
+        description: 'Automatically moderate content and protect your server',
+        status: botSettings?.autoModEnabled && automodRules.length > 0 ? 'configured' :
+               botSettings?.autoModEnabled || automodRules.length > 0 ? 'partial' : 'not_configured',
+        tab: 'settings'
+      },
+      {
+        id: 'leveling',
+        name: 'XP & Leveling',
+        description: 'Reward active members with experience points',
+        status: botSettings?.xpEnabled ? 'configured' : 'not_configured',
+        tab: 'settings'
+      },
+      {
+        id: 'streams',
+        name: 'Stream Notifications',
+        description: 'Alert members when streamers go live',
+        status: streamSettings?.enabled && streamSettings?.notificationChannelId ? 'configured' :
+               streamSettings?.enabled ? 'partial' : 'not_configured',
+        tab: 'streams'
+      },
+      {
+        id: 'tickets',
+        name: 'Ticket System',
+        description: 'Manage support tickets with custom categories',
+        status: ticketCategories.length > 0 ? 'configured' : 'not_configured',
+        tab: 'panels'
+      },
+      {
+        id: 'economy',
+        name: 'Economy System',
+        description: 'Virtual currency and shop for your server',
+        status: economySettings?.enabled ? 'configured' : 'not_configured',
+        tab: 'economy'
+      },
+      {
+        id: 'starboard',
+        name: 'Starboard',
+        description: 'Highlight the best messages from your community',
+        status: botSettings?.starboardEnabled && botSettings?.starboardChannelId ? 'configured' :
+               botSettings?.starboardEnabled ? 'partial' : 'not_configured',
+        tab: 'settings'
+      }
+    ];
+
+    const configuredCount = features.filter(f => f.status === 'configured').length;
+    const partialCount = features.filter(f => f.status === 'partial').length;
+    const totalFeatures = features.length;
+    const completionPercentage = Math.round(((configuredCount + (partialCount * 0.5)) / totalFeatures) * 100);
+
+    res.json({
+      features,
+      summary: {
+        configured: configuredCount,
+        partial: partialCount,
+        notConfigured: features.filter(f => f.status === 'not_configured').length,
+        total: totalFeatures,
+        completionPercentage
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching onboarding status:", error);
+    res.status(500).json({ error: "Failed to fetch onboarding status" });
+  }
+});
+
 router.post("/servers/:serverId/onboarding/complete-step", isAuthenticated, async (req: Request, res: Response) => {
   try {
     const { serverId } = req.params;

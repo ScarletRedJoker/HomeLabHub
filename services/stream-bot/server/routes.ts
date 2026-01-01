@@ -4,6 +4,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { botManager } from "./bot-manager";
+export { botManager };
 import { giveawayService } from "./giveaway-service";
 import { encryptToken } from "./crypto-utils";
 import {
@@ -15,8 +16,11 @@ import {
   updateShoutoutSettingsSchema,
   streamClips,
   platformConnections,
+  scheduledAnnouncements,
   type StreamClip,
   insertStreamClipSchema,
+  insertScheduledAnnouncementSchema,
+  updateScheduledAnnouncementSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, sql } from "drizzle-orm";
@@ -52,6 +56,7 @@ import { personalizedFactService } from "./personalized-fact-service";
 import { speechToTextService } from "./speech-to-text-service";
 import adminRoutes from "./admin-routes";
 import presenceRoutes from "./presence-routes";
+import { announcementScheduler, ANNOUNCEMENT_TEMPLATES } from "./announcement-scheduler";
 
 function broadcastStreamAlert(userId: string, data: any): void {
   botManager.broadcastStreamAlert(userId, data);
@@ -4590,6 +4595,223 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("[Clips API] Highlight toggle failed:", error);
       res.status(500).json({ error: error.message || "Failed to update clip" });
+    }
+  });
+
+  app.get("/api/announcements", requireAuth, async (req, res) => {
+    try {
+      const announcements = await db
+        .select()
+        .from(scheduledAnnouncements)
+        .where(eq(scheduledAnnouncements.userId, req.user!.id))
+        .orderBy(desc(scheduledAnnouncements.createdAt));
+
+      res.json(announcements);
+    } catch (error: any) {
+      console.error("[Announcements API] Failed to fetch announcements:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch announcements" });
+    }
+  });
+
+  app.get("/api/announcements/templates", requireAuth, async (_req, res) => {
+    res.json(ANNOUNCEMENT_TEMPLATES);
+  });
+
+  app.post("/api/announcements", requireAuth, async (req, res) => {
+    try {
+      const validationResult = insertScheduledAnnouncementSchema.safeParse(req.body);
+
+      if (!validationResult.success) {
+        return res.status(400).json({
+          error: "Validation failed",
+          details: validationResult.error.issues,
+        });
+      }
+
+      const data = validationResult.data;
+
+      let nextRunAt: Date | null = null;
+      if (data.scheduleType === "once" && data.scheduledTime) {
+        nextRunAt = new Date(data.scheduledTime);
+      } else if (data.scheduleType === "recurring" && data.cronPattern) {
+        const parts = data.cronPattern.split(" ");
+        if (parts.length === 5) {
+          const [minute, hour] = parts;
+          const now = new Date();
+          nextRunAt = new Date(now);
+          if (hour !== "*") nextRunAt.setHours(parseInt(hour, 10));
+          if (minute !== "*") nextRunAt.setMinutes(parseInt(minute, 10));
+          nextRunAt.setSeconds(0);
+          if (nextRunAt <= now) nextRunAt.setDate(nextRunAt.getDate() + 1);
+        }
+      }
+
+      const [announcement] = await db
+        .insert(scheduledAnnouncements)
+        .values({
+          ...data,
+          userId: req.user!.id,
+          nextRunAt,
+          discordWebhookUrl: data.discordWebhookUrl || null,
+        })
+        .returning();
+
+      res.json(announcement);
+    } catch (error: any) {
+      console.error("[Announcements API] Failed to create announcement:", error);
+      res.status(500).json({ error: error.message || "Failed to create announcement" });
+    }
+  });
+
+  app.put("/api/announcements/:id", requireAuth, async (req, res) => {
+    try {
+      const existing = await db
+        .select()
+        .from(scheduledAnnouncements)
+        .where(and(
+          eq(scheduledAnnouncements.id, req.params.id),
+          eq(scheduledAnnouncements.userId, req.user!.id)
+        ))
+        .limit(1);
+
+      if (!existing[0]) {
+        return res.status(404).json({ error: "Announcement not found" });
+      }
+
+      const validationResult = updateScheduledAnnouncementSchema.safeParse(req.body);
+
+      if (!validationResult.success) {
+        return res.status(400).json({
+          error: "Validation failed",
+          details: validationResult.error.issues,
+        });
+      }
+
+      const data = validationResult.data;
+
+      let nextRunAt = existing[0].nextRunAt;
+      if (data.scheduleType === "once" && data.scheduledTime) {
+        nextRunAt = new Date(data.scheduledTime);
+      } else if (data.scheduleType === "recurring" && data.cronPattern) {
+        const parts = data.cronPattern.split(" ");
+        if (parts.length === 5) {
+          const [minute, hour] = parts;
+          const now = new Date();
+          nextRunAt = new Date(now);
+          if (hour !== "*") nextRunAt.setHours(parseInt(hour, 10));
+          if (minute !== "*") nextRunAt.setMinutes(parseInt(minute, 10));
+          nextRunAt.setSeconds(0);
+          if (nextRunAt <= now) nextRunAt.setDate(nextRunAt.getDate() + 1);
+        }
+      }
+
+      const [updated] = await db
+        .update(scheduledAnnouncements)
+        .set({
+          ...data,
+          nextRunAt,
+          updatedAt: new Date(),
+        })
+        .where(eq(scheduledAnnouncements.id, req.params.id))
+        .returning();
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("[Announcements API] Failed to update announcement:", error);
+      res.status(500).json({ error: error.message || "Failed to update announcement" });
+    }
+  });
+
+  app.delete("/api/announcements/:id", requireAuth, async (req, res) => {
+    try {
+      const existing = await db
+        .select()
+        .from(scheduledAnnouncements)
+        .where(and(
+          eq(scheduledAnnouncements.id, req.params.id),
+          eq(scheduledAnnouncements.userId, req.user!.id)
+        ))
+        .limit(1);
+
+      if (!existing[0]) {
+        return res.status(404).json({ error: "Announcement not found" });
+      }
+
+      await db
+        .delete(scheduledAnnouncements)
+        .where(eq(scheduledAnnouncements.id, req.params.id));
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Announcements API] Failed to delete announcement:", error);
+      res.status(500).json({ error: error.message || "Failed to delete announcement" });
+    }
+  });
+
+  app.post("/api/announcements/:id/send-now", requireAuth, async (req, res) => {
+    try {
+      const existing = await db
+        .select()
+        .from(scheduledAnnouncements)
+        .where(and(
+          eq(scheduledAnnouncements.id, req.params.id),
+          eq(scheduledAnnouncements.userId, req.user!.id)
+        ))
+        .limit(1);
+
+      if (!existing[0]) {
+        return res.status(404).json({ error: "Announcement not found" });
+      }
+
+      const result = await announcementScheduler.processAnnouncement(
+        req.params.id,
+        req.user!.id
+      );
+
+      if (result.success) {
+        res.json({ success: true, message: "Announcement sent successfully", platformResults: result.platformResults });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: "Failed to send to some platforms",
+          platformResults: result.platformResults,
+        });
+      }
+    } catch (error: any) {
+      console.error("[Announcements API] Failed to send announcement:", error);
+      res.status(500).json({ error: error.message || "Failed to send announcement" });
+    }
+  });
+
+  app.post("/api/announcements/:id/cancel", requireAuth, async (req, res) => {
+    try {
+      const existing = await db
+        .select()
+        .from(scheduledAnnouncements)
+        .where(and(
+          eq(scheduledAnnouncements.id, req.params.id),
+          eq(scheduledAnnouncements.userId, req.user!.id)
+        ))
+        .limit(1);
+
+      if (!existing[0]) {
+        return res.status(404).json({ error: "Announcement not found" });
+      }
+
+      const [updated] = await db
+        .update(scheduledAnnouncements)
+        .set({
+          status: "cancelled",
+          isActive: false,
+          updatedAt: new Date(),
+        })
+        .where(eq(scheduledAnnouncements.id, req.params.id))
+        .returning();
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("[Announcements API] Failed to cancel announcement:", error);
+      res.status(500).json({ error: error.message || "Failed to cancel announcement" });
     }
   });
 

@@ -60,6 +60,8 @@ import formsRoutes from "./routes/forms";
 import economyRoutes from "./routes/economy";
 import schedulerRoutes from "./routes/scheduler";
 import onboardingRoutes from "./routes/onboarding";
+import quickSetupRoutes from "./routes/quick-setup";
+import moderationPresetsRoutes from "./routes/moderation-presets";
 
 // Configure multer for embed image uploads
 const EMBED_IMAGES_DIR = path.join(process.cwd(), 'attached_assets', 'embed-images');
@@ -3814,6 +3816,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Onboarding wizard routes
   app.use('/api', onboardingRoutes);
+
+  // Quick Setup routes
+  app.use('/api', quickSetupRoutes);
+
+  // Moderation presets routes
+  app.use('/api', moderationPresetsRoutes);
 
   // Start background services
   startRetentionService();

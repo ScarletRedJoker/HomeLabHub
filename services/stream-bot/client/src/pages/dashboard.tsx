@@ -4,38 +4,35 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { PlatformCard } from "@/components/platform-card";
 import { ConnectPlatformDialog } from "@/components/connect-platform-dialog";
-import { WelcomeCard } from "@/components/WelcomeCard";
-import { FeatureCard } from "@/components/FeatureCard";
-import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { 
-  Activity, 
   Zap, 
-  Clock, 
-  TrendingUp, 
-  MessageSquare, 
-  Trophy, 
-  Bot, 
-  Coins,
-  Sparkles,
-  ArrowRight,
   Play,
   Pause,
   Plus,
   AlertTriangle,
   RefreshCw,
+  Layers,
+  Radio,
+  Lightbulb,
+  CheckCircle2,
+  ArrowRight,
+  Clock,
+  Sparkles,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import type { PlatformConnection, BotSettings } from "@shared/schema";
+import type { PlatformConnection, BotSettings, BotMessage } from "@shared/schema";
+import { formatDistanceToNow } from "date-fns";
 
 export default function Dashboard() {
   const { toast } = useToast();
   const [connectDialogOpen, setConnectDialogOpen] = useState(false);
   const [connectingPlatform, setConnectingPlatform] = useState<string | null>(null);
+  const [, setLocation] = useLocation();
 
   const { data: platforms, isLoading: platformsLoading } = useQuery<PlatformConnection[]>({
     queryKey: ["/api/platforms"],
@@ -51,6 +48,10 @@ export default function Dashboard() {
     activePlatforms: number;
   }>({
     queryKey: ["/api/stats"],
+  });
+
+  const { data: recentMessages } = useQuery<BotMessage[]>({
+    queryKey: ["/api/messages"],
   });
 
   const { data: tokenHealth } = useQuery<{
@@ -72,7 +73,6 @@ export default function Dashboard() {
     refetchInterval: 60000,
   });
 
-  // WebSocket for real-time updates
   const handleWebSocketMessage = useCallback((data: any) => {
     if (data.type === "new_message") {
       queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
@@ -98,15 +98,12 @@ export default function Dashboard() {
       bearerToken?: string;
       cookies?: string;
     }) => {
-      // Create or update platform connection
       const existingConnection = platforms?.find((p) => p.platform === data.platform);
       
-      // Store platform-specific data in connectionData
       const connectionData: any = {
         botUsername: data.botUsername || data.platformUsername,
       };
 
-      // For Kick, store bearer token and cookies separately
       if (data.platform === "kick") {
         connectionData.bearerToken = data.bearerToken;
         connectionData.cookies = data.cookies;
@@ -141,13 +138,13 @@ export default function Dashboard() {
       setConnectingPlatform(null);
       toast({
         title: "Platform Connected",
-        description: "Your Twitch channel is now connected! Configure your bot in Settings to start posting facts.",
+        description: "Your channel is now connected!",
       });
     },
     onError: (error: any) => {
       toast({
         title: "Connection Failed",
-        description: error?.message || "Failed to connect platform. Please check your credentials and try again.",
+        description: error?.message || "Failed to connect platform.",
         variant: "destructive",
       });
     },
@@ -172,6 +169,37 @@ export default function Dashboard() {
         title: "Disconnection Failed",
         description: "Failed to disconnect platform",
         variant: "destructive",
+      });
+    },
+  });
+
+  const toggleBotMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("PATCH", "/api/settings", {
+        isActive: !settings?.isActive,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
+      toast({
+        title: settings?.isActive ? "Bot Paused" : "Bot Activated",
+        description: settings?.isActive 
+          ? "Your bot has been paused" 
+          : "Your bot is now active!",
+      });
+    },
+  });
+
+  const quickTriggerMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", "/api/trigger-fact", {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      toast({
+        title: "Fact Posted!",
+        description: "Your fact has been posted to all active platforms.",
       });
     },
   });
@@ -208,48 +236,21 @@ export default function Dashboard() {
     return platforms?.find((p) => p.platform === platform);
   };
 
-  const [, setLocation] = useLocation();
-
-  const toggleBotMutation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest("PATCH", "/api/settings", {
-        isActive: !settings?.isActive,
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
-      toast({
-        title: settings?.isActive ? "Bot Paused" : "Bot Activated",
-        description: settings?.isActive 
-          ? "Your bot has been paused" 
-          : "Your bot is now active!",
-      });
-    },
-  });
-
-  const quickTriggerMutation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest("POST", "/api/trigger-fact", {});
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
-      toast({
-        title: "Fact Posted!",
-        description: "Your Snapple fact has been posted to all active platforms.",
-      });
-    },
-  });
-
-  const hasConnectedPlatforms = platforms?.some(p => p.isConnected) ?? false;
+  const connectedPlatforms = platforms?.filter(p => p.isConnected) ?? [];
+  const hasConnectedPlatforms = connectedPlatforms.length > 0;
+  const recentFacts = recentMessages?.slice(0, 5) ?? [];
 
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-6 max-w-7xl candy-fade-in">
+      {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold candy-gradient-text">Dashboard</h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-0.5 sm:mt-1">
-            Manage your multi-platform streaming bot
+            {hasConnectedPlatforms 
+              ? `Connected to ${connectedPlatforms.length} platform${connectedPlatforms.length > 1 ? 's' : ''}`
+              : 'Connect your first platform to get started'
+            }
           </p>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -262,15 +263,13 @@ export default function Dashboard() {
           >
             {settings?.isActive ? (
               <>
-                <Pause className="h-4 w-4 mr-1.5 sm:mr-2" />
-                <span className="hidden xs:inline">Pause Bot</span>
-                <span className="xs:hidden">Pause</span>
+                <Pause className="h-4 w-4 mr-1.5" />
+                <span className="hidden xs:inline">Pause</span>
               </>
             ) : (
               <>
-                <Play className="h-4 w-4 mr-1.5 sm:mr-2" />
-                <span className="hidden xs:inline">Start Bot</span>
-                <span className="xs:hidden">Start</span>
+                <Play className="h-4 w-4 mr-1.5" />
+                <span className="hidden xs:inline">Start</span>
               </>
             )}
           </Button>
@@ -281,15 +280,11 @@ export default function Dashboard() {
             className="flex-1 sm:flex-none candy-button border-0 candy-glow h-9 sm:h-8 candy-touch-target"
           >
             {quickTriggerMutation.isPending ? (
-              <>
-                <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-1.5" />
-                <span className="hidden sm:inline">Posting...</span>
-              </>
+              <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
               <>
-                <Zap className="h-4 w-4 mr-1.5 sm:mr-2" />
-                <span className="hidden xs:inline">Post Fact</span>
-                <span className="xs:hidden">Post</span>
+                <Zap className="h-4 w-4 mr-1.5" />
+                Post Fact
               </>
             )}
           </Button>
@@ -303,231 +298,173 @@ export default function Dashboard() {
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-orange-500" />
               <CardTitle className="text-sm sm:text-base text-orange-700 dark:text-orange-400">
-                Platform Token Issues Detected
+                Platform Reconnection Needed
               </CardTitle>
             </div>
-            <CardDescription className="text-xs sm:text-sm mt-1">
-              Some platforms need to be reconnected for your bot to work properly.
-            </CardDescription>
           </CardHeader>
           <CardContent className="p-3 sm:p-4 pt-0">
             <div className="flex flex-wrap gap-2">
               {tokenHealth.platforms
                 .filter(p => p.needsReauth || p.status === 'expired')
                 .map(p => (
-                  <div key={p.platform} className="flex items-center gap-2 p-2 rounded-md bg-background/50">
-                    <span className="text-xs sm:text-sm font-medium capitalize">{p.platform}</span>
-                    <span className="text-[10px] sm:text-xs text-muted-foreground">
-                      {p.message}
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs border-orange-500/50 hover:bg-orange-500/10"
-                      onClick={() => {
-                        window.location.href = `/auth/${p.platform}`;
-                      }}
-                    >
-                      <RefreshCw className="h-3 w-3 mr-1" />
-                      Reconnect
-                    </Button>
-                  </div>
+                  <Button
+                    key={p.platform}
+                    size="sm"
+                    variant="outline"
+                    className="border-orange-500/50 hover:bg-orange-500/10"
+                    onClick={() => window.location.href = `/auth/${p.platform}`}
+                  >
+                    <RefreshCw className="h-3 w-3 mr-1.5" />
+                    Reconnect {p.platform}
+                  </Button>
                 ))}
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Welcome Card for New Users */}
-      <WelcomeCard />
-
-      {/* Stats Overview */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4 candy-fade-in-delay-1">
-        <Card className="candy-stat-card-pink candy-hover-elevate border-0">
-          <CardHeader className="flex flex-row items-center justify-between gap-1.5 sm:gap-2 space-y-0 p-3 sm:p-4 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">Bot Status</CardTitle>
-            <Activity className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-candy-pink" />
-          </CardHeader>
-          <CardContent className="p-3 sm:p-4 pt-0">
-            <div className="text-lg sm:text-2xl font-bold">
-              {settings?.isActive ? (
-                <Badge variant="default" className="candy-badge-green text-xs sm:text-sm">
-                  <div className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-white mr-1 sm:mr-1.5 animate-pulse" />
-                  Active
-                </Badge>
-              ) : (
-                <Badge variant="secondary" className="text-xs sm:text-sm">
-                  <div className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-muted-foreground mr-1 sm:mr-1.5" />
-                  Inactive
-                </Badge>
-              )}
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <Card 
+          className="candy-glass-card candy-hover-elevate cursor-pointer group"
+          onClick={() => quickTriggerMutation.mutate()}
+        >
+          <CardContent className="p-4 sm:p-6 flex items-center gap-4">
+            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-candy-pink to-candy-purple flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Zap className="h-6 w-6 text-white" />
             </div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
-              {settings?.intervalMode === "manual"
-                ? "Manual only"
-                : settings?.intervalMode === "fixed"
-                ? `Every ${settings.fixedIntervalMinutes}m`
-                : "Random"}
-            </p>
+            <div>
+              <h3 className="font-semibold">Generate Fact</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground">Post to all platforms</p>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="candy-stat-card-blue candy-hover-elevate border-0">
-          <CardHeader className="flex flex-row items-center justify-between gap-1.5 sm:gap-2 space-y-0 p-3 sm:p-4 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">Total Facts</CardTitle>
-            <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-candy-blue" />
-          </CardHeader>
-          <CardContent className="p-3 sm:p-4 pt-0">
-            <div className="text-lg sm:text-2xl font-bold" data-testid="stat-total-messages">
-              {stats?.totalMessages ?? 0}
+        <Card 
+          className="candy-glass-card candy-hover-elevate cursor-pointer group"
+          onClick={() => setLocation("/announcements")}
+        >
+          <CardContent className="p-4 sm:p-6 flex items-center gap-4">
+            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-candy-blue to-candy-purple flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Radio className="h-6 w-6 text-white" />
             </div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">
-              All time
-            </p>
+            <div>
+              <h3 className="font-semibold">Announcements</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground">Schedule posts</p>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="candy-stat-card-purple candy-hover-elevate border-0">
-          <CardHeader className="flex flex-row items-center justify-between gap-1.5 sm:gap-2 space-y-0 p-3 sm:p-4 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">This Week</CardTitle>
-            <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-candy-purple" />
-          </CardHeader>
-          <CardContent className="p-3 sm:p-4 pt-0">
-            <div className="text-lg sm:text-2xl font-bold" data-testid="stat-weekly-messages">
-              {stats?.messagesThisWeek ?? 0}
+        <Card 
+          className="candy-glass-card candy-hover-elevate cursor-pointer group"
+          onClick={() => setLocation("/overlay-editor")}
+        >
+          <CardContent className="p-4 sm:p-6 flex items-center gap-4">
+            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-candy-green to-candy-blue flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Layers className="h-6 w-6 text-white" />
             </div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">
-              Posted
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="candy-stat-card-green candy-hover-elevate border-0">
-          <CardHeader className="flex flex-row items-center justify-between gap-1.5 sm:gap-2 space-y-0 p-3 sm:p-4 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">Platforms</CardTitle>
-            <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-candy-green" />
-          </CardHeader>
-          <CardContent className="p-3 sm:p-4 pt-0">
-            <div className="text-lg sm:text-2xl font-bold" data-testid="stat-active-platforms">
-              {stats?.activePlatforms ?? 0}/3
+            <div>
+              <h3 className="font-semibold">OBS Overlays</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground">Customize your stream</p>
             </div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">
-              Connected
-            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* What's New Section */}
-      <Card className="candy-glass-card candy-fade-in-delay-2">
-        <CardHeader className="p-3 sm:p-6">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-candy-yellow candy-bounce" />
-              <CardTitle className="text-base sm:text-lg">What's New</CardTitle>
+      {/* Status + Recent Activity Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        {/* Bot Status Card */}
+        <Card className="candy-glass-card">
+          <CardHeader className="p-4 sm:p-6 pb-2">
+            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-candy-yellow" />
+              Bot Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-6 pt-2 space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Status</span>
+              {settings?.isActive ? (
+                <Badge className="candy-badge-green">
+                  <div className="h-2 w-2 rounded-full bg-white mr-1.5 animate-pulse" />
+                  Active
+                </Badge>
+              ) : (
+                <Badge variant="secondary">
+                  <div className="h-2 w-2 rounded-full bg-muted-foreground mr-1.5" />
+                  Inactive
+                </Badge>
+              )}
             </div>
-            <Badge className="candy-badge-purple text-[10px] sm:text-xs">Updates</Badge>
-          </div>
-          <CardDescription className="text-xs sm:text-sm mt-1">
-            Latest features and improvements
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-2 sm:gap-4 sm:grid-cols-2 p-3 sm:p-6 pt-0 sm:pt-0">
-          <div className="flex gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg bg-gradient-to-br from-candy-pink/10 to-candy-purple/10">
-            <div className="flex-shrink-0">
-              <div className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-candy-pink mt-1.5 sm:mt-2 animate-pulse" />
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Platforms</span>
+              <span className="font-semibold">{stats?.activePlatforms ?? 0}/3</span>
             </div>
-            <div className="space-y-0.5 sm:space-y-1 min-w-0">
-              <div className="text-xs sm:text-sm font-medium truncate">Multi-Platform</div>
-              <div className="text-[10px] sm:text-xs text-muted-foreground line-clamp-2">
-                Twitch, YouTube, & Kick support
-              </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Facts Posted</span>
+              <span className="font-semibold">{stats?.totalMessages ?? 0}</span>
             </div>
-          </div>
-          <div className="flex gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg bg-gradient-to-br from-candy-blue/10 to-candy-green/10">
-            <div className="flex-shrink-0">
-              <div className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-candy-blue mt-1.5 sm:mt-2 animate-pulse" />
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">This Week</span>
+              <span className="font-semibold">{stats?.messagesThisWeek ?? 0}</span>
             </div>
-            <div className="space-y-0.5 sm:space-y-1 min-w-0">
-              <div className="text-xs sm:text-sm font-medium truncate">AI Chatbot</div>
-              <div className="text-[10px] sm:text-xs text-muted-foreground line-clamp-2">
-                Custom AI personalities
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Feature Discovery */}
-      <div className="candy-fade-in-delay-3">
-        <div className="flex items-center justify-between mb-3 sm:mb-4">
-          <h2 className="text-lg sm:text-2xl font-semibold">Explore Features</h2>
-          <Link href="/settings">
-            <Button variant="ghost" size="sm" className="hover:scale-105 transition-transform text-xs sm:text-sm h-8 sm:h-9">
-              View All
-              <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 ml-1.5 sm:ml-2" />
-            </Button>
-          </Link>
-        </div>
-        <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
-          <FeatureCard
-            icon={MessageSquare}
-            title="Custom Commands"
-            description="Create personalized chat commands for your community"
-            badge="Popular"
-            badgeVariant="default"
-            iconColor="text-blue-500"
-            action={{
-              label: "Manage Commands",
-              onClick: () => setLocation("/commands"),
-            }}
-          />
-          <FeatureCard
-            icon={Trophy}
-            title="Giveaways"
-            description="Run engaging giveaways and raffles for viewers"
-            iconColor="text-yellow-500"
-            action={{
-              label: "Create Giveaway",
-              onClick: () => setLocation("/giveaways"),
-            }}
-          />
-          <FeatureCard
-            icon={Coins}
-            title="Currency System"
-            description="Custom points and rewards for loyal viewers"
-            badge="New"
-            iconColor="text-green-500"
-            action={{
-              label: "Setup Currency",
-              onClick: () => setLocation("/currency"),
-            }}
-          />
-          <FeatureCard
-            icon={Bot}
-            title="AI Chatbot"
-            description="Intelligent chat responses with custom personalities"
-            badge="AI"
-            iconColor="text-purple-500"
-            action={{
-              label: "Configure AI",
-              onClick: () => setLocation("/chatbot"),
-            }}
-          />
-        </div>
+        {/* Recent Activity */}
+        <Card className="candy-glass-card lg:col-span-2">
+          <CardHeader className="p-4 sm:p-6 pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                <Clock className="h-5 w-5 text-candy-blue" />
+                Recent Facts
+              </CardTitle>
+              <Link href="/fact-feed">
+                <Button variant="ghost" size="sm" className="text-xs">
+                  View All
+                  <ArrowRight className="h-3 w-3 ml-1" />
+                </Button>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-6 pt-2">
+            {recentFacts.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No facts posted yet</p>
+                <p className="text-xs mt-1">Generate your first fact above!</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recentFacts.map((message) => (
+                  <div key={message.id} className="flex gap-3 p-3 rounded-lg bg-muted/50">
+                    <CheckCircle2 className="h-4 w-4 text-candy-green mt-0.5 flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm line-clamp-2">{message.content}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Platform Connections */}
       <div>
         <div className="flex items-center justify-between mb-3 sm:mb-4">
-          <h2 className="text-lg sm:text-2xl font-semibold">Platforms</h2>
+          <h2 className="text-lg sm:text-xl font-semibold">Platform Connections</h2>
           {hasConnectedPlatforms && (
-            <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20 text-[10px] sm:text-xs">
-              <div className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-green-500 mr-1 sm:mr-1.5 animate-pulse" />
-              {stats?.activePlatforms || 0} Active
+            <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20 text-xs">
+              <div className="h-2 w-2 rounded-full bg-green-500 mr-1.5 animate-pulse" />
+              {connectedPlatforms.length} Active
             </Badge>
           )}
         </div>
+        
         {platformsLoading ? (
           <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map((i) => (
@@ -543,15 +480,29 @@ export default function Dashboard() {
             ))}
           </div>
         ) : !hasConnectedPlatforms ? (
-          <EmptyState
-            icon={Plus}
-            title="No Platforms Connected"
-            description="Connect your first streaming platform to start posting AI-generated Snapple facts to your viewers!"
-            action={{
-              label: "Connect a Platform",
-              onClick: () => handleConnect("twitch"),
-            }}
-          />
+          <Card className="border-dashed border-2">
+            <CardContent className="p-6 sm:p-12 text-center">
+              <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-candy-pink/20 to-candy-purple/20 flex items-center justify-center mx-auto mb-4">
+                <Plus className="h-8 w-8 text-candy-pink" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Connect Your First Platform</h3>
+              <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
+                Connect your Twitch, YouTube, or Kick channel to start posting AI-generated facts to your viewers!
+              </p>
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button onClick={() => handleConnect("twitch")} className="candy-button border-0">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Connect Twitch
+                </Button>
+                <Button onClick={() => handleConnect("youtube")} variant="outline">
+                  Connect YouTube
+                </Button>
+                <Button onClick={() => handleConnect("kick")} variant="outline">
+                  Connect Kick
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         ) : (
           <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
             <PlatformCard
@@ -590,6 +541,32 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* Coming Soon Preview */}
+      <Card className="candy-glass-card">
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <Clock className="h-5 w-5 text-candy-purple" />
+            Coming Soon
+          </CardTitle>
+          <CardDescription>Features we're working on</CardDescription>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-6 pt-0">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { name: "Commands", desc: "Custom chat commands" },
+              { name: "Giveaways", desc: "Run viewer giveaways" },
+              { name: "Currency", desc: "Points system" },
+              { name: "Analytics", desc: "Stream insights" },
+            ].map((feature) => (
+              <div key={feature.name} className="p-3 rounded-lg bg-muted/50 text-center">
+                <p className="font-medium text-sm">{feature.name}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{feature.desc}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Connect Platform Dialog */}
       <ConnectPlatformDialog

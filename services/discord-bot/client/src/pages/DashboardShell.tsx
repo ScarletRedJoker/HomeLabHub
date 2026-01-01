@@ -11,6 +11,7 @@ import BotInviteCard from "@/components/BotInviteCard";
 import SettingsPage from "@/pages/SettingsPage";
 import ConnectionStatus from "@/components/ConnectionStatus";
 import OnboardingWizard from "@/components/OnboardingWizard";
+import QuickSetupWizard from "@/components/QuickSetupWizard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { 
   LayoutDashboard, 
@@ -27,13 +28,15 @@ import {
   MessageSquare,
   FileText,
   Coins,
-  Calendar
+  Calendar,
+  Zap
 } from "lucide-react";
 
 import OverviewTab from "@/components/tabs/OverviewTab";
 import PanelsTab from "@/components/tabs/PanelsTab";
 import StreamNotificationsTab from "@/components/tabs/StreamNotificationsTab";
 import AnalyticsTab from "@/components/tabs/AnalyticsTab";
+import OnboardingChecklist from "@/components/OnboardingChecklist";
 import CustomCommandsPage from "@/pages/CustomCommandsPage";
 import WelcomeCardDesigner from "@/pages/WelcomeCardDesigner";
 import InteractionStudio from "@/pages/InteractionStudio";
@@ -79,6 +82,7 @@ export default function DashboardShell() {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [quickSetupOpen, setQuickSetupOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: onboardingData } = useQuery<OnboardingData>({
@@ -109,6 +113,21 @@ export default function DashboardShell() {
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  const handleQuickSetupComplete = () => {
+    queryClient.invalidateQueries({ queryKey: [`/api/servers/${selectedServerId}/settings`] });
+    queryClient.invalidateQueries({ queryKey: [`/api/servers/${selectedServerId}/onboarding`] });
+  };
+
+  const handleNavigateToTab = (tab: string) => {
+    if (tab === 'settings') {
+      setSettingsOpen(true);
+    } else if (tab === 'streams') {
+      setActiveTab('stream-notifications');
+    } else {
+      setActiveTab(tab);
+    }
   };
 
   if (showOnboarding && selectedServerId && serverData) {
@@ -202,6 +221,19 @@ export default function DashboardShell() {
               )}
               
               <ThemeToggle />
+              
+              {isAdmin && selectedServerId && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setQuickSetupOpen(true)}
+                  className="border-discord-blue text-discord-blue hover:bg-discord-blue hover:text-white hidden lg:flex h-11"
+                  data-testid="button-quick-setup"
+                >
+                  <Zap className="h-4 w-4 mr-2" />
+                  Quick Setup
+                </Button>
+              )}
               
               <Button 
                 variant="ghost" 
@@ -479,6 +511,7 @@ export default function DashboardShell() {
 
           {/* Tab Content */}
           <TabsContent value="overview" className="space-y-6 mt-6">
+            {isAdmin && <OnboardingChecklist onNavigateToTab={handleNavigateToTab} />}
             <OverviewTab />
           </TabsContent>
 
@@ -521,6 +554,17 @@ export default function DashboardShell() {
 
       {/* Settings Sheet (Sliding Panel) */}
       <SettingsPage isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+      {/* Quick Setup Wizard */}
+      {selectedServerId && serverData && (
+        <QuickSetupWizard
+          serverId={selectedServerId}
+          serverName={serverData.name || 'Your Server'}
+          open={quickSetupOpen}
+          onOpenChange={setQuickSetupOpen}
+          onComplete={handleQuickSetupComplete}
+        />
+      )}
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-discord-sidebar border-t border-discord-dark pb-safe">

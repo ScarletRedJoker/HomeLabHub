@@ -82,6 +82,7 @@ export const botSettings = pgTable("bot_settings", {
   spamThreshold: integer("spam_threshold").default(5), // Number of messages
   spamTimeWindow: integer("spam_time_window").default(5), // In seconds
   autoModAction: text("auto_mod_action").default("warn"), // warn, mute, kick
+  appliedModerationPresets: text("applied_moderation_presets"), // JSON array of applied preset IDs
   // Suggestion box settings
   suggestionChannelId: text("suggestion_channel_id"), // Channel for suggestions
   // Birthday tracker settings

@@ -1328,6 +1328,34 @@ export const webhookQueue = pgTable("webhook_queue", {
   userIdIdx: index("webhook_queue_user_id_idx").on(table.userId),
 }));
 
+// Scheduled Announcements - User-scheduled messages for going live alerts and automated messages
+export const scheduledAnnouncements = pgTable("scheduled_announcements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  platforms: jsonb("platforms").default(sql`'[]'::jsonb`).notNull(), // Array of platforms: ['twitch', 'youtube', 'kick', 'discord']
+  scheduleType: text("schedule_type").notNull(), // 'once', 'before_stream', 'recurring'
+  scheduledTime: timestamp("scheduled_time"), // For 'once' type
+  beforeStreamMinutes: integer("before_stream_minutes"), // For 'before_stream' type (e.g., 15 means 15 min before stream)
+  cronPattern: text("cron_pattern"), // For 'recurring' type (e.g., "0 18 * * 1,3,5" for Mon/Wed/Fri at 6pm)
+  discordWebhookUrl: text("discord_webhook_url"), // Optional Discord webhook URL
+  status: text("status").default("pending").notNull(), // 'pending', 'sent', 'failed', 'cancelled'
+  lastSentAt: timestamp("last_sent_at"),
+  nextRunAt: timestamp("next_run_at"), // Next scheduled execution time
+  retryCount: integer("retry_count").default(0).notNull(),
+  maxRetries: integer("max_retries").default(3).notNull(),
+  errorMessage: text("error_message"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("scheduled_announcements_user_id_idx").on(table.userId),
+  statusIdx: index("scheduled_announcements_status_idx").on(table.status),
+  nextRunAtIdx: index("scheduled_announcements_next_run_at_idx").on(table.nextRunAt),
+  scheduleTypeIdx: index("scheduled_announcements_schedule_type_idx").on(table.scheduleType),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users, {
   email: z.string().email("Invalid email address"),
@@ -1867,6 +1895,25 @@ export const insertStreamClipSchema = createInsertSchema(streamClips, {
 
 export const updateStreamClipSchema = insertStreamClipSchema.partial();
 
+export const insertScheduledAnnouncementSchema = createInsertSchema(scheduledAnnouncements, {
+  title: z.string().min(1, "Title is required").max(100, "Title too long"),
+  message: z.string().min(1, "Message is required").max(1000, "Message too long"),
+  platforms: z.array(z.enum(["twitch", "youtube", "kick", "discord"])).min(1, "At least one platform required"),
+  scheduleType: z.enum(["once", "before_stream", "recurring"]),
+  scheduledTime: z.coerce.date().optional(),
+  beforeStreamMinutes: z.coerce.number().min(1).max(120).optional(),
+  cronPattern: z.string().max(100).optional(),
+  discordWebhookUrl: z.string().url("Invalid webhook URL").optional().or(z.literal("")),
+  status: z.enum(["pending", "sent", "failed", "cancelled"]).optional(),
+}).omit({
+  id: true,
+  userId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateScheduledAnnouncementSchema = insertScheduledAnnouncementSchema.partial();
+
 // ============================================================================
 // INSERT SCHEMAS FOR ENHANCED BACKEND FEATURES
 // ============================================================================
@@ -2187,6 +2234,7 @@ export type ModerationActionLog = typeof moderationActionLog.$inferSelect;
 export type SpeechToTextQueue = typeof speechToTextQueue.$inferSelect;
 export type Transcription = typeof transcriptions.$inferSelect;
 export type WebhookQueue = typeof webhookQueue.$inferSelect;
+export type ScheduledAnnouncement = typeof scheduledAnnouncements.$inferSelect;
 
 // Insert types
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -2264,6 +2312,8 @@ export type InsertModerationActionLog = z.infer<typeof insertModerationActionLog
 export type InsertSpeechToTextQueue = z.infer<typeof insertSpeechToTextQueueSchema>;
 export type InsertTranscription = z.infer<typeof insertTranscriptionSchema>;
 export type InsertWebhookQueue = z.infer<typeof insertWebhookQueueSchema>;
+export type InsertScheduledAnnouncement = z.infer<typeof insertScheduledAnnouncementSchema>;
+export type UpdateScheduledAnnouncement = z.infer<typeof updateScheduledAnnouncementSchema>;
 
 // Update types
 export type UpdateUser = z.infer<typeof updateUserSchema>;

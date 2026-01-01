@@ -44,6 +44,7 @@ import OnboardingFlow from "@/components/OnboardingFlow";
 import BotInviteCard from "@/components/BotInviteCard";
 import ChannelsTab from "@/components/tabs/ChannelsTab";
 import HealthTab from "@/components/tabs/HealthTab";
+import ModerationPresets from "@/components/ModerationPresets";
 
 // Icons
 import { 
@@ -1082,6 +1083,10 @@ export default function SettingsPage({ isOpen, onClose }: SettingsPageProps) {
                     <Activity className="h-4 w-4 flex-shrink-0" />
                     <span className="hidden sm:inline">Health</span>
                   </TabsTrigger>
+                  <TabsTrigger value="moderation" className="flex items-center justify-center space-x-1 text-xs sm:text-sm h-full px-2 sm:px-3" data-testid="tab-settings-moderation">
+                    <Shield className="h-4 w-4 flex-shrink-0" />
+                    <span className="hidden sm:inline">Moderation</span>
+                  </TabsTrigger>
                   <TabsTrigger value="thread-integration" className="flex items-center justify-center space-x-1 text-xs sm:text-sm h-full px-2 sm:px-3" data-testid="tab-settings-thread-integration">
                     <MessageSquare className="h-4 w-4 flex-shrink-0" />
                     <span className="hidden sm:inline">Threads</span>
@@ -1841,6 +1846,31 @@ export default function SettingsPage({ isOpen, onClose }: SettingsPageProps) {
               {/* Health Tab */}
               <TabsContent value="health" className="space-y-4">
                 <HealthTab />
+              </TabsContent>
+
+              {/* Moderation Presets Tab */}
+              <TabsContent value="moderation" className="space-y-4">
+                <Card>
+                  <CardHeader className="p-4 sm:p-6">
+                    <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                      <Shield className="h-5 w-5 text-discord-blue" />
+                      Moderation Presets
+                    </CardTitle>
+                    <CardDescription className="text-sm">
+                      Apply pre-configured moderation settings with one click
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-4 sm:p-6">
+                    {selectedServerId && (
+                      <ModerationPresets serverId={selectedServerId} />
+                    )}
+                    {!selectedServerId && (
+                      <div className="text-center text-muted-foreground py-8">
+                        Please select a server to manage moderation presets
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               {/* Thread Integration Tab */}

@@ -1,11 +1,11 @@
 import { Link, useLocation } from "wouter";
-import { Home, Zap, Settings, Activity, BarChart3 } from "lucide-react";
+import { Home, Zap, Settings, Radio, Layers } from "lucide-react";
 
 const navItems = [
   { href: "/", icon: Home, label: "Home" },
-  { href: "/trigger", icon: Zap, label: "Trigger" },
-  { href: "/activity", icon: Activity, label: "Activity" },
-  { href: "/statistics", icon: BarChart3, label: "Stats" },
+  { href: "/trigger", icon: Zap, label: "Fact" },
+  { href: "/announcements", icon: Radio, label: "Announce" },
+  { href: "/overlay-editor", icon: Layers, label: "Overlays" },
   { href: "/settings", icon: Settings, label: "Settings" },
 ];
 
