@@ -28,7 +28,7 @@ services:
       retries: 3
 
   qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:latest
+    image: lscr.io/linuxserver/qbittorrent:4.6.0
     container_name: qbittorrent
     network_mode: "container:gluetun-vpn"
     depends_on:
