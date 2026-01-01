@@ -39,10 +39,12 @@ services:
       - PGID=1000
       - TZ=America/New_York
       - WEBUI_PORT=8080
+      - WEBUI_PASSWORD=${WEBUI_PASSWORD:-adminadmin}
     volumes:
       - qbt-config:/config
       - /srv/media/downloads:/downloads
       - /srv/media/torrents:/torrents
+      - ./custom-cont-init.d:/custom-cont-init.d:ro
     restart: unless-stopped
 
 volumes:
