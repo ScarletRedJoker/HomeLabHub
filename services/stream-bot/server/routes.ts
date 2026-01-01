@@ -934,6 +934,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/analytics/platforms", requireAuth, async (req, res) => {
+    try {
+      const metrics = await analyticsService.getPlatformMetrics(req.user!.id);
+      res.json(metrics);
+    } catch (error: any) {
+      console.error('[Analytics] Platforms endpoint error:', error);
+      res.status(500).json({ error: "Failed to fetch platform metrics" });
+    }
+  });
+
+  app.get("/api/analytics/stream-history", requireAuth, async (req, res) => {
+    try {
+      const days = parseInt(req.query.days as string) || 30;
+      const history = await analyticsService.getStreamHistory(req.user!.id, days);
+      res.json(history);
+    } catch (error: any) {
+      console.error('[Analytics] Stream history endpoint error:', error);
+      res.status(500).json({ error: "Failed to fetch stream history" });
+    }
+  });
+
+  app.get("/api/analytics/revenue", requireAuth, async (req, res) => {
+    try {
+      const revenue = await analyticsService.getRevenueEstimate(req.user!.id);
+      res.json(revenue);
+    } catch (error: any) {
+      console.error('[Analytics] Revenue endpoint error:', error);
+      res.status(500).json({ error: "Failed to fetch revenue estimates" });
+    }
+  });
+
   // Custom Commands
   app.get("/api/commands", requireAuth, async (req, res) => {
     try {

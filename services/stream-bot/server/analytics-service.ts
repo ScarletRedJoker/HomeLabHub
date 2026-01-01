@@ -6,9 +6,13 @@ import {
   chatActivity, 
   streamSessions,
   viewerSnapshots,
-  messageHistory 
+  messageHistory,
+  platformConnections
 } from "@shared/schema";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
+import { decryptToken } from "./crypto-utils";
+import { getEnv } from "./env";
+import axios from "axios";
 
 const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
@@ -525,6 +529,154 @@ Format your response as JSON:
         target: [sentimentAnalysis.userId, sentimentAnalysis.date],
         set: data
       });
+  }
+
+  async getPlatformMetrics(userId: string): Promise<any> {
+    const connections = await db
+      .select()
+      .from(platformConnections)
+      .where(eq(platformConnections.userId, userId));
+
+    const metrics: any = {
+      twitch: null,
+      youtube: null,
+      kick: null
+    };
+
+    for (const conn of connections) {
+      if (!conn.isConnected) continue;
+
+      try {
+        const accessToken = conn.accessToken ? decryptToken(conn.accessToken) : null;
+        if (!accessToken) continue;
+
+        if (conn.platform === 'twitch') {
+          metrics.twitch = await this.fetchTwitchMetrics(conn.platformUserId!, accessToken);
+        } else if (conn.platform === 'youtube') {
+          metrics.youtube = await this.fetchYouTubeMetrics(conn.channelId!, accessToken);
+        } else if (conn.platform === 'kick') {
+          metrics.kick = await this.fetchKickMetrics(conn.platformUsername!);
+        }
+      } catch (error: any) {
+        console.error(`[Analytics] Error fetching ${conn.platform} metrics:`, error.message);
+      }
+    }
+
+    return metrics;
+  }
+
+  private async fetchTwitchMetrics(broadcasterId: string, accessToken: string) {
+    const clientId = getEnv('TWITCH_CLIENT_ID');
+    const headers = {
+      'Authorization': `Bearer ${accessToken}`,
+      'Client-Id': clientId
+    };
+
+    try {
+      const [userRes, followersRes, subsRes, streamRes] = await Promise.all([
+        axios.get(`https://api.twitch.tv/helix/users?id=${broadcasterId}`, { headers }),
+        axios.get(`https://api.twitch.tv/helix/channels/followers?broadcaster_id=${broadcasterId}`, { headers }),
+        axios.get(`https://api.twitch.tv/helix/subscriptions?broadcaster_id=${broadcasterId}`, { headers }).catch(() => ({ data: { total: 0 } })), // Handle 401/403 if not affiliate
+        axios.get(`https://api.twitch.tv/helix/streams?user_id=${broadcasterId}`, { headers })
+      ]);
+
+      const userData = userRes.data.data[0];
+      const streamData = streamRes.data.data[0];
+
+      return {
+        username: userData?.display_name,
+        profileImageUrl: userData?.profile_image_url,
+        viewCount: userData?.view_count,
+        followerCount: followersRes.data.total,
+        subscriberCount: subsRes.data.total || 0,
+        isLive: !!streamData,
+        currentViewers: streamData?.viewer_count || 0,
+        recentStream: streamData ? {
+          title: streamData.title,
+          game: streamData.game_name,
+          startedAt: streamData.started_at
+        } : null
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  private async fetchYouTubeMetrics(channelId: string, accessToken: string) {
+    try {
+      const response = await axios.get(
+        `https://www.googleapis.com/youtube/v3/channels?part=statistics,snippet&id=${channelId}`,
+        {
+          headers: { 'Authorization': `Bearer ${accessToken}` }
+        }
+      );
+
+      const channel = response.data.items?.[0];
+      if (!channel) return null;
+
+      return {
+        title: channel.snippet.title,
+        thumbnails: channel.snippet.thumbnails,
+        subscriberCount: parseInt(channel.statistics.subscriberCount),
+        viewCount: parseInt(channel.statistics.viewCount),
+        videoCount: parseInt(channel.statistics.videoCount),
+        hiddenSubscriberCount: channel.statistics.hiddenSubscriberCount
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  private async fetchKickMetrics(username: string) {
+    // Mock data for Kick as requested
+    return {
+      username,
+      followerCount: 150,
+      viewerCount: 25,
+      isLive: false
+    };
+  }
+
+  async getStreamHistory(userId: string, days: number = 30): Promise<any[]> {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    return await db
+      .select()
+      .from(streamSessions)
+      .where(
+        and(
+          eq(streamSessions.userId, userId),
+          gte(streamSessions.startedAt, startDate)
+        )
+      )
+      .orderBy(desc(streamSessions.startedAt));
+  }
+
+  async getRevenueEstimate(userId: string): Promise<any> {
+    const metrics = await this.getPlatformMetrics(userId);
+    let estimatedMonthlyRevenue = 0;
+    const breakdown: any = {};
+
+    if (metrics.twitch) {
+      // Estimate: $2.50 per sub (standard 50/50 split of $4.99)
+      const twitchRevenue = (metrics.twitch.subscriberCount || 0) * 2.50;
+      estimatedMonthlyRevenue += twitchRevenue;
+      breakdown.twitch = twitchRevenue;
+    }
+
+    if (metrics.youtube) {
+      // YouTube memberships are harder to estimate without specific data, 
+      // but we can provide a placeholder based on sub count if memberships aren't directly available
+      const youtubeEstimate = 0; // Placeholder
+      breakdown.youtube = youtubeEstimate;
+    }
+
+    return {
+      totalEstimatedMonthly: Math.round(estimatedMonthlyRevenue * 100) / 100,
+      currency: 'USD',
+      breakdown
+    };
   }
 }
 
