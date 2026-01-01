@@ -75,6 +75,19 @@ const coreItems = [
     icon: Calendar,
     description: "Manage stream schedule",
   },
+  {
+    title: "Clips",
+    url: "/clips",
+    icon: Film,
+    badge: "New",
+    description: "Manage and organize stream clips",
+  },
+  {
+    title: "Notifications",
+    url: "/notifications",
+    icon: Bell,
+    description: "View notifications from all platforms",
+  },
 ];
 
 const configItems = [

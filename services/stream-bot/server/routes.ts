@@ -58,6 +58,7 @@ import adminRoutes from "./admin-routes";
 import presenceRoutes from "./presence-routes";
 import { announcementScheduler, ANNOUNCEMENT_TEMPLATES } from "./announcement-scheduler";
 import { eventsService } from "./events-service";
+import { notificationsService } from "./notifications-service";
 
 function broadcastStreamAlert(userId: string, data: any): void {
   botManager.broadcastStreamAlert(userId, data);
@@ -2618,6 +2619,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Notifications (Unified Inbox)
+  app.get("/api/notifications", requireAuth, async (req, res) => {
+    try {
+      const { platform, type, isRead, limit } = req.query;
+      const filters = {
+        platform: platform as string | undefined,
+        type: type as string | undefined,
+        isRead: isRead !== undefined ? isRead === "true" : undefined,
+        limit: limit ? parseInt(limit as string) : undefined,
+      };
+      
+      // Initialize sample notifications for new users
+      const existingNotifications = notificationsService.getNotifications(req.user!.id);
+      if (existingNotifications.length === 0) {
+        notificationsService.addSampleNotifications(req.user!.id);
+      }
+      
+      const notifications = notificationsService.getNotifications(req.user!.id, filters);
+      res.json(notifications);
+    } catch (error) {
+      console.error("Failed to get notifications:", error);
+      res.status(500).json({ error: "Failed to get notifications" });
+    }
+  });
+
+  app.get("/api/notifications/unread-count", requireAuth, async (req, res) => {
+    try {
+      const count = notificationsService.getUnreadCount(req.user!.id);
+      res.json({ count });
+    } catch (error) {
+      console.error("Failed to get unread count:", error);
+      res.status(500).json({ error: "Failed to get unread count" });
+    }
+  });
+
+  app.put("/api/notifications/:id/read", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const success = notificationsService.markAsRead(req.user!.id, id);
+      if (!success) {
+        return res.status(404).json({ error: "Notification not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
+      res.status(500).json({ error: "Failed to mark notification as read" });
+    }
+  });
+
+  app.put("/api/notifications/read-all", requireAuth, async (req, res) => {
+    try {
+      const count = notificationsService.markAllAsRead(req.user!.id);
+      res.json({ success: true, count });
+    } catch (error) {
+      console.error("Failed to mark all notifications as read:", error);
+      res.status(500).json({ error: "Failed to mark all notifications as read" });
+    }
+  });
+
+  app.delete("/api/notifications/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const success = notificationsService.deleteNotification(req.user!.id, id);
+      if (!success) {
+        return res.status(404).json({ error: "Notification not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete notification:", error);
+      res.status(500).json({ error: "Failed to delete notification" });
+    }
+  });
+
+  app.post("/api/notifications/webhook", async (req, res) => {
+    try {
+      const { userId, notification } = req.body;
+      if (!userId || !notification) {
+        return res.status(400).json({ error: "Missing userId or notification data" });
+      }
+      const newNotification = notificationsService.addNotification(userId, notification);
+      res.json({ success: true, notification: newNotification });
+    } catch (error) {
+      console.error("Failed to process webhook notification:", error);
+      res.status(500).json({ error: "Failed to process webhook notification" });
+    }
+  });
+
   // Stream Alerts (OBS overlay-style alerts)
   app.get("/api/stream-alerts", requireAuth, async (req, res) => {
     try {
@@ -4627,6 +4715,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("[Clips API] Highlight toggle failed:", error);
       res.status(500).json({ error: error.message || "Failed to update clip" });
+    }
+  });
+
+  app.put("/api/clips/:id", requireAuth, async (req, res) => {
+    try {
+      const { clipService } = await import("./clip-service");
+      const { title, tags, status, socialCaption, isHighlight } = req.body;
+      
+      const updated = await clipService.updateClip(req.user!.id, req.params.id, {
+        title,
+        tags,
+        status,
+        socialCaption,
+        isHighlight,
+      });
+      
+      res.json({ clip: updated });
+    } catch (error: any) {
+      console.error("[Clips API] Update failed:", error);
+      if (error.message === "Clip not found") {
+        return res.status(404).json({ error: "Clip not found" });
+      }
+      res.status(500).json({ error: error.message || "Failed to update clip" });
+    }
+  });
+
+  app.post("/api/clips/:id/caption", requireAuth, async (req, res) => {
+    try {
+      const { clipService } = await import("./clip-service");
+      
+      const clip = await db
+        .select()
+        .from(streamClips)
+        .where(and(
+          eq(streamClips.id, req.params.id),
+          eq(streamClips.userId, req.user!.id)
+        ))
+        .limit(1);
+      
+      if (!clip[0]) {
+        return res.status(404).json({ error: "Clip not found" });
+      }
+      
+      const caption = await clipService.generateCaption(clip[0].title, clip[0].platform);
+      
+      const [updated] = await db
+        .update(streamClips)
+        .set({ socialCaption: caption, updatedAt: new Date() })
+        .where(eq(streamClips.id, req.params.id))
+        .returning();
+      
+      res.json({ clip: updated, caption });
+    } catch (error: any) {
+      console.error("[Clips API] Caption generation failed:", error);
+      res.status(500).json({ error: error.message || "Failed to generate caption" });
     }
   });
 

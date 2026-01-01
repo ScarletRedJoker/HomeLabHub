@@ -868,6 +868,9 @@ export const streamClips = pgTable("stream_clips", {
   broadcasterName: text("broadcaster_name"),
   broadcasterId: text("broadcaster_id"),
   isHighlight: boolean("is_highlight").default(false).notNull(), // User-marked as highlight/favorite
+  status: text("status").default("new").notNull(), // 'new', 'reviewed', 'posted' - Workflow status for social posting
+  tags: jsonb("tags").default(sql`'[]'::jsonb`).notNull(), // Array of tag strings for organization
+  socialCaption: text("social_caption"), // AI-generated or custom caption for social media
   clipCreatedAt: timestamp("clip_created_at"), // When the clip was created on the platform
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -876,6 +879,7 @@ export const streamClips = pgTable("stream_clips", {
   platformIdx: index("stream_clips_platform_idx").on(table.platform),
   clipIdIdx: uniqueIndex("stream_clips_user_clip_unique").on(table.userId, table.platform, table.clipId),
   isHighlightIdx: index("stream_clips_is_highlight_idx").on(table.isHighlight),
+  statusIdx: index("stream_clips_status_idx").on(table.status),
   createdAtIdx: index("stream_clips_created_at_idx").on(table.createdAt),
 }));
 
@@ -1886,6 +1890,9 @@ export const insertStreamClipSchema = createInsertSchema(streamClips, {
   broadcasterName: z.string().optional(),
   broadcasterId: z.string().optional(),
   isHighlight: z.boolean().optional(),
+  status: z.enum(["new", "reviewed", "posted"]).optional(),
+  tags: z.array(z.string()).optional(),
+  socialCaption: z.string().max(500, "Caption too long").optional(),
   clipCreatedAt: z.coerce.date().optional(),
 }).omit({
   id: true,
