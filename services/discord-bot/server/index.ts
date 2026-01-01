@@ -53,24 +53,17 @@ function log(message: string, source = "express") {
  */
 dotenv.config();
 
+import { validateEnvironment } from "./utils/env-validator";
+
 /**
- * PRODUCTION SECURITY: Validate SESSION_SECRET
+ * Validate all required environment variables early in startup
+ * In production, exits if required secrets are missing
+ * In development, warns but continues
  */
+validateEnvironment();
+
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const SESSION_SECRET = process.env.SESSION_SECRET;
-
-if (NODE_ENV === 'production' && !SESSION_SECRET) {
-  console.error("=".repeat(60));
-  console.error("FATAL: SESSION_SECRET environment variable is required for production!");
-  console.error("Generate one with: openssl rand -base64 32");
-  console.error("=".repeat(60));
-  process.exit(1);
-}
-
-if (!SESSION_SECRET && NODE_ENV !== 'production') {
-  console.warn("⚠️  WARNING: SESSION_SECRET not set! Using insecure default for development.");
-  console.warn("🔓 Development mode: Authentication bypass is enabled - OAuth not required.");
-}
 
 /**
  * Auto-configure APP_URL from DISCORD_CALLBACK_URL if not explicitly set

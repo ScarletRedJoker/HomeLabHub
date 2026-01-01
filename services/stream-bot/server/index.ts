@@ -8,6 +8,14 @@ import { registerRoutes } from "./routes";
 import { serveStatic, log } from "./http";
 import { pool } from "./db";
 import { getEnv } from "./env";
+import { validateEnvironment } from "./utils/env-validator";
+
+/**
+ * Validate all required environment variables early in startup
+ * In production, exits if required secrets are missing
+ * In development, warns but continues
+ */
+validateEnvironment();
 
 const app = express();
 const PgSession = connectPg(session);
@@ -22,19 +30,6 @@ const SESSION_SECRET = getEnv('SESSION_SECRET');
 // CRITICAL: Set NODE_ENV so Express and dynamic imports use correct mode
 process.env.NODE_ENV = NODE_ENV;
 app.set('env', NODE_ENV);
-
-// PRODUCTION SECURITY: Validate SESSION_SECRET in production
-if (NODE_ENV === 'production' && !SESSION_SECRET) {
-  console.error("=".repeat(60));
-  console.error("FATAL: SESSION_SECRET environment variable is required for production!");
-  console.error("Generate one with: openssl rand -base64 32");
-  console.error("=".repeat(60));
-  process.exit(1);
-}
-
-if (!SESSION_SECRET && NODE_ENV !== 'production') {
-  console.warn("⚠️  WARNING: SESSION_SECRET or STREAMBOT_SESSION_SECRET not set! Using insecure default for development.");
-}
 
 // CORS Configuration
 const allowedOrigins = [

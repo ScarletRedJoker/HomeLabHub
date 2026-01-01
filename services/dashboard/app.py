@@ -70,6 +70,7 @@ from services.activity_service import activity_service
 from services.db_service import db_service
 from services.websocket_service import websocket_service
 import redis
+from utils.env_validator import validate_environment
 
 # Basic logging configuration (console)
 logging.basicConfig(
@@ -81,6 +82,9 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+# Validate environment variables early in startup
+validate_environment()
 
 app = Flask(__name__, 
             template_folder='templates',
