@@ -2631,12 +2631,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       // Initialize sample notifications for new users
-      const existingNotifications = notificationsService.getNotifications(req.user!.id);
+      const existingNotifications = await notificationsService.getNotifications(req.user!.id);
       if (existingNotifications.length === 0) {
-        notificationsService.addSampleNotifications(req.user!.id);
+        await notificationsService.addSampleNotifications(req.user!.id);
       }
       
-      const notifications = notificationsService.getNotifications(req.user!.id, filters);
+      const notifications = await notificationsService.getNotifications(req.user!.id, filters);
       res.json(notifications);
     } catch (error) {
       console.error("Failed to get notifications:", error);
@@ -2646,7 +2646,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/notifications/unread-count", requireAuth, async (req, res) => {
     try {
-      const count = notificationsService.getUnreadCount(req.user!.id);
+      const count = await notificationsService.getUnreadCount(req.user!.id);
       res.json({ count });
     } catch (error) {
       console.error("Failed to get unread count:", error);
@@ -2657,7 +2657,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/notifications/:id/read", requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
-      const success = notificationsService.markAsRead(req.user!.id, id);
+      const success = await notificationsService.markAsRead(req.user!.id, id);
       if (!success) {
         return res.status(404).json({ error: "Notification not found" });
       }
@@ -2670,7 +2670,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/notifications/read-all", requireAuth, async (req, res) => {
     try {
-      const count = notificationsService.markAllAsRead(req.user!.id);
+      const count = await notificationsService.markAllAsRead(req.user!.id);
       res.json({ success: true, count });
     } catch (error) {
       console.error("Failed to mark all notifications as read:", error);
@@ -2681,7 +2681,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/notifications/:id", requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
-      const success = notificationsService.deleteNotification(req.user!.id, id);
+      const success = await notificationsService.deleteNotification(req.user!.id, id);
       if (!success) {
         return res.status(404).json({ error: "Notification not found" });
       }
@@ -2698,7 +2698,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!userId || !notification) {
         return res.status(400).json({ error: "Missing userId or notification data" });
       }
-      const newNotification = notificationsService.addNotification(userId, notification);
+      const newNotification = await notificationsService.addNotification(userId, notification);
       res.json({ success: true, notification: newNotification });
     } catch (error) {
       console.error("Failed to process webhook notification:", error);

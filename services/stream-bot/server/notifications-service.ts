@@ -1,4 +1,7 @@
 import crypto from 'crypto';
+import { db } from "./db";
+import { eq, and, desc, sql } from "drizzle-orm";
+import { unifiedInboxNotifications } from "@shared/schema";
 
 export type NotificationType = 'follow' | 'sub' | 'donation' | 'mention' | 'raid' | 'host';
 export type Platform = 'twitch' | 'youtube' | 'kick';
@@ -26,101 +29,125 @@ export interface NotificationFilters {
 }
 
 class NotificationsService {
-  private notifications: Map<string, StreamNotification[]> = new Map();
-
-  getNotifications(userId: string, filters?: NotificationFilters): StreamNotification[] {
-    let userNotifications = this.notifications.get(userId) || [];
+  async getNotifications(userId: string, filters?: NotificationFilters): Promise<StreamNotification[]> {
+    const conditions = [eq(unifiedInboxNotifications.userId, userId)];
 
     if (filters?.platform && filters.platform !== 'all') {
-      userNotifications = userNotifications.filter(n => n.platform === filters.platform);
+      conditions.push(eq(unifiedInboxNotifications.platform, filters.platform));
     }
 
     if (filters?.type && filters.type !== 'all') {
-      userNotifications = userNotifications.filter(n => n.notificationType === filters.type);
+      conditions.push(eq(unifiedInboxNotifications.notificationType, filters.type));
     }
 
     if (filters?.isRead !== undefined) {
-      userNotifications = userNotifications.filter(n => n.isRead === filters.isRead);
+      conditions.push(eq(unifiedInboxNotifications.isRead, filters.isRead));
     }
 
-    userNotifications = userNotifications.sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    const query = db.select().from(unifiedInboxNotifications)
+      .where(and(...conditions))
+      .orderBy(desc(unifiedInboxNotifications.createdAt));
 
     if (filters?.limit) {
-      userNotifications = userNotifications.slice(0, filters.limit);
+      query.limit(filters.limit);
     }
 
-    return userNotifications;
+    const results = await query;
+    return results.map(n => ({
+      ...n,
+      platform: n.platform as Platform,
+      notificationType: n.notificationType as NotificationType,
+      senderAvatar: n.senderAvatar ?? undefined,
+      amount: n.amount ?? undefined,
+      currency: n.currency ?? undefined
+    }));
   }
 
-  markAsRead(userId: string, notificationId: string): boolean {
-    const userNotifications = this.notifications.get(userId);
-    if (!userNotifications) return false;
+  async markAsRead(userId: string, notificationId: string): Promise<boolean> {
+    const result = await db.update(unifiedInboxNotifications)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(unifiedInboxNotifications.id, notificationId),
+          eq(unifiedInboxNotifications.userId, userId)
+        )
+      )
+      .returning();
 
-    const notification = userNotifications.find(n => n.id === notificationId);
-    if (!notification) return false;
-
-    notification.isRead = true;
-    return true;
+    return result.length > 0;
   }
 
-  markAllAsRead(userId: string): number {
-    const userNotifications = this.notifications.get(userId);
-    if (!userNotifications) return 0;
+  async markAllAsRead(userId: string): Promise<number> {
+    const result = await db.update(unifiedInboxNotifications)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(unifiedInboxNotifications.userId, userId),
+          eq(unifiedInboxNotifications.isRead, false)
+        )
+      )
+      .returning();
 
-    let count = 0;
-    userNotifications.forEach(n => {
-      if (!n.isRead) {
-        n.isRead = true;
-        count++;
-      }
-    });
-
-    return count;
+    return result.length;
   }
 
-  getUnreadCount(userId: string): number {
-    const userNotifications = this.notifications.get(userId) || [];
-    return userNotifications.filter(n => !n.isRead).length;
+  async getUnreadCount(userId: string): Promise<number> {
+    const result = await db.select({
+      count: sql<number>`count(*)`
+    })
+    .from(unifiedInboxNotifications)
+    .where(
+      and(
+        eq(unifiedInboxNotifications.userId, userId),
+        eq(unifiedInboxNotifications.isRead, false)
+      )
+    );
+
+    return Number(result[0]?.count || 0);
   }
 
-  addNotification(userId: string, notification: Partial<StreamNotification>): StreamNotification {
-    const newNotification: StreamNotification = {
-      id: notification.id || crypto.randomUUID(),
-      userId,
-      platform: notification.platform || 'twitch',
-      notificationType: notification.notificationType || 'mention',
-      title: notification.title || '',
-      message: notification.message || '',
-      senderName: notification.senderName || 'Unknown',
-      senderAvatar: notification.senderAvatar,
-      amount: notification.amount,
-      currency: notification.currency,
-      isRead: notification.isRead ?? false,
-      createdAt: notification.createdAt || new Date(),
+  async addNotification(userId: string, notification: Partial<StreamNotification>): Promise<StreamNotification> {
+    const [newNotification] = await db.insert(unifiedInboxNotifications)
+      .values({
+        id: notification.id || crypto.randomUUID(),
+        userId,
+        platform: notification.platform || 'twitch',
+        notificationType: notification.notificationType || 'mention',
+        title: notification.title || '',
+        message: notification.message || '',
+        senderName: notification.senderName || 'Unknown',
+        senderAvatar: notification.senderAvatar,
+        amount: notification.amount,
+        currency: notification.currency,
+        isRead: notification.isRead ?? false,
+        createdAt: notification.createdAt || new Date(),
+      })
+      .returning();
+
+    return {
+      ...newNotification,
+      platform: newNotification.platform as Platform,
+      notificationType: newNotification.notificationType as NotificationType,
+      senderAvatar: newNotification.senderAvatar ?? undefined,
+      amount: newNotification.amount ?? undefined,
+      currency: newNotification.currency ?? undefined
     };
-
-    if (!this.notifications.has(userId)) {
-      this.notifications.set(userId, []);
-    }
-
-    this.notifications.get(userId)!.push(newNotification);
-    return newNotification;
   }
 
-  deleteNotification(userId: string, notificationId: string): boolean {
-    const userNotifications = this.notifications.get(userId);
-    if (!userNotifications) return false;
+  async deleteNotification(userId: string, notificationId: string): Promise<boolean> {
+    const result = await db.delete(unifiedInboxNotifications)
+      .where(
+        and(
+          eq(unifiedInboxNotifications.id, notificationId),
+          eq(unifiedInboxNotifications.userId, userId)
+        )
+      )
+      .returning();
 
-    const index = userNotifications.findIndex(n => n.id === notificationId);
-    if (index === -1) return false;
-
-    userNotifications.splice(index, 1);
-    return true;
+    return result.length > 0;
   }
 
-  addSampleNotifications(userId: string): void {
+  async addSampleNotifications(userId: string): Promise<void> {
     const sampleNotifications: Partial<StreamNotification>[] = [
       {
         platform: 'twitch',
@@ -193,9 +220,9 @@ class NotificationsService {
       },
     ];
 
-    sampleNotifications.forEach(notification => {
-      this.addNotification(userId, notification);
-    });
+    for (const notification of sampleNotifications) {
+      await this.addNotification(userId, notification);
+    }
   }
 }
 

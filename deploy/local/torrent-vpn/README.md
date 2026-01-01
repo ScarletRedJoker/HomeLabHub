@@ -60,7 +60,39 @@ docker exec qbittorrent curl -s https://ipinfo.io
 ### 5. Access WebUI
 
 - URL: http://localhost:8080
-- Default login: admin / adminadmin (change immediately!)
+
+**Getting the Password** (qBittorrent 4.6.1+ generates a random password on first run):
+```bash
+# Check container logs for the randomly generated password
+docker logs qbittorrent 2>&1 | grep "temporary password"
+
+# Look for a line like:
+# The WebUI administrator password was not set. A temporary password is provided for this session: XXXXXXXXXX
+```
+
+**Reset Password if Needed:**
+```bash
+# Stop container
+docker stop qbittorrent
+
+# Edit the config to disable web auth temporarily
+docker run --rm -v qbt-config:/config alpine sh -c "sed -i 's/WebUI\\\\LocalHostAuth=.*/WebUI\\\\LocalHostAuth=false/' /config/qBittorrent/qBittorrent.conf"
+
+# Restart and set new password via WebUI Settings > Web UI
+docker start qbittorrent
+```
+
+**Or Set a Known Password:**
+```bash
+# Stop container and set password manually
+docker stop qbittorrent
+
+# Generate password hash (using Python)
+python3 -c "import hashlib; print('Password hash:', hashlib.pbkdf2_hmac('sha512', b'YourPasswordHere', b'', 100000).hex())"
+
+# Then edit /config/qBittorrent/qBittorrent.conf and set:
+# WebUI\Password_PBKDF2="@ByteArray(YOUR_HASH_HERE)"
+```
 
 ## Supported VPN Providers
 

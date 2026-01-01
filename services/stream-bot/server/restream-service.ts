@@ -1,4 +1,6 @@
-import { randomUUID } from "crypto";
+import { db } from "./db";
+import { restreamDestinations } from "@shared/schema";
+import { eq, and, desc } from "drizzle-orm";
 
 export interface RestreamDestination {
   id: string;
@@ -57,40 +59,50 @@ export const RTMP_SERVERS = {
 
 export type PlatformType = keyof typeof RTMP_SERVERS;
 
-type UserDestinations = Map<string, RestreamDestination>;
-
 export class RestreamService {
-  private destinations: Map<string, UserDestinations> = new Map();
-
-  private getUserDestinations(userId: string): UserDestinations {
-    if (!this.destinations.has(userId)) {
-      this.destinations.set(userId, new Map());
-    }
-    return this.destinations.get(userId)!;
-  }
-
   async getDestinations(userId: string): Promise<RestreamDestination[]> {
-    const userDests = this.getUserDestinations(userId);
-    return Array.from(userDests.values()).sort(
-      (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
-    );
+    const results = await db.select().from(restreamDestinations)
+      .where(eq(restreamDestinations.userId, userId))
+      .orderBy(desc(restreamDestinations.createdAt));
+    
+    return results.map(r => ({
+      id: r.id,
+      platform: r.platform,
+      rtmpUrl: r.rtmpUrl,
+      streamKey: r.streamKey,
+      enabled: r.enabled,
+      bitrate: r.bitrate,
+      notes: r.notes || "",
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    }));
   }
 
   async addDestination(
     userId: string,
     dest: Omit<RestreamDestination, "id" | "createdAt" | "updatedAt">
   ): Promise<RestreamDestination> {
-    const userDests = this.getUserDestinations(userId);
+    const [result] = await db.insert(restreamDestinations).values({
+      userId,
+      platform: dest.platform,
+      rtmpUrl: dest.rtmpUrl,
+      streamKey: dest.streamKey,
+      enabled: dest.enabled,
+      bitrate: dest.bitrate,
+      notes: dest.notes || null,
+    }).returning();
 
-    const newDest: RestreamDestination = {
-      ...dest,
-      id: randomUUID(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    return {
+      id: result.id,
+      platform: result.platform,
+      rtmpUrl: result.rtmpUrl,
+      streamKey: result.streamKey,
+      enabled: result.enabled,
+      bitrate: result.bitrate,
+      notes: result.notes || "",
+      createdAt: result.createdAt,
+      updatedAt: result.updatedAt,
     };
-
-    userDests.set(newDest.id, newDest);
-    return newDest;
   }
 
   async updateDestination(
@@ -98,35 +110,49 @@ export class RestreamService {
     destId: string,
     data: Partial<Omit<RestreamDestination, "id" | "createdAt">>
   ): Promise<RestreamDestination | null> {
-    const userDests = this.getUserDestinations(userId);
-    const existing = userDests.get(destId);
+    const [result] = await db.update(restreamDestinations)
+      .set({
+        ...data,
+        notes: data.notes ?? undefined,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(restreamDestinations.id, destId),
+        eq(restreamDestinations.userId, userId)
+      ))
+      .returning();
 
-    if (!existing) {
-      return null;
-    }
+    if (!result) return null;
 
-    const updated: RestreamDestination = {
-      ...existing,
-      ...data,
-      id: destId,
-      createdAt: existing.createdAt,
-      updatedAt: new Date(),
+    return {
+      id: result.id,
+      platform: result.platform,
+      rtmpUrl: result.rtmpUrl,
+      streamKey: result.streamKey,
+      enabled: result.enabled,
+      bitrate: result.bitrate,
+      notes: result.notes || "",
+      createdAt: result.createdAt,
+      updatedAt: result.updatedAt,
     };
-
-    userDests.set(destId, updated);
-    return updated;
   }
 
   async deleteDestination(userId: string, destId: string): Promise<boolean> {
-    const userDests = this.getUserDestinations(userId);
-    return userDests.delete(destId);
+    const result = await db.delete(restreamDestinations)
+      .where(and(
+        eq(restreamDestinations.id, destId),
+        eq(restreamDestinations.userId, userId)
+      ))
+      .returning();
+    
+    return result.length > 0;
   }
 
   async getStreamStatus(userId: string): Promise<StreamStatus[]> {
-    const userDests = this.getUserDestinations(userId);
+    const dests = await this.getDestinations(userId);
     const statuses: StreamStatus[] = [];
 
-    for (const dest of userDests.values()) {
+    for (const dest of dests) {
       if (dest.enabled) {
         statuses.push({
           platform: dest.platform,
