@@ -63,6 +63,12 @@ const coreItems = [
     icon: Layers,
     description: "OBS overlay editor",
   },
+  {
+    title: "Restream",
+    url: "/restream",
+    icon: Radio,
+    description: "Multi-platform streaming",
+  },
 ];
 
 const configItems = [

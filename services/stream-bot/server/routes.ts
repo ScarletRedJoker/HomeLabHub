@@ -4847,6 +4847,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================
+  // RESTREAM CONFIGURATION ROUTES
+  // ============================================
+
+  app.get("/api/restream/destinations", requireAuth, async (req, res) => {
+    try {
+      const { restreamService } = await import("./restream-service");
+      const destinations = await restreamService.getDestinations(req.user!.id);
+      res.json(destinations);
+    } catch (error: any) {
+      console.error("[Restream API] Failed to get destinations:", error);
+      res.status(500).json({ error: error.message || "Failed to get destinations" });
+    }
+  });
+
+  app.get("/api/restream/servers", async (req, res) => {
+    try {
+      const { restreamService } = await import("./restream-service");
+      const servers = restreamService.getRtmpServers();
+      res.json(servers);
+    } catch (error: any) {
+      console.error("[Restream API] Failed to get servers:", error);
+      res.status(500).json({ error: error.message || "Failed to get servers" });
+    }
+  });
+
+  app.post("/api/restream/destinations", requireAuth, async (req, res) => {
+    try {
+      const { restreamService } = await import("./restream-service");
+      const { platform, rtmpUrl, streamKey, enabled, bitrate, notes } = req.body;
+
+      if (!platform || !rtmpUrl || !streamKey) {
+        return res.status(400).json({ error: "Platform, RTMP URL, and stream key are required" });
+      }
+
+      const destination = await restreamService.addDestination(req.user!.id, {
+        platform,
+        rtmpUrl,
+        streamKey,
+        enabled: enabled ?? true,
+        bitrate: bitrate ?? 6000,
+        notes: notes ?? "",
+      });
+
+      res.json(destination);
+    } catch (error: any) {
+      console.error("[Restream API] Failed to add destination:", error);
+      res.status(500).json({ error: error.message || "Failed to add destination" });
+    }
+  });
+
+  app.put("/api/restream/destinations/:id", requireAuth, async (req, res) => {
+    try {
+      const { restreamService } = await import("./restream-service");
+      const destination = await restreamService.updateDestination(
+        req.user!.id,
+        req.params.id,
+        req.body
+      );
+
+      if (!destination) {
+        return res.status(404).json({ error: "Destination not found" });
+      }
+
+      res.json(destination);
+    } catch (error: any) {
+      console.error("[Restream API] Failed to update destination:", error);
+      res.status(500).json({ error: error.message || "Failed to update destination" });
+    }
+  });
+
+  app.delete("/api/restream/destinations/:id", requireAuth, async (req, res) => {
+    try {
+      const { restreamService } = await import("./restream-service");
+      const deleted = await restreamService.deleteDestination(req.user!.id, req.params.id);
+
+      if (!deleted) {
+        return res.status(404).json({ error: "Destination not found" });
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Restream API] Failed to delete destination:", error);
+      res.status(500).json({ error: error.message || "Failed to delete destination" });
+    }
+  });
+
+  app.get("/api/restream/status", requireAuth, async (req, res) => {
+    try {
+      const { restreamService } = await import("./restream-service");
+      const status = await restreamService.getStreamStatus(req.user!.id);
+      res.json(status);
+    } catch (error: any) {
+      console.error("[Restream API] Failed to get stream status:", error);
+      res.status(500).json({ error: error.message || "Failed to get stream status" });
+    }
+  });
+
+  // ============================================
   // AI CONTENT ASSISTANT ROUTES
   // ============================================
   
