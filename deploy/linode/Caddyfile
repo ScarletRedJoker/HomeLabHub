@@ -17,9 +17,13 @@ stream.rig-city.com {
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}
         header_up X-Forwarded-Proto {scheme}
-        header_up Upgrade {http.request.header.Upgrade}
-        header_up Connection {http.request.header.Connection}
     }
+    
+    # WebSocket support for OBS overlays - separate matcher
+    @websockets {
+        header Upgrade websocket
+    }
+    reverse_proxy @websockets stream-bot:5000
 }
 
 discord.rig-city.com {
