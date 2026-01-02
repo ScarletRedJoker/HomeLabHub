@@ -430,4 +430,150 @@ def lookup_record():
         return make_response(False, message=str(e), status_code=500)
 
 
+@dns_bp.route('/api/dns/ddns/update', methods=['POST'])
+@require_auth
+def update_dynamic_dns():
+    """
+    POST /api/dns/ddns/update
+    Update Dynamic DNS - sync local subdomains to current public IP
+    
+    JSON body (optional):
+        force: Force update even if IP hasn't changed (default: false)
+    
+    Returns:
+        JSON object with update results
+    """
+    try:
+        if not dns_service.is_configured:
+            return make_response(False, message="Cloudflare API not configured", status_code=503)
+        
+        data = request.get_json() or {}
+        force = data.get('force', False)
+        ip_override = data.get('ip')
+        
+        result = dns_service.update_dynamic_dns(force=force, ip_override=ip_override)
+        
+        if not result.get('success'):
+            return make_response(False, message=result.get('error'), status_code=500)
+        
+        return make_response(True, {
+            'current_ip': result.get('current_ip'),
+            'updated': result.get('updated', []),
+            'unchanged': result.get('unchanged', []),
+            'failed': result.get('failed', []),
+            'message': f"Updated {len(result.get('updated', []))} records, {len(result.get('unchanged', []))} unchanged"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error updating Dynamic DNS: {e}")
+        return make_response(False, message=str(e), status_code=500)
+
+
+@dns_bp.route('/api/dns/ddns/status', methods=['GET'])
+@require_auth
+def get_ddns_status():
+    """
+    GET /api/dns/ddns/status
+    Get Dynamic DNS status - current IP and configured subdomains
+    
+    Returns:
+        JSON object with DDNS status
+    """
+    try:
+        if not dns_service.is_configured:
+            return make_response(False, message="Cloudflare API not configured", status_code=503)
+        
+        current_ip = dns_service.get_current_public_ip()
+        subdomains = dns_service.get_local_subdomains()
+        
+        subdomain_status = []
+        for subdomain in subdomains:
+            parts = subdomain.split('.')
+            root_domain = '.'.join(parts[-2:])
+            zone = dns_service.get_zone_by_name(root_domain)
+            
+            if zone:
+                record = dns_service.find_record(zone.id, subdomain, "A")
+                subdomain_status.append({
+                    "name": subdomain,
+                    "current_dns_ip": record.content if record else None,
+                    "matches_current_ip": record.content == current_ip if record else False,
+                    "proxied": record.proxied if record else None
+                })
+            else:
+                subdomain_status.append({
+                    "name": subdomain,
+                    "current_dns_ip": None,
+                    "error": f"Zone not found for {root_domain}"
+                })
+        
+        needs_update = any(
+            not s.get('matches_current_ip', False) 
+            for s in subdomain_status 
+            if 'error' not in s
+        )
+        
+        return make_response(True, {
+            'current_public_ip': current_ip,
+            'subdomains': subdomain_status,
+            'needs_update': needs_update,
+            'configured_count': len(subdomains)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting DDNS status: {e}")
+        return make_response(False, message=str(e), status_code=500)
+
+
+@dns_bp.route('/api/dns/ddns/subdomains', methods=['GET', 'POST', 'DELETE'])
+@require_auth
+def manage_ddns_subdomains():
+    """
+    GET/POST/DELETE /api/dns/ddns/subdomains
+    Manage subdomains tracked by Dynamic DNS
+    
+    GET: List all tracked subdomains
+    POST: Add a subdomain (JSON: {"subdomain": "example.domain.com"})
+    DELETE: Remove a subdomain (JSON: {"subdomain": "example.domain.com"})
+    
+    Returns:
+        JSON object with subdomain list
+    """
+    try:
+        if request.method == 'GET':
+            return make_response(True, {
+                'subdomains': dns_service.get_local_subdomains()
+            })
+        
+        data = request.get_json()
+        if not data or not data.get('subdomain'):
+            return make_response(False, message="subdomain field required", status_code=400)
+        
+        subdomain = data['subdomain']
+        
+        if request.method == 'POST':
+            if dns_service.add_local_subdomain(subdomain):
+                return make_response(True, {
+                    'message': f"Added {subdomain} to Dynamic DNS",
+                    'subdomains': dns_service.get_local_subdomains()
+                })
+            else:
+                return make_response(False, message=f"{subdomain} already tracked", status_code=400)
+        
+        elif request.method == 'DELETE':
+            if dns_service.remove_local_subdomain(subdomain):
+                return make_response(True, {
+                    'message': f"Removed {subdomain} from Dynamic DNS",
+                    'subdomains': dns_service.get_local_subdomains()
+                })
+            else:
+                return make_response(False, message=f"{subdomain} not found", status_code=404)
+        
+        return make_response(False, message="Method not allowed", status_code=405)
+        
+    except Exception as e:
+        logger.error(f"Error managing DDNS subdomains: {e}")
+        return make_response(False, message=str(e), status_code=500)
+
+
 __all__ = ['dns_bp']

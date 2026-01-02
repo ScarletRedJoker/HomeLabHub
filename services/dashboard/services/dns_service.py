@@ -72,6 +72,15 @@ class CloudflareDNSService:
         "scarletredjoker.com"
     ]
     
+    # Subdomains hosted on local server (need Dynamic DNS)
+    LOCAL_SUBDOMAINS = [
+        "plex.evindrake.net",
+        "home.evindrake.net",
+        "vnc.evindrake.net",
+        "nas.evindrake.net",
+        "torrent.evindrake.net",
+    ]
+    
     def __init__(self):
         self.api_token = os.environ.get('CLOUDFLARE_API_TOKEN', '')
         self._zones_cache: Dict[str, DNSZone] = {}
@@ -630,6 +639,147 @@ class CloudflareDNSService:
             "skipped": stats['skipped'],
             "results": results
         }
+
+
+    def get_current_public_ip(self) -> Optional[str]:
+        """Fetch current public IPv4 address"""
+        ip_services = [
+            "https://api.ipify.org",
+            "https://ifconfig.me/ip",
+            "https://icanhazip.com",
+            "https://ipinfo.io/ip"
+        ]
+        
+        for service in ip_services:
+            try:
+                response = requests.get(service, timeout=10)
+                if response.status_code == 200:
+                    ip = response.text.strip()
+                    if self._is_valid_ipv4(ip):
+                        return ip
+            except Exception as e:
+                logger.debug(f"Failed to get IP from {service}: {e}")
+                continue
+        
+        logger.error("Failed to determine public IP from any service")
+        return None
+    
+    def _is_valid_ipv4(self, ip: str) -> bool:
+        """Validate IPv4 address format"""
+        parts = ip.split('.')
+        if len(parts) != 4:
+            return False
+        try:
+            return all(0 <= int(part) <= 255 for part in parts)
+        except ValueError:
+            return False
+    
+    def update_dynamic_dns(self, force: bool = False, ip_override: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Update DNS records for local subdomains with current public IP.
+        
+        Args:
+            force: Update even if IP matches existing records
+            ip_override: Use this IP instead of auto-detecting (for remote calls)
+        
+        Returns dict with update results.
+        """
+        if not self.is_configured:
+            return {"success": False, "error": "Cloudflare API token not configured"}
+        
+        if ip_override:
+            if not self._is_valid_ipv4(ip_override):
+                return {"success": False, "error": f"Invalid IP address: {ip_override}"}
+            current_ip = ip_override
+        else:
+            current_ip = self.get_current_public_ip()
+            
+        if not current_ip:
+            return {"success": False, "error": "Could not determine current public IP"}
+        
+        results = {
+            "success": True,
+            "current_ip": current_ip,
+            "updated": [],
+            "unchanged": [],
+            "failed": [],
+            "errors": []
+        }
+        
+        for subdomain in self.LOCAL_SUBDOMAINS:
+            try:
+                parts = subdomain.split('.')
+                root_domain = '.'.join(parts[-2:])
+                
+                zone = self.get_zone_by_name(root_domain)
+                if not zone:
+                    results["failed"].append(subdomain)
+                    results["errors"].append(f"Zone not found for {root_domain}")
+                    continue
+                
+                existing = self.find_record(zone.id, subdomain, "A")
+                
+                if existing and existing.content == current_ip and not force:
+                    results["unchanged"].append({
+                        "name": subdomain,
+                        "ip": current_ip
+                    })
+                    continue
+                
+                record = self.create_or_update_record(
+                    zone_id=zone.id,
+                    name=subdomain,
+                    record_type="A",
+                    content=current_ip,
+                    ttl=1,
+                    proxied=True
+                )
+                
+                if record:
+                    results["updated"].append({
+                        "name": subdomain,
+                        "old_ip": existing.content if existing else None,
+                        "new_ip": current_ip
+                    })
+                    logger.info(f"Dynamic DNS: Updated {subdomain} to {current_ip}")
+                else:
+                    results["failed"].append(subdomain)
+                    results["errors"].append(f"Failed to update {subdomain}")
+                    
+            except Exception as e:
+                results["failed"].append(subdomain)
+                results["errors"].append(f"{subdomain}: {str(e)}")
+                logger.error(f"Dynamic DNS error for {subdomain}: {e}")
+        
+        if results["failed"]:
+            results["success"] = len(results["updated"]) > 0
+        
+        self._log_audit(
+            "ddns_update",
+            "A",
+            f"{len(results['updated'])} records",
+            f"IP: {current_ip}"
+        )
+        
+        return results
+    
+    def get_local_subdomains(self) -> List[str]:
+        """Return list of subdomains configured for Dynamic DNS"""
+        return self.LOCAL_SUBDOMAINS.copy()
+    
+    def add_local_subdomain(self, subdomain: str) -> bool:
+        """Add a subdomain to Dynamic DNS tracking"""
+        if subdomain not in self.LOCAL_SUBDOMAINS:
+            self.LOCAL_SUBDOMAINS.append(subdomain)
+            return True
+        return False
+    
+    def remove_local_subdomain(self, subdomain: str) -> bool:
+        """Remove a subdomain from Dynamic DNS tracking"""
+        if subdomain in self.LOCAL_SUBDOMAINS:
+            self.LOCAL_SUBDOMAINS.remove(subdomain)
+            return True
+        return False
 
 
 dns_service = CloudflareDNSService()
