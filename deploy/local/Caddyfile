@@ -82,7 +82,7 @@ storage.evindrake.net {
 }
 
 torrent.evindrake.net {
-    reverse_proxy 172.17.0.1:8080 {
+    reverse_proxy host.docker.internal:8080 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
     }
