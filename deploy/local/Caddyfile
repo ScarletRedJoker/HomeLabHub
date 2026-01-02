@@ -66,3 +66,28 @@ dashboard.evindrake.net {
         Strict-Transport-Security "max-age=31536000; includeSubDomains"
     }
 }
+
+minio.evindrake.net {
+    reverse_proxy homelab-minio:9001 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+    }
+}
+
+storage.evindrake.net {
+    reverse_proxy homelab-minio:9000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+    }
+}
+
+torrent.evindrake.net {
+    reverse_proxy 172.17.0.1:8080 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+    }
+}
+
+local.evindrake.net {
+    respond "Homelab Local Server - Online" 200
+}
