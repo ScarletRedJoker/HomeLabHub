@@ -3169,6 +3169,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/servers/:serverId/settings - Get bot settings for a server
+  app.get('/api/servers/:serverId/settings', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const serverId = req.params.serverId;
+      
+      // Check if user has access to this server
+      const hasAccess = await userHasServerAccess(user, serverId);
+      if (!hasAccess) {
+        return res.status(403).json({ message: 'Access denied to this server' });
+      }
+      
+      const settings = await storage.getBotSettings(serverId);
+      res.json(settings || { serverId });
+    } catch (error) {
+      console.error('Error fetching server settings:', error);
+      res.status(500).json({ message: 'Failed to fetch server settings' });
+    }
+  });
+
+  // PUT /api/servers/:serverId/settings - Update bot settings for a server
+  app.put('/api/servers/:serverId/settings', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const serverId = req.params.serverId;
+      
+      // Check if user has access to this server
+      const hasAccess = await userHasServerAccess(user, serverId);
+      if (!hasAccess) {
+        return res.status(403).json({ message: 'Access denied to this server' });
+      }
+      
+      // Check if settings exist
+      const existingSettings = await storage.getBotSettings(serverId);
+      
+      let updatedSettings;
+      if (existingSettings) {
+        // Update existing settings
+        updatedSettings = await storage.updateBotSettings(serverId, {
+          ...req.body,
+          serverId
+        });
+      } else {
+        // Create new settings
+        updatedSettings = await storage.createBotSettings({
+          serverId,
+          ...req.body
+        });
+      }
+      
+      res.json(updatedSettings);
+    } catch (error) {
+      console.error('Error updating server settings:', error);
+      res.status(500).json({ message: 'Failed to update server settings' });
+    }
+  });
+
   // GET /api/servers/:serverId/role-permissions - List all role permissions for server
   app.get('/api/servers/:serverId/role-permissions', isAuthenticated, async (req: Request, res: Response) => {
     try {
