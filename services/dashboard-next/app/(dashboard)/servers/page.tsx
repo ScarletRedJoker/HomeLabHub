@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,57 +11,86 @@ import {
   Activity,
   Wifi,
   WifiOff,
-  Terminal,
   RefreshCw,
-  Settings,
-  ExternalLink,
-  CheckCircle2,
-  AlertCircle,
+  Loader2,
+  AlertTriangle,
 } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
-const servers = [
-  {
-    id: "linode",
-    name: "Linode Server",
-    description: "Public services - Discord Bot, Stream Bot",
-    ip: "45.79.xxx.xxx",
-    status: "online",
-    os: "Ubuntu 25.10",
-    uptime: "30 days",
-    metrics: {
-      cpu: 23,
-      memory: 52,
-      disk: 56,
-      network: "1.2 GB/s",
-    },
-    services: ["Discord Bot", "Stream Bot", "PostgreSQL", "Redis", "Caddy"],
-  },
-  {
-    id: "home",
-    name: "Home Server",
-    description: "Private services - Plex, Home Assistant",
-    ip: "100.64.0.1 (Tailscale)",
-    status: "online",
-    os: "Ubuntu 25.10",
-    uptime: "45 days",
-    metrics: {
-      cpu: 32,
-      memory: 39,
-      disk: 26,
-      network: "850 MB/s",
-    },
-    services: ["Plex", "Home Assistant", "MinIO", "Caddy", "Tailscale"],
-  },
-];
+interface ServerMetrics {
+  id: string;
+  name: string;
+  description: string;
+  ip?: string;
+  status: "online" | "offline" | "error";
+  os?: string;
+  uptime?: string;
+  error?: string;
+  metrics: {
+    cpu: number;
+    memory: number;
+    disk: number;
+    load?: number;
+  };
+}
 
 export default function ServersPage() {
+  const [servers, setServers] = useState<ServerMetrics[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState<string | null>(null);
+  const { toast } = useToast();
 
-  const handleRefresh = async (serverId: string) => {
-    setRefreshing(serverId);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setRefreshing(null);
+  const fetchServers = async () => {
+    try {
+      const res = await fetch("/api/servers");
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data = await res.json();
+      setServers(data.servers || []);
+    } catch (error) {
+      console.error("Failed to fetch servers:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch server metrics",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const refreshServer = async (serverId: string) => {
+    setRefreshing(serverId);
+    try {
+      const res = await fetch(`/api/servers?id=${serverId}`);
+      if (!res.ok) throw new Error("Failed to refresh");
+      const data = await res.json();
+      setServers((prev) =>
+        prev.map((s) => (s.id === serverId ? data : s))
+      );
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to refresh server",
+        variant: "destructive",
+      });
+    } finally {
+      setRefreshing(null);
+    }
+  };
+
+  useEffect(() => {
+    fetchServers();
+    const interval = setInterval(fetchServers, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -70,12 +98,12 @@ export default function ServersPage() {
         <div>
           <h1 className="text-3xl font-bold">Servers</h1>
           <p className="text-muted-foreground">
-            Manage your infrastructure
+            Real-time server metrics via SSH
           </p>
         </div>
-        <Button variant="outline">
-          <Settings className="mr-2 h-4 w-4" />
-          Configure
+        <Button onClick={fetchServers} variant="outline">
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Refresh All
         </Button>
       </div>
 
@@ -105,154 +133,122 @@ export default function ServersPage() {
                       <Wifi className="h-4 w-4" />
                       Online
                     </span>
-                  ) : (
+                  ) : server.status === "offline" ? (
                     <span className="flex items-center gap-1 text-sm text-red-500">
                       <WifiOff className="h-4 w-4" />
                       Offline
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-sm text-yellow-500">
+                      <AlertTriangle className="h-4 w-4" />
+                      Error
                     </span>
                   )}
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="pt-6 space-y-6">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">IP Address</span>
-                  <p className="font-mono">{server.ip}</p>
+            <CardContent className="p-6 space-y-4">
+              {server.error ? (
+                <div className="text-center py-4">
+                  <AlertTriangle className="h-8 w-8 mx-auto text-yellow-500 mb-2" />
+                  <p className="text-sm text-muted-foreground">{server.error}</p>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Operating System</span>
-                  <p>{server.os}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Uptime</span>
-                  <p>{server.uptime}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Network</span>
-                  <p>{server.metrics.network}</p>
-                </div>
-              </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">IP:</span>{" "}
+                      <span className="font-mono">{server.ip || "N/A"}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">OS:</span>{" "}
+                      {server.os || "N/A"}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Uptime:</span>{" "}
+                      {server.uptime || "N/A"}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Load:</span>{" "}
+                      {server.metrics.load?.toFixed(2) || "N/A"}
+                    </div>
+                  </div>
 
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2">
-                    <Cpu className="h-4 w-4 text-muted-foreground" />
-                    CPU
-                  </span>
-                  <span>{server.metrics.cpu}%</span>
-                </div>
-                <div className="h-2 rounded-full bg-secondary">
-                  <div
-                    className="h-2 rounded-full bg-primary transition-all"
-                    style={{ width: `${server.metrics.cpu}%` }}
-                  />
-                </div>
+                  <div className="space-y-3">
+                    <MetricBar
+                      icon={<Cpu className="h-4 w-4" />}
+                      label="CPU"
+                      value={server.metrics.cpu}
+                    />
+                    <MetricBar
+                      icon={<Activity className="h-4 w-4" />}
+                      label="Memory"
+                      value={server.metrics.memory}
+                    />
+                    <MetricBar
+                      icon={<HardDrive className="h-4 w-4" />}
+                      label="Disk"
+                      value={server.metrics.disk}
+                    />
+                  </div>
+                </>
+              )}
 
-                <div className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2">
-                    <Activity className="h-4 w-4 text-muted-foreground" />
-                    Memory
-                  </span>
-                  <span>{server.metrics.memory}%</span>
-                </div>
-                <div className="h-2 rounded-full bg-secondary">
-                  <div
-                    className="h-2 rounded-full bg-primary transition-all"
-                    style={{ width: `${server.metrics.memory}%` }}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2">
-                    <HardDrive className="h-4 w-4 text-muted-foreground" />
-                    Disk
-                  </span>
-                  <span>{server.metrics.disk}%</span>
-                </div>
-                <div className="h-2 rounded-full bg-secondary">
-                  <div
-                    className="h-2 rounded-full bg-primary transition-all"
-                    style={{ width: `${server.metrics.disk}%` }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <p className="text-sm text-muted-foreground mb-2">Services</p>
-                <div className="flex flex-wrap gap-2">
-                  {server.services.map((service) => (
-                    <span
-                      key={service}
-                      className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-xs"
-                    >
-                      <CheckCircle2 className="h-3 w-3 text-green-500" />
-                      {service}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="flex-1">
-                  <Terminal className="mr-2 h-4 w-4" />
-                  SSH
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleRefresh(server.id)}
-                  disabled={refreshing === server.id}
-                >
-                  <RefreshCw
-                    className={`h-4 w-4 ${
-                      refreshing === server.id ? "animate-spin" : ""
-                    }`}
-                  />
-                </Button>
-                <Button variant="outline" size="sm">
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => refreshServer(server.id)}
+                disabled={refreshing === server.id}
+              >
+                {refreshing === server.id ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                )}
+                Refresh Metrics
+              </Button>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>Common server operations</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Button variant="outline" className="h-auto py-4 justify-start">
-              <div className="text-left">
-                <p className="font-medium">Update All Services</p>
-                <p className="text-sm text-muted-foreground">
-                  Pull latest images and restart
-                </p>
-              </div>
-            </Button>
-            <Button variant="outline" className="h-auto py-4 justify-start">
-              <div className="text-left">
-                <p className="font-medium">Backup Databases</p>
-                <p className="text-sm text-muted-foreground">
-                  Export PostgreSQL and Redis
-                </p>
-              </div>
-            </Button>
-            <Button variant="outline" className="h-auto py-4 justify-start">
-              <div className="text-left">
-                <p className="font-medium">View All Logs</p>
-                <p className="text-sm text-muted-foreground">
-                  Aggregated log viewer
-                </p>
-              </div>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {servers.length === 0 && (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Server className="h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">No servers configured</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Configure SSH access in environment variables
+            </p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function MetricBar({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
+  const getColor = (v: number) => {
+    if (v < 50) return "bg-green-500";
+    if (v < 80) return "bg-yellow-500";
+    return "bg-red-500";
+  };
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-sm">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          {icon}
+          {label}
+        </div>
+        <span className="font-medium">{value}%</span>
+      </div>
+      <div className="h-2 rounded-full bg-secondary overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all ${getColor(value)}`}
+          style={{ width: `${Math.min(value, 100)}%` }}
+        />
+      </div>
     </div>
   );
 }
