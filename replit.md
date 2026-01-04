@@ -116,6 +116,39 @@ Eight major features were added to transform the platform into an ultimate power
 ### Discord Bot Stream Notifications
 Stream notifications require explicit setup by configuring a channel and tracking streamers via Discord commands. Detection works by monitoring Discord presence and polling Twitch/YouTube APIs. Users must link their streaming platforms to Discord for detection.
 
+## Security & Secret Management
+
+### Critical Security Incident (January 4, 2026)
+The Discord bot token was accidentally exposed when the GitHub repository was briefly made public. Token was immediately regenerated and rotated across all environments.
+
+### Implemented Protections
+1. **Git Pre-commit Hooks**: Enhanced pre-commit hook installed on all development environments
+   - Run `./scripts/setup-git-secrets.sh` on any new machine
+   - Detects Discord tokens, API keys, OAuth secrets, private keys
+   - Blocks commits containing suspicious patterns
+
+2. **Protected Patterns**:
+   - Discord tokens (old and new format)
+   - OpenAI/Anthropic API keys
+   - Tailscale auth/API keys
+   - Cloudflare tokens
+   - OAuth client secrets
+   - AWS credentials
+   - Private keys
+
+3. **Environment Files**:
+   - All `.env` files are in `.gitignore`
+   - Use `.env.template` for documentation
+   - Never commit actual secrets
+
+### Secret Rotation Procedure
+When a secret is compromised:
+1. Regenerate the secret immediately in the provider's dashboard
+2. Update Replit Secrets (development)
+3. Update `.env` on Linode: `ssh root@linode.evindrake.net`, edit `/opt/homelab/HomeLabHub/deploy/linode/.env`
+4. Update `.env` on Local Ubuntu: `ssh evin@host.evindrake.net`, edit `/opt/homelab/HomeLabHub/deploy/local/.env`
+5. Restart affected services on all environments
+
 ## External Dependencies
 
 -   **PostgreSQL**: Primary database (Neon, homelab-postgres).
