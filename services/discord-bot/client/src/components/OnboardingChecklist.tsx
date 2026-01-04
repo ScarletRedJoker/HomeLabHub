@@ -124,8 +124,61 @@ export default function OnboardingChecklist({ onNavigateToTab }: OnboardingCheck
     }
   };
 
-  if (!selectedServerId || isLoading || error || isDismissed) {
+  if (!selectedServerId || isDismissed) {
     return null;
+  }
+
+  if (isLoading) {
+    return (
+      <Card className="bg-gradient-to-br from-discord-sidebar via-discord-sidebar to-discord-bg border-discord-blue/30 shadow-lg shadow-discord-blue/10 mb-4">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-discord-blue/20 rounded-lg">
+              <Zap className="h-5 w-5 text-discord-blue" />
+            </div>
+            <div className="flex-1">
+              <CardTitle className="text-lg text-white flex items-center gap-2">
+                Setup Progress
+              </CardTitle>
+              <p className="text-sm text-discord-muted mt-0.5">Loading configuration status...</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-center py-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-discord-blue"></div>
+          </div>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="bg-gradient-to-br from-discord-sidebar via-discord-sidebar to-discord-bg border-yellow-500/30 shadow-lg shadow-yellow-500/10 mb-4">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-yellow-500/20 rounded-lg">
+                <AlertCircle className="h-5 w-5 text-yellow-400" />
+              </div>
+              <div>
+                <CardTitle className="text-lg text-white">Setup Progress</CardTitle>
+                <p className="text-sm text-yellow-400 mt-0.5">
+                  Unable to load configuration status. You can still configure features manually.
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleDismiss}
+              className="h-8 w-8 text-discord-muted hover:text-white hover:bg-discord-dark"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardHeader>
+      </Card>
+    );
   }
 
   if (!onboardingStatus) {

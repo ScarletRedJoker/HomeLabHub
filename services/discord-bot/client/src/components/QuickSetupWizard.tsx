@@ -103,9 +103,11 @@ export default function QuickSetupWizard({
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: channelData } = useQuery<{ channels: DiscordChannel[] } | DiscordChannel[]>({
+  const { data: channelData, isLoading: isLoadingChannels, error: channelsError } = useQuery<{ channels: DiscordChannel[] } | DiscordChannel[]>({
     queryKey: [`/api/servers/${serverId}/channels`],
     enabled: !!serverId && open,
+    retry: 2,
+    staleTime: 1000 * 60 * 2,
   });
 
   const { data: templatePreview } = useQuery<TemplatePreview>({
@@ -235,6 +237,29 @@ export default function QuickSetupWizard({
               Select channels for each feature. All are optional - you can configure them later.
             </p>
             
+            {isLoadingChannels && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-discord-blue mr-2" />
+                <span className="text-discord-muted">Loading channels...</span>
+              </div>
+            )}
+
+            {channelsError && !isLoadingChannels && (
+              <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                <p className="text-sm text-red-400 text-center">
+                  Failed to load channels. You can continue and configure them later in settings.
+                </p>
+              </div>
+            )}
+
+            {!isLoadingChannels && !channelsError && textChannels.length === 0 && (
+              <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                <p className="text-sm text-yellow-400 text-center">
+                  No text channels found. Make sure the bot has permission to view channels, or configure them later in settings.
+                </p>
+              </div>
+            )}
+
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label className="text-white">Welcome Channel</Label>

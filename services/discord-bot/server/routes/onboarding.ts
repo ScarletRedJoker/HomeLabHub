@@ -56,6 +56,16 @@ router.get("/servers/:serverId/onboarding-status", isAuthenticated, async (req: 
   try {
     const { serverId } = req.params;
     
+    // Fetch data with individual error handling to be resilient to missing tables
+    const safeQuery = async <T>(fn: () => Promise<T>, defaultValue: T): Promise<T> => {
+      try {
+        return await fn();
+      } catch (e) {
+        console.warn(`[Onboarding] Query failed, using default:`, e instanceof Error ? e.message : e);
+        return defaultValue;
+      }
+    };
+    
     const [
       botSettings,
       ticketCategories,
@@ -63,11 +73,11 @@ router.get("/servers/:serverId/onboarding-status", isAuthenticated, async (req: 
       economySettings,
       automodRules
     ] = await Promise.all([
-      dbStorage.getBotSettings(serverId),
-      dbStorage.getTicketCategoriesByServerId(serverId),
-      dbStorage.getStreamNotificationSettings(serverId),
-      dbStorage.getEconomySettings(serverId),
-      dbStorage.getAutomodRules(serverId)
+      safeQuery(() => dbStorage.getBotSettings(serverId), null),
+      safeQuery(() => dbStorage.getTicketCategoriesByServerId(serverId), []),
+      safeQuery(() => dbStorage.getStreamNotificationSettings(serverId), null),
+      safeQuery(() => dbStorage.getEconomySettings(serverId), null),
+      safeQuery(() => dbStorage.getAutomodRules(serverId), [])
     ]);
 
     const features: FeatureConfig[] = [

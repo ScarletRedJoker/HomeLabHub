@@ -132,9 +132,11 @@ export default function OnboardingWizard({ serverId, serverName, onComplete, onS
     enabled: !!serverId,
   });
 
-  const { data: channelData } = useQuery<{ channels: DiscordChannel[] } | DiscordChannel[]>({
+  const { data: channelData, isLoading: isLoadingChannels, error: channelsError } = useQuery<{ channels: DiscordChannel[] } | DiscordChannel[]>({
     queryKey: [`/api/servers/${serverId}/channels`],
     enabled: !!serverId,
+    retry: 2,
+    staleTime: 1000 * 60 * 2,
   });
   
   // Handle both array and wrapped object response formats
@@ -432,13 +434,33 @@ export default function OnboardingWizard({ serverId, serverName, onComplete, onS
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  {isLoadingChannels && (
+                    <div className="flex items-center justify-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-discord-blue mr-2"></div>
+                      <span className="text-discord-muted">Loading channels...</span>
+                    </div>
+                  )}
+
+                  {channelsError && !isLoadingChannels && (
+                    <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                      <p className="text-sm text-red-400 text-center">
+                        Failed to load channels. You can continue and configure them later in settings.
+                      </p>
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <Label className="text-white">Welcome Channel</Label>
-                    <Select value={welcomeChannel} onValueChange={setWelcomeChannel}>
+                    <Select value={welcomeChannel} onValueChange={setWelcomeChannel} disabled={isLoadingChannels}>
                       <SelectTrigger className="bg-discord-dark border-discord-dark text-white">
-                        <SelectValue placeholder="Select a channel..." />
+                        <SelectValue placeholder={isLoadingChannels ? "Loading..." : "Select a channel..."} />
                       </SelectTrigger>
                       <SelectContent className="bg-discord-dark border-discord-dark">
+                        {textChannels.length === 0 && !isLoadingChannels && (
+                          <SelectItem value="none" disabled className="text-discord-muted">
+                            No channels available
+                          </SelectItem>
+                        )}
                         {textChannels.map((channel) => (
                           <SelectItem key={channel.id} value={channel.id} className="text-white">
                             #{channel.name}
@@ -502,11 +524,16 @@ export default function OnboardingWizard({ serverId, serverName, onComplete, onS
 
                   <div className="space-y-2">
                     <Label className="text-white">Logging Channel</Label>
-                    <Select value={logChannel} onValueChange={setLogChannel}>
+                    <Select value={logChannel} onValueChange={setLogChannel} disabled={isLoadingChannels}>
                       <SelectTrigger className="bg-discord-dark border-discord-dark text-white">
-                        <SelectValue placeholder="Select a channel for mod logs..." />
+                        <SelectValue placeholder={isLoadingChannels ? "Loading..." : "Select a channel for mod logs..."} />
                       </SelectTrigger>
                       <SelectContent className="bg-discord-dark border-discord-dark">
+                        {textChannels.length === 0 && !isLoadingChannels && (
+                          <SelectItem value="none" disabled className="text-discord-muted">
+                            No channels available
+                          </SelectItem>
+                        )}
                         {textChannels.map((channel) => (
                           <SelectItem key={channel.id} value={channel.id} className="text-white">
                             #{channel.name}
