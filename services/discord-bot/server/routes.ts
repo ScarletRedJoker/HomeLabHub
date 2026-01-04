@@ -3162,7 +3162,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Fetch channels for this server using existing function
       const channels = await fetchGuildChannels(serverId);
-      res.json(channels || []);
+      res.json({ channels: channels || [] });
     } catch (error) {
       console.error('Error fetching server channels:', error);
       res.status(500).json({ message: 'Failed to fetch server channels' });

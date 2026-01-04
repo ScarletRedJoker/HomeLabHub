@@ -201,7 +201,8 @@ export default function WelcomeCardDesigner() {
     try {
       const res = await fetch(`/api/servers/${serverId}/channels`);
       const data = await res.json();
-      setChannels(data.filter((c: any) => c.type === 0));
+      const channelList = data.channels || data || [];
+      setChannels(channelList.filter((c: any) => c.type === 0));
     } catch (error) {
       console.error('Failed to load channels:', error);
     }

@@ -143,7 +143,8 @@ export default function FormBuilder() {
       });
       if (response.ok) {
         const data = await response.json();
-        setChannels(data.filter((c: Channel) => c.type === 0));
+        const channelList = data.channels || data || [];
+        setChannels(channelList.filter((c: Channel) => c.type === 0));
       }
     } catch (error) {
       console.error("Error fetching channels:", error);

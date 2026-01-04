@@ -150,7 +150,8 @@ export default function ContentScheduler() {
       });
       if (res.ok) {
         const data = await res.json();
-        setChannels(data.filter((c: Channel) => c.type === 0));
+        const channelList = data.channels || data || [];
+        setChannels(channelList.filter((c: Channel) => c.type === 0));
       }
     } catch (error) {
       console.error("Error fetching channels:", error);

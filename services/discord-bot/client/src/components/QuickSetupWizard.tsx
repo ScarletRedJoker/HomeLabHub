@@ -103,7 +103,7 @@ export default function QuickSetupWizard({
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: channelList } = useQuery<DiscordChannel[]>({
+  const { data: channelData } = useQuery<{ channels: DiscordChannel[] } | DiscordChannel[]>({
     queryKey: [`/api/servers/${serverId}/channels`],
     enabled: !!serverId && open,
   });
@@ -138,6 +138,8 @@ export default function QuickSetupWizard({
     },
   });
 
+  // Handle both array and wrapped object response formats
+  const channelList = Array.isArray(channelData) ? channelData : (channelData?.channels || []);
   const textChannels = channelList?.filter(c => c.type === 0) || [];
   const progress = ((currentStep + 1) / STEPS.length) * 100;
   const selectedTemplateData = TEMPLATES.find(t => t.id === selectedTemplate);

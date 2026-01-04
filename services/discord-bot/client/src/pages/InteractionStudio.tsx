@@ -297,7 +297,7 @@ export default function InteractionStudio() {
       });
       if (response.ok) {
         const data = await response.json();
-        setChannels(data);
+        setChannels(data.channels || data || []);
       }
     } catch (error) {
       console.error("Failed to load channels:", error);

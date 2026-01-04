@@ -132,10 +132,13 @@ export default function OnboardingWizard({ serverId, serverName, onComplete, onS
     enabled: !!serverId,
   });
 
-  const { data: channels } = useQuery<DiscordChannel[]>({
+  const { data: channelData } = useQuery<{ channels: DiscordChannel[] } | DiscordChannel[]>({
     queryKey: [`/api/servers/${serverId}/channels`],
     enabled: !!serverId,
   });
+  
+  // Handle both array and wrapped object response formats
+  const channels = Array.isArray(channelData) ? channelData : (channelData?.channels || []);
 
   const { data: botSettings } = useQuery<BotSettings>({
     queryKey: [`/api/servers/${serverId}/settings`],
