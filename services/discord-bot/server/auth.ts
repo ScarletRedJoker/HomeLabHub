@@ -190,11 +190,16 @@ export function setupAuth(app: Express, storage: IStorage): void {
         }
       }
 
+      // In dev mode, dynamically get bot's guilds so dev user can access all of them
+      const { getBotGuilds } = await import('./discord/bot');
+      const botGuilds = await getBotGuilds();
+      const devAdminGuilds = botGuilds.map(g => ({ id: g.id, name: g.name, icon: g.icon }));
+      
       // Auto-populate req.user for all requests
       (req as any).user = {
         ...devUser,
-        adminGuilds: devUser.adminGuilds ? JSON.parse(devUser.adminGuilds) : [],
-        connectedServers: devUser.connectedServers ? JSON.parse(devUser.connectedServers) : []
+        adminGuilds: devAdminGuilds,
+        connectedServers: devAdminGuilds
       };
 
       next();
