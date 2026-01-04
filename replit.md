@@ -21,108 +21,110 @@ Each server deploys ONLY its own services. They are separate and independent.
 
 ### Core Services
 The platform consists of three main services:
--   **Dashboard (Next.js 14)**: Modern web interface for homelab management built with TypeScript, shadcn/ui, and Tailwind CSS. Features include:
-    - **Monaco Code Editor**: File tree navigation, syntax highlighting, multi-file editing
-    - **Visual Website Designer**: Drag-drop component builder with live preview
-    - **AI Assistant (Jarvis)**: OpenAI-powered chat for homelab commands and automation
-    - **Service Manager**: Docker integration, container control, logs viewer
-    - **Deployment Pipeline**: One-click deploys to Linode and Home servers
-    - **Server Management**: SSH terminals, resource metrics, health monitoring
-    - JWT-signed sessions (HMAC-SHA256) for secure authentication
-    - Professional dark theme with responsive design
--   **Discord Bot (Node.js/React)**: Handles Discord community management, including a ticket system, music bot, stream notifications, and analytics. It integrates with the Stream Bot for go-live alerts and offers multi-tenant security.
--   **Stream Bot (Node.js/React/Vite)**: Manages multi-platform content posting and interaction across Twitch, YouTube, and Kick. It supports OAuth, per-user personalization, token encryption, rate limiting, and anti-spam measures, with a modernized UI.
+
+#### Dashboard (Next.js 14) - `services/dashboard-next/`
+Modern web interface for homelab management built with TypeScript, shadcn/ui, and Tailwind CSS.
+
+**Real-Time Features (All Functional):**
+- **Dashboard Home**: Live stats from Docker/SSH APIs - container counts, server status, CPU/RAM metrics, quick deploy actions
+- **Services Page**: Real Docker container list with start/stop/restart controls via Docker socket
+- **Servers Page**: Live SSH-based metrics from Linode and Home servers (CPU, RAM, disk usage)
+- **Deploy Page**: One-click deployments to Linode/Home with live log streaming via SSH
+- **Editor Page**: Monaco code editor with file tree navigation, multi-file tabs, syntax highlighting, save to server
+- **Designer Page**: Visual drag-drop website builder with 14 component types, export to HTML, save/load projects
+- **Websites Page**: CRUD API for managing websites (create, update, publish/unpublish, delete)
+- **Jarvis AI**: OpenAI-powered chat assistant (uses Replit AI Integration or direct API key)
+- **Settings Page**: Server connection testing, API integration status, profile/appearance/notification preferences
+
+**API Routes (All Real Integrations):**
+- `/api/docker` - Docker container management via socket
+- `/api/servers` - SSH-based server metrics collection
+- `/api/deploy` - SSH-based deployment execution
+- `/api/files` - File system read/write for editor
+- `/api/designer` - Design project CRUD (file-based storage)
+- `/api/websites` - Website management CRUD (file-based storage)
+- `/api/ai/chat` - OpenAI chat integration
+- `/api/health` - Health check endpoint
+
+**Security:**
+- JWT-signed sessions (HMAC-SHA256)
+- All API routes require authentication
+- SSH keys accessed server-side only
+- File system restricted to allowed base paths
+
+#### Discord Bot (Node.js/React) - `services/discord-bot/`
+Handles Discord community management, including ticket system, music bot, stream notifications, and analytics. Integrates with Stream Bot for go-live alerts.
+
+#### Stream Bot (Node.js/React/Vite) - `services/stream-bot/`
+Manages multi-platform content posting and interaction across Twitch, YouTube, and Kick. Supports OAuth, token encryption, rate limiting, and OBS overlay editor.
 
 ### Cross-Service Integration
-Services share a PostgreSQL database and Redis for caching. The Stream Bot uses webhooks for Discord go-live notifications. The Dashboard and Discord Bot communicate via APIs. The Discord Bot integrates with Plex for "Now Playing" status and Lanyard for rich presence. The entire system is multi-tenant with user roles and RBAC.
+Services share a PostgreSQL database and Redis for caching. The Stream Bot uses webhooks for Discord go-live notifications. The Dashboard and Discord Bot communicate via APIs. The Discord Bot integrates with Plex for "Now Playing" status and Lanyard for rich presence.
 
 ### Deployment and Hosting
 The system is deployed on two independent servers:
--   **Linode Cloud**: Hosts the Dashboard, Discord Bot, and Stream Bot.
--   **Local Ubuntu**: Hosts local homelab services like Plex, MinIO, and Home Assistant.
-Each server utilizes separate deployment scripts.
+- **Linode Cloud**: Hosts Dashboard, Discord Bot, Stream Bot
+- **Local Ubuntu**: Hosts Plex, MinIO, Home Assistant
+
+Docker configuration: `deploy/linode/docker-compose.yml` and `deploy/local/docker-compose.yml`
+
+### Dashboard File Structure
+```
+services/dashboard-next/
+├── app/
+│   ├── (dashboard)/        # Protected dashboard routes
+│   │   ├── page.tsx        # Home with live stats
+│   │   ├── services/       # Docker container management
+│   │   ├── servers/        # SSH server metrics
+│   │   ├── deploy/         # Deployment pipeline
+│   │   ├── editor/         # Monaco code editor
+│   │   ├── designer/       # Visual website builder
+│   │   ├── websites/       # Website management
+│   │   ├── ai/             # Jarvis chat
+│   │   └── settings/       # Configuration
+│   ├── api/                # API routes
+│   └── login/              # Authentication
+├── components/             # UI components (shadcn/ui)
+├── lib/                    # Utilities and session management
+└── Dockerfile              # Multi-stage production build
+```
 
 ### Tailscale Connectivity
-Linode utilizes a Tailscale sidecar container to access local services on the Ubuntu homelab, including Plex, Home Assistant, MinIO, and a KVM/Sunshine gaming VM. The `tailscale` container operates in `network_mode: host` to route all Linode container traffic through the Tailscale network.
+Linode utilizes a Tailscale sidecar container to access local services on the Ubuntu homelab, including Plex, Home Assistant, MinIO, and KVM gaming VM. The `tailscale` container operates in `network_mode: host` to route all Linode container traffic through the Tailscale network.
 
 ### Database Schema
-A shared PostgreSQL instance organizes data into distinct databases for each service:
--   `homelab_jarvis`: Dashboard data (AI conversations, Docker, audit logs).
--   `discord_bot`: Discord Bot data (tickets, messages, server configs, stream notifications).
--   `stream_bot`: Stream Bot data (configurations, platform connections, message history).
+A shared PostgreSQL instance organizes data into distinct databases:
+- `homelab_jarvis`: Dashboard data (AI conversations, Docker, audit logs)
+- `discord_bot`: Discord Bot data (tickets, messages, server configs, stream notifications)
+- `stream_bot`: Stream Bot data (configurations, platform connections, message history)
 
 ### KVM Gaming VM (Sunshine/Moonlight)
-A KVM VM named `RDPWindows` is configured with GPU passthrough (NVIDIA RTX 3060) and a Tailscale IP (`100.118.44.102`). It features robust startup scripts that handle GPU D3cold recovery, stale process cleanup, retry logic, and health monitoring. Moonlight can connect via Tailscale or local LAN.
+A KVM VM named `RDPWindows` is configured with GPU passthrough (NVIDIA RTX 3060) and a Tailscale IP (`100.118.44.102`). Moonlight can connect via Tailscale or local LAN.
 
-### Local Ubuntu Server Configuration
-The local Ubuntu server mounts a NAS share (`//192.168.0.185/networkshare`) at `/srv/media` using CIFS with `noauto,x-systemd.automount` for boot safety. Key services run in Docker containers, including Plex, Home Assistant, MinIO, and Caddy.
+### Recent Changes (January 2026)
 
-### Stream Bot OBS Overlays
-The Stream Bot offers an overlay editor for OBS, allowing visual drag-and-drop customization of text, images, and alerts. Overlays can be exported as JSON or saved in-memory. Specific URLs are provided for Spotify, YouTube, and custom overlays.
+**Next.js Dashboard Rewrite:**
+- Replaced Flask dashboard with Next.js 14 App Router
+- Full TypeScript implementation with shadcn/ui components
+- Real API integrations for Docker, SSH, deployments, files
+- Visual website designer with drag-drop components
+- Monaco code editor with file tree and syntax highlighting
+- Jarvis AI using Replit's OpenAI integration
+- Settings page for server connections and preferences
 
-### Recent Fixes (January 2026)
-- **Stream Bot Rate Limiter Fixed**: Increased auth limit from 5 to 50 requests, added skipSuccessfulRequests for OAuth flows
-- **Discord Bot Dashboard Simplified**: Reduced from 11 tabs to 5 core tabs (Overview, Tickets, Streams, Welcome, Commands) + "More Tools" dropdown
-- **qBittorrent + VPN Setup Added**: Created deploy/local/torrent-vpn/ with gluetun container for private torrenting
-- **OAuth CSRF/Session Fixes**: Fixed session configuration (resave:true, saveUninitialized:true) to persist OAuth state tokens before redirect - fixes "CSRF validation failed" errors
-- **OAuth Redirect URI Auto-Correction**: Added auto-fix for misconfigured redirect URIs that use `/api/auth/*` instead of `/auth/*` or include port numbers in HTTPS URLs
-- **Discord Bot CORS Fixed**: Added discord.rig-city.com to allowed origins for dashboard API access
-- **Stream Bot Legacy Route Handler**: Added /success/* path handler to redirect legacy OAuth success URLs to proper query params
-- **Production Config Fixed**: Corrected DISCORD_BOT_URL (port 5000 → 4000) and OAuth redirect URIs in docker-compose.yml
+**Security Fixes:**
+- Jarvis AI no longer auto-executes actions (prevents prompt injection)
+- All API routes require JWT authentication
+- SSH keys never exposed to client
 
-### Powerhouse Features (January 2026)
-Eight major features were added to transform the platform into an ultimate powerhouse for developers and content creators:
+**Stream Bot Fixes:**
+- Rate limiter increased from 5 to 50 requests for OAuth
+- Legacy route handler for OAuth success URLs
+- Production config corrected
 
-1. **Homelab Monitoring** (`services/dashboard/routes/monitoring_routes.py`)
-   - Python agent collects CPU, RAM, disk, temps, network metrics
-   - Remote reporting via API endpoints
-   - Discord alerts when thresholds are breached
-   - Install script served from `/api/monitoring/agent/script`
-
-2. **Developer Tools - GitHub Webhooks** (`services/discord-bot/server/routes/github-webhooks.ts`)
-   - Receives webhooks for push, PR, workflow, release events
-   - Sends formatted Discord embeds with event details
-   - Supports deploy-on-push automation
-
-3. **AI Content Assistant** (`services/stream-bot/server/ai-content-service.ts`)
-   - GPT-4o-mini powered content generation
-   - Generates stream titles, descriptions, social posts, hashtags
-   - Stream idea suggestions based on channel theme
-
-4. **Multi-Platform Analytics** (`services/stream-bot/server/analytics-service.ts`)
-   - Unified Twitch/YouTube/Kick metrics
-   - `getPlatformMetrics()` - Real-time follower/subscriber counts
-   - `getStreamHistory()` - Historical stream sessions
-   - `getRevenueEstimate()` - Revenue calculations from subs/donations
-
-5. **Multi-Platform Restream** (`services/stream-bot/server/restream-service.ts`)
-   - RTMP destination management for Twitch, YouTube, Kick, Facebook
-   - Stream key storage with encryption
-   - Region-based RTMP server selection
-   - Database table: `restream_destinations`
-
-6. **Community Events Calendar** (`services/stream-bot/server/events-service.ts`)
-   - Schedule streams, watch parties, collab events
-   - Recurring events with daily/weekly/monthly patterns
-   - Public embed endpoint for sharing: `/api/events/public/:userId`
-   - Discord notification integration
-   - Database table: `stream_events`
-
-7. **Clip Manager** (`services/stream-bot/server/clip-service.ts`)
-   - Fetch clips from Twitch (Helix API) and YouTube (Data API v3)
-   - AI caption generation for social media posting
-   - Status workflow: new → reviewed → posted
-   - Tag organization and highlight marking
-
-8. **Smart Notifications / Unified Inbox** (`services/stream-bot/server/notifications-service.ts`)
-   - Aggregates follows, subs, donations, mentions, raids across platforms
-   - Filter by platform and notification type
-   - Mark as read functionality
-   - Webhook endpoint for platform integrations
-   - Database table: `unified_inbox_notifications`
-
-### Discord Bot Stream Notifications
-Stream notifications require explicit setup by configuring a channel and tracking streamers via Discord commands. Detection works by monitoring Discord presence and polling Twitch/YouTube APIs. Users must link their streaming platforms to Discord for detection.
+**Discord Bot Fixes:**
+- Dashboard simplified to 5 core tabs
+- CORS fixed for dashboard access
 
 ## Security & Secret Management
 
@@ -130,46 +132,34 @@ Stream notifications require explicit setup by configuring a channel and trackin
 The Discord bot token was accidentally exposed when the GitHub repository was briefly made public. Token was immediately regenerated and rotated across all environments.
 
 ### Implemented Protections
-1. **Git Pre-commit Hooks**: Enhanced pre-commit hook installed on all development environments
-   - Run `./scripts/setup-git-secrets.sh` on any new machine
-   - Detects Discord tokens, API keys, OAuth secrets, private keys
-   - Blocks commits containing suspicious patterns
-
-2. **Protected Patterns**:
-   - Discord tokens (old and new format)
-   - OpenAI/Anthropic API keys
-   - Tailscale auth/API keys
-   - Cloudflare tokens
-   - OAuth client secrets
-   - AWS credentials
-   - Private keys
-
-3. **Environment Files**:
-   - All `.env` files are in `.gitignore`
-   - Use `.env.template` for documentation
-   - Never commit actual secrets
+1. **Git Pre-commit Hooks**: Run `./scripts/setup-git-secrets.sh` on any new machine
+2. **Protected Patterns**: Discord tokens, OpenAI keys, Tailscale keys, Cloudflare tokens, OAuth secrets, AWS credentials, private keys
+3. **Environment Files**: All `.env` files in `.gitignore`, use `.env.template` for documentation
 
 ### Secret Rotation Procedure
-When a secret is compromised:
-1. Regenerate the secret immediately in the provider's dashboard
+1. Regenerate the secret in provider's dashboard
 2. Update Replit Secrets (development)
-3. Update `.env` on Linode: `ssh root@linode.evindrake.net`, edit `/opt/homelab/HomeLabHub/deploy/linode/.env`
-4. Update `.env` on Local Ubuntu: `ssh evin@host.evindrake.net`, edit `/opt/homelab/HomeLabHub/deploy/local/.env`
-5. Restart affected services on all environments
+3. Update `.env` on Linode: `/opt/homelab/HomeLabHub/deploy/linode/.env`
+4. Update `.env` on Local Ubuntu: `/opt/homelab/HomeLabHub/deploy/local/.env`
+5. Restart affected services
 
 ## External Dependencies
+- **PostgreSQL**: Primary database (Neon dev, homelab-postgres prod)
+- **Redis**: Caching and session management
+- **OpenAI API**: Jarvis AI assistant
+- **Discord API (discord.js)**: Discord Bot functionality
+- **Twitch/YouTube/Kick APIs**: Stream Bot integrations
+- **Spotify API**: Music bot features
+- **Plex API**: "Now Playing" integration
+- **Home Assistant API**: Homelab automation
+- **Cloudflare API**: DNS management
+- **Tailscale**: Secure network access
+- **Caddy**: Reverse proxy
 
--   **PostgreSQL**: Primary database (Neon, homelab-postgres).
--   **Redis**: Caching and session management.
--   **OpenAI API**: Jarvis AI and text-to-speech.
--   **Discord API (discord.js)**: Discord Bot functionality.
--   **Twitch API**: Stream Bot and Discord Bot integrations.
--   **YouTube API**: Stream Bot and Discord Bot integrations.
--   **Kick API**: Stream Bot integration.
--   **Spotify API**: Music bot features.
--   **Plex API**: "Now Playing" integration.
--   **Home Assistant API**: Homelab automation and status.
--   **Cloudflare API**: DNS management.
--   **Lanyard API**: Personal rich presence.
--   **Caddy**: Reverse proxy.
--   **Tailscale**: Secure network access.
+## Development Notes
+- Dashboard runs on port 5000
+- Discord Bot runs on port 4000
+- Stream Bot runs on port 3000 (internal), 5000 (production)
+- Use `npm run dev` in services/dashboard-next for development
+- Docker socket required for container management
+- SSH keys required for server metrics and deployments
