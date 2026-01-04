@@ -58,6 +58,68 @@ interface WelcomeCardTemplate {
 
 const CANVAS_SCALE = 0.75;
 
+const DEFAULT_ELEMENTS: WelcomeCardElement[] = [
+  {
+    id: 'avatar-default',
+    type: 'avatar',
+    x: 50,
+    y: 125,
+    width: 150,
+    height: 150,
+    zIndex: 2,
+    avatarStyle: 'circle',
+    avatarBorderColor: '#7289da',
+    avatarBorderWidth: 4,
+  },
+  {
+    id: 'welcome-text-default',
+    type: 'text',
+    x: 230,
+    y: 100,
+    width: 500,
+    height: 50,
+    zIndex: 3,
+    text: 'Welcome to {server}!',
+    fontFamily: 'Arial, sans-serif',
+    fontSize: 36,
+    fontColor: '#ffffff',
+    fontWeight: 'bold',
+    textAlign: 'left',
+    textShadow: true,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+  },
+  {
+    id: 'username-text-default',
+    type: 'text',
+    x: 230,
+    y: 160,
+    width: 500,
+    height: 40,
+    zIndex: 3,
+    text: '{username}',
+    fontFamily: 'Arial, sans-serif',
+    fontSize: 28,
+    fontColor: '#7289da',
+    fontWeight: 'bold',
+    textAlign: 'left',
+  },
+  {
+    id: 'member-count-default',
+    type: 'text',
+    x: 230,
+    y: 210,
+    width: 500,
+    height: 30,
+    zIndex: 3,
+    text: 'You are member #{memberCount}',
+    fontFamily: 'Arial, sans-serif',
+    fontSize: 18,
+    fontColor: '#a0a0a0',
+    fontWeight: 'normal',
+    textAlign: 'left',
+  },
+];
+
 export default function WelcomeCardDesigner() {
   const { selectedServerId } = useServerContext();
   const serverId = selectedServerId || '';
@@ -77,7 +139,7 @@ export default function WelcomeCardDesigner() {
     borderColor: '#7289da',
     borderWidth: 3,
     borderRadius: 20,
-    elements: '[]',
+    elements: JSON.stringify(DEFAULT_ELEMENTS),
     welcomeMessage: 'Welcome to {server}!',
   });
   
@@ -113,9 +175,14 @@ export default function WelcomeCardDesigner() {
       if (data.length > 0) {
         const active = data.find((t: WelcomeCardTemplate) => t.isActive) || data[0];
         setTemplate(active);
+      } else {
+        setSelectedElement(null);
+        setElements([...DEFAULT_ELEMENTS.map(el => ({ ...el }))]);
       }
     } catch (error) {
       console.error('Failed to load templates:', error);
+      setSelectedElement(null);
+      setElements([...DEFAULT_ELEMENTS.map(el => ({ ...el }))]);
     }
   };
 
@@ -470,12 +537,27 @@ export default function WelcomeCardDesigner() {
             </select>
           </div>
           
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
             <button onClick={() => addElement('avatar')} style={toolButtonStyle}>+ Avatar</button>
             <button onClick={() => addElement('text')} style={toolButtonStyle}>+ Text</button>
             <button onClick={() => addElement('shape')} style={toolButtonStyle}>+ Shape</button>
             <button onClick={() => addElement('image')} style={toolButtonStyle}>+ Image</button>
+            <button 
+              onClick={() => {
+                setSelectedElement(null);
+                setElements([...DEFAULT_ELEMENTS.map(el => ({ ...el }))]);
+              }} 
+              style={{ ...toolButtonStyle, backgroundColor: '#3d4550', marginLeft: 'auto' }}
+            >
+              Reset to Default
+            </button>
           </div>
+          
+          {elements.length > 0 && (
+            <div style={{ marginBottom: 8, fontSize: 12, color: '#8b949e' }}>
+              {elements.length} element{elements.length !== 1 ? 's' : ''} on canvas - Click an element to edit it
+            </div>
+          )}
           
           <div style={getBackgroundStyle()}>
             {elements.map(renderElement)}
