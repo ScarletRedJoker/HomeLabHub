@@ -7,20 +7,32 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthContext } from "@/components/AuthProvider";
-import { Shield, Lock, Info, AlertTriangle, RefreshCw, Loader2 } from "lucide-react";
+import { useServerContext } from "@/contexts/ServerContext";
+import { queryClient } from "@/lib/queryClient";
+import { Shield, Lock, Info, AlertTriangle, RefreshCw, Loader2, Star, Award, Gavel } from "lucide-react";
 
 interface SlidingSettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+interface Channel {
+  id: string;
+  name: string;
+  type: number;
+}
+
 export default function SlidingSettingsPanel({ isOpen, onClose }: SlidingSettingsPanelProps) {
   const [activeTab, setActiveTab] = useState("general");
   const { toast } = useToast();
   const { user, isAdmin } = useAuthContext();
+  const { selectedServerId } = useServerContext();
   const [isLoading, setIsLoading] = useState(false);
+  const [channels, setChannels] = useState<Channel[]>([]);
   
   const [settings, setSettings] = useState({
     botName: "Ticket Bot",
@@ -32,45 +44,112 @@ export default function SlidingSettingsPanel({ isOpen, onClose }: SlidingSetting
     supportRoleId: "",
     autoCloseEnabled: true,
     autoCloseHours: "48",
-    debugMode: false
+    debugMode: false,
+    autoModEnabled: false,
+    bannedWords: "",
+    linkFilterEnabled: false,
+    spamFilterEnabled: false,
+    spamThreshold: 5,
+    spamTimeWindow: 5,
+    autoModAction: "warn",
+    starboardEnabled: false,
+    starboardChannelId: "",
+    starboardThreshold: 3,
+    starboardEmoji: "⭐",
+    xpEnabled: false,
+    levelUpChannelId: "",
+    levelUpMessage: "🎉 Congratulations {user}! You've reached level {level}!",
+    xpMinAmount: 15,
+    xpMaxAmount: 25,
+    xpCooldownSeconds: 60
   });
+
+  const getServerId = (): string | null => {
+    if (selectedServerId) return selectedServerId;
+    if (user?.connectedServers && user.connectedServers.length > 0) {
+      return user.connectedServers[0];
+    }
+    return null;
+  };
+
+  const loadChannels = async (serverId: string) => {
+    try {
+      const response = await fetch(`/api/servers/${serverId}/channels`, {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setChannels(data.channels || []);
+      }
+    } catch (error) {
+      console.error("Failed to load channels:", error);
+    }
+  };
   
-  // Load settings when component mounts or when panel opens
   useEffect(() => {
     if (!isOpen) return;
     
     const loadSettings = async () => {
-      if (!user?.connectedServers || user.connectedServers.length === 0) return;
+      const serverId = getServerId();
+      if (!serverId) return;
       
       try {
-        // Use the first connected server as default
-        const firstServerId = user.connectedServers[0];
-        const response = await fetch(`/api/bot-settings/${firstServerId}`, {
+        const response = await fetch(`/api/servers/${serverId}/settings`, {
           credentials: 'include'
         });
         
         if (response.ok) {
           const botSettings = await response.json();
+          
+          let bannedWordsStr = "";
+          if (botSettings.bannedWords) {
+            try {
+              const parsed = JSON.parse(botSettings.bannedWords);
+              bannedWordsStr = Array.isArray(parsed) ? parsed.join(", ") : "";
+            } catch {
+              bannedWordsStr = botSettings.bannedWords;
+            }
+          }
+          
           setSettings({
             botName: botSettings.botName || "Ticket Bot",
             botPrefix: botSettings.botPrefix || "!",
-            discordServerId: botSettings.serverId || "",
+            discordServerId: botSettings.serverId || serverId,
             welcomeMessage: botSettings.welcomeMessage || "Thank you for creating a ticket. Our support team will assist you shortly.",
             notificationsEnabled: botSettings.notificationsEnabled ?? true,
             adminRoleId: botSettings.adminRoleId || "",
             supportRoleId: botSettings.supportRoleId || "",
             autoCloseEnabled: botSettings.autoCloseEnabled ?? false,
-            autoCloseHours: botSettings.autoCloseHours || "48",
-            debugMode: botSettings.debugMode ?? false
+            autoCloseHours: botSettings.autoCloseHours?.toString() || "48",
+            debugMode: botSettings.debugMode ?? false,
+            autoModEnabled: botSettings.autoModEnabled ?? false,
+            bannedWords: bannedWordsStr,
+            linkFilterEnabled: botSettings.linkFilterEnabled ?? false,
+            spamFilterEnabled: botSettings.spamFilterEnabled ?? false,
+            spamThreshold: botSettings.spamThreshold ?? 5,
+            spamTimeWindow: botSettings.spamTimeWindow ?? 5,
+            autoModAction: botSettings.autoModAction || "warn",
+            starboardEnabled: botSettings.starboardEnabled ?? false,
+            starboardChannelId: botSettings.starboardChannelId || "",
+            starboardThreshold: botSettings.starboardThreshold ?? 3,
+            starboardEmoji: botSettings.starboardEmoji || "⭐",
+            xpEnabled: botSettings.xpEnabled ?? false,
+            levelUpChannelId: botSettings.levelUpChannelId || "",
+            levelUpMessage: botSettings.levelUpMessage || "🎉 Congratulations {user}! You've reached level {level}!",
+            xpMinAmount: botSettings.xpMinAmount ?? 15,
+            xpMaxAmount: botSettings.xpMaxAmount ?? 25,
+            xpCooldownSeconds: botSettings.xpCooldownSeconds ?? 60
           });
         }
+        
+        await loadChannels(serverId);
       } catch (error) {
         console.error("Failed to load bot settings:", error);
       }
     };
 
     loadSettings();
-  }, [user, isOpen]);
+  }, [user, isOpen, selectedServerId]);
   
   const handleChange = (field: string, value: any) => {
     setSettings({
@@ -80,7 +159,8 @@ export default function SlidingSettingsPanel({ isOpen, onClose }: SlidingSetting
   };
   
   const autoPopulateFromDiscord = async () => {
-    if (!user?.connectedServers || user.connectedServers.length === 0) {
+    const serverId = getServerId();
+    if (!serverId) {
       toast({
         title: "Error",
         description: "No Discord server connected. Please connect a server first.",
@@ -91,7 +171,6 @@ export default function SlidingSettingsPanel({ isOpen, onClose }: SlidingSetting
 
     setIsLoading(true);
     try {
-      const serverId = user.connectedServers[0];
       const response = await fetch(`/api/discord/server-info/${serverId}`, {
         credentials: 'include'
       });
@@ -99,7 +178,6 @@ export default function SlidingSettingsPanel({ isOpen, onClose }: SlidingSetting
       if (response.ok) {
         const data = await response.json();
         
-        // Find admin and support roles
         const adminRole = data.roles.find((role: any) => 
           role.name.toLowerCase().includes('admin') || 
           role.name.toLowerCase().includes('moderator')
@@ -139,7 +217,8 @@ export default function SlidingSettingsPanel({ isOpen, onClose }: SlidingSetting
   };
 
   const saveSettings = async () => {
-    if (!user?.connectedServers || user.connectedServers.length === 0) {
+    const serverId = getServerId();
+    if (!serverId) {
       toast({
         title: "Error",
         description: "No Discord server connected. Please connect a server first.",
@@ -151,12 +230,12 @@ export default function SlidingSettingsPanel({ isOpen, onClose }: SlidingSetting
     setIsLoading(true);
     
     try {
-      const serverId = user.connectedServers[0];
-      if (!serverId) {
-        throw new Error('No server ID available');
+      let bannedWordsJson = null;
+      if (settings.bannedWords.trim()) {
+        const wordsArray = settings.bannedWords.split(',').map(w => w.trim()).filter(w => w);
+        bannedWordsJson = JSON.stringify(wordsArray);
       }
       
-      // Use consistent serverId throughout to prevent security issues
       const payload = {
         serverId: serverId,
         botName: settings.botName,
@@ -166,13 +245,28 @@ export default function SlidingSettingsPanel({ isOpen, onClose }: SlidingSetting
         adminRoleId: settings.adminRoleId,
         supportRoleId: settings.supportRoleId,
         autoCloseEnabled: settings.autoCloseEnabled,
-        autoCloseHours: parseInt(settings.autoCloseHours) || 48,
-        debugMode: settings.debugMode
+        autoCloseHours: settings.autoCloseHours,
+        debugMode: settings.debugMode,
+        autoModEnabled: settings.autoModEnabled,
+        bannedWords: bannedWordsJson,
+        linkFilterEnabled: settings.linkFilterEnabled,
+        spamThreshold: settings.spamThreshold,
+        spamTimeWindow: settings.spamTimeWindow,
+        autoModAction: settings.autoModAction,
+        starboardEnabled: settings.starboardEnabled,
+        starboardChannelId: settings.starboardChannelId || null,
+        starboardThreshold: settings.starboardThreshold,
+        starboardEmoji: settings.starboardEmoji,
+        xpEnabled: settings.xpEnabled,
+        levelUpChannelId: settings.levelUpChannelId || null,
+        levelUpMessage: settings.levelUpMessage,
+        xpMinAmount: settings.xpMinAmount,
+        xpMaxAmount: settings.xpMaxAmount,
+        xpCooldownSeconds: settings.xpCooldownSeconds
       };
 
-      // Try to update existing settings first
-      let response = await fetch(`/api/bot-settings/${serverId}`, {
-        method: 'PATCH',
+      const response = await fetch(`/api/servers/${serverId}/settings`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -180,50 +274,62 @@ export default function SlidingSettingsPanel({ isOpen, onClose }: SlidingSetting
         body: JSON.stringify(payload)
       });
 
-      // If settings don't exist, create them
-      if (response.status === 404) {
-        response = await fetch('/api/bot-settings', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify(payload)
-        });
-      }
-
       if (response.ok) {
         toast({
           title: "Settings saved",
           description: "Your bot settings have been saved successfully.",
         });
         
-        // Perform a fresh GET request to reload settings and verify persistence
-        try {
-          const refreshResponse = await fetch(`/api/bot-settings/${serverId}`, {
-            credentials: 'include'
-          });
+        queryClient.invalidateQueries({ queryKey: [`/api/servers/${serverId}/onboarding-status`] });
+        
+        const refreshResponse = await fetch(`/api/servers/${serverId}/settings`, {
+          credentials: 'include'
+        });
+        
+        if (refreshResponse.ok) {
+          const savedSettings = await refreshResponse.json();
           
-          if (refreshResponse.ok) {
-            const savedSettings = await refreshResponse.json();
-            setSettings({
-              botName: savedSettings.botName || "Ticket Bot",
-              botPrefix: savedSettings.botPrefix || "!",
-              discordServerId: savedSettings.serverId || "",
-              welcomeMessage: savedSettings.welcomeMessage || "Thank you for creating a ticket. Our support team will assist you shortly.",
-              notificationsEnabled: savedSettings.notificationsEnabled ?? true,
-              adminRoleId: savedSettings.adminRoleId || "",
-              supportRoleId: savedSettings.supportRoleId || "",
-              autoCloseEnabled: savedSettings.autoCloseEnabled ?? false,
-              autoCloseHours: savedSettings.autoCloseHours?.toString() || "48",
-              debugMode: savedSettings.debugMode ?? false
-            });
+          let bannedWordsStr = "";
+          if (savedSettings.bannedWords) {
+            try {
+              const parsed = JSON.parse(savedSettings.bannedWords);
+              bannedWordsStr = Array.isArray(parsed) ? parsed.join(", ") : "";
+            } catch {
+              bannedWordsStr = savedSettings.bannedWords;
+            }
           }
-        } catch (refreshError) {
-          console.error('Failed to refresh settings after save:', refreshError);
+          
+          setSettings({
+            botName: savedSettings.botName || "Ticket Bot",
+            botPrefix: savedSettings.botPrefix || "!",
+            discordServerId: savedSettings.serverId || "",
+            welcomeMessage: savedSettings.welcomeMessage || "Thank you for creating a ticket. Our support team will assist you shortly.",
+            notificationsEnabled: savedSettings.notificationsEnabled ?? true,
+            adminRoleId: savedSettings.adminRoleId || "",
+            supportRoleId: savedSettings.supportRoleId || "",
+            autoCloseEnabled: savedSettings.autoCloseEnabled ?? false,
+            autoCloseHours: savedSettings.autoCloseHours?.toString() || "48",
+            debugMode: savedSettings.debugMode ?? false,
+            autoModEnabled: savedSettings.autoModEnabled ?? false,
+            bannedWords: bannedWordsStr,
+            linkFilterEnabled: savedSettings.linkFilterEnabled ?? false,
+            spamFilterEnabled: savedSettings.spamFilterEnabled ?? false,
+            spamThreshold: savedSettings.spamThreshold ?? 5,
+            spamTimeWindow: savedSettings.spamTimeWindow ?? 5,
+            autoModAction: savedSettings.autoModAction || "warn",
+            starboardEnabled: savedSettings.starboardEnabled ?? false,
+            starboardChannelId: savedSettings.starboardChannelId || "",
+            starboardThreshold: savedSettings.starboardThreshold ?? 3,
+            starboardEmoji: savedSettings.starboardEmoji || "⭐",
+            xpEnabled: savedSettings.xpEnabled ?? false,
+            levelUpChannelId: savedSettings.levelUpChannelId || "",
+            levelUpMessage: savedSettings.levelUpMessage || "🎉 Congratulations {user}! You've reached level {level}!",
+            xpMinAmount: savedSettings.xpMinAmount ?? 15,
+            xpMaxAmount: savedSettings.xpMaxAmount ?? 25,
+            xpCooldownSeconds: savedSettings.xpCooldownSeconds ?? 60
+          });
         }
       } else {
-        // Parse error details from response
         let errorMessage = 'Failed to save settings';
         try {
           const errorData = await response.json();
@@ -245,42 +351,67 @@ export default function SlidingSettingsPanel({ isOpen, onClose }: SlidingSetting
     }
   };
 
-  const handleRefreshSettings = () => {
-    // Trigger reload of settings by resetting and loading again
-    if (user?.connectedServers && user.connectedServers.length > 0) {
-      const loadSettings = async () => {
-        try {
-          const firstServerId = user.connectedServers?.[0];
-          const response = await fetch(`/api/bot-settings/${firstServerId}`, {
-            credentials: 'include'
-          });
-          
-          if (response.ok) {
-            const botSettings = await response.json();
-            setSettings({
-              botName: botSettings.botName || "Ticket Bot",
-              botPrefix: botSettings.botPrefix || "!",
-              discordServerId: botSettings.serverId || "",
-              welcomeMessage: botSettings.welcomeMessage || "Thank you for creating a ticket. Our support team will assist you shortly.",
-              notificationsEnabled: botSettings.notificationsEnabled ?? true,
-              adminRoleId: botSettings.adminRoleId || "",
-              supportRoleId: botSettings.supportRoleId || "",
-              autoCloseEnabled: botSettings.autoCloseEnabled ?? false,
-              autoCloseHours: botSettings.autoCloseHours || "48",
-              debugMode: botSettings.debugMode ?? false
-            });
-            
-            toast({
-              title: 'Settings refreshed',
-              description: 'Bot settings have been refreshed from the server',
-            });
-          }
-        } catch (error) {
-          console.error("Failed to load bot settings:", error);
-        }
-      };
+  const handleRefreshSettings = async () => {
+    const serverId = getServerId();
+    if (!serverId) return;
+    
+    try {
+      const response = await fetch(`/api/servers/${serverId}/settings`, {
+        credentials: 'include'
+      });
       
-      loadSettings();
+      if (response.ok) {
+        const botSettings = await response.json();
+        
+        let bannedWordsStr = "";
+        if (botSettings.bannedWords) {
+          try {
+            const parsed = JSON.parse(botSettings.bannedWords);
+            bannedWordsStr = Array.isArray(parsed) ? parsed.join(", ") : "";
+          } catch {
+            bannedWordsStr = botSettings.bannedWords;
+          }
+        }
+        
+        setSettings({
+          botName: botSettings.botName || "Ticket Bot",
+          botPrefix: botSettings.botPrefix || "!",
+          discordServerId: botSettings.serverId || "",
+          welcomeMessage: botSettings.welcomeMessage || "Thank you for creating a ticket. Our support team will assist you shortly.",
+          notificationsEnabled: botSettings.notificationsEnabled ?? true,
+          adminRoleId: botSettings.adminRoleId || "",
+          supportRoleId: botSettings.supportRoleId || "",
+          autoCloseEnabled: botSettings.autoCloseEnabled ?? false,
+          autoCloseHours: botSettings.autoCloseHours?.toString() || "48",
+          debugMode: botSettings.debugMode ?? false,
+          autoModEnabled: botSettings.autoModEnabled ?? false,
+          bannedWords: bannedWordsStr,
+          linkFilterEnabled: botSettings.linkFilterEnabled ?? false,
+          spamFilterEnabled: botSettings.spamFilterEnabled ?? false,
+          spamThreshold: botSettings.spamThreshold ?? 5,
+          spamTimeWindow: botSettings.spamTimeWindow ?? 5,
+          autoModAction: botSettings.autoModAction || "warn",
+          starboardEnabled: botSettings.starboardEnabled ?? false,
+          starboardChannelId: botSettings.starboardChannelId || "",
+          starboardThreshold: botSettings.starboardThreshold ?? 3,
+          starboardEmoji: botSettings.starboardEmoji || "⭐",
+          xpEnabled: botSettings.xpEnabled ?? false,
+          levelUpChannelId: botSettings.levelUpChannelId || "",
+          levelUpMessage: botSettings.levelUpMessage || "🎉 Congratulations {user}! You've reached level {level}!",
+          xpMinAmount: botSettings.xpMinAmount ?? 15,
+          xpMaxAmount: botSettings.xpMaxAmount ?? 25,
+          xpCooldownSeconds: botSettings.xpCooldownSeconds ?? 60
+        });
+        
+        await loadChannels(serverId);
+        
+        toast({
+          title: 'Settings refreshed',
+          description: 'Bot settings have been refreshed from the server',
+        });
+      }
+    } catch (error) {
+      console.error("Failed to load bot settings:", error);
     }
   };
   
@@ -307,7 +438,6 @@ export default function SlidingSettingsPanel({ isOpen, onClose }: SlidingSetting
           </div>
         </SheetHeader>
 
-        {/* Role Context Information */}
         <div className="flex items-center space-x-3 mb-4">
           <div className="flex items-center space-x-2">
             <div className={`w-3 h-3 rounded-full ${isAdmin ? 'bg-yellow-500' : 'bg-blue-500'}`}></div>
@@ -323,7 +453,6 @@ export default function SlidingSettingsPanel({ isOpen, onClose }: SlidingSetting
           )}
         </div>
         
-        {/* Permission Explanation Card */}
         {!isAdmin && (
           <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6">
             <div className="flex items-start space-x-3">
@@ -343,14 +472,25 @@ export default function SlidingSettingsPanel({ isOpen, onClose }: SlidingSetting
         )}
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6">
+          <TabsList className="grid w-full grid-cols-7 mb-6">
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="discord">Discord</TabsTrigger>
             <TabsTrigger value="tickets">Tickets</TabsTrigger>
+            <TabsTrigger value="moderation" className="flex items-center gap-1">
+              <Gavel className="h-3 w-3" />
+              Moderation
+            </TabsTrigger>
+            <TabsTrigger value="starboard" className="flex items-center gap-1">
+              <Star className="h-3 w-3" />
+              Starboard
+            </TabsTrigger>
+            <TabsTrigger value="leveling" className="flex items-center gap-1">
+              <Award className="h-3 w-3" />
+              Leveling
+            </TabsTrigger>
             <TabsTrigger value="advanced">Advanced</TabsTrigger>
           </TabsList>
           
-          {/* General Settings Tab */}
           <TabsContent value="general">
             <Card>
               <CardHeader>
@@ -411,7 +551,6 @@ export default function SlidingSettingsPanel({ isOpen, onClose }: SlidingSetting
             </Card>
           </TabsContent>
           
-          {/* Discord Settings Tab */}
           <TabsContent value="discord">
             <Card>
               <CardHeader>
@@ -482,7 +621,6 @@ export default function SlidingSettingsPanel({ isOpen, onClose }: SlidingSetting
             </Card>
           </TabsContent>
           
-          {/* Tickets Settings Tab */}
           <TabsContent value="tickets">
             <Card>
               <CardHeader>
@@ -530,8 +668,350 @@ export default function SlidingSettingsPanel({ isOpen, onClose }: SlidingSetting
               </CardFooter>
             </Card>
           </TabsContent>
+
+          <TabsContent value="moderation">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Gavel className="h-5 w-5" />
+                  Auto Moderation
+                </CardTitle>
+                <CardDescription>Configure automatic moderation features to keep your server safe</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="autoModEnabled" className="text-base">Enable Auto Moderation</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Automatically moderate messages based on rules
+                    </p>
+                  </div>
+                  <Switch 
+                    id="autoModEnabled" 
+                    checked={settings.autoModEnabled}
+                    onCheckedChange={(checked) => handleChange("autoModEnabled", checked)}
+                  />
+                </div>
+
+                {settings.autoModEnabled && (
+                  <>
+                    <Separator />
+                    
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="linkFilterEnabled">Filter Links</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Block messages containing unauthorized links
+                          </p>
+                        </div>
+                        <Switch 
+                          id="linkFilterEnabled" 
+                          checked={settings.linkFilterEnabled}
+                          onCheckedChange={(checked) => handleChange("linkFilterEnabled", checked)}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="spamFilterEnabled">Anti-Spam Protection</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Detect and prevent message spam
+                          </p>
+                        </div>
+                        <Switch 
+                          id="spamFilterEnabled" 
+                          checked={settings.spamFilterEnabled}
+                          onCheckedChange={(checked) => handleChange("spamFilterEnabled", checked)}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="spamThreshold">Spam Threshold</Label>
+                          <Input 
+                            id="spamThreshold" 
+                            type="number"
+                            min={1}
+                            value={settings.spamThreshold} 
+                            onChange={(e) => handleChange("spamThreshold", parseInt(e.target.value) || 5)}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Number of messages to trigger
+                          </p>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="spamTimeWindow">Time Window (seconds)</Label>
+                          <Input 
+                            id="spamTimeWindow" 
+                            type="number"
+                            min={1}
+                            value={settings.spamTimeWindow} 
+                            onChange={(e) => handleChange("spamTimeWindow", parseInt(e.target.value) || 5)}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Within this time period
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="bannedWords">Banned Words</Label>
+                        <Textarea 
+                          id="bannedWords" 
+                          placeholder="word1, word2, phrase three, etc."
+                          value={settings.bannedWords} 
+                          onChange={(e) => handleChange("bannedWords", e.target.value)}
+                          className="min-h-[100px]"
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          Comma-separated list of words or phrases to block
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="autoModAction">Moderation Action</Label>
+                        <Select 
+                          value={settings.autoModAction} 
+                          onValueChange={(value) => handleChange("autoModAction", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select action" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="warn">Warn User</SelectItem>
+                            <SelectItem value="delete">Delete Message</SelectItem>
+                            <SelectItem value="timeout">Timeout User</SelectItem>
+                            <SelectItem value="kick">Kick User</SelectItem>
+                            <SelectItem value="ban">Ban User</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-sm text-muted-foreground">
+                          Action to take when a rule is violated
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+              <CardFooter>
+                <Button onClick={saveSettings} disabled={isLoading}>
+                  {isLoading ? "Saving..." : "Save Changes"}
+                </Button>
+              </CardFooter>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="starboard">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Star className="h-5 w-5" />
+                  Starboard
+                </CardTitle>
+                <CardDescription>Highlight popular messages by reposting them to a special channel</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="starboardEnabled" className="text-base">Enable Starboard</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Messages with enough reactions will be posted to the starboard channel
+                    </p>
+                  </div>
+                  <Switch 
+                    id="starboardEnabled" 
+                    checked={settings.starboardEnabled}
+                    onCheckedChange={(checked) => handleChange("starboardEnabled", checked)}
+                  />
+                </div>
+
+                {settings.starboardEnabled && (
+                  <>
+                    <Separator />
+                    
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="starboardChannelId">Starboard Channel</Label>
+                        <Select 
+                          value={settings.starboardChannelId} 
+                          onValueChange={(value) => handleChange("starboardChannelId", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a channel" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {channels.map((channel) => (
+                              <SelectItem key={channel.id} value={channel.id}>
+                                #{channel.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-sm text-muted-foreground">
+                          Channel where starred messages will be posted
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="starboardThreshold">Star Threshold</Label>
+                          <Input 
+                            id="starboardThreshold" 
+                            type="number"
+                            min={1}
+                            value={settings.starboardThreshold} 
+                            onChange={(e) => handleChange("starboardThreshold", parseInt(e.target.value) || 3)}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Reactions needed to post to starboard
+                          </p>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="starboardEmoji">Starboard Emoji</Label>
+                          <Input 
+                            id="starboardEmoji" 
+                            value={settings.starboardEmoji} 
+                            onChange={(e) => handleChange("starboardEmoji", e.target.value)}
+                            placeholder="⭐"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Emoji to track for starboard
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+              <CardFooter>
+                <Button onClick={saveSettings} disabled={isLoading}>
+                  {isLoading ? "Saving..." : "Save Changes"}
+                </Button>
+              </CardFooter>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="leveling">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Award className="h-5 w-5" />
+                  XP & Leveling
+                </CardTitle>
+                <CardDescription>Reward active members with XP and levels</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="xpEnabled" className="text-base">Enable XP & Leveling</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Members earn XP for chatting and level up over time
+                    </p>
+                  </div>
+                  <Switch 
+                    id="xpEnabled" 
+                    checked={settings.xpEnabled}
+                    onCheckedChange={(checked) => handleChange("xpEnabled", checked)}
+                  />
+                </div>
+
+                {settings.xpEnabled && (
+                  <>
+                    <Separator />
+                    
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="levelUpChannelId">Level Up Announcement Channel</Label>
+                        <Select 
+                          value={settings.levelUpChannelId} 
+                          onValueChange={(value) => handleChange("levelUpChannelId", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Same channel as message (default)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">Same channel as message</SelectItem>
+                            {channels.map((channel) => (
+                              <SelectItem key={channel.id} value={channel.id}>
+                                #{channel.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-sm text-muted-foreground">
+                          Where to announce level-ups (leave empty for same channel)
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="levelUpMessage">Level Up Message</Label>
+                        <Textarea 
+                          id="levelUpMessage" 
+                          value={settings.levelUpMessage} 
+                          onChange={(e) => handleChange("levelUpMessage", e.target.value)}
+                          placeholder="🎉 Congratulations {user}! You've reached level {level}!"
+                          className="min-h-[80px]"
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          Use {"{user}"} for username and {"{level}"} for the new level
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="xpMinAmount">Minimum XP per Message</Label>
+                          <Input 
+                            id="xpMinAmount" 
+                            type="number"
+                            min={1}
+                            value={settings.xpMinAmount} 
+                            onChange={(e) => handleChange("xpMinAmount", parseInt(e.target.value) || 15)}
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="xpMaxAmount">Maximum XP per Message</Label>
+                          <Input 
+                            id="xpMaxAmount" 
+                            type="number"
+                            min={1}
+                            value={settings.xpMaxAmount} 
+                            onChange={(e) => handleChange("xpMaxAmount", parseInt(e.target.value) || 25)}
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        XP awarded randomly between min and max values
+                      </p>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="xpCooldownSeconds">XP Cooldown (seconds)</Label>
+                        <Input 
+                          id="xpCooldownSeconds" 
+                          type="number"
+                          min={0}
+                          value={settings.xpCooldownSeconds} 
+                          onChange={(e) => handleChange("xpCooldownSeconds", parseInt(e.target.value) || 60)}
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          Minimum time between XP awards (prevents spam)
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+              <CardFooter>
+                <Button onClick={saveSettings} disabled={isLoading}>
+                  {isLoading ? "Saving..." : "Save Changes"}
+                </Button>
+              </CardFooter>
+            </Card>
+          </TabsContent>
           
-          {/* Advanced Settings Tab */}
           <TabsContent value="advanced">
             <Card>
               <CardHeader>
