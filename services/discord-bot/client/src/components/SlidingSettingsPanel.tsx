@@ -250,6 +250,7 @@ export default function SlidingSettingsPanel({ isOpen, onClose }: SlidingSetting
         autoModEnabled: settings.autoModEnabled,
         bannedWords: bannedWordsJson,
         linkFilterEnabled: settings.linkFilterEnabled,
+        spamFilterEnabled: settings.spamFilterEnabled,
         spamThreshold: settings.spamThreshold,
         spamTimeWindow: settings.spamTimeWindow,
         autoModAction: settings.autoModAction,
