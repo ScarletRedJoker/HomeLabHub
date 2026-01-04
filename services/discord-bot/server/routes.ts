@@ -3182,7 +3182,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const settings = await storage.getBotSettings(serverId);
-      res.json(settings || { serverId });
+      
+      // Check for spam automod rule to derive spamFilterEnabled
+      let spamFilterEnabled = false;
+      try {
+        const automodRules = await storage.getAutomodRules(serverId);
+        const spamRule = automodRules.find(r => r.ruleType === 'spam' && r.enabled);
+        spamFilterEnabled = !!spamRule;
+      } catch (e) {
+        // Ignore errors - just default to false
+      }
+      
+      // Default settings for new servers
+      const defaultSettings = {
+        serverId,
+        botName: "Ticket Bot",
+        botPrefix: "!",
+        welcomeMessage: "Thank you for creating a ticket. Our support team will assist you shortly.",
+        notificationsEnabled: true,
+        autoCloseEnabled: false,
+        autoCloseHours: "48",
+        debugMode: false,
+        autoModEnabled: false,
+        linkFilterEnabled: false,
+        spamThreshold: 5,
+        spamTimeWindow: 5,
+        autoModAction: "warn",
+        starboardEnabled: false,
+        starboardThreshold: 3,
+        starboardEmoji: "⭐",
+        xpEnabled: false,
+        xpMinAmount: 15,
+        xpMaxAmount: 25,
+        xpCooldownSeconds: 60
+      };
+      
+      res.json({ ...defaultSettings, ...(settings ?? {}), spamFilterEnabled, serverId });
     } catch (error) {
       console.error('Error fetching server settings:', error);
       res.status(500).json({ message: 'Failed to fetch server settings' });
@@ -3201,6 +3236,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Access denied to this server' });
       }
       
+      // Extract spamFilterEnabled from request body (handled separately via automod rules)
+      const { spamFilterEnabled, ...settingsData } = req.body;
+      
       // Check if settings exist
       const existingSettings = await storage.getBotSettings(serverId);
       
@@ -3208,18 +3246,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existingSettings) {
         // Update existing settings
         updatedSettings = await storage.updateBotSettings(serverId, {
-          ...req.body,
+          ...settingsData,
           serverId
         });
       } else {
         // Create new settings
         updatedSettings = await storage.createBotSettings({
           serverId,
-          ...req.body
+          ...settingsData
         });
       }
       
-      res.json(updatedSettings);
+      // Handle spam filter toggle via automod rules
+      if (typeof spamFilterEnabled === 'boolean') {
+        try {
+          const automodRules = await storage.getAutomodRules(serverId);
+          const existingSpamRule = automodRules.find(r => r.ruleType === 'spam');
+          
+          // Parse existing rule config for defaults
+          let existingConfig = { threshold: 5, timeWindow: 5 };
+          if (existingSpamRule?.config) {
+            try {
+              existingConfig = JSON.parse(existingSpamRule.config);
+            } catch (e) {}
+          }
+          
+          // Use submitted values if present, otherwise preserve existing or use defaults
+          const spamThreshold = settingsData.spamThreshold ?? existingSettings?.spamThreshold ?? existingConfig.threshold ?? 5;
+          const spamTimeWindow = settingsData.spamTimeWindow ?? existingSettings?.spamTimeWindow ?? existingConfig.timeWindow ?? 5;
+          
+          if (spamFilterEnabled && !existingSpamRule) {
+            // Create spam rule
+            await storage.createAutomodRule({
+              serverId,
+              name: 'Anti-Spam Protection',
+              ruleType: 'spam',
+              enabled: true,
+              action: settingsData.autoModAction || 'mute',
+              config: JSON.stringify({
+                threshold: spamThreshold,
+                timeWindow: spamTimeWindow
+              })
+            });
+          } else if (existingSpamRule) {
+            // Update existing spam rule, preserving config when values not provided
+            await storage.updateAutomodRule(existingSpamRule.id, {
+              enabled: spamFilterEnabled,
+              action: settingsData.autoModAction || existingSpamRule.action,
+              config: JSON.stringify({
+                threshold: spamThreshold,
+                timeWindow: spamTimeWindow
+              })
+            });
+          }
+        } catch (e) {
+          console.error('Error updating spam automod rule:', e);
+          // Don't fail the request - spam rule is secondary to settings
+        }
+      }
+      
+      // Re-derive spamFilterEnabled from stored data for accurate response
+      let actualSpamFilterEnabled = false;
+      try {
+        const automodRules = await storage.getAutomodRules(serverId);
+        const spamRule = automodRules.find(r => r.ruleType === 'spam' && r.enabled);
+        actualSpamFilterEnabled = !!spamRule;
+      } catch (e) {
+        // Fall back to input value
+        actualSpamFilterEnabled = !!spamFilterEnabled;
+      }
+      
+      res.json({ ...updatedSettings, spamFilterEnabled: actualSpamFilterEnabled });
     } catch (error) {
       console.error('Error updating server settings:', error);
       res.status(500).json({ message: 'Failed to update server settings' });
