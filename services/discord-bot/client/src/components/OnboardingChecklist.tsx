@@ -96,9 +96,11 @@ export default function OnboardingChecklist({ onNavigateToTab }: OnboardingCheck
     setIsDismissed(true);
   };
 
-  const handleConfigureFeature = (tab: string) => {
+  const handleConfigureFeature = (featureId: string, fallbackTab: string) => {
     if (onNavigateToTab) {
-      onNavigateToTab(tab);
+      // Use featureId for consistent navigation mapping in DashboardShell
+      // Falls back to tab value if featureId is not recognized
+      onNavigateToTab(featureId || fallbackTab);
     }
   };
 
@@ -272,7 +274,7 @@ export default function OnboardingChecklist({ onNavigateToTab }: OnboardingCheck
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleConfigureFeature(feature.tab)}
+                          onClick={() => handleConfigureFeature(feature.id, feature.tab)}
                           className="border-discord-blue text-discord-blue hover:bg-discord-blue hover:text-white h-8 text-xs"
                         >
                           Configure

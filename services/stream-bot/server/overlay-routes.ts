@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { requireAuth } from "./auth/middleware";
 import { createOverlayToken, verifyOverlayToken } from "./crypto-utils";
 import { spotifyServiceMultiUser } from "./spotify-service-multiuser";
@@ -6,6 +6,17 @@ import { youtubeServiceMultiUser } from "./youtube-service-multiuser";
 import { storage } from "./storage";
 
 const router = Router();
+
+// OBS-compatible headers middleware
+function setOBSHeaders(req: Request, res: Response, next: NextFunction) {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.header('Pragma', 'no-cache');
+  res.header('Expires', '0');
+  next();
+}
 
 // Rate limiting cache (simple in-memory)
 const rateLimitCache = new Map<string, { count: number; resetAt: number }>();
@@ -90,7 +101,7 @@ router.post('/generate-token', requireAuth, async (req, res) => {
  * Get overlay data (used by overlay page)
  * GET /api/overlay/:platform/data
  */
-router.get('/:platform/data', async (req, res) => {
+router.get('/:platform/data', setOBSHeaders, async (req, res) => {
   const { platform } = req.params;
   const { token } = req.query;
 
@@ -136,6 +147,242 @@ router.get('/:platform/data', async (req, res) => {
     console.error(`[Overlay] Error fetching ${platform} data:`, error.message);
     res.status(500).json({ error: 'Failed to fetch overlay data' });
   }
+});
+
+/**
+ * Standalone OBS-friendly Spotify overlay
+ * GET /api/overlay/spotify/obs
+ * Returns a self-contained HTML page with inline CSS that works in OBS browser sources
+ */
+router.get('/spotify/obs', setOBSHeaders, async (req, res) => {
+  const { token } = req.query;
+  
+  if (!token || typeof token !== 'string') {
+    return res.status(400).send(`
+      <!DOCTYPE html>
+      <html><head><title>OBS Overlay Error</title></head>
+      <body style="background:transparent;color:#ff4444;font-family:sans-serif;padding:20px;">
+        <h2>Missing Token</h2>
+        <p>Please generate an overlay URL from your dashboard settings.</p>
+      </body></html>
+    `);
+  }
+
+  try {
+    verifyOverlayToken(token);
+  } catch (error: any) {
+    return res.status(401).send(`
+      <!DOCTYPE html>
+      <html><head><title>OBS Overlay Error</title></head>
+      <body style="background:transparent;color:#ff4444;font-family:sans-serif;padding:20px;">
+        <h2>Invalid or Expired Token</h2>
+        <p>${error.message}</p>
+        <p>Please generate a new overlay URL from your dashboard.</p>
+      </body></html>
+    `);
+  }
+
+  const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
+  const host = req.get('host') || 'localhost:3000';
+  const baseUrl = `${protocol}://${host}`;
+  const apiUrl = `${baseUrl}/api/overlay/spotify/data?token=${encodeURIComponent(token)}`;
+
+  res.type('html').send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Spotify Now Playing - OBS</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: transparent; 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      overflow: hidden;
+    }
+    .container {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-start;
+      padding: 24px;
+    }
+    .card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(12px);
+      border: 2px solid rgba(30, 215, 96, 0.5);
+      border-radius: 12px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      max-width: 420px;
+      opacity: 0;
+      transform: translateY(20px) scale(0.95);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+    .card.visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    .card.hidden {
+      opacity: 0;
+      transform: translateY(20px) scale(0.95);
+    }
+    .album-art {
+      flex-shrink: 0;
+      width: 80px;
+      height: 80px;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+      object-fit: cover;
+    }
+    .info {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .spotify-icon {
+      width: 20px;
+      height: 20px;
+      fill: #1DB954;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #1DB954;
+    }
+    .title {
+      font-size: 18px;
+      font-weight: 700;
+      color: white;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+    .artist {
+      font-size: 14px;
+      color: #b3b3b3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .progress-container {
+      margin-top: 10px;
+      height: 4px;
+      background: #404040;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      background: #1DB954;
+      transition: width 1s linear;
+      border-radius: 2px;
+    }
+    .error {
+      padding: 20px;
+      background: rgba(255, 68, 68, 0.9);
+      border-radius: 8px;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="overlay" class="card hidden">
+      <img id="albumArt" class="album-art" src="" alt="Album Art">
+      <div class="info">
+        <div class="header">
+          <svg class="spotify-icon" viewBox="0 0 24 24">
+            <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+          </svg>
+          <span class="label">Now Playing</span>
+        </div>
+        <div id="title" class="title"></div>
+        <div id="artist" class="artist"></div>
+        <div class="progress-container">
+          <div id="progress" class="progress-bar" style="width: 0%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "${apiUrl}";
+    const overlay = document.getElementById('overlay');
+    const albumArt = document.getElementById('albumArt');
+    const title = document.getElementById('title');
+    const artist = document.getElementById('artist');
+    const progress = document.getElementById('progress');
+    
+    let lastIsPlaying = false;
+    let lastTitle = '';
+
+    async function fetchNowPlaying() {
+      try {
+        const response = await fetch(API_URL, {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' }
+        });
+        
+        if (!response.ok) {
+          console.error('API error:', response.status);
+          return;
+        }
+        
+        const data = await response.json();
+        
+        if (data.isPlaying && data.title) {
+          if (!lastIsPlaying || lastTitle !== data.title) {
+            albumArt.src = data.albumImageUrl || '';
+            title.textContent = data.title || '';
+            artist.textContent = data.artist || '';
+          }
+          
+          if (data.progressPercent !== undefined) {
+            progress.style.width = data.progressPercent + '%';
+          }
+          
+          overlay.classList.remove('hidden');
+          overlay.classList.add('visible');
+          lastIsPlaying = true;
+          lastTitle = data.title;
+        } else {
+          overlay.classList.remove('visible');
+          overlay.classList.add('hidden');
+          lastIsPlaying = false;
+          lastTitle = '';
+        }
+      } catch (error) {
+        console.error('Fetch error:', error);
+      }
+    }
+
+    fetchNowPlaying();
+    setInterval(fetchNowPlaying, 5000);
+  </script>
+</body>
+</html>`);
 });
 
 /**

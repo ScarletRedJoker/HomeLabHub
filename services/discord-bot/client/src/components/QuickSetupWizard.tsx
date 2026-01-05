@@ -25,8 +25,10 @@ import {
   Ticket,
   Loader2,
   Sparkles,
-  PartyPopper
+  PartyPopper,
+  HelpCircle
 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface QuickSetupWizardProps {
   serverId: string;
@@ -267,56 +269,27 @@ export default function QuickSetupWizard({
               </div>
             )}
 
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-white">Welcome Channel</Label>
-                <Select 
-                  value={channels.welcomeChannelId} 
-                  onValueChange={(v) => setChannels(prev => ({ ...prev, welcomeChannelId: v }))}
-                >
-                  <SelectTrigger className="bg-discord-dark border-discord-dark text-white">
-                    <SelectValue placeholder="Select welcome channel..." />
-                  </SelectTrigger>
-                  <SelectContent className="bg-discord-dark border-discord-dark">
-                    <SelectItem value="none" className="text-discord-muted">None (configure later)</SelectItem>
-                    {textChannels.map((channel) => (
-                      <SelectItem key={channel.id} value={channel.id} className="text-white">
-                        #{channel.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-white">Log Channel</Label>
-                <Select 
-                  value={channels.logChannelId} 
-                  onValueChange={(v) => setChannels(prev => ({ ...prev, logChannelId: v }))}
-                >
-                  <SelectTrigger className="bg-discord-dark border-discord-dark text-white">
-                    <SelectValue placeholder="Select log channel..." />
-                  </SelectTrigger>
-                  <SelectContent className="bg-discord-dark border-discord-dark">
-                    <SelectItem value="none" className="text-discord-muted">None (configure later)</SelectItem>
-                    {textChannels.map((channel) => (
-                      <SelectItem key={channel.id} value={channel.id} className="text-white">
-                        #{channel.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {selectedTemplate === 'gaming' && (
+            <TooltipProvider delayDuration={200}>
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label className="text-white">Starboard Channel</Label>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-white">Welcome Channel</Label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="h-4 w-4 text-discord-muted hover:text-discord-text cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-xs bg-discord-dark border-discord-muted text-white">
+                        <p>Where new member greetings and goodbye messages are sent. Choose a public channel that all members can see.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <p className="text-xs text-discord-muted">Greets new members and announces when members leave</p>
                   <Select 
-                    value={channels.starboardChannelId} 
-                    onValueChange={(v) => setChannels(prev => ({ ...prev, starboardChannelId: v }))}
+                    value={channels.welcomeChannelId} 
+                    onValueChange={(v) => setChannels(prev => ({ ...prev, welcomeChannelId: v }))}
                   >
                     <SelectTrigger className="bg-discord-dark border-discord-dark text-white">
-                      <SelectValue placeholder="Select starboard channel..." />
+                      <SelectValue placeholder="Select welcome channel..." />
                     </SelectTrigger>
                     <SelectContent className="bg-discord-dark border-discord-dark">
                       <SelectItem value="none" className="text-discord-muted">None (configure later)</SelectItem>
@@ -328,28 +301,103 @@ export default function QuickSetupWizard({
                     </SelectContent>
                   </Select>
                 </div>
-              )}
 
-              <div className="space-y-2">
-                <Label className="text-white">General Channel</Label>
-                <Select 
-                  value={channels.generalChannelId} 
-                  onValueChange={(v) => setChannels(prev => ({ ...prev, generalChannelId: v }))}
-                >
-                  <SelectTrigger className="bg-discord-dark border-discord-dark text-white">
-                    <SelectValue placeholder="Select general channel..." />
-                  </SelectTrigger>
-                  <SelectContent className="bg-discord-dark border-discord-dark">
-                    <SelectItem value="none" className="text-discord-muted">None (configure later)</SelectItem>
-                    {textChannels.map((channel) => (
-                      <SelectItem key={channel.id} value={channel.id} className="text-white">
-                        #{channel.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-white">Log Channel</Label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="h-4 w-4 text-discord-muted hover:text-discord-text cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-xs bg-discord-dark border-discord-muted text-white">
+                        <p>Where moderation actions and bot activity logs are recorded. Best to use a staff-only channel for privacy.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <p className="text-xs text-discord-muted">Records moderation actions and bot activity (staff-only recommended)</p>
+                  <Select 
+                    value={channels.logChannelId} 
+                    onValueChange={(v) => setChannels(prev => ({ ...prev, logChannelId: v }))}
+                  >
+                    <SelectTrigger className="bg-discord-dark border-discord-dark text-white">
+                      <SelectValue placeholder="Select log channel..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-discord-dark border-discord-dark">
+                      <SelectItem value="none" className="text-discord-muted">None (configure later)</SelectItem>
+                      {textChannels.map((channel) => (
+                        <SelectItem key={channel.id} value={channel.id} className="text-white">
+                          #{channel.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {selectedTemplate === 'gaming' && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-white">Starboard Channel</Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-4 w-4 text-discord-muted hover:text-discord-text cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="max-w-xs bg-discord-dark border-discord-muted text-white">
+                          <p>Messages with enough star reactions get reposted here. Great for highlighting the best community moments!</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <p className="text-xs text-discord-muted">Showcases popular messages that receive enough star reactions</p>
+                    <Select 
+                      value={channels.starboardChannelId} 
+                      onValueChange={(v) => setChannels(prev => ({ ...prev, starboardChannelId: v }))}
+                    >
+                      <SelectTrigger className="bg-discord-dark border-discord-dark text-white">
+                        <SelectValue placeholder="Select starboard channel..." />
+                      </SelectTrigger>
+                      <SelectContent className="bg-discord-dark border-discord-dark">
+                        <SelectItem value="none" className="text-discord-muted">None (configure later)</SelectItem>
+                        {textChannels.map((channel) => (
+                          <SelectItem key={channel.id} value={channel.id} className="text-white">
+                            #{channel.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-white">General Channel</Label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="h-4 w-4 text-discord-muted hover:text-discord-text cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-xs bg-discord-dark border-discord-muted text-white">
+                        <p>The main chat channel where level-up announcements and general bot notifications appear.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <p className="text-xs text-discord-muted">Main channel for level-up announcements and general notifications</p>
+                  <Select 
+                    value={channels.generalChannelId} 
+                    onValueChange={(v) => setChannels(prev => ({ ...prev, generalChannelId: v }))}
+                  >
+                    <SelectTrigger className="bg-discord-dark border-discord-dark text-white">
+                      <SelectValue placeholder="Select general channel..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-discord-dark border-discord-dark">
+                      <SelectItem value="none" className="text-discord-muted">None (configure later)</SelectItem>
+                      {textChannels.map((channel) => (
+                        <SelectItem key={channel.id} value={channel.id} className="text-white">
+                          #{channel.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            </div>
+            </TooltipProvider>
           </div>
         );
 

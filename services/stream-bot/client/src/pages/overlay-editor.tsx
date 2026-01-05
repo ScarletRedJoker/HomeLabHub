@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { InfoBanner, StepGuide } from "@/components/HelpTooltip";
 import { 
   Monitor, 
   Smartphone, 
@@ -23,7 +24,8 @@ import {
   Square,
   RotateCcw,
   Save,
-  Download
+  Download,
+  HelpCircle
 } from "lucide-react";
 
 type AspectRatio = "16:9" | "4:3" | "1:1" | "9:16";
@@ -254,6 +256,17 @@ export default function OverlayEditor() {
     }
   };
 
+  const [showOBSGuide, setShowOBSGuide] = useState(false);
+
+  const obsSetupSteps = [
+    { number: 1, title: "Open OBS Studio", description: "Launch OBS on your computer" },
+    { number: 2, title: "Add Browser Source", description: "Right-click in Sources → Add → Browser" },
+    { number: 3, title: "Name Your Source", description: "Give it a name like 'StreamBot Overlay'" },
+    { number: 4, title: "Paste Overlay URL", description: "Click 'Save' above to get your overlay URL, then paste it in OBS" },
+    { number: 5, title: "Set Dimensions", description: "Width: 1920, Height: 1080 (or your stream resolution)" },
+    { number: 6, title: "Done!", description: "Your overlay will update automatically" },
+  ];
+
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -262,6 +275,10 @@ export default function OverlayEditor() {
           <p className="text-sm text-muted-foreground">Design and position your stream overlays</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={() => setShowOBSGuide(!showOBSGuide)}>
+            <HelpCircle className="h-4 w-4 mr-1" />
+            <span className="hidden sm:inline">OBS Setup</span>
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setPreviewMode(!previewMode)}>
             {previewMode ? <EyeOff className="h-4 w-4 mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
             <span className="hidden sm:inline">{previewMode ? "Edit" : "Preview"}</span>
@@ -276,6 +293,31 @@ export default function OverlayEditor() {
           </Button>
         </div>
       </div>
+
+      {showOBSGuide && (
+        <Card className="candy-glass-card border-blue-500/30 bg-blue-500/5">
+          <CardHeader className="p-4 pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Monitor className="h-5 w-5 text-blue-500" />
+                How to Add This Overlay to OBS
+              </CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => setShowOBSGuide(false)}>×</Button>
+            </div>
+            <CardDescription className="text-xs">
+              Follow these steps to display your custom overlay on your stream
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-4 pt-2">
+            <StepGuide steps={obsSetupSteps} />
+            <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                💡 <strong>Pro tip:</strong> After saving, you'll get a URL. Copy it and paste into OBS Browser Source. The overlay updates in real-time whenever you make changes here!
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
         <div className="lg:col-span-3 space-y-4">

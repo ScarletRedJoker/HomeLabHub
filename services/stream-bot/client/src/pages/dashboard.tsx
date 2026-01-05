@@ -4,6 +4,8 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { PlatformCard } from "@/components/platform-card";
 import { ConnectPlatformDialog } from "@/components/connect-platform-dialog";
+import { GettingStartedChecklist } from "@/components/GettingStartedChecklist";
+import { HelpTooltip } from "@/components/HelpTooltip";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -291,6 +293,9 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Getting Started Checklist */}
+      <GettingStartedChecklist />
+
       {/* Token Health Warning */}
       {tokenHealth?.anyNeedsReauth && (
         <Card className="border-orange-500/50 bg-orange-500/10">
@@ -379,11 +384,15 @@ export default function Dashboard() {
             <CardTitle className="text-base sm:text-lg flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-candy-yellow" />
               Bot Status
+              <HelpTooltip content="Overview of your bot's current status and activity. Green badge means the bot is actively running." />
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 sm:p-6 pt-2 space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Status</span>
+              <span className="text-sm text-muted-foreground flex items-center gap-1">
+                Status
+                <HelpTooltip content="Whether the bot is currently active. Active bots can post facts and respond to commands." />
+              </span>
               {settings?.isActive ? (
                 <Badge className="candy-badge-green">
                   <div className="h-2 w-2 rounded-full bg-white mr-1.5 animate-pulse" />
@@ -397,15 +406,24 @@ export default function Dashboard() {
               )}
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Platforms</span>
+              <span className="text-sm text-muted-foreground flex items-center gap-1">
+                Platforms
+                <HelpTooltip content="Number of streaming platforms connected (Twitch, YouTube, Kick). Connect more platforms to reach more viewers!" />
+              </span>
               <span className="font-semibold">{stats?.activePlatforms ?? 0}/3</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Facts Posted</span>
+              <span className="text-sm text-muted-foreground flex items-center gap-1">
+                Facts Posted
+                <HelpTooltip content="Total number of AI-generated facts posted to your chat across all platforms." />
+              </span>
               <span className="font-semibold">{stats?.totalMessages ?? 0}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">This Week</span>
+              <span className="text-sm text-muted-foreground flex items-center gap-1">
+                This Week
+                <HelpTooltip content="Facts posted in the last 7 days. Keep your chat engaged with regular content!" />
+              </span>
               <span className="font-semibold">{stats?.messagesThisWeek ?? 0}</span>
             </div>
           </CardContent>

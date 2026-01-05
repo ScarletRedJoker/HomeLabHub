@@ -266,34 +266,44 @@ export function OnboardingWizard() {
                         </div>
                       </div>
                     ) : (
-                      <p className="text-xs sm:text-sm text-muted-foreground mb-2">
-                        Choose a platform:
-                      </p>
+                      <div className="space-y-2">
+                        <p className="text-xs sm:text-sm text-muted-foreground">
+                          Click on the platform you stream on. You'll need your channel username to connect.
+                        </p>
+                        <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                          <p className="text-[10px] sm:text-xs text-amber-700 dark:text-amber-300">
+                            💡 <strong>Tip:</strong> You can connect multiple platforms later. Just pick your main one for now!
+                          </p>
+                        </div>
+                      </div>
                     )}
                     <div className="grid grid-cols-3 gap-2 sm:gap-3">
                       <Button
                         variant="outline"
-                        className="h-auto flex-col gap-1.5 sm:gap-2 py-3 sm:py-4 candy-touch-target"
+                        className="h-auto flex-col gap-1.5 sm:gap-2 py-3 sm:py-4 candy-touch-target hover:border-purple-500/50 hover:bg-purple-500/10"
                         onClick={() => handleConnectPlatform("twitch")}
                       >
                         <SiTwitch className="h-6 w-6 sm:h-8 sm:w-8 text-purple-500" />
                         <span className="text-xs sm:text-sm">Twitch</span>
+                        <span className="text-[9px] text-muted-foreground">Most popular</span>
                       </Button>
                       <Button
                         variant="outline"
-                        className="h-auto flex-col gap-1.5 sm:gap-2 py-3 sm:py-4 candy-touch-target"
+                        className="h-auto flex-col gap-1.5 sm:gap-2 py-3 sm:py-4 candy-touch-target hover:border-red-500/50 hover:bg-red-500/10"
                         onClick={() => handleConnectPlatform("youtube")}
                       >
                         <SiYoutube className="h-6 w-6 sm:h-8 sm:w-8 text-red-500" />
                         <span className="text-xs sm:text-sm">YouTube</span>
+                        <span className="text-[9px] text-muted-foreground">Live streams</span>
                       </Button>
                       <Button
                         variant="outline"
-                        className="h-auto flex-col gap-1.5 sm:gap-2 py-3 sm:py-4 candy-touch-target"
+                        className="h-auto flex-col gap-1.5 sm:gap-2 py-3 sm:py-4 candy-touch-target hover:border-green-500/50 hover:bg-green-500/10"
                         onClick={() => handleConnectPlatform("kick")}
                       >
                         <SiKick className="h-6 w-6 sm:h-8 sm:w-8 text-green-500" />
                         <span className="text-xs sm:text-sm">Kick</span>
+                        <span className="text-[9px] text-muted-foreground">Growing fast</span>
                       </Button>
                     </div>
                   </div>
@@ -303,15 +313,36 @@ export function OnboardingWizard() {
                 {currentStep === 2 && (
                   <div className="space-y-3 sm:space-y-4 pt-1 sm:pt-2">
                     <p className="text-xs sm:text-sm">
-                      We'll set your bot to <strong>Manual Mode</strong>. You control when facts post!
+                      We'll start with <strong>Manual Mode</strong> so you can test everything first.
                     </p>
-                    <div className="bg-muted/50 rounded-lg p-3 sm:p-4 space-y-1.5 sm:space-y-2">
+                    <div className="bg-muted/50 rounded-lg p-3 sm:p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-xs sm:text-sm font-medium">Bot Mode</span>
-                        <Badge className="text-xs">Manual</Badge>
+                        <Badge className="text-xs bg-primary/20 text-primary">Manual</Badge>
                       </div>
-                      <p className="text-[10px] sm:text-xs text-muted-foreground">
-                        Use Quick Trigger to post facts
+                      <div className="space-y-2">
+                        <p className="text-[10px] sm:text-xs text-muted-foreground">
+                          What this means:
+                        </p>
+                        <ul className="text-[10px] sm:text-xs text-muted-foreground space-y-1">
+                          <li className="flex items-start gap-2">
+                            <Check className="h-3 w-3 text-green-500 mt-0.5 flex-shrink-0" />
+                            <span>You click a button to post facts to chat</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <Check className="h-3 w-3 text-green-500 mt-0.5 flex-shrink-0" />
+                            <span>No automatic posting until you turn it on</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <Check className="h-3 w-3 text-green-500 mt-0.5 flex-shrink-0" />
+                            <span>You can change to automatic later in Settings</span>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                    <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                      <p className="text-[10px] sm:text-xs text-blue-700 dark:text-blue-300">
+                        💡 <strong>Pro tip:</strong> Start with manual mode to see how the bot works, then switch to automatic once you're comfortable!
                       </p>
                     </div>
                   </div>
@@ -321,61 +352,90 @@ export function OnboardingWizard() {
                 {currentStep === 3 && (
                   <div className="space-y-3 sm:space-y-4 pt-1 sm:pt-2">
                     <p className="text-xs sm:text-sm">
-                      Ready to post your first AI-generated fact?
+                      Let's test everything by posting your first AI-generated fact!
                     </p>
+                    <div className="bg-muted/50 rounded-lg p-3 sm:p-4 space-y-2">
+                      <p className="text-[10px] sm:text-xs text-muted-foreground">
+                        🤖 When you click the button below:
+                      </p>
+                      <ol className="text-[10px] sm:text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+                        <li>AI will generate a fun, random fact</li>
+                        <li>The fact will be posted to your connected platform(s)</li>
+                        <li>Your viewers will see it in chat!</li>
+                      </ol>
+                    </div>
                     <Button
                       onClick={() => postFirstFactMutation.mutate()}
                       disabled={postFirstFactMutation.isPending}
-                      className="w-full candy-button border-0 h-10 sm:h-11"
+                      className="w-full candy-button border-0 h-12 sm:h-11 candy-glow"
                       size="lg"
                     >
                       {postFirstFactMutation.isPending ? (
                         <>
                           <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
-                          <span className="text-sm">Generating...</span>
+                          <span className="text-sm">Generating & Posting...</span>
                         </>
                       ) : (
                         <>
-                          <Zap className="h-4 w-4 mr-2" />
-                          <span className="text-sm">Post My First Fact!</span>
+                          <Zap className="h-5 w-5 mr-2" />
+                          <span className="text-sm font-medium">Post My First Fact!</span>
                         </>
                       )}
                     </Button>
+                    <p className="text-[10px] text-center text-muted-foreground">
+                      Make sure you're live or have chat open to see it!
+                    </p>
                   </div>
                 )}
 
                 {/* Step 4: Enable Features */}
                 {currentStep === 4 && (
                   <div className="space-y-3 sm:space-y-4 pt-1 sm:pt-2">
-                    <p className="text-xs sm:text-sm">
-                      You're all set! Explore more features from the sidebar.
+                    <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                      <p className="text-xs sm:text-sm text-green-700 dark:text-green-300 font-medium">
+                        🎉 Awesome! You've completed the setup!
+                      </p>
+                    </div>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Here are some powerful features you can explore next:
                     </p>
                     <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                      <div className="bg-muted/50 rounded-lg p-2.5 sm:p-3 space-y-0.5 sm:space-y-1">
-                        <div className="text-xs sm:text-sm font-medium">Commands</div>
+                      <div className="bg-muted/50 rounded-lg p-2.5 sm:p-3 space-y-0.5 sm:space-y-1 hover:bg-muted transition-colors cursor-pointer">
+                        <div className="text-xs sm:text-sm font-medium flex items-center gap-1">
+                          💬 Commands
+                        </div>
                         <div className="text-[10px] sm:text-xs text-muted-foreground">
-                          Custom chat commands
+                          Create !commands for chat
                         </div>
                       </div>
-                      <div className="bg-muted/50 rounded-lg p-2.5 sm:p-3 space-y-0.5 sm:space-y-1">
-                        <div className="text-xs sm:text-sm font-medium">Giveaways</div>
+                      <div className="bg-muted/50 rounded-lg p-2.5 sm:p-3 space-y-0.5 sm:space-y-1 hover:bg-muted transition-colors cursor-pointer">
+                        <div className="text-xs sm:text-sm font-medium flex items-center gap-1">
+                          🎁 Giveaways
+                        </div>
                         <div className="text-[10px] sm:text-xs text-muted-foreground">
-                          Run viewer raffles
+                          Run raffles for viewers
                         </div>
                       </div>
-                      <div className="bg-muted/50 rounded-lg p-2.5 sm:p-3 space-y-0.5 sm:space-y-1">
-                        <div className="text-xs sm:text-sm font-medium">Currency</div>
+                      <div className="bg-muted/50 rounded-lg p-2.5 sm:p-3 space-y-0.5 sm:space-y-1 hover:bg-muted transition-colors cursor-pointer">
+                        <div className="text-xs sm:text-sm font-medium flex items-center gap-1">
+                          🎨 Overlays
+                        </div>
                         <div className="text-[10px] sm:text-xs text-muted-foreground">
-                          Points system
+                          Design OBS overlays
                         </div>
                       </div>
-                      <div className="bg-muted/50 rounded-lg p-2.5 sm:p-3 space-y-0.5 sm:space-y-1">
-                        <div className="text-xs sm:text-sm font-medium">AI Chatbot</div>
+                      <div className="bg-muted/50 rounded-lg p-2.5 sm:p-3 space-y-0.5 sm:space-y-1 hover:bg-muted transition-colors cursor-pointer">
+                        <div className="text-xs sm:text-sm font-medium flex items-center gap-1">
+                          🤖 AI Chatbot
+                        </div>
                         <div className="text-[10px] sm:text-xs text-muted-foreground">
-                          AI responses
+                          Auto-respond to chat
                         </div>
                       </div>
                     </div>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground text-center pt-2">
+                      Find all features in the sidebar menu →
+                    </p>
                   </div>
                 )}
               </CardContent>

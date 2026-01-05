@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { InfoBanner, HelpTooltip } from "@/components/HelpTooltip";
 import {
   Select,
   SelectContent,
@@ -35,7 +36,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Eye, EyeOff, Radio, Settings2, ExternalLink } from "lucide-react";
+import { Loader2, Plus, Trash2, Eye, EyeOff, Radio, Settings2, ExternalLink, HelpCircle } from "lucide-react";
 import { SiTwitch, SiYoutube, SiKick, SiFacebook } from "react-icons/si";
 
 interface RestreamDestination {
@@ -262,7 +263,10 @@ export default function Restream() {
               )}
 
               <div className="space-y-2">
-                <Label>RTMP URL</Label>
+                <Label className="flex items-center gap-1">
+                  RTMP URL
+                  <HelpTooltip content="The RTMP server address for the platform. This is provided by the streaming platform and looks like rtmp://live.twitch.tv/app or similar." />
+                </Label>
                 <Input
                   placeholder="rtmp://..."
                   value={newDestination.rtmpUrl}
@@ -273,7 +277,10 @@ export default function Restream() {
               </div>
 
               <div className="space-y-2">
-                <Label>Stream Key</Label>
+                <Label className="flex items-center gap-1">
+                  Stream Key
+                  <HelpTooltip content="Your unique streaming password from the platform. Find it in: Twitch → Creator Dashboard → Settings → Stream. YouTube → YouTube Studio → Go Live → Stream Key. Never share this key!" />
+                </Label>
                 <Input
                   type="password"
                   placeholder="Your stream key"
@@ -283,7 +290,7 @@ export default function Restream() {
                   }
                 />
                 <p className="text-xs text-muted-foreground">
-                  Your stream key is stored securely and never shared
+                  🔒 Your stream key is stored securely and never shared
                 </p>
               </div>
 
@@ -345,14 +352,27 @@ export default function Restream() {
         </Dialog>
       </div>
 
+      <InfoBanner
+        title="What is Restreaming?"
+        description="Restreaming lets you broadcast to multiple platforms (Twitch, YouTube, Kick) at the same time from a single stream. You'll need your RTMP URL and Stream Key from each platform you want to stream to."
+        variant="info"
+      >
+        <div className="mt-2 p-2 rounded bg-background/50">
+          <p className="text-xs font-medium mb-1">🔑 What is an RTMP Key / Stream Key?</p>
+          <p className="text-[10px] opacity-80">
+            A Stream Key is like a password that lets your streaming software (OBS) connect to a platform. 
+            You can find it in your platform's streaming settings. <strong>Never share your stream key!</strong>
+          </p>
+        </div>
+      </InfoBanner>
+
       {destinations?.length === 0 ? (
         <Card className="candy-glass-card">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Radio className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No Destinations Configured</h3>
             <p className="text-sm text-muted-foreground text-center max-w-sm mb-4">
-              Add streaming destinations to start multi-platform streaming. Configure RTMP
-              endpoints for Twitch, YouTube, Kick, and more.
+              Add streaming destinations to start multi-platform streaming. You'll need your RTMP URL and Stream Key from each platform.
             </p>
             <Button onClick={() => setShowAddDialog(true)}>
               <Plus className="h-4 w-4 mr-2" />

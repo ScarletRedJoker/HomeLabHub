@@ -9,7 +9,8 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Save, RefreshCw, Check, X, AlertCircle, Gamepad2 } from "lucide-react";
+import { InfoBanner, HelpTooltip } from "@/components/HelpTooltip";
+import { Loader2, Save, RefreshCw, Check, X, AlertCircle, Gamepad2, Info } from "lucide-react";
 import { SiTwitch, SiYoutube, SiKick } from "react-icons/si";
 
 interface StreamInfo {
@@ -231,6 +232,12 @@ export default function StreamInfo() {
         </Button>
       </div>
 
+      <InfoBanner
+        title="How to use Stream Info Editor"
+        description="Update your stream title, category, and tags all at once across multiple platforms. Changes apply immediately when you click 'Apply'. This is much faster than updating each platform separately!"
+        variant="info"
+      />
+
       <Card className="candy-glass-card">
         <CardHeader className="p-4 sm:p-6 pb-2 sm:pb-4">
           <CardTitle className="text-base sm:text-lg">Current Stream Info</CardTitle>
@@ -317,7 +324,10 @@ export default function StreamInfo() {
         <CardContent className="p-4 sm:p-6 pt-0 space-y-4">
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="title">Stream Title</Label>
+              <Label htmlFor="title" className="flex items-center gap-1">
+                Stream Title
+                <HelpTooltip content="Your stream title appears in search results and on your channel. Make it catchy and descriptive! Example: 'Chill Ranked Games | !discord !socials'" />
+              </Label>
               <Input
                 id="title"
                 placeholder="Enter your stream title..."
@@ -399,7 +409,10 @@ export default function StreamInfo() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="tags">Tags</Label>
+              <Label htmlFor="tags" className="flex items-center gap-1">
+                Tags
+                <HelpTooltip content="Tags help viewers find your stream. Use relevant tags like your game genre, language, or stream style. Example: English, Competitive, Chill Vibes" />
+              </Label>
               <Input
                 id="tags"
                 placeholder="gaming, fun, chill (comma separated, max 10)"

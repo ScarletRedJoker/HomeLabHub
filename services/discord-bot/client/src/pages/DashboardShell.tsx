@@ -81,6 +81,7 @@ export default function DashboardShell() {
   const [activeTab, setActiveTab] = useState("overview");
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<string | undefined>(undefined);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [quickSetupOpen, setQuickSetupOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -121,24 +122,51 @@ export default function DashboardShell() {
   };
 
   const handleNavigateToTab = (tab: string) => {
-    // Map feature tabs to actual dashboard tab values
+    // Map feature tabs to actual dashboard tab values or settings panel tabs
+    // Format: 'feature' -> 'dashboard-tab' OR 'settings:tab-name' for settings panel
     const tabMapping: Record<string, string> = {
-      'settings': 'settings', // Opens settings panel
+      // Dashboard tabs
       'streams': 'stream-notifications',
       'panels': 'panels',
+      'tickets': 'panels',
       'welcome-cards': 'welcome-cards',
       'economy': 'economy',
       'commands': 'commands',
       'analytics': 'analytics',
+      'embeds': 'embeds',
+      'forms': 'forms',
+      'scheduler': 'scheduler',
+      'workflows': 'workflows',
+      // Settings panel tabs (prefixed with 'settings:')
+      // Note: Use existing SettingsPage tabs: general, server-setup, categories, channels, health, moderation, thread-integration, admin
+      'settings': 'settings:general',
+      'welcome': 'settings:general',  // Welcome message config is in general settings
+      'moderation': 'settings:moderation',
+      'automod': 'settings:moderation',
+      'starboard': 'settings:general',  // TODO: Add dedicated starboard tab - using general as fallback
+      'leveling': 'settings:general',   // TODO: Add dedicated leveling tab - using general as fallback
+      'server': 'settings:server-setup',
+      'channels': 'settings:channels',
+      'health': 'settings:health',
     };
 
     const mappedTab = tabMapping[tab] || tab;
 
-    if (mappedTab === 'settings') {
+    // Check if it should open settings panel with a specific tab
+    if (mappedTab.startsWith('settings:')) {
+      const settingsTab = mappedTab.replace('settings:', '');
+      setSettingsInitialTab(settingsTab);
       setSettingsOpen(true);
     } else {
       setActiveTab(mappedTab);
     }
+  };
+
+  // Reset settings initial tab when settings panel closes
+  const handleSettingsClose = () => {
+    setSettingsOpen(false);
+    // Small delay before resetting to avoid visual glitch
+    setTimeout(() => setSettingsInitialTab(undefined), 300);
   };
 
   if (showOnboarding && selectedServerId && serverData) {
@@ -501,7 +529,7 @@ export default function DashboardShell() {
       </main>
 
       {/* Settings Sheet (Sliding Panel) */}
-      <SettingsPage isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsPage isOpen={settingsOpen} onClose={handleSettingsClose} initialTab={settingsInitialTab} />
 
       {/* Quick Setup Wizard */}
       {selectedServerId && serverData && (

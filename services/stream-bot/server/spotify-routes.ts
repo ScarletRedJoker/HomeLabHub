@@ -57,13 +57,19 @@ router.get("/now-playing/public", async (req, res) => {
     // In the future, this could support user-specific overlays via userId query param
     const nowPlaying = await spotifyService.getNowPlaying();
     
-    // Add CORS headers for OBS browser source
+    // Add CORS and cache-control headers for OBS browser source
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET');
+    res.header('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.header('Pragma', 'no-cache');
+    res.header('Expires', '0');
     res.json(nowPlaying);
   } catch (error: any) {
     console.error('[Spotify] Public now playing error:', error.message);
     res.header('Access-Control-Allow-Origin', '*');
+    res.header('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.header('Pragma', 'no-cache');
+    res.header('Expires', '0');
     res.json({ isPlaying: false });
   }
 });

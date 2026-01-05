@@ -125,6 +125,7 @@ interface DiscordRole {
 interface SettingsPageProps {
   isOpen: boolean;
   onClose: () => void;
+  initialTab?: string;
 }
 
 /**
@@ -140,13 +141,20 @@ interface SettingsPageProps {
  * - Loads settings from API on mount
  * - Saves settings via PATCH/POST requests
  */
-export default function SettingsPage({ isOpen, onClose }: SettingsPageProps) {
+export default function SettingsPage({ isOpen, onClose, initialTab }: SettingsPageProps) {
   const { user, isAdmin } = useAuthContext();
   const { selectedServerId, setSelectedServerId, selectedServerName } = useServerContext();
   const { toast } = useToast();
 
   // Active tab tracking
-  const [activeTab, setActiveTab] = useState("general");
+  const [activeTab, setActiveTab] = useState(initialTab || "general");
+
+  // Update active tab when initialTab prop changes
+  useEffect(() => {
+    if (initialTab && isOpen) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab, isOpen]);
 
   // Loading and saving states
   const [isLoading, setIsLoading] = useState(true);
