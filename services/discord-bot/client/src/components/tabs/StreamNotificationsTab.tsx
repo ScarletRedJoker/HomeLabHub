@@ -18,9 +18,9 @@ import {
 
 interface StreamSettings {
   serverId: string;
-  channelId: string | null;
+  notificationChannelId: string | null;
   customMessage: string | null;
-  enabled: boolean;
+  isEnabled: boolean;
   autoDetectEnabled?: boolean;
   autoSyncIntervalMinutes?: number;
   lastAutoSyncAt?: Date | null;
@@ -56,9 +56,9 @@ export default function StreamNotificationsTab() {
   // Settings state
   const [settings, setSettings] = useState<StreamSettings>({
     serverId: selectedServerId || '',
-    channelId: null,
+    notificationChannelId: null,
     customMessage: null,
-    enabled: false,
+    isEnabled: false,
     autoDetectEnabled: false,
     autoSyncIntervalMinutes: 60,
   });
@@ -119,7 +119,7 @@ export default function StreamNotificationsTab() {
   }, [selectedServerId, toast]);
 
   const handleSaveSettings = async () => {
-    if (!settings.channelId) {
+    if (!settings.notificationChannelId) {
       toast({
         title: "Error",
         description: "Please select a notification channel",
@@ -135,9 +135,9 @@ export default function StreamNotificationsTab() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          channelId: settings.channelId,
+          notificationChannelId: settings.notificationChannelId,
           customMessage: settings.customMessage || null,
-          enabled: settings.enabled,
+          isEnabled: settings.isEnabled,
           autoDetectEnabled: settings.autoDetectEnabled,
           autoSyncIntervalMinutes: settings.autoSyncIntervalMinutes,
         }),
@@ -306,16 +306,16 @@ export default function StreamNotificationsTab() {
           {/* Enable/Disable Toggle */}
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="enabled" className="text-white">Enable Stream Notifications</Label>
+              <Label htmlFor="isEnabled" className="text-white">Enable Stream Notifications</Label>
               <p className="text-sm text-discord-muted">
                 Automatically post when tracked users go live
               </p>
             </div>
             <Switch
-              id="enabled"
-              checked={settings.enabled}
+              id="isEnabled"
+              checked={settings.isEnabled}
               onCheckedChange={(checked) =>
-                setSettings({ ...settings, enabled: checked })
+                setSettings({ ...settings, isEnabled: checked })
               }
             />
           </div>
@@ -324,9 +324,9 @@ export default function StreamNotificationsTab() {
           <div className="space-y-2">
             <Label htmlFor="channel" className="text-white">Notification Channel</Label>
             <Select
-              value={settings.channelId || ""}
+              value={settings.notificationChannelId || ""}
               onValueChange={(value) =>
-                setSettings({ ...settings, channelId: value })
+                setSettings({ ...settings, notificationChannelId: value })
               }
             >
               <SelectTrigger className="bg-discord-dark border-discord-darker text-white">
