@@ -92,7 +92,7 @@ export default function LoginPage() {
               {loading ? "Signing in..." : "Sign In"}
             </Button>
 
-            {process.env.NODE_ENV !== "production" && (
+            {process.env.NEXT_PUBLIC_DEV_MODE === "true" && (
               <div className="pt-4 border-t border-border mt-4">
                 <Button
                   type="button"
