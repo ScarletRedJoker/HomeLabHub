@@ -103,6 +103,24 @@ A KVM VM named `RDPWindows` is configured with GPU passthrough (NVIDIA RTX 3060)
 
 ### Recent Changes (January 2026)
 
+**Discord Bot Dashboard Improvements (January 5, 2026):**
+- Fixed QuickSetupWizard channel selection (filters "none" values before API calls)
+- Enhanced OnboardingChecklist tab navigation (streams→stream-notifications, panels→panels, etc.)
+- Added error handling to OnboardingWizard with toast notifications and loading spinners
+- Fixed StreamNotificationsTab field names (channelId→notificationChannelId, enabled→isEnabled)
+- All 7 dashboard features verified: Tickets, Welcome Cards, Stream Notifications, AutoMod, Starboard, XP/Leveling, Economy
+
+**Stream Bot Full Feature Audit (January 5, 2026):**
+- NEW: Unified Stream Info Editor - Edit title/game/tags across Twitch/YouTube/Kick from one page (`/stream-info`)
+- NEW: Full Kick OAuth 2.1 integration with PKCE (kick-client.ts, oauth-kick.ts)
+- Fixed AI Content Service to use Replit AI integration environment variables
+- Fixed clips DB missing columns (status, tags, social_caption)
+- Created missing stream_alerts, stream_alert_history, alert_queue database tables
+- Removed ~260 lines of duplicate poll/prediction route handlers
+- Fixed currency settings endpoint to auto-create defaults
+- Fixed chatbot presets endpoint to return fallback presets when DB query fails
+- All features verified: Platform Connections, AI Content, OBS Overlays, Restream, Schedule, Clips, Announcements, Alerts, Moderation, Currency, Games, Polls, Giveaways
+
 **Next.js Dashboard Rewrite:**
 - Replaced Flask dashboard with Next.js 14 App Router
 - Full TypeScript implementation with shadcn/ui components
