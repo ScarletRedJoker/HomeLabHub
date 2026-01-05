@@ -2167,9 +2167,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/currency/settings", requireAuth, async (req, res) => {
     try {
-      const userStorage = storage.getUserStorage(req.user!.id);
-      const settings = await userStorage.getCurrencySettings();
-      res.json(settings || {});
+      let settings = await currencyService.getCurrencySettings(req.user!.id);
+      
+      if (!settings) {
+        settings = await currencyService.createCurrencySettings(req.user!.id, {
+          currencyName: "Points",
+          currencySymbol: "⭐",
+          earnPerMessage: 1,
+          earnPerMinute: 10,
+          startingBalance: 100,
+          maxBalance: 100000,
+          enableGambling: true,
+        });
+      }
+      
+      res.json(settings);
     } catch (error) {
       console.error("Failed to fetch currency settings:", error);
       res.status(500).json({ error: "Failed to fetch currency settings" });
@@ -2971,13 +2983,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/chatbot/personalities/presets", requireAuth, async (req, res) => {
+    const defaultPresets = [
+      { name: "friendly", systemPrompt: "You are a friendly and helpful stream assistant. Be warm, engaging and supportive.", temperature: 0.7, traits: ["helpful", "warm", "encouraging"] },
+      { name: "sarcastic", systemPrompt: "You are a sarcastic but funny bot. You make witty jokes and playful jabs but never cross the line to be mean.", temperature: 0.8, traits: ["witty", "sarcastic", "playful"] },
+      { name: "professional", systemPrompt: "You are a professional assistant. Be clear, concise and informative.", temperature: 0.3, traits: ["professional", "informative", "clear"] },
+      { name: "hyped", systemPrompt: "You are an extremely hyped bot! Everything is AMAZING and EXCITING! Use lots of caps and emojis!", temperature: 0.9, traits: ["excited", "energetic", "enthusiastic"] },
+      { name: "mysterious", systemPrompt: "You are a mysterious bot that speaks in riddles and cryptic messages. Add intrigue to conversations.", temperature: 0.7, traits: ["mysterious", "cryptic", "intriguing"] },
+    ];
+    
     try {
       const userStorage = storage.getUserStorage(req.user!.id);
-      const presets = await userStorage.getPresetPersonalities();
+      let presets = await userStorage.getPresetPersonalities();
+      
+      if (!presets || presets.length === 0) {
+        return res.json(defaultPresets);
+      }
+      
       res.json(presets);
     } catch (error) {
       console.error("Failed to get preset personalities:", error);
-      res.status(500).json({ error: "Failed to get preset personalities" });
+      res.json(defaultPresets);
     }
   });
 
@@ -3459,269 +3484,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     return parts.join(" ");
   }
-
-  // Polls
-  app.get("/api/polls", requireAuth, async (req, res) => {
-    try {
-      const { limit = "20" } = req.query;
-      const userStorage = storage.getUserStorage(req.user!.id);
-      const polls = await userStorage.getPolls(parseInt(limit as string));
-      res.json(polls);
-    } catch (error) {
-      console.error("Failed to get polls:", error);
-      res.status(500).json({ error: "Failed to get polls" });
-    }
-  });
-
-  app.get("/api/polls/active", requireAuth, async (req, res) => {
-    try {
-      const { platform } = req.query;
-      const userStorage = storage.getUserStorage(req.user!.id);
-      const pollsService = new PollsService(userStorage);
-      const activePoll = await pollsService.getActivePoll(req.user!.id, platform as string | undefined);
-      res.json(activePoll);
-    } catch (error) {
-      console.error("Failed to get active poll:", error);
-      res.status(500).json({ error: "Failed to get active poll" });
-    }
-  });
-
-  app.get("/api/polls/history", requireAuth, async (req, res) => {
-    try {
-      const { limit = "20" } = req.query;
-      const userStorage = storage.getUserStorage(req.user!.id);
-      const pollsService = new PollsService(userStorage);
-      const history = await pollsService.getPollHistory(req.user!.id, parseInt(limit as string));
-      res.json(history);
-    } catch (error) {
-      console.error("Failed to get poll history:", error);
-      res.status(500).json({ error: "Failed to get poll history" });
-    }
-  });
-
-  app.get("/api/polls/:id", requireAuth, async (req, res) => {
-    try {
-      const userStorage = storage.getUserStorage(req.user!.id);
-      const poll = await userStorage.getPoll(req.params.id);
-      if (!poll) {
-        return res.status(404).json({ error: "Poll not found" });
-      }
-      res.json(poll);
-    } catch (error) {
-      console.error("Failed to get poll:", error);
-      res.status(500).json({ error: "Failed to get poll" });
-    }
-  });
-
-  app.get("/api/polls/:id/results", requireAuth, async (req, res) => {
-    try {
-      const userStorage = storage.getUserStorage(req.user!.id);
-      const pollsService = new PollsService(userStorage);
-      const results = await pollsService.getPollResults(req.params.id);
-      res.json(results);
-    } catch (error) {
-      console.error("Failed to get poll results:", error);
-      res.status(500).json({ error: "Failed to get poll results" });
-    }
-  });
-
-  app.post("/api/polls", requireAuth, async (req, res) => {
-    try {
-      const { question, options, duration = 120, platform = "twitch" } = req.body;
-
-      if (!question || !options || !Array.isArray(options)) {
-        return res.status(400).json({ error: "Invalid poll data" });
-      }
-
-      if (options.length < 2 || options.length > 5) {
-        return res.status(400).json({ error: "Polls must have 2-5 options" });
-      }
-
-      const userStorage = storage.getUserStorage(req.user!.id);
-      const pollsService = new PollsService(userStorage);
-      
-      const poll = await pollsService.createPoll(req.user!.id, question, options, duration, platform);
-      const result = await pollsService.startPoll(poll.id);
-      
-      res.json(result);
-    } catch (error: any) {
-      console.error("Failed to create poll:", error);
-      res.status(500).json({ error: error.message || "Failed to create poll" });
-    }
-  });
-
-  app.post("/api/polls/:id/vote", requireAuth, async (req, res) => {
-    try {
-      const { option, username, platform = "twitch" } = req.body;
-
-      if (!option || !username) {
-        return res.status(400).json({ error: "Invalid vote data" });
-      }
-
-      const userStorage = storage.getUserStorage(req.user!.id);
-      const pollsService = new PollsService(userStorage);
-      const result = await pollsService.vote(req.params.id, username, option, platform);
-      
-      res.json(result);
-    } catch (error: any) {
-      console.error("Failed to vote:", error);
-      res.status(500).json({ error: error.message || "Failed to vote" });
-    }
-  });
-
-  app.post("/api/polls/:id/end", requireAuth, async (req, res) => {
-    try {
-      const userStorage = storage.getUserStorage(req.user!.id);
-      const pollsService = new PollsService(userStorage);
-      const result = await pollsService.endPoll(req.params.id);
-      
-      res.json(result);
-    } catch (error: any) {
-      console.error("Failed to end poll:", error);
-      res.status(500).json({ error: error.message || "Failed to end poll" });
-    }
-  });
-
-  // Predictions
-  app.get("/api/predictions", requireAuth, async (req, res) => {
-    try {
-      const { limit = "20" } = req.query;
-      const userStorage = storage.getUserStorage(req.user!.id);
-      const predictions = await userStorage.getPredictions(parseInt(limit as string));
-      res.json(predictions);
-    } catch (error) {
-      console.error("Failed to get predictions:", error);
-      res.status(500).json({ error: "Failed to get predictions" });
-    }
-  });
-
-  app.get("/api/predictions/active", requireAuth, async (req, res) => {
-    try {
-      const { platform } = req.query;
-      const userStorage = storage.getUserStorage(req.user!.id);
-      const pollsService = new PollsService(userStorage);
-      const activePrediction = await pollsService.getActivePrediction(req.user!.id, platform as string | undefined);
-      res.json(activePrediction);
-    } catch (error) {
-      console.error("Failed to get active prediction:", error);
-      res.status(500).json({ error: "Failed to get active prediction" });
-    }
-  });
-
-  app.get("/api/predictions/history", requireAuth, async (req, res) => {
-    try {
-      const { limit = "20" } = req.query;
-      const userStorage = storage.getUserStorage(req.user!.id);
-      const pollsService = new PollsService(userStorage);
-      const history = await pollsService.getPredictionHistory(req.user!.id, parseInt(limit as string));
-      res.json(history);
-    } catch (error) {
-      console.error("Failed to get prediction history:", error);
-      res.status(500).json({ error: "Failed to get prediction history" });
-    }
-  });
-
-  app.get("/api/predictions/:id", requireAuth, async (req, res) => {
-    try {
-      const userStorage = storage.getUserStorage(req.user!.id);
-      const prediction = await userStorage.getPrediction(req.params.id);
-      if (!prediction) {
-        return res.status(404).json({ error: "Prediction not found" });
-      }
-      res.json(prediction);
-    } catch (error) {
-      console.error("Failed to get prediction:", error);
-      res.status(500).json({ error: "Failed to get prediction" });
-    }
-  });
-
-  app.get("/api/predictions/:id/results", requireAuth, async (req, res) => {
-    try {
-      const userStorage = storage.getUserStorage(req.user!.id);
-      const pollsService = new PollsService(userStorage);
-      const results = await pollsService.getPredictionResults(req.params.id);
-      res.json(results);
-    } catch (error) {
-      console.error("Failed to get prediction results:", error);
-      res.status(500).json({ error: "Failed to get prediction results" });
-    }
-  });
-
-  app.post("/api/predictions", requireAuth, async (req, res) => {
-    try {
-      const { title, outcomes, duration = 300, platform = "twitch" } = req.body;
-
-      if (!title || !outcomes || !Array.isArray(outcomes)) {
-        return res.status(400).json({ error: "Invalid prediction data" });
-      }
-
-      if (outcomes.length < 2 || outcomes.length > 10) {
-        return res.status(400).json({ error: "Predictions must have 2-10 outcomes" });
-      }
-
-      const userStorage = storage.getUserStorage(req.user!.id);
-      const pollsService = new PollsService(userStorage);
-      
-      const prediction = await pollsService.createPrediction(req.user!.id, title, outcomes, duration, platform);
-      const result = await pollsService.startPrediction(prediction.id);
-      
-      res.json(result);
-    } catch (error: any) {
-      console.error("Failed to create prediction:", error);
-      res.status(500).json({ error: error.message || "Failed to create prediction" });
-    }
-  });
-
-  app.post("/api/predictions/:id/bet", requireAuth, async (req, res) => {
-    try {
-      const { outcome, points, username, platform = "twitch" } = req.body;
-
-      if (!outcome || !points || !username) {
-        return res.status(400).json({ error: "Invalid bet data" });
-      }
-
-      const userStorage = storage.getUserStorage(req.user!.id);
-      const pollsService = new PollsService(userStorage);
-      const result = await pollsService.placeBet(req.params.id, username, outcome, points, platform);
-      
-      res.json(result);
-    } catch (error: any) {
-      console.error("Failed to place bet:", error);
-      res.status(500).json({ error: error.message || "Failed to place bet" });
-    }
-  });
-
-  app.post("/api/predictions/:id/resolve", requireAuth, async (req, res) => {
-    try {
-      const { winningOutcome } = req.body;
-
-      if (!winningOutcome) {
-        return res.status(400).json({ error: "Winning outcome is required" });
-      }
-
-      const userStorage = storage.getUserStorage(req.user!.id);
-      const pollsService = new PollsService(userStorage);
-      const result = await pollsService.resolvePrediction(req.params.id, winningOutcome);
-      
-      res.json(result);
-    } catch (error: any) {
-      console.error("Failed to resolve prediction:", error);
-      res.status(500).json({ error: error.message || "Failed to resolve prediction" });
-    }
-  });
-
-  app.post("/api/predictions/:id/cancel", requireAuth, async (req, res) => {
-    try {
-      const userStorage = storage.getUserStorage(req.user!.id);
-      const pollsService = new PollsService(userStorage);
-      const prediction = await pollsService.cancelPrediction(req.params.id);
-      
-      res.json({ prediction, message: "Prediction cancelled and all bets refunded" });
-    } catch (error: any) {
-      console.error("Failed to cancel prediction:", error);
-      res.status(500).json({ error: error.message || "Failed to cancel prediction" });
-    }
-  });
 
   app.post("/api/auth/complete-onboarding", requireAuth, async (req, res) => {
     try {
