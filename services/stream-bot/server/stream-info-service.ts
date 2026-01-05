@@ -2,6 +2,7 @@ import axios from 'axios';
 import { storage } from './storage';
 import { getTwitchAccessToken } from './oauth-twitch';
 import { getYouTubeClientForUser, getActiveYouTubeLivestreamForUser } from './youtube-client';
+import { getKickChannelInfo, updateKickStreamInfo as kickApiUpdateStream, searchKickCategories } from './kick-client';
 
 export interface StreamInfo {
   title?: string;
@@ -160,14 +161,23 @@ class StreamInfoService {
         return { platform: 'kick', connected: false };
       }
 
+      const channelInfo = await getKickChannelInfo(userId);
+      if (!channelInfo) {
+        return { 
+          platform: 'kick', 
+          connected: true, 
+          error: 'Failed to get Kick channel info' 
+        };
+      }
+
       return {
         platform: 'kick',
         connected: true,
-        isLive: false,
-        error: 'Kick API does not currently support fetching or updating stream info programmatically',
+        isLive: channelInfo.isLive,
         info: {
-          title: '',
-          game: '',
+          title: channelInfo.title || '',
+          game: channelInfo.category || '',
+          gameId: channelInfo.categoryId ? String(channelInfo.categoryId) : undefined,
         },
       };
     } catch (error: any) {
@@ -322,11 +332,42 @@ class StreamInfoService {
   }
 
   async updateKickStreamInfo(userId: string, info: StreamInfo): Promise<StreamInfoUpdateResult> {
-    return {
-      platform: 'kick',
-      success: false,
-      error: 'Kick does not provide a public API for updating stream info. Please update directly on kick.com',
-    };
+    try {
+      const connection = await storage.getPlatformConnection(userId, 'kick');
+      if (!connection || !connection.isConnected) {
+        return { platform: 'kick', success: false, error: 'Kick not connected' };
+      }
+
+      const updateData: { title?: string; categoryId?: number } = {};
+      if (info.title) updateData.title = info.title;
+      if (info.gameId) updateData.categoryId = parseInt(info.gameId, 10);
+
+      const result = await kickApiUpdateStream(userId, updateData);
+      
+      if (result.success) {
+        console.log(`[StreamInfo] Successfully updated Kick stream info for user ${userId}`);
+        return { platform: 'kick', success: true };
+      } else {
+        return { platform: 'kick', success: false, error: result.error };
+      }
+    } catch (error: any) {
+      console.error('[StreamInfo] Error updating Kick stream info:', error.message);
+      return { platform: 'kick', success: false, error: error.message };
+    }
+  }
+
+  async searchKickCategories(userId: string, query: string): Promise<{ id: string; name: string; thumbnail?: string }[]> {
+    try {
+      const categories = await searchKickCategories(userId, query);
+      return categories.map(cat => ({
+        id: String(cat.id),
+        name: cat.name,
+        thumbnail: cat.thumbnail,
+      }));
+    } catch (error: any) {
+      console.error('[StreamInfo] Error searching Kick categories:', error.message);
+      return [];
+    }
   }
 
   async updateStreamInfo(

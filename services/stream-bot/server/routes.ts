@@ -31,6 +31,7 @@ import spotifyRoutes from "./spotify-routes";
 import oauthSpotifyRoutes from "./oauth-spotify";
 import oauthYoutubeRoutes from "./oauth-youtube";
 import oauthTwitchRoutes from "./oauth-twitch";
+import oauthKickRoutes from "./oauth-kick";
 import overlayRoutes from "./overlay-routes";
 import obsRoutes from "./obs-routes";
 import { requireAuth } from "./auth/middleware";
@@ -73,6 +74,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/auth", oauthSpotifyRoutes);
   app.use("/auth", oauthYoutubeRoutes);
   app.use("/auth", oauthTwitchRoutes);
+  app.use("/auth", oauthKickRoutes);
   // Note: Direct OAuth routes (platform connection) are ONLY at /auth/*
   // Signin routes (passport) are at /api/auth/* - they must NOT overlap
   // This prevents PKCE conflicts between the two OAuth flows
