@@ -49,6 +49,7 @@
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tabs": "^1.1.13",
+    "@types/supertest": "^6.0.3",
     "@vitest/ui": "^4.0.9",
     "discord-player": "^7.1.0",
     "drizzle-kit": "^0.31.8",
@@ -65,8 +66,9 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-rnd": "^10.5.2",
+    "supertest": "^7.1.4",
     "tailwindcss-animate": "^1.0.7",
-    "vitest": "^4.0.9",
+    "vitest": "^4.0.16",
     "ytdl-core": "^4.11.5"
   }
 }
