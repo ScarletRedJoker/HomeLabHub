@@ -8,7 +8,13 @@
     "build": "vite build && node esbuild.config.mjs",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
-    "db:push": "drizzle-kit push:pg"
+    "db:push": "drizzle-kit push:pg",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:overlay": "vitest run tests/overlay-api.test.ts",
+    "test:oauth": "vitest run tests/oauth-flows.test.ts",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@googleapis/youtube": "^29.0.0",
