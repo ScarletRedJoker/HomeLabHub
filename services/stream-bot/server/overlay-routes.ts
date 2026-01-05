@@ -71,9 +71,9 @@ router.post('/generate-token', requireAuth, async (req, res) => {
     const tokenExpiry = Math.min(expiresIn || 86400, maxExpiry);
     const token = createOverlayToken(userId, tokenExpiry);
 
-    // Platform-specific overlay URLs (using legacy paths for backward compatibility)
+    // Platform-specific overlay URLs - use OBS-optimized endpoints with inline CSS
     const overlayUrls: Record<string, string> = {
-      spotify: `/overlay/spotify?token=${token}`,
+      spotify: `/api/overlay/spotify/obs?token=${token}`,
       youtube: `/overlay/youtube?token=${token}`,
       alerts: `/overlay/stream-alerts?token=${token}`,
     };

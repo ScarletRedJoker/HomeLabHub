@@ -26,7 +26,8 @@ export default function SpotifyOverlay() {
     const token = params.get('token');
     if (!token) return '';
     const baseUrl = `${window.location.protocol}//${window.location.host}`;
-    return `${baseUrl}/api/overlay/spotify/obs?token=${token}`;
+    // Use the OBS-optimized endpoint with inline CSS
+    return `${baseUrl}/api/overlay/spotify/obs?token=${encodeURIComponent(token)}`;
   };
 
   const copyOBSUrl = async () => {
