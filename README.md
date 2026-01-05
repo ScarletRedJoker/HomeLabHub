@@ -1,341 +1,194 @@
-# 🚀 HomeLabHub - Unified Infrastructure Management
+# HomeLabHub - Nebula Command Platform
 
-**Single command tool for complete homelab management**
+A comprehensive homelab management suite featuring a modern dashboard, Discord community bot, and multi-platform streaming tools.
 
-## ⚡ Quick Start
+## Overview
 
-```bash
-# Make executable and run
-chmod +x homelab
-./homelab
-```
+HomeLabHub is a single-tenant platform for homelab enthusiasts, providing:
 
-That's it! The interactive menu will guide you through everything.
+- **Dashboard** - Next.js 14 control panel with real-time Docker/SSH management, visual website builder, and AI assistant
+- **Discord Bot** - Community management with tickets, welcome cards, stream notifications, XP/leveling, and economy systems
+- **Stream Bot** - Unified streaming platform for Twitch, YouTube, and Kick with OBS overlays, AI content, and chat moderation
 
-## 🎯 One Tool, All Functions
-
-The `homelab` script is your single control point for:
-- 🚀 **Deployment** - Fresh, quick, or smart auto-deployment
-- 🎛️ **Management** - Start, stop, restart services
-- 🔍 **Diagnostics** - Health checks, testing, troubleshooting
-- 🔧 **Fixes** - Auto-fix issues, repair Jarvis AI, fix permissions
-- 💻 **Development** - Sync code, build services, setup environment
-- 💾 **Backup** - Create and manage backups
-
-## 📦 Services Overview
-
-| **Service** | **URL** | **Purpose** | **Status** |
-|------------|---------|-------------|------------|
-| **Dashboard** | host.evindrake.net | Main control panel with Jarvis AI | ✅ Fixed |
-| **Discord Bot** | bot.rig-city.com | Server management bot | ✅ Working |
-| **Stream Bot** | stream.rig-city.com | Twitch/YouTube integration | ✅ Fixed |
-| **VNC Desktop** | vnc.evindrake.net | Remote desktop access | ✅ Working |
-| **Code Server** | code.evindrake.net | Web-based VS Code | ✅ Working |
-| **Plex** | plex.evindrake.net | Media streaming | ✅ Working |
-| **N8N** | n8n.evindrake.net | Workflow automation | ✅ Working |
-| **Home Assistant** | home.evindrake.net | Smart home control | ✅ Working |
-
-## 🛠️ Command Reference
-
-### Interactive Mode (Recommended)
-```bash
-./homelab
-```
-Opens the full menu system with all options.
-
-### Direct Commands
-
-#### Deployment
-```bash
-./homelab deploy       # Smart auto-deployment
-./homelab fresh        # Clean build from scratch
-./homelab quick        # Fast deployment with cache
-```
-
-#### Service Management
-```bash
-./homelab start        # Start all services
-./homelab stop         # Stop all services
-./homelab restart [service]  # Restart specific service
-./homelab logs [service]     # View logs (use 'all' for everything)
-./homelab status       # Show service status
-```
-
-#### Diagnostics & Testing
-```bash
-./homelab health       # Quick health check
-./homelab diagnose     # Full system diagnostics
-./homelab test jarvis  # Test Jarvis AI
-./homelab test db      # Test database connectivity
-./homelab test redis   # Test Redis cache
-```
-
-#### Fixes & Troubleshooting
-```bash
-./homelab fix          # Auto-fix detected issues
-./homelab fix-jarvis   # Fix Jarvis AI (40% error)
-./homelab fix-perms    # Fix permission issues
-```
-
-#### Development
-```bash
-./homelab dev          # Setup development environment
-./homelab sync         # Pull latest from Git
-./homelab build [service]  # Rebuild specific service
-```
-
-#### Utilities
-```bash
-./homelab backup       # Create backup
-./homelab urls         # Display all service URLs
-./homelab info         # System information
-./homelab help         # Show help
-```
-
-## 🔧 Initial Setup
-
-### 1. Prerequisites
-- Ubuntu 20.04+ or similar Linux
-- Docker & Docker Compose installed
-- 8GB RAM minimum, 50GB disk space
-- Git installed
-
-### 2. Clone Repository
-```bash
-git clone https://github.com/yourusername/HomeLabHub.git
-cd HomeLabHub
-```
-
-### 3. Configure Environment
-```bash
-cp .env.example .env
-nano .env  # Add your API keys
-```
-
-### 4. Deploy Everything
-```bash
-chmod +x homelab
-./homelab deploy
-```
-
-## 🔑 Required API Keys
-
-Add these to your `.env` file:
-
-```env
-# OpenAI (for Jarvis AI) - REQUIRED
-OPENAI_API_KEY=sk-proj-...
-
-# Discord Bot - REQUIRED
-DISCORD_BOT_TOKEN=...
-DISCORD_CLIENT_ID=...
-DISCORD_CLIENT_SECRET=...
-
-# Streaming Services (optional)
-TWITCH_CLIENT_ID=...
-TWITCH_CLIENT_SECRET=...
-YOUTUBE_API_KEY=...
-SPOTIFY_CLIENT_ID=...
-SPOTIFY_CLIENT_SECRET=...
-
-# Database (Neon PostgreSQL)
-DATABASE_URL=postgresql://...
-```
-
-## 📁 Clean Project Structure
+## Architecture
 
 ```
 HomeLabHub/
-├── homelab                    # 🎯 Main unified management script
-├── docker-compose.yml         # Service definitions
-├── Caddyfile                 # Reverse proxy config
-├── .env                      # Your configuration
-│
-├── services/                 # Service code
-│   ├── dashboard/           # Jarvis AI & control panel
-│   ├── discord-bot/         # Discord bot
-│   ├── stream-bot/          # Twitch/YouTube bot
-│   ├── vnc-desktop/         # Remote desktop
-│   └── ...
-│
-├── config/                   # Configurations
-│   └── postgres-init/       # Database setup
-│
-├── deployment/              # Essential scripts
-│   └── generate-unified-env.sh  # Environment helper
-│
-└── scripts-archive/         # Old scripts (archived)
-    ├── fixes/              # Old fix scripts
-    ├── deployment/         # Old deployment scripts
-    └── migrations/         # Old migration scripts
+├── services/
+│   ├── dashboard-next/     # Next.js 14 Dashboard (TypeScript, shadcn/ui)
+│   ├── discord-bot/        # Discord.js Bot (Node.js, React dashboard)
+│   └── stream-bot/         # Streaming Platform (Node.js, Vite, React)
+├── deploy/
+│   ├── linode/             # Cloud deployment (docker-compose)
+│   └── local/              # Local Ubuntu deployment
+└── scripts/                # Utility scripts
 ```
 
-## 🐛 Common Issues & Solutions
+## Services
 
-### Jarvis AI Shows 40% Error
-**Cause:** Was using deprecated GPT-5 model  
-**Fix:** Already fixed! Now uses GPT-3.5-turbo
-```bash
-./homelab fix-jarvis  # If issue persists
-```
+### Dashboard (Next.js 14)
+Port: 5000 | URL: `host.evindrake.net`
 
-### Services Won't Start
-```bash
-./homelab diagnose    # See what's wrong
-./homelab fix         # Auto-fix issues
-```
+| Feature | Description |
+|---------|-------------|
+| Home | Live stats - container counts, server metrics, quick actions |
+| Services | Docker container management (start/stop/restart) |
+| Servers | SSH-based metrics from remote servers |
+| Deploy | One-click deployments with live log streaming |
+| Editor | Monaco code editor with file tree navigation |
+| Designer | Visual drag-drop website builder (14 component types) |
+| Websites | Website management CRUD |
+| Jarvis AI | OpenAI-powered chat assistant |
+| Settings | Server connections, integrations, preferences |
 
-### Database Connection Failed
-```bash
-./homelab test db     # Test connection
-./homelab fix         # Auto-repair
-```
+### Discord Bot
+Port: 4000 | URL: `bot.rig-city.com`
 
-### Permission Errors
-```bash
-./homelab fix-perms   # Fix Docker permissions
-```
+| Feature | Description |
+|---------|-------------|
+| Tickets | Support ticket system with transcripts |
+| Welcome Cards | Custom welcome images with @napi-rs/canvas |
+| Stream Notifications | Go-live alerts for Twitch/YouTube/Kick |
+| AutoMod | Automated content moderation |
+| Starboard | Highlight popular messages |
+| XP/Leveling | Member engagement tracking |
+| Economy | Virtual currency system |
+| Music Bot | Play music with discord-player |
 
-## 🔄 Updating
+### Stream Bot
+Port: 3000 | URL: `stream.rig-city.com`
 
-### Pull Latest Changes
-```bash
-./homelab sync        # Pulls from Git
-./homelab deploy      # Redeploy with updates
-```
+| Feature | Description |
+|---------|-------------|
+| Platform Connections | OAuth for Twitch, YouTube, Kick, Spotify |
+| Stream Info Editor | Edit title/game/tags across all platforms |
+| OBS Overlays | Now Playing, alerts, chat overlays |
+| AI Content | Generate titles, descriptions, social posts |
+| Restream | Multi-platform streaming management |
+| Schedule | Stream schedule with calendar |
+| Clips | Clip management with social sharing |
+| Alerts | Customizable stream alerts |
+| Chat Moderation | AutoMod, banned words, slow mode |
+| Currency & Games | Viewer engagement features |
+| Polls & Predictions | Interactive viewer features |
 
-### Auto-Update Setup
-```bash
-# Add to crontab for daily updates
-0 3 * * * cd /path/to/HomeLabHub && ./homelab sync && ./homelab deploy
-```
+## Quick Start
 
-## 💾 Backup & Recovery
+### Development (Replit)
 
-### Create Backup
-```bash
-./homelab backup
-# Backups saved to /tmp/homelab-backups/
-```
-
-### Restore from Backup
-```bash
-# Manual restore (automated coming soon)
-cd /tmp/homelab-backups/
-tar -xzf homelab_backup_[timestamp].tar.gz
-```
-
-## 🚀 Advanced Usage
-
-### Custom Deployment Order
-Edit the `deploy_services_ordered()` function in `homelab` script.
-
-### Add New Service
-1. Add to `docker-compose.yml`
-2. Add to `Caddyfile` if web-accessible
-3. Update `homelab` script health checks
-4. Deploy: `./homelab fresh`
+All three services run automatically:
+- Dashboard: Port 5000 (webview)
+- Discord Bot: Port 4000
+- Stream Bot: Port 3000
 
 ### Production Deployment
+
+**Linode Cloud:**
 ```bash
-# On production server
-cd /home/evin/contain/HomeLabHub
-git pull origin main
-./homelab deploy
+ssh root@linode.evindrake.net
+cd /opt/homelab/HomeLabHub/deploy/linode
+./deploy.sh
 ```
 
-## 📊 System Requirements
-
-### Minimum
-- 4 CPU cores
-- 8GB RAM
-- 50GB storage
-- 10Mbps internet
-
-### Recommended
-- 8+ CPU cores
-- 16GB+ RAM
-- 100GB+ SSD storage
-- 100Mbps+ internet
-
-## 🔐 Security
-
-- All services behind Caddy reverse proxy
-- Automatic SSL via Let's Encrypt
-- Secrets in `.env` (never committed)
-- PostgreSQL with strong passwords
-- VNC password protected
-- API keys properly managed
-
-## 📈 Monitoring
-
-Check system health:
+**Local Ubuntu:**
 ```bash
-./homelab health      # Quick check
-./homelab diagnose    # Full diagnostics
-./homelab info        # System resources
+ssh evin@host.evindrake.net
+cd /opt/homelab/HomeLabHub/deploy/local
+./deploy.sh
 ```
 
-Monitor specific service:
-```bash
-./homelab logs dashboard -f    # Follow dashboard logs
-./homelab logs discord-bot -f  # Follow Discord bot logs
+## Environment Variables
+
+### Required Secrets
+```env
+# Discord
+DISCORD_BOT_TOKEN=
+DISCORD_CLIENT_ID=
+DISCORD_CLIENT_SECRET=
+
+# Streaming Platforms
+TWITCH_CLIENT_ID=
+TWITCH_CLIENT_SECRET=
+YOUTUBE_API_KEY=
+YOUTUBE_CLIENT_ID=
+YOUTUBE_CLIENT_SECRET=
+KICK_CLIENT_ID=
+SPOTIFY_CLIENT_ID=
+SPOTIFY_CLIENT_SECRET=
+
+# Infrastructure
+DATABASE_URL=postgresql://...
+OPENAI_API_KEY=
+CLOUDFLARE_API_TOKEN=
 ```
 
-## 🤝 Contributing
+## Database
 
-1. Fork the repository
-2. Create feature branch
-3. Make your changes
-4. Test thoroughly: `./homelab health`
-5. Submit pull request
+PostgreSQL with three logical databases:
+- `homelab_jarvis` - Dashboard data
+- `discord_bot` - Discord Bot data
+- `stream_bot` - Stream Bot data
 
-## 📚 Documentation
+## Testing
 
-- [Script Archive Summary](scripts-archive/ARCHIVE_SUMMARY.md) - Old scripts reference
-- [Environment Setup](.env.example) - Configuration template
-- [Docker Compose](docker-compose.yml) - Service definitions
-- [Caddy Config](Caddyfile) - Reverse proxy setup
-
-## 🆘 Troubleshooting Guide
-
-### Can't find homelab script?
 ```bash
-ls -la homelab
-chmod +x homelab
+# Stream Bot (41 tests)
+cd services/stream-bot
+npm run test:overlay   # 18 overlay API tests
+npm run test:oauth     # 20 OAuth flow tests
+npm run test           # All tests
+
+# Discord Bot (15 tests)
+cd services/discord-bot
+npm run test:api       # 15 API route tests
 ```
 
-### Docker permission denied?
-```bash
-sudo ./homelab fix-perms
-```
+Pre-commit hooks run all 56 tests automatically.
 
-### Services keep restarting?
-```bash
-./homelab diagnose
-./homelab logs [service]
-```
+## Tech Stack
 
-### Out of disk space?
-```bash
-docker system prune -a
-./homelab info
-```
+| Layer | Technology |
+|-------|------------|
+| Frontend | Next.js 14, React, Vite, TypeScript |
+| UI | shadcn/ui, Tailwind CSS, Radix UI |
+| Backend | Node.js, Express |
+| Database | PostgreSQL (Neon/self-hosted), Drizzle ORM |
+| Cache | Redis |
+| Auth | JWT sessions, OAuth 2.0/2.1 (PKCE) |
+| AI | OpenAI GPT-4 |
+| Deployment | Docker, Docker Compose |
+| Reverse Proxy | Caddy (auto-SSL) |
+| Network | Tailscale (secure mesh) |
 
-## 📝 Version History
+## Security
 
-- **v2.0.0** - Complete unification into single `homelab` tool
-- **v1.5.0** - Fixed Jarvis AI GPT-5 → GPT-3.5 migration
-- **v1.0.0** - Initial multi-script version
+- JWT-signed sessions (HMAC-SHA256)
+- All API routes require authentication
+- SSH keys accessed server-side only
+- OAuth tokens encrypted at rest
+- Git pre-commit hooks prevent secret leaks
+- Rate limiting on all endpoints
 
-## 📞 Support
+## Monitoring
 
-- **Quick Help:** `./homelab help`
-- **Diagnostics:** `./homelab diagnose`
-- **All Logs:** `./homelab logs all`
-- **GitHub Issues:** Create issue with diagnostic output
+Production includes:
+- Grafana dashboards
+- Prometheus metrics
+- Loki log aggregation
+- cAdvisor container metrics
+- Node Exporter system metrics
+
+## Development Workflow
+
+1. Edit code in Replit
+2. Push to GitHub
+3. Pull on Ubuntu servers
+4. Run deploy script
+
+## License
+
+Private repository - All rights reserved.
 
 ---
 
-**HomeLabHub v2.0** - Unified Management System  
-*All your services, one simple command*
+**HomeLabHub** - Unified Homelab Management
