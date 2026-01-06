@@ -109,38 +109,58 @@ See full list: https://github.com/qdm12/gluetun-wiki/tree/main/setup/providers
 
 ## Troubleshooting
 
-### DHT Shows 0 Nodes (Most Common Issue!)
+### DHT Shows 0 Nodes / Stuck on "Downloading metadata"
 
-If your torrents are stuck at "Downloading metadata" with 0 peers and DHT shows 0 nodes:
+**IMPORTANT: Mullvad removed port forwarding on July 1, 2023!**
 
-**1. Restart the VPN container to apply port forwarding:**
+If you're using Mullvad VPN, you cannot accept incoming connections. This means:
+- DHT will show 0 nodes or very few
+- Torrents may be slow to find peers
+- You can download but seeding is limited
+
+**Your Options:**
+
+#### Option A: Switch to a VPN with Port Forwarding (Recommended)
+
+VPNs that still support port forwarding:
+- **Private Internet Access (PIA)** - Most popular choice
+- **AirVPN** - Multiple static ports
+- **ProtonVPN** - On paid plans
+
+To switch to PIA, update your `.env`:
 ```bash
-cd deploy/local/torrent-vpn
-docker compose down
-docker compose up -d
+VPN_PROVIDER=private internet access
+VPN_TYPE=openvpn
+PIA_USER=your_username
+PIA_PASS=your_password
 ```
 
-**2. Verify port 6881 is open in qBittorrent:**
-- Go to qBittorrent Web UI > Settings > Connection
-- Set "Port used for incoming connections" to `6881`
-- Uncheck "Use UPnP / NAT-PMP" (doesn't work through VPN)
-- Check "Enable DHT"
+Then uncomment the PIA lines in docker-compose.yml.
 
-**3. If using Mullvad, enable port forwarding:**
-- Log in to https://mullvad.net/account
-- Go to "Port forwarding" and add a port
-- Update your `.env` file: `VPN_INPUT_PORTS=YOUR_PORT`
-- Update qBittorrent to use that same port
+#### Option B: Stay with Mullvad (Limited Functionality)
 
-**4. Check if VPN is connected:**
+You can still download, but with limitations:
+
+**1. Make sure the VPN is connected:**
 ```bash
 docker logs gluetun-vpn | tail -20
 # Should show "Healthy!" if working
 ```
 
-**5. Force announce to trackers:**
-- Right-click torrent > Force reannounce
-- This tells trackers you're available for connections
+**2. Configure qBittorrent for no port forwarding:**
+- Settings > Connection
+- Uncheck "Use UPnP / NAT-PMP"
+- Check "Enable DHT", "Enable PeX", "Enable Local Peer Discovery"
+
+**3. Use well-seeded torrents:**
+- Public torrents with many seeders will work fine
+- Private trackers may have issues
+
+**4. Check your IP is hidden:**
+```bash
+docker exec qbittorrent curl -s https://ipinfo.io
+# Should show VPN IP, not your real IP
+```
 
 ### "Permission denied" on downloads
 ```bash
