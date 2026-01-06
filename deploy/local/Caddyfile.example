@@ -1,0 +1,48 @@
+# Nebula Command - Local Homelab Example Caddyfile
+# Copy this file to 'Caddyfile' and replace domains with your own
+#
+# For local homelab, you can use:
+# - Cloudflare Tunnel (recommended for external access)
+# - Tailscale with MagicDNS
+# - Local DNS with your own domain
+
+{
+    email your-email@example.com
+}
+
+# Plex Media Server
+plex.yourdomain.com {
+    reverse_proxy localhost:32400 {
+        transport http {
+            tls_insecure_skip_verify
+        }
+    }
+}
+
+# Home Assistant
+home.yourdomain.com {
+    reverse_proxy localhost:8123 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+    }
+}
+
+# MinIO Console
+minio.yourdomain.com {
+    reverse_proxy localhost:9001
+}
+
+# MinIO API
+storage.yourdomain.com {
+    reverse_proxy localhost:9000
+}
+
+# Dashboard (if running locally)
+dashboard.yourdomain.com {
+    reverse_proxy localhost:5000
+}
+
+# VNC Remote Desktop (optional)
+# vnc.yourdomain.com {
+#     reverse_proxy localhost:6080
+# }

@@ -1,0 +1,42 @@
+# Nebula Command - Example Caddyfile
+# Copy this file to 'Caddyfile' and replace domains with your own
+#
+# Prerequisites:
+# 1. Point your domain DNS to this server's IP
+# 2. Replace all 'yourdomain.com' with your actual domain
+# 3. Update the email address for SSL certificates
+
+{
+    email your-email@example.com
+}
+
+# Dashboard - Main control panel
+dashboard.yourdomain.com {
+    reverse_proxy homelab-dashboard:5000
+    
+    header {
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+    }
+}
+
+# Discord Bot API
+discord.yourdomain.com {
+    reverse_proxy discord-bot:4000
+}
+
+# Stream Bot
+stream.yourdomain.com {
+    reverse_proxy stream-bot:3000
+}
+
+# Optional: Grafana monitoring
+# grafana.yourdomain.com {
+#     reverse_proxy grafana:3000
+# }
+
+# Optional: n8n automation
+# n8n.yourdomain.com {
+#     reverse_proxy n8n:5678
+# }

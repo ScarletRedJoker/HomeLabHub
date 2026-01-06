@@ -67,6 +67,7 @@
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.14.2",
     "@types/pg": "^8.16.0",
     "@types/react": "^18.3.3",
