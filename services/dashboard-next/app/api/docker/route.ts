@@ -18,6 +18,14 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (process.env.NODE_ENV !== "production") {
+    return NextResponse.json({
+      services: [],
+      server: "development",
+      message: "Docker not available in development. Containers will show in production.",
+    });
+  }
+
   try {
     const containers = await docker.listContainers({ all: true });
     

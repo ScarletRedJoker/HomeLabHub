@@ -51,6 +51,29 @@ New capabilities include an SSH Terminal with xterm.js, an SFTP File Browser for
 ### Security & Secret Management
 Secrets are managed via `.env` files (gitignore'd) and Replit Secrets. Pre-commit hooks (`./scripts/setup-git-secrets.sh`) and protected patterns safeguard sensitive information. A secret rotation procedure ensures timely updates across all environments.
 
+## Recent Changes (January 2026)
+
+### Dashboard Enhancements
+- **Real-time Integration Status**: Settings page now shows live Twitch/YouTube/Discord connection status from Stream Bot API (`/api/platforms/overview`)
+- **Server Management**: Add/edit/delete homelab servers directly from Settings page with persistent storage
+- **Health Monitoring**: Detailed server metrics (CPU, memory, disk, network, uptime) via SSH with color-coded progress bars
+- **Activity Logs**: New `/activity` page showing recent actions and events with filtering
+- **Skeleton Loaders**: Improved loading states throughout the dashboard
+- **Error Handling**: New `ErrorCard` component with friendly error messages and retry functionality
+- **Mobile Responsiveness**: Polished layouts across all pages for mobile devices
+
+### UI Components Added
+- `components/ui/skeleton.tsx` - Loading state component
+- `components/ui/error-card.tsx` - Error display with retry support
+- `components/ui/dropdown-menu.tsx` - User account dropdown
+- `components/ui/popover.tsx` - Notifications panel
+- `lib/error-utils.ts` - Error message mapping utilities
+
+### API Endpoints Added
+- `GET /api/integrations/platform-status` - Aggregated platform connection status
+- `GET /api/activity` - Activity log entries with filtering
+- `GET /api/platforms/overview` (Stream Bot) - Public platform status endpoint
+
 ## External Dependencies
 *   **PostgreSQL:** Primary relational database (Neon for development, self-hosted for production).
 *   **Redis:** Used for caching and session management.
