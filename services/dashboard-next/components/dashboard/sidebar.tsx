@@ -18,6 +18,7 @@ import {
   Palette,
   Terminal,
   FolderOpen,
+  Sparkles,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ const navItems = [
   { href: "/servers", label: "Servers", icon: HardDrive },
   { href: "/files-remote", label: "Remote Files", icon: FolderOpen },
   { href: "/terminal", label: "Terminal", icon: Terminal },
+  { href: "/creative", label: "Creative Studio", icon: Sparkles },
   { href: "/ai", label: "Jarvis AI", icon: Bot },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
