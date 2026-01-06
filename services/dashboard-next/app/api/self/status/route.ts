@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       .map((b: string) => b.replace(/^origin\//, "").trim())
       .filter((b: string) => b && !b.includes("HEAD"));
 
-    const availableBranches = [...new Set([...localBranches, ...allRemoteBranches])];
+    const availableBranches = Array.from(new Set([...localBranches, ...allRemoteBranches]));
 
     return NextResponse.json({
       git: {

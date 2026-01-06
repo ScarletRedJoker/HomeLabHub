@@ -286,7 +286,8 @@ export async function executePluginHandler(
   }
 
   try {
-    const handlerModule = await import(`../../../plugins/${pluginId}/${handlerPath}`);
+    const pluginsDir = path.resolve(process.cwd(), 'plugins', pluginId, handlerPath);
+    const handlerModule = await import(pluginsDir);
     const handler = handlerModule.default || handlerModule.handler;
     
     if (typeof handler !== 'function') {
