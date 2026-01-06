@@ -14,14 +14,18 @@ show_help() {
     echo "Usage: ./deploy.sh [command]"
     echo ""
     echo "Commands:"
-    echo "  (none)     Full deployment (setup + build + deploy)"
-    echo "  setup      Interactive environment setup only"
-    echo "  check      Check environment health"
-    echo "  build      Build images only"
-    echo "  up         Start services only"
-    echo "  down       Stop services"
-    echo "  logs       View service logs"
-    echo "  help       Show this help"
+    echo "  (none)       Full deployment (setup + build + deploy)"
+    echo "  setup        Interactive environment setup only"
+    echo "  check        Check environment health"
+    echo "  build        Build images only (with full logging)"
+    echo "  up           Start services only"
+    echo "  down         Stop services"
+    echo "  logs         View service logs (docker compose logs)"
+    echo "  build-logs   View saved build logs"
+    echo "  help         Show this help"
+    echo ""
+    echo "Environment:"
+    echo "  KEEP_BUILD_LOGS=true  Keep build logs even on success"
     echo ""
 }
 
@@ -82,8 +86,33 @@ do_env_setup() {
 
 do_build() {
     echo -e "${CYAN}[3/5] Building images...${NC}"
-    docker compose build --no-cache
-    echo -e "${GREEN}✓ Build complete${NC}"
+    
+    local log_dir="$SCRIPT_DIR/logs"
+    mkdir -p "$log_dir"
+    local log_file="$log_dir/build_$(date +%Y%m%d_%H%M%S).log"
+    
+    echo "Build log: $log_file"
+    echo ""
+    
+    if docker compose build --no-cache --progress=plain 2>&1 | tee "$log_file"; then
+        echo -e "${GREEN}✓ Build complete${NC}"
+        if [ "${KEEP_BUILD_LOGS:-}" != "true" ]; then
+            rm -f "$log_file"
+        fi
+    else
+        echo ""
+        echo -e "${RED}✗ Build failed!${NC}"
+        echo -e "${YELLOW}Full build log saved to: $log_file${NC}"
+        echo ""
+        echo "Last 50 lines of errors:"
+        echo "─────────────────────────"
+        tail -50 "$log_file"
+        echo "─────────────────────────"
+        echo ""
+        echo "To view full log: less $log_file"
+        echo "To rebuild: ./deploy.sh build"
+        exit 1
+    fi
     echo ""
 }
 
@@ -172,6 +201,26 @@ case "${1:-}" in
         ;;
     logs)
         docker compose logs -f "${2:-}"
+        ;;
+    build-logs)
+        local log_dir="$SCRIPT_DIR/logs"
+        if [ -d "$log_dir" ] && [ "$(ls -A "$log_dir" 2>/dev/null)" ]; then
+            echo -e "${CYAN}═══ Build Logs ═══${NC}"
+            ls -lt "$log_dir"/*.log 2>/dev/null | head -10
+            echo ""
+            latest=$(ls -t "$log_dir"/*.log 2>/dev/null | head -1)
+            if [ -n "$latest" ]; then
+                echo "Latest log: $latest"
+                echo ""
+                read -r -p "View latest log? (Y/n) " view_log
+                if [[ ! "$view_log" =~ ^[Nn]$ ]]; then
+                    less "$latest"
+                fi
+            fi
+        else
+            echo "No build logs found. Logs are saved when builds fail."
+            echo "To keep logs on success: KEEP_BUILD_LOGS=true ./deploy.sh"
+        fi
         ;;
     *)
         echo -e "${CYAN}═══ Nebula Command - Linode Deployment ═══${NC}"

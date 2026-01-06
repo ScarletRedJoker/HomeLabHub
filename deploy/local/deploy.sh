@@ -14,14 +14,18 @@ show_help() {
     echo "Usage: ./deploy.sh [command]"
     echo ""
     echo "Commands:"
-    echo "  (none)     Full deployment (setup + deploy)"
-    echo "  setup      Interactive environment setup only"
-    echo "  check      Check environment health"
-    echo "  up         Start services only"
-    echo "  down       Stop services"
-    echo "  logs       View service logs"
-    echo "  nas        Mount NAS storage"
-    echo "  help       Show this help"
+    echo "  (none)       Full deployment (setup + deploy)"
+    echo "  setup        Interactive environment setup only"
+    echo "  check        Check environment health"
+    echo "  up           Start services only"
+    echo "  down         Stop services"
+    echo "  logs         View service logs (docker compose logs)"
+    echo "  deploy-logs  View saved deploy logs"
+    echo "  nas          Mount NAS storage"
+    echo "  help         Show this help"
+    echo ""
+    echo "Environment:"
+    echo "  KEEP_BUILD_LOGS=true  Keep deploy logs even on success"
     echo ""
 }
 
@@ -63,10 +67,34 @@ check_nas() {
 
 do_deploy() {
     echo -e "${CYAN}[3/4] Deploying services...${NC}"
-    docker compose pull
-    docker compose down --remove-orphans 2>/dev/null || true
-    docker compose up -d
-    echo -e "${GREEN}✓ Services started${NC}"
+    
+    local log_dir="$SCRIPT_DIR/logs"
+    mkdir -p "$log_dir"
+    local log_file="$log_dir/deploy_$(date +%Y%m%d_%H%M%S).log"
+    
+    echo "Deploy log: $log_file"
+    echo ""
+    
+    {
+        echo "=== Docker Pull ===" 
+        docker compose pull
+        echo ""
+        echo "=== Docker Up ==="
+        docker compose down --remove-orphans 2>/dev/null || true
+        docker compose up -d
+    } 2>&1 | tee "$log_file"
+    
+    if [ "${PIPESTATUS[0]}" -eq 0 ]; then
+        echo -e "${GREEN}✓ Services started${NC}"
+        if [ "${KEEP_BUILD_LOGS:-}" != "true" ]; then
+            rm -f "$log_file"
+        fi
+    else
+        echo ""
+        echo -e "${RED}✗ Deploy failed!${NC}"
+        echo -e "${YELLOW}Full log saved to: $log_file${NC}"
+        exit 1
+    fi
     echo ""
 }
 
@@ -132,6 +160,26 @@ case "${1:-}" in
         ;;
     logs)
         docker compose logs -f "${2:-}"
+        ;;
+    deploy-logs)
+        local log_dir="$SCRIPT_DIR/logs"
+        if [ -d "$log_dir" ] && [ "$(ls -A "$log_dir" 2>/dev/null)" ]; then
+            echo -e "${CYAN}═══ Deploy Logs ═══${NC}"
+            ls -lt "$log_dir"/*.log 2>/dev/null | head -10
+            echo ""
+            latest=$(ls -t "$log_dir"/*.log 2>/dev/null | head -1)
+            if [ -n "$latest" ]; then
+                echo "Latest log: $latest"
+                echo ""
+                read -r -p "View latest log? (Y/n) " view_log
+                if [[ ! "$view_log" =~ ^[Nn]$ ]]; then
+                    less "$latest"
+                fi
+            fi
+        else
+            echo "No deploy logs found. Logs are saved when deploys fail."
+            echo "To keep logs on success: KEEP_BUILD_LOGS=true ./deploy.sh"
+        fi
         ;;
     nas)
         echo -e "${CYAN}═══ Nebula Command - Mount NAS ═══${NC}"

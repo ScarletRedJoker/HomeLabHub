@@ -1,1 +1,2 @@
 config/cloudflared/credentials.json
+logs/
