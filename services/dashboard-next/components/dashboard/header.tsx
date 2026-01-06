@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTheme } from "next-themes";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -12,6 +13,11 @@ interface HeaderProps {
 
 export function Header({ onMenuClick }: HeaderProps) {
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <header className="flex h-16 items-center justify-between border-b bg-card px-4 md:px-6">
@@ -56,8 +62,12 @@ export function Header({ onMenuClick }: HeaderProps) {
           size="icon"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
         >
-          {theme === "dark" ? (
-            <Sun className="h-5 w-5" />
+          {mounted ? (
+            theme === "dark" ? (
+              <Sun className="h-5 w-5" />
+            ) : (
+              <Moon className="h-5 w-5" />
+            )
           ) : (
             <Moon className="h-5 w-5" />
           )}
