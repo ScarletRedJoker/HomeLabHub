@@ -53,7 +53,7 @@ Multi-platform streaming management.
 | AI Content | Generate titles, descriptions, social posts |
 | Clips | Clip management with social sharing |
 
-## Quick Start (New Users)
+## Quick Start
 
 ### Option 1: Deploy to Cloud (Linode/VPS)
 
@@ -69,267 +69,138 @@ ssh root@YOUR_SERVER_IP
 curl -fsSL https://get.docker.com | sh
 ```
 
-4. **Clone the repository:**
+4. **Clone and deploy:**
 ```bash
-mkdir -p /opt/homelab
-cd /opt/homelab
-git clone https://github.com/YOUR_USERNAME/HomeLabHub.git
-cd HomeLabHub
-```
-
-5. **Create environment file:**
-```bash
-cp deploy/linode/.env.example deploy/linode/.env
-nano deploy/linode/.env
-```
-
-6. **Add your secrets** (see Environment Variables section below)
-
-7. **Deploy:**
-```bash
-cd deploy/linode
+mkdir -p /opt/homelab && cd /opt/homelab
+git clone https://github.com/yourusername/nebula-command.git
+cd nebula-command/deploy/linode
 ./deploy.sh
 ```
 
-8. **Access your dashboard** at `http://YOUR_SERVER_IP:5000`
+The deploy script will:
+- Auto-generate all internal secrets (database passwords, JWT keys, etc.)
+- Prompt for required external tokens (Discord)
+- Build and deploy all services
 
-### Option 2: Self-Managed Development (Recommended)
+### Option 2: Local Ubuntu Homelab
 
-Once Nebula Command is running, you can develop directly from the dashboard:
-
-1. Go to **Dashboard > Editor** - Full Monaco code editor
-2. Go to **Dashboard > Terminal** - SSH access to your servers
-3. Use **AI Agents** - Let Jarvis or Coder help you build features
-4. Use **Self-Management API** - Nebula manages its own codebase
-
-The system can:
-- Edit its own source code from the dashboard
-- Commit, push, and deploy changes automatically
-- Roll back if something breaks
-- Add new features via the plugin system
-
-### Self-Management Endpoints
-
-```
-GET  /api/self/status      - Git status, branches, deployment state
-GET  /api/self/files       - Browse codebase
-GET  /api/self/files/{path} - Read file content
-POST /api/self/files/{path} - Write file (auto-backup)
-POST /api/self/git         - Git operations (commit/pull/push/rollback)
-POST /api/self/deploy      - Trigger deployment to servers
+```bash
+cd /opt/homelab/nebula-command/deploy/local
+./deploy.sh
 ```
 
-## Environment Variables
+## Deployment Commands
 
-### Required Secrets
-
-Create a `.env` file with these values:
-
-```env
-# Database (required)
-DATABASE_URL=postgresql://user:password@host:5432/database
-
-# Discord Bot (if using)
-DISCORD_BOT_TOKEN=your_bot_token
-DISCORD_CLIENT_ID=your_client_id
-DISCORD_CLIENT_SECRET=your_client_secret
-
-# Streaming Platforms (if using Stream Bot)
-TWITCH_CLIENT_ID=your_twitch_client_id
-TWITCH_CLIENT_SECRET=your_twitch_secret
-YOUTUBE_API_KEY=your_youtube_api_key
-YOUTUBE_CLIENT_ID=your_youtube_client_id
-YOUTUBE_CLIENT_SECRET=your_youtube_secret
-KICK_CLIENT_ID=your_kick_client_id
-
-# Spotify (for music features)
-SPOTIFY_CLIENT_ID=your_spotify_client_id
-SPOTIFY_CLIENT_SECRET=your_spotify_secret
-
-# AI Features
-OPENAI_API_KEY=your_openai_key
-
-# DNS Management (optional)
-CLOUDFLARE_API_TOKEN=your_cloudflare_token
-
-# Security
-SESSION_SECRET=generate_a_random_32_char_string
+```bash
+./deploy.sh          # Full deployment (setup + build + deploy)
+./deploy.sh setup    # Interactive environment setup only
+./deploy.sh check    # Health check
+./deploy.sh build    # Build images only
+./deploy.sh up       # Start services only
+./deploy.sh down     # Stop services
+./deploy.sh logs     # View service logs
+./deploy.sh help     # Show all commands
 ```
-
-### Getting API Keys
-
-| Service | Where to Get |
-|---------|--------------|
-| Discord | [Discord Developer Portal](https://discord.com/developers/applications) |
-| Twitch | [Twitch Developer Console](https://dev.twitch.tv/console) |
-| YouTube | [Google Cloud Console](https://console.cloud.google.com/) |
-| Spotify | [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) |
-| OpenAI | [OpenAI Platform](https://platform.openai.com/api-keys) |
-| Cloudflare | [Cloudflare Dashboard](https://dash.cloudflare.com/profile/api-tokens) |
 
 ## Architecture
+
+### Services
+
+| Service | Port | Description |
+|---------|------|-------------|
+| Dashboard | 5000 | Next.js web interface |
+| Discord Bot | 4000 | Discord.js bot server |
+| Stream Bot | 3000 | Multi-platform stream manager |
+| PostgreSQL | 5432 | Primary database |
+| Redis | 6379 | Caching and sessions |
+
+### Deployment Targets
+
+- **Cloud (Linode/VPS)**: Dashboard, Discord Bot, Stream Bot
+- **Local Ubuntu**: Plex, MinIO, Home Assistant, Ollama, Stable Diffusion
+
+Services communicate via Tailscale mesh networking for secure cross-server access.
+
+## Configuration
+
+### Environment Variables
+
+The deployment script handles most configuration automatically.
+
+**Auto-generated** (no action needed):
+- `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `JWT_SECRET`
+- Database passwords, session secrets
+
+**Required**:
+- `DISCORD_BOT_TOKEN` - Get from [Discord Developer Portal](https://discord.com/developers/applications)
+
+**Optional**:
+- `TAILSCALE_AUTHKEY` - For local homelab connectivity
+- `CLOUDFLARE_API_TOKEN` - For DNS management
+- `OPENAI_API_KEY` - For AI features
+
+See `deploy/linode/.env.example` for full configuration options.
+
+## Project Structure
 
 ```
 nebula-command/
 ├── services/
-│   ├── dashboard-next/     # Next.js 14 Dashboard (TypeScript, shadcn/ui)
-│   │   ├── app/            # Next.js App Router pages
-│   │   ├── components/     # React components
-│   │   ├── lib/            # Utilities, database, API helpers
-│   │   └── server/         # Terminal server
-│   ├── discord-bot/        # Discord.js Bot (Node.js)
-│   │   ├── src/            # Bot source code
-│   │   ├── commands/       # Slash commands
-│   │   └── events/         # Discord event handlers
-│   └── stream-bot/         # Streaming Platform (Node.js, Vite)
-│       ├── src/            # Backend source
-│       └── client/         # React frontend
+│   ├── dashboard-next/   # Next.js 14 dashboard
+│   ├── discord-bot/      # Discord.js bot
+│   └── stream-bot/       # Stream management
 ├── deploy/
-│   ├── linode/             # Cloud deployment (docker-compose)
-│   └── local/              # Local Ubuntu deployment
-├── orchestration/
-│   ├── runbooks/           # Auto-remediation scripts
-│   └── service-map.yml     # Service discovery configuration
-└── docs/                   # Documentation
+│   ├── linode/           # Cloud deployment
+│   ├── local/            # Local Ubuntu deployment
+│   └── shared/           # Shared deployment libraries
+├── docs/                 # Documentation
+└── plugins/              # Plugin directory
 ```
 
-## Database
+## Advanced Features
 
-PostgreSQL with Drizzle ORM. Schema includes:
+### Plugin System
 
-- **projects** - Development projects
-- **deployments** - Deployment history
-- **marketplace_packages** - Available services to install
-- **installations** - Installed services
-- **agents** - AI assistant configurations
-- **incidents** - Service health incidents
-- **domains** - DNS/SSL managed domains
+Dynamic feature loading with sandboxed execution:
 
-Run migrations:
-```bash
-cd services/dashboard-next
-npm run db:push
+```json
+{
+  "id": "my-plugin",
+  "name": "My Plugin",
+  "permissions": ["network", "database"]
+}
 ```
 
-## Customization
+### AI Sandbox
 
-### Adding Your Own Services
+AI-powered code generation with human approval:
 
-1. Add a new package to the marketplace:
-   - Go to Dashboard > Marketplace
-   - Create a custom package with Docker compose configuration
+1. AI proposes changes with syntax-highlighted diffs
+2. Human reviews and approves/rejects
+3. Changes are applied with automatic rollback capability
 
-2. Create a custom AI agent:
-   - Go to Dashboard > AI Agents
-   - Click "Create Agent"
-   - Configure system prompt and capabilities
+### Remote Operations
 
-3. Add custom domains:
-   - Go to Dashboard > Resources
-   - Add your domain and configure DNS records
-   - SSL is managed automatically via Cloudflare
-
-### Modifying the Discord Bot
-
-Edit files in `services/discord-bot/`:
-- `src/commands/` - Add new slash commands
-- `src/events/` - Handle Discord events
-- `src/modules/` - Add new features
-
-### Modifying the Stream Bot
-
-Edit files in `services/stream-bot/`:
-- `src/routes/` - API endpoints
-- `client/src/` - React frontend
-- `src/services/` - Platform integrations
-
-## Production Deployment
-
-### Linode Cloud
-```bash
-ssh root@YOUR_LINODE_IP
-cd /opt/homelab/HomeLabHub/deploy/linode
-./deploy.sh
-```
-
-### Local Ubuntu Server
-```bash
-ssh user@YOUR_SERVER_IP
-cd /opt/homelab/HomeLabHub/deploy/local
-./deploy.sh
-```
-
-## Ports
-
-| Service | Port | Description |
-|---------|------|-------------|
-| Dashboard | 5000 | Main web interface |
-| Discord Bot | 4000 | Bot API & dashboard |
-| Stream Bot | 3000 | Streaming platform |
-| Terminal Server | 5001 | SSH terminal WebSocket |
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| Frontend | Next.js 14, React, Vite, TypeScript |
-| UI | shadcn/ui, Tailwind CSS, Radix UI |
-| Backend | Node.js, Express |
-| Database | PostgreSQL, Drizzle ORM |
-| Cache | Redis |
-| Auth | JWT sessions, OAuth 2.0/2.1 (PKCE) |
-| AI | OpenAI GPT-4 |
-| Deployment | Docker, Docker Compose |
-| Reverse Proxy | Caddy (auto-SSL) |
-| Network | Tailscale (optional secure mesh) |
+- SSH Terminal via xterm.js
+- SFTP File Browser
+- Server power controls (restart, shutdown, WoL)
+- Docker container management
 
 ## Security
 
-- JWT-signed sessions (HMAC-SHA256)
-- All API routes require authentication
-- SSH keys accessed server-side only
-- OAuth tokens encrypted at rest
-- Rate limiting on all endpoints
-
-## Testing
-
-```bash
-# Stream Bot
-cd services/stream-bot
-npm test
-
-# Discord Bot
-cd services/discord-bot
-npm test
-```
-
-## Troubleshooting
-
-### Dashboard won't start
-- Check DATABASE_URL is set correctly
-- Run `npm install` in services/dashboard-next
-- Check logs: `docker logs homelab-dashboard`
-
-### Discord Bot not connecting
-- Verify DISCORD_BOT_TOKEN is correct
-- Check bot has proper gateway intents enabled
-- Ensure bot is invited to your server
-
-### Database errors
-- Run `npm run db:push` to sync schema
-- Check PostgreSQL is accessible
+- JWT authentication for all API endpoints
+- Sandboxed plugin execution with path traversal protection
+- Command injection prevention
+- Secret management via environment variables
+- Pre-commit hooks for secret detection
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Make changes and test
+3. Make your changes
 4. Submit a pull request
 
 ## License
 
-Private repository - All rights reserved.
-
----
-
-**Nebula Command** - Create, Deploy, and Manage Anything
+MIT License - See LICENSE file for details

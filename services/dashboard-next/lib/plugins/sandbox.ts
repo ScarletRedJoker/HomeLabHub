@@ -9,6 +9,7 @@ import {
   PluginExecutionResult 
 } from './types';
 import { pluginRegistry } from './registry';
+import path from 'path';
 
 const DEFAULT_TIMEOUT = 5000;
 const MAX_TIMEOUT = 30000;
@@ -70,7 +71,6 @@ function createSandboxApi(context: PluginExecutionContext): SandboxApi {
   }
 
   if (context.permissions.includes('filesystem')) {
-    const path = await import('path');
     const pluginDir = path.resolve(process.cwd(), 'plugins', context.pluginId);
     
     const resolveSafePath = (inputPath: string): string => {
