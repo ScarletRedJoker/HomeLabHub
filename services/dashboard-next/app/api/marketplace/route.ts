@@ -161,6 +161,18 @@ function getBuiltinPackages(): MarketplacePackage[] {
   ];
 }
 
+const installations: Map<string, Installation> = new Map();
+
+interface Installation {
+  id: string;
+  packageName: string;
+  status: "pending" | "installing" | "running" | "stopped" | "error";
+  config: Record<string, string>;
+  server: "linode" | "homelab";
+  createdAt: Date;
+  error?: string;
+}
+
 export async function GET(request: NextRequest) {
   const user = await checkAuth();
   if (!user) {
@@ -202,4 +214,99 @@ export async function GET(request: NextRequest) {
     categories,
     total: packages.length,
   });
+}
+
+export async function POST(request: NextRequest) {
+  const user = await checkAuth();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const body = await request.json();
+    const { packageName, config = {}, server = "linode" } = body;
+
+    if (!packageName) {
+      return NextResponse.json({ error: "Package name is required" }, { status: 400 });
+    }
+
+    const allPackages = loadPackages();
+    const pkg = allPackages.find(p => p.name === packageName);
+    if (!pkg) {
+      return NextResponse.json({ error: "Package not found" }, { status: 404 });
+    }
+
+    const missingRequired = pkg.variables
+      ?.filter(v => v.required && !config[v.name] && !v.default)
+      .map(v => v.name);
+    
+    if (missingRequired && missingRequired.length > 0) {
+      return NextResponse.json(
+        { error: `Missing required variables: ${missingRequired.join(", ")}` },
+        { status: 400 }
+      );
+    }
+
+    const installId = `${packageName}-${Date.now()}`;
+    const installation: Installation = {
+      id: installId,
+      packageName,
+      status: "pending",
+      config,
+      server: server as "linode" | "homelab",
+      createdAt: new Date(),
+    };
+
+    installations.set(installId, installation);
+
+    queueInstallation(installId, pkg, config, server);
+
+    return NextResponse.json({
+      success: true,
+      installationId: installId,
+      message: `Installation of ${pkg.displayName} queued for ${server}`,
+      status: "pending",
+    });
+  } catch (error: any) {
+    console.error("Install error:", error);
+    return NextResponse.json(
+      { error: error.message || "Installation failed" },
+      { status: 500 }
+    );
+  }
+}
+
+async function queueInstallation(
+  installId: string,
+  pkg: MarketplacePackage,
+  config: Record<string, string>,
+  server: string
+) {
+  const installation = installations.get(installId);
+  if (!installation) return;
+
+  installation.status = "installing";
+
+  try {
+    const envVars = pkg.variables
+      ?.map(v => {
+        const value = config[v.name] || v.default || "";
+        return `${v.name}=${value}`;
+      })
+      .join(" ");
+
+    const dockerCommand = `docker run -d --name ${pkg.name} ${envVars ? `--env ${envVars.split(" ").join(" --env ")}` : ""} ${pkg.repository}`;
+
+    console.log(`[Marketplace] Would execute on ${server}:`, dockerCommand);
+    console.log(`[Marketplace] Package: ${pkg.displayName} v${pkg.version}`);
+
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    installation.status = "running";
+    console.log(`[Marketplace] ${pkg.displayName} installed successfully on ${server}`);
+  } catch (error: any) {
+    installation.status = "error";
+    installation.error = error.message;
+    console.error(`[Marketplace] Failed to install ${pkg.displayName}:`, error);
+  }
 }

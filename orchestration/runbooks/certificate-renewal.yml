@@ -1,0 +1,88 @@
+name: Certificate Renewal
+description: Renew SSL certificates before expiry
+version: "1.0"
+severity: critical
+cooldownMinutes: 1440
+
+triggers:
+  - type: threshold
+    target: certExpiryDays
+    operator: lte
+    value: 30
+
+escalationTarget: null
+
+steps:
+  - name: Log renewal start
+    type: log
+    action: "SSL certificate renewal initiated for domain: {{domain}}"
+
+  - name: Check current certificate
+    type: http
+    action: check_cert
+    params:
+      url: "https://{{domain}}"
+      method: HEAD
+    timeout: 10000
+    onFailure: continue
+
+  - name: Trigger renewal via webhook
+    type: http
+    action: trigger_renewal
+    params:
+      url: "{{certbotWebhook}}"
+      method: POST
+      headers:
+        Content-Type: application/json
+      body:
+        domain: "{{domain}}"
+        action: renew
+    timeout: 300000
+    condition:
+      type: metric
+      target: certbotWebhook
+      operator: ne
+      value: ""
+    onFailure: escalate
+
+  - name: Wait for renewal
+    type: wait
+    action: wait
+    params:
+      duration: 30000
+
+  - name: Reload reverse proxy
+    type: docker
+    action: restart
+    params:
+      serviceName: traefik
+    timeout: 60000
+    onFailure: continue
+
+  - name: Verify new certificate
+    type: http
+    action: verify_cert
+    params:
+      url: "https://{{domain}}"
+      method: HEAD
+    timeout: 10000
+    onFailure: escalate
+
+  - name: Log success
+    type: log
+    action: "SSL certificate for {{domain}} successfully renewed"
+
+  - name: Notify completion
+    type: notify
+    action: "SSL certificate for {{domain}} has been renewed. Previous expiry was in {{certExpiryDays}} days."
+    params:
+      channel: security
+      severity: info
+
+metadata:
+  author: homelab-automation
+  tags:
+    - ssl
+    - certificate
+    - security
+    - renewal

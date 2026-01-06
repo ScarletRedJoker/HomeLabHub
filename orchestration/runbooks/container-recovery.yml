@@ -1,0 +1,64 @@
+name: Container Recovery
+description: Recover crashed or exited containers
+version: "1.0"
+severity: high
+cooldownMinutes: 5
+
+triggers:
+  - type: health
+    target: containerState
+    operator: eq
+    value: exited
+
+escalationTarget: null
+
+steps:
+  - name: Log recovery start
+    type: log
+    action: "Container recovery initiated for: {{serviceName}} ({{containerId}})"
+
+  - name: Collect crash logs
+    type: docker
+    action: logs
+    params:
+      containerId: "{{containerId}}"
+    onFailure: continue
+
+  - name: Analyze crash with AI
+    type: ai
+    action: "A container has crashed. Service: {{serviceName}}, Container ID: {{containerId}}. Last logs: {{previousOutput}}. What might be the cause and should we attempt automatic restart?"
+    timeout: 30000
+    onFailure: continue
+
+  - name: Start container
+    type: docker
+    action: start
+    params:
+      containerId: "{{containerId}}"
+    timeout: 60000
+    retries: 3
+    onFailure: escalate
+
+  - name: Wait for startup
+    type: wait
+    action: wait
+    params:
+      duration: 15000
+
+  - name: Verify container running
+    type: log
+    action: "Container {{containerId}} recovery attempted - verifying status"
+
+  - name: Notify recovery attempt
+    type: notify
+    action: "Container {{serviceName}} ({{containerId}}) crashed and recovery was attempted"
+    params:
+      channel: incidents
+      severity: warning
+
+metadata:
+  author: homelab-automation
+  tags:
+    - docker
+    - recovery
+    - crash

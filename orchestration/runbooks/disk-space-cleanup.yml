@@ -1,0 +1,70 @@
+name: Disk Space Cleanup
+description: Clean up disk space when usage is high
+version: "1.0"
+severity: medium
+cooldownMinutes: 30
+
+triggers:
+  - type: threshold
+    target: diskUsagePercent
+    operator: gte
+    value: 85
+
+escalationTarget: null
+
+steps:
+  - name: Log cleanup start
+    type: log
+    action: "Starting disk cleanup - current usage: {{diskUsagePercent}}%"
+
+  - name: Prune stopped containers
+    type: docker
+    action: prune
+    timeout: 120000
+    onFailure: continue
+
+  - name: Wait before image cleanup
+    type: wait
+    action: wait
+    params:
+      duration: 2000
+
+  - name: Prune unused images
+    type: docker
+    action: prune-images
+    timeout: 300000
+    onFailure: continue
+
+  - name: Prune unused volumes
+    type: docker
+    action: prune-volumes
+    timeout: 120000
+    onFailure: continue
+
+  - name: Log cleanup results
+    type: log
+    action: "Disk cleanup completed - freed space from containers, images, and volumes"
+
+  - name: AI analysis
+    type: ai
+    action: "Analyze the following disk cleanup results and suggest additional optimizations: {{previousOutput}}"
+    condition:
+      type: metric
+      target: aiEnabled
+      operator: eq
+      value: true
+    onFailure: continue
+
+  - name: Notify completion
+    type: notify
+    action: "Disk space cleanup completed. Previous usage: {{diskUsagePercent}}%"
+    params:
+      channel: infrastructure
+      severity: info
+
+metadata:
+  author: homelab-automation
+  tags:
+    - disk
+    - cleanup
+    - maintenance

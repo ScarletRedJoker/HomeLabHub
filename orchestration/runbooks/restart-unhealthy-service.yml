@@ -1,0 +1,67 @@
+name: Restart Unhealthy Service
+description: Auto-restart services that fail health checks
+version: "1.0"
+severity: high
+cooldownMinutes: 5
+
+triggers:
+  - type: health
+    target: status
+    operator: eq
+    value: unhealthy
+
+escalationTarget: null
+
+steps:
+  - name: Log incident start
+    type: log
+    action: "Starting remediation for unhealthy service: {{serviceName}}"
+
+  - name: Collect service logs
+    type: docker
+    action: logs
+    params:
+      serviceName: "{{serviceName}}"
+    onFailure: continue
+
+  - name: Attempt graceful restart
+    type: docker
+    action: restart
+    params:
+      serviceName: "{{serviceName}}"
+    timeout: 60000
+    retries: 2
+    onFailure: escalate
+
+  - name: Wait for service startup
+    type: wait
+    action: wait
+    params:
+      duration: 10000
+
+  - name: Verify health
+    type: http
+    action: health_check
+    params:
+      url: "{{healthEndpoint}}"
+      method: GET
+    timeout: 10000
+    onFailure: escalate
+
+  - name: Log success
+    type: log
+    action: "Service {{serviceName}} successfully restarted and healthy"
+
+  - name: Notify on success
+    type: notify
+    action: "Service {{serviceName}} was unhealthy and has been automatically restarted"
+    params:
+      channel: incidents
+      severity: info
+
+metadata:
+  author: homelab-automation
+  tags:
+    - docker
+    - health
+    - restart
