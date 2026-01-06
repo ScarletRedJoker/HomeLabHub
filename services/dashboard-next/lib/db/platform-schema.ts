@@ -156,6 +156,45 @@ export const services = pgTable("services", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const prompts = pgTable("prompts", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 255 }),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  content: text("content").notNull(),
+  category: varchar("category", { length: 100 }).notNull(),
+  tags: text("tags").array().default([]),
+  isPublic: boolean("is_public").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const workflows = pgTable("workflows", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  trigger: jsonb("trigger").notNull(),
+  actions: jsonb("actions").notNull(),
+  enabled: boolean("enabled").default(true),
+  lastRun: timestamp("last_run"),
+  runCount: integer("run_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const workflowExecutions = pgTable("workflow_executions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  workflowId: uuid("workflow_id").references(() => workflows.id),
+  status: varchar("status", { length: 50 }).notNull(),
+  triggeredBy: varchar("triggered_by", { length: 50 }).notNull(),
+  output: jsonb("output"),
+  error: text("error"),
+  durationMs: integer("duration_ms"),
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
 export type Project = typeof projects.$inferSelect;
 export type NewProject = typeof projects.$inferInsert;
 export type Deployment = typeof deployments.$inferSelect;
@@ -168,3 +207,8 @@ export type AgentExecution = typeof agentExecutions.$inferSelect;
 export type Incident = typeof incidents.$inferSelect;
 export type Domain = typeof domains.$inferSelect;
 export type Service = typeof services.$inferSelect;
+export type Prompt = typeof prompts.$inferSelect;
+export type NewPrompt = typeof prompts.$inferInsert;
+export type Workflow = typeof workflows.$inferSelect;
+export type NewWorkflow = typeof workflows.$inferInsert;
+export type WorkflowExecution = typeof workflowExecutions.$inferSelect;

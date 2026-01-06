@@ -109,6 +109,39 @@ See full list: https://github.com/qdm12/gluetun-wiki/tree/main/setup/providers
 
 ## Troubleshooting
 
+### DHT Shows 0 Nodes (Most Common Issue!)
+
+If your torrents are stuck at "Downloading metadata" with 0 peers and DHT shows 0 nodes:
+
+**1. Restart the VPN container to apply port forwarding:**
+```bash
+cd deploy/local/torrent-vpn
+docker compose down
+docker compose up -d
+```
+
+**2. Verify port 6881 is open in qBittorrent:**
+- Go to qBittorrent Web UI > Settings > Connection
+- Set "Port used for incoming connections" to `6881`
+- Uncheck "Use UPnP / NAT-PMP" (doesn't work through VPN)
+- Check "Enable DHT"
+
+**3. If using Mullvad, enable port forwarding:**
+- Log in to https://mullvad.net/account
+- Go to "Port forwarding" and add a port
+- Update your `.env` file: `VPN_INPUT_PORTS=YOUR_PORT`
+- Update qBittorrent to use that same port
+
+**4. Check if VPN is connected:**
+```bash
+docker logs gluetun-vpn | tail -20
+# Should show "Healthy!" if working
+```
+
+**5. Force announce to trackers:**
+- Right-click torrent > Force reannounce
+- This tells trackers you're available for connections
+
 ### "Permission denied" on downloads
 ```bash
 # Remount NAS with correct UID/GID

@@ -27,6 +27,7 @@ import {
   Wrench,
   Monitor,
   Wand2,
+  Box,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,7 @@ const navItems = [
   { href: "/creative", label: "Creative Studio", icon: Sparkles },
   { href: "/ai", label: "Jarvis AI", icon: Bot },
   { href: "/ai-sandbox", label: "AI Sandbox", icon: Wand2 },
+  { href: "/models", label: "Model Catalog", icon: Box },
   { href: "/self", label: "Self", icon: Wrench },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

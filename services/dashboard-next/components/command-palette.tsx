@@ -22,6 +22,7 @@ import {
   Home,
   Cloud,
   Search,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -128,6 +129,13 @@ export function CommandPalette() {
       label: "Go to Jarvis AI",
       icon: Bot,
       action: () => router.push("/ai"),
+      group: "Navigation",
+    },
+    {
+      id: "prompts",
+      label: "Go to Prompt Library",
+      icon: BookOpen,
+      action: () => router.push("/prompts"),
       group: "Navigation",
     },
   ];
