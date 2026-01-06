@@ -37,9 +37,14 @@ const JWT_SECRET = new TextEncoder().encode(
 
 async function verifyToken(token: string): Promise<boolean> {
   try {
-    await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    if (payload.purpose !== "terminal") {
+      console.warn("Token rejected: purpose is not 'terminal'");
+      return false;
+    }
     return true;
-  } catch {
+  } catch (err) {
+    console.warn("Token verification failed:", err);
     return false;
   }
 }

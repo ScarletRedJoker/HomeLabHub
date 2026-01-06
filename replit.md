@@ -103,6 +103,18 @@ A KVM VM named `RDPWindows` is configured with GPU passthrough (NVIDIA RTX 3060)
 
 ### Recent Changes (January 2026)
 
+**Remote Operations & Security Hardening (January 6, 2026):**
+- NEW: SSH Terminal with xterm.js - Full shell access to Linode/Home servers via WebSocket on port 3001
+- NEW: SFTP File Browser - Upload/download files, navigate directories with path security
+- NEW: Power Controls - Restart/shutdown for both servers via SSH
+- NEW: Wake-on-LAN - Magic packet support for waking Home server (requires HOME_SERVER_MAC env var)
+- NEW: Command Palette (Cmd+K/Ctrl+K) - Quick navigation and server actions
+- NEW: Status Overview Page - Health checks for all 6 services with 30s auto-refresh
+- NEW: Mobile Responsive Layout - Hamburger menu and sheet drawer at 768px breakpoint
+- SECURITY: Terminal WebSocket now requires 5-minute JWT token with purpose validation
+- SECURITY: SFTP uses posixPath resolution to prevent path traversal attacks
+- SECURITY: Dev login only shows when NEXT_PUBLIC_DEV_MODE=true
+
 **Testing & UX Refinements (January 5, 2026):**
 - Fixed dev login security: Now uses NEXT_PUBLIC_DEV_MODE env var (only shows button when explicitly enabled)
 - Fixed Replit compatibility: File-based APIs (websites, settings, designer, files) now detect REPL_ID and use ./data/ instead of /opt/homelab
