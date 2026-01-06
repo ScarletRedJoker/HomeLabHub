@@ -27,7 +27,9 @@ show_help() {
 
 do_git_pull() {
     echo -e "${CYAN}[1/5] Pulling latest code...${NC}"
-    cd /opt/homelab/HomeLabHub
+    local repo_root
+    repo_root="$(dirname "$(dirname "$SCRIPT_DIR")")"
+    cd "$repo_root"
     git pull origin main
     cd "$SCRIPT_DIR"
     echo -e "${GREEN}✓ Code updated${NC}"
@@ -133,10 +135,10 @@ do_post_deploy() {
     echo ""
     echo -e "${GREEN}═══ Deployment Complete ═══${NC}"
     echo ""
-    echo "Access URLs:"
-    echo "  Dashboard:   https://dashboard.rig-city.com"
-    echo "  Discord Bot: https://discord.rig-city.com"
-    echo "  Stream Bot:  https://stream.rig-city.com"
+    echo "Access URLs (configure your domain DNS to point here):"
+    echo "  Dashboard:   http://localhost:5000 (or https://dashboard.yourdomain.com)"
+    echo "  Discord Bot: http://localhost:4000 (or https://discord.yourdomain.com)"
+    echo "  Stream Bot:  http://localhost:3000 (or https://stream.yourdomain.com)"
     echo ""
     echo "Commands:"
     echo "  Logs:    docker compose logs -f [service]"

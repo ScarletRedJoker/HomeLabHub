@@ -27,7 +27,9 @@ show_help() {
 
 do_git_pull() {
     echo -e "${CYAN}[1/4] Pulling latest code...${NC}"
-    cd /opt/homelab/HomeLabHub
+    local repo_root
+    repo_root="$(dirname "$(dirname "$SCRIPT_DIR")")"
+    cd "$repo_root"
     git pull origin main
     cd "$SCRIPT_DIR"
     echo -e "${GREEN}✓ Code updated${NC}"
