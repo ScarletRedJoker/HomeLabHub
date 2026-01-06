@@ -1,7 +1,18 @@
 # Nebula Command
 
 ## Overview
-Nebula Command is a comprehensive suite for homelab management, Discord community integration, and multi-platform streaming. It comprises a Dashboard for homelab control and AI assistance, a Discord Bot for community and notification management, and a Stream Bot for automated content posting across streaming platforms. The platform's vision is to offer a unified control plane for homelab enthusiasts, providing advanced features for automation, monitoring, and interaction within their digital environments.
+Nebula Command is a comprehensive platform for homelab management, AI-powered content creation, Discord community integration, and multi-platform streaming. The vision is to create a custom development and automation engine - like Replit but optimized for homelab enthusiasts - supporting distributed deployment across cloud (Linode) and local (Ubuntu homelab with RTX 3060 GPU) infrastructure.
+
+**Core Pillars:**
+1. **Dashboard** - Web interface for homelab control, AI tools, remote operations
+2. **Discord Bot** - Community management, tickets, notifications, music
+3. **Stream Bot** - Multi-platform streaming management (Twitch/YouTube/Kick)
+4. **AI Services** - Hybrid cloud/local AI (OpenAI + Ollama on GPU)
+
+**Distributed Architecture:**
+- Cloud services (Dashboard, Discord Bot, Stream Bot) run on Linode
+- Local services (Ollama, Stable Diffusion, Plex, MinIO) run on Ubuntu homelab
+- Tailscale mesh network connects everything securely
 
 ## User Preferences
 - **User:** Evin
