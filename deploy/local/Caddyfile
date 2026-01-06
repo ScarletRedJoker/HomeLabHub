@@ -47,7 +47,24 @@ home.evindrake.net {
 }
 
 game.evindrake.net {
-    redir https://dashboard.evindrake.net/game-connect permanent
+    reverse_proxy 172.17.0.1:47990 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up Upgrade {http.request.header.Upgrade}
+        header_up Connection {http.request.header.Connection}
+        transport http {
+            read_timeout 120s
+            write_timeout 120s
+        }
+    }
+    
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    }
 }
 
 dashboard.evindrake.net {

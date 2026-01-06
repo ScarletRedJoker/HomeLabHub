@@ -18,4 +18,15 @@ ingress:
     originRequest:
       noTLSVerify: true
 
+  - hostname: game.evindrake.net
+    service: http://localhost:47990
+    originRequest:
+      noTLSVerify: true
+      connectTimeout: 30s
+
+  - hostname: vnc.evindrake.net
+    service: http://localhost:6080
+    originRequest:
+      noTLSVerify: true
+
   - service: http_status:404
