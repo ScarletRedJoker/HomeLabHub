@@ -103,6 +103,17 @@ A KVM VM named `RDPWindows` is configured with GPU passthrough (NVIDIA RTX 3060)
 
 ### Recent Changes (January 2026)
 
+**AI Creative Platform (January 6, 2026):**
+- NEW: Creative Studio - AI-powered content creation dashboard at `/creative`
+- NEW: AI Orchestrator (`lib/ai-orchestrator.ts`) - Unified interface for multiple AI providers
+- NEW: Multi-model support - OpenAI GPT-4o, Ollama (local LLM), auto-switching
+- NEW: Image Generation API - DALL-E 3 integration with local save support
+- NEW: AI Status endpoint - Health checks for all AI providers at `/api/ai/status`
+- NEW: Model listing endpoint - Available models at `/api/ai/models`
+- READY: Ollama integration for local LLM on RTX 3060 (set OLLAMA_URL env var)
+- READY: Stable Diffusion integration (set STABLE_DIFFUSION_URL env var)
+- PLANNED: Video generation with Runway/Luma APIs
+
 **Remote Operations & Security Hardening (January 6, 2026):**
 - NEW: SSH Terminal with xterm.js - Full shell access to Linode/Home servers via WebSocket on port 3001
 - NEW: SFTP File Browser - Upload/download files, navigate directories with path security
