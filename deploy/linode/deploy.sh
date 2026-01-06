@@ -69,46 +69,48 @@ add_if_missing "SECRET_KEY" "$(generate_secret)"
 add_if_missing "REDIS_PASSWORD" "$(generate_secret)"
 add_if_missing "JWT_SECRET" "$(generate_secret)"
 
-# Source the env file more robustly (handle special characters and = in values)
-while IFS= read -r line || [[ -n "$line" ]]; do
-    # Skip comments and empty lines
-    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
-    # Extract key (everything before first =)
-    key="${line%%=*}"
-    # Extract value (everything after first =)
-    value="${line#*=}"
-    # Remove leading/trailing whitespace from key
-    key=$(echo "$key" | xargs 2>/dev/null || echo "$key")
-    # Skip if key is empty
-    [[ -z "$key" ]] && continue
-    # Remove surrounding quotes from value if present
-    value=$(echo "$value" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//" 2>/dev/null || echo "$value")
-    # Export the variable
-    export "$key=$value" 2>/dev/null || true
-done < .env
+# Helper function to get value from .env (handles special characters)
+get_env_value() {
+    local key=$1
+    grep "^${key}=" .env 2>/dev/null | head -1 | cut -d'=' -f2- | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//"
+}
 
-# Check only for API tokens that MUST come from external services
+# Check for API tokens using grep (more reliable than shell sourcing)
 MISSING_CRITICAL=0
 MISSING_OPTIONAL=0
 
-# Critical: These are required for core functionality
-if [[ -z "${DISCORD_BOT_TOKEN:-}" || "${DISCORD_BOT_TOKEN:-}" == *"xxxxx"* ]]; then
+DISCORD_TOKEN=$(get_env_value "DISCORD_BOT_TOKEN")
+TAILSCALE_KEY=$(get_env_value "TAILSCALE_AUTHKEY")
+CLOUDFLARE_TOKEN=$(get_env_value "CLOUDFLARE_API_TOKEN")
+OPENAI_KEY=$(get_env_value "OPENAI_API_KEY")
+AI_OPENAI_KEY=$(get_env_value "AI_INTEGRATIONS_OPENAI_API_KEY")
+
+# Critical: Required for core functionality
+if [[ -z "$DISCORD_TOKEN" || "$DISCORD_TOKEN" == *"xxxxx"* ]]; then
     echo -e "${RED}[MISSING] DISCORD_BOT_TOKEN - Get from discord.com/developers${NC}"
     MISSING_CRITICAL=1
+else
+    echo -e "${GREEN}[OK] DISCORD_BOT_TOKEN${NC}"
 fi
 
 # Optional: System works without these but with reduced functionality
-if [[ -z "${TAILSCALE_AUTHKEY:-}" || "${TAILSCALE_AUTHKEY:-}" == *"xxxxx"* ]]; then
+if [[ -z "$TAILSCALE_KEY" || "$TAILSCALE_KEY" == *"xxxxx"* ]]; then
     echo -e "${YELLOW}[OPTIONAL] TAILSCALE_AUTHKEY - Needed for local homelab connection${NC}"
     MISSING_OPTIONAL=1
+else
+    echo -e "${GREEN}[OK] TAILSCALE_AUTHKEY${NC}"
 fi
-if [[ -z "${CLOUDFLARE_API_TOKEN:-}" || "${CLOUDFLARE_API_TOKEN:-}" == *"xxxxx"* ]]; then
+if [[ -z "$CLOUDFLARE_TOKEN" || "$CLOUDFLARE_TOKEN" == *"xxxxx"* ]]; then
     echo -e "${YELLOW}[OPTIONAL] CLOUDFLARE_API_TOKEN - Needed for DNS management${NC}"
     MISSING_OPTIONAL=1
+else
+    echo -e "${GREEN}[OK] CLOUDFLARE_API_TOKEN${NC}"
 fi
-if [[ -z "${AI_INTEGRATIONS_OPENAI_API_KEY:-}" && -z "${OPENAI_API_KEY:-}" ]]; then
+if [[ -z "$AI_OPENAI_KEY" && -z "$OPENAI_KEY" ]]; then
     echo -e "${YELLOW}[OPTIONAL] OPENAI_API_KEY - Needed for AI features${NC}"
     MISSING_OPTIONAL=1
+else
+    echo -e "${GREEN}[OK] OPENAI_API_KEY${NC}"
 fi
 
 if [[ $MISSING_CRITICAL -eq 1 ]]; then
