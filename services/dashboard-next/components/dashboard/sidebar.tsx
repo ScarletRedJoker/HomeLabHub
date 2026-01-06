@@ -15,6 +15,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Palette,
+  Terminal,
+  FolderOpen,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -27,6 +29,8 @@ const navItems = [
   { href: "/editor", label: "Code Editor", icon: Code2 },
   { href: "/deploy", label: "Deploy", icon: Rocket },
   { href: "/servers", label: "Servers", icon: HardDrive },
+  { href: "/files-remote", label: "Remote Files", icon: FolderOpen },
+  { href: "/terminal", label: "Terminal", icon: Terminal },
   { href: "/ai", label: "Jarvis AI", icon: Bot },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

@@ -4,6 +4,14 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Server,
   Home,
   Cpu,
@@ -14,6 +22,9 @@ import {
   RefreshCw,
   Loader2,
   AlertTriangle,
+  Power,
+  PowerOff,
+  RotateCcw,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -34,10 +45,31 @@ interface ServerMetrics {
   };
 }
 
+type PowerAction = "restart" | "shutdown" | "wake";
+
+interface ConfirmDialog {
+  open: boolean;
+  serverId: string;
+  serverName: string;
+  action: PowerAction;
+}
+
+const serverSupportsWol: Record<string, boolean> = {
+  linode: false,
+  home: true,
+};
+
 export default function ServersPage() {
   const [servers, setServers] = useState<ServerMetrics[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState<string | null>(null);
+  const [powerLoading, setPowerLoading] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog>({
+    open: false,
+    serverId: "",
+    serverName: "",
+    action: "restart",
+  });
   const { toast } = useToast();
 
   const fetchServers = async () => {
@@ -78,6 +110,85 @@ export default function ServersPage() {
     }
   };
 
+  const openConfirmDialog = (serverId: string, serverName: string, action: PowerAction) => {
+    setConfirmDialog({
+      open: true,
+      serverId,
+      serverName,
+      action,
+    });
+  };
+
+  const closeConfirmDialog = () => {
+    setConfirmDialog((prev) => ({ ...prev, open: false }));
+  };
+
+  const executePowerAction = async () => {
+    const { serverId, serverName, action } = confirmDialog;
+    closeConfirmDialog();
+    setPowerLoading(`${serverId}-${action}`);
+
+    try {
+      const res = await fetch("/api/servers/power", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ serverId, action }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        toast({
+          title: "Success",
+          description: data.message || `${action} command sent to ${serverName}`,
+        });
+        if (action === "wake") {
+          setTimeout(() => refreshServer(serverId), 10000);
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || `Failed to ${action} ${serverName}`,
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || `Failed to ${action} ${serverName}`,
+        variant: "destructive",
+      });
+    } finally {
+      setPowerLoading(null);
+    }
+  };
+
+  const getActionDetails = (action: PowerAction) => {
+    switch (action) {
+      case "wake":
+        return {
+          title: "Wake Server",
+          description: "Send a Wake-on-LAN magic packet to wake up the server?",
+          buttonText: "Wake",
+          variant: "default" as const,
+        };
+      case "restart":
+        return {
+          title: "Restart Server",
+          description: "This will restart the server. All services will be temporarily unavailable.",
+          buttonText: "Restart",
+          variant: "default" as const,
+        };
+      case "shutdown":
+        return {
+          title: "Shutdown Server",
+          description: "This will shut down the server. The server will need to be manually powered on or woken via WoL.",
+          buttonText: "Shutdown",
+          variant: "destructive" as const,
+        };
+    }
+  };
+
   useEffect(() => {
     fetchServers();
     const interval = setInterval(fetchServers, 60000);
@@ -91,6 +202,8 @@ export default function ServersPage() {
       </div>
     );
   }
+
+  const actionDetails = getActionDetails(confirmDialog.action);
 
   return (
     <div className="space-y-6">
@@ -194,8 +307,55 @@ export default function ServersPage() {
                 </>
               )}
 
+              <div className="flex gap-2 pt-2">
+                {serverSupportsWol[server.id] && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openConfirmDialog(server.id, server.name, "wake")}
+                    disabled={powerLoading === `${server.id}-wake` || server.status === "online"}
+                    className="flex-1"
+                  >
+                    {powerLoading === `${server.id}-wake` ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Power className="mr-2 h-4 w-4" />
+                    )}
+                    Wake
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openConfirmDialog(server.id, server.name, "restart")}
+                  disabled={powerLoading === `${server.id}-restart` || server.status !== "online"}
+                  className="flex-1"
+                >
+                  {powerLoading === `${server.id}-restart` ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                  )}
+                  Restart
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openConfirmDialog(server.id, server.name, "shutdown")}
+                  disabled={powerLoading === `${server.id}-shutdown` || server.status !== "online"}
+                  className="flex-1 text-destructive hover:text-destructive"
+                >
+                  {powerLoading === `${server.id}-shutdown` ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <PowerOff className="mr-2 h-4 w-4" />
+                  )}
+                  Shutdown
+                </Button>
+              </div>
+
               <Button
-                variant="outline"
+                variant="ghost"
                 className="w-full"
                 onClick={() => refreshServer(server.id)}
                 disabled={refreshing === server.id}
@@ -223,6 +383,30 @@ export default function ServersPage() {
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={confirmDialog.open} onOpenChange={(open) => !open && closeConfirmDialog()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{actionDetails.title}</DialogTitle>
+            <DialogDescription>
+              {actionDetails.description}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm">
+              Server: <span className="font-semibold">{confirmDialog.serverName}</span>
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeConfirmDialog}>
+              Cancel
+            </Button>
+            <Button variant={actionDetails.variant} onClick={executePowerAction}>
+              {actionDetails.buttonText}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

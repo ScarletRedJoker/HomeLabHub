@@ -27,6 +27,10 @@ args = "stream-bot"
 task = "workflow.run"
 args = "dashboard-next"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "terminal-server"
+
 [[workflows.workflow]]
 name = "discord-bot"
 author = "agent"
@@ -62,9 +66,25 @@ waitForPort = 5000
 [workflows.workflow.metadata]
 outputType = "webview"
 
+[[workflows.workflow]]
+name = "terminal-server"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd services/dashboard-next && npm run terminal-server"
+waitForPort = 3001
+
 [[ports]]
 localPort = 3000
 externalPort = 3000
+
+[[ports]]
+localPort = 3001
+externalPort = 3001
 
 [[ports]]
 localPort = 4000
