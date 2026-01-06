@@ -7,7 +7,7 @@ services:
       - 8096:8096      # Web UI
       - 8920:8920      # HTTPS (optional)
       - 7359:7359/udp  # Discovery
-      - 1900:1900/udp  # DLNA
+      # - 1900:1900/udp  # DLNA (disabled - conflicts with Plex)
     environment:
       - JELLYFIN_PublishedServerUrl=${JELLYFIN_URL:-http://localhost:8096}
     volumes:
