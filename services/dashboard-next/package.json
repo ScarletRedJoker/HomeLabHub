@@ -62,7 +62,7 @@
     "ssh2-sftp-client": "^11.0.0",
     "tailwind-merge": "^2.3.0",
     "wake_on_lan": "^1.0.0",
-    "yaml": "^2.7.1",
+    "yaml": "^2.8.2",
     "zustand": "^4.5.2"
   },
   "devDependencies": {
