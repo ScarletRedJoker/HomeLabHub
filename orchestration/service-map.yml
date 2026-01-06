@@ -1,0 +1,205 @@
+# Nebula Command - Service Discovery Map
+# This file defines where each service runs across the distributed infrastructure
+# Services can reference each other using these endpoints
+
+version: "1.0"
+name: nebula-command
+
+# Environment-specific overrides are at the bottom
+environments:
+  development:
+    host_suffix: ".replit.dev"
+    tailscale_enabled: false
+  
+  production:
+    host_suffix: ""
+    tailscale_enabled: true
+
+# Service definitions
+services:
+  # ==========================================
+  # CLOUD SERVICES (Linode)
+  # ==========================================
+  
+  dashboard:
+    description: "Main web dashboard for Nebula Command"
+    runtime: nodejs
+    port: 5000
+    health_endpoint: /api/health
+    location: linode
+    hosts:
+      production: "dashboard.evindrake.net"
+      development: "localhost:5000"
+    depends_on:
+      - postgres
+      - redis
+      - ai-proxy
+
+  discord-bot:
+    description: "Discord bot for community management"
+    runtime: nodejs
+    port: 4000
+    health_endpoint: /health
+    location: linode
+    hosts:
+      production: "localhost:4000"
+      development: "localhost:4000"
+    depends_on:
+      - postgres
+      - redis
+
+  stream-bot:
+    description: "Multi-platform streaming management"
+    runtime: nodejs
+    port: 3000
+    health_endpoint: /health
+    location: linode
+    hosts:
+      production: "localhost:3000"
+      development: "localhost:3000"
+    depends_on:
+      - postgres
+      - redis
+
+  # ==========================================
+  # DATA SERVICES (Linode)
+  # ==========================================
+
+  postgres:
+    description: "PostgreSQL database"
+    runtime: postgres
+    port: 5432
+    location: linode
+    hosts:
+      production: "postgres:5432"
+      development: "${DATABASE_URL}"
+    databases:
+      - homelab_jarvis
+      - discord_bot
+      - stream_bot
+
+  redis:
+    description: "Redis cache and session store"
+    runtime: redis
+    port: 6379
+    location: linode
+    hosts:
+      production: "redis:6379"
+      development: "${REDIS_URL}"
+
+  # ==========================================
+  # AI SERVICES (Local GPU / Hybrid)
+  # ==========================================
+
+  ai-proxy:
+    description: "AI request router - routes to cloud or local AI"
+    runtime: nodejs
+    port: 3100
+    location: linode
+    health_endpoint: /health
+    hosts:
+      production: "localhost:3100"
+      development: "localhost:3100"
+    routes:
+      - path: /openai/*
+        upstream: openai-cloud
+      - path: /ollama/*
+        upstream: ollama-local
+      - path: /stable-diffusion/*
+        upstream: sd-local
+
+  openai-cloud:
+    description: "OpenAI API (GPT-4, DALL-E)"
+    runtime: external
+    location: cloud
+    hosts:
+      production: "https://api.openai.com/v1"
+      development: "${AI_INTEGRATIONS_OPENAI_BASE_URL}"
+    env_vars:
+      - AI_INTEGRATIONS_OPENAI_API_KEY
+
+  ollama-local:
+    description: "Local LLM on RTX 3060 GPU"
+    runtime: ollama
+    port: 11434
+    location: local
+    hosts:
+      production: "http://100.110.227.25:11434"  # Tailscale IP
+      development: "http://host.evindrake.net:11434"
+    models:
+      - llama3.2
+      - codellama
+      - mistral
+    gpu_required: true
+
+  stable-diffusion-local:
+    description: "Local image generation on RTX 3060"
+    runtime: automatic1111
+    port: 7860
+    location: local
+    hosts:
+      production: "http://100.110.227.25:7860"  # Tailscale IP
+      development: "http://host.evindrake.net:7860"
+    gpu_required: true
+
+  # ==========================================
+  # LOCAL SERVICES (Ubuntu Homelab)
+  # ==========================================
+
+  plex:
+    description: "Plex Media Server"
+    runtime: plex
+    port: 32400
+    location: local
+    hosts:
+      production: "http://100.110.227.25:32400"
+      development: "http://host.evindrake.net:32400"
+
+  minio:
+    description: "Object storage for media and backups"
+    runtime: minio
+    port: 9000
+    console_port: 9001
+    location: local
+    hosts:
+      production: "http://100.110.227.25:9000"
+      development: "http://host.evindrake.net:9000"
+
+  home-assistant:
+    description: "Home automation"
+    runtime: homeassistant
+    port: 8123
+    location: local
+    hosts:
+      production: "http://100.110.227.25:8123"
+      development: "http://host.evindrake.net:8123"
+
+  kvm-gaming:
+    description: "Windows KVM with GPU passthrough"
+    runtime: qemu
+    location: local
+    tailscale_ip: "100.118.44.102"
+    features:
+      - sunshine-streaming
+      - moonlight-compatible
+
+# Health check configuration
+health_checks:
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  
+# Failover configuration  
+failover:
+  ai:
+    primary: openai-cloud
+    fallback: ollama-local
+    strategy: "prefer-local-when-available"
+  
+# Network configuration
+network:
+  tailscale:
+    network: "100.64.0.0/10"
+    linode_ip: "100.66.61.51"
+    local_ip: "100.110.227.25"
+    gaming_vm_ip: "100.118.44.102"

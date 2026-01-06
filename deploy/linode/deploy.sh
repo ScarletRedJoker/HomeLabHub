@@ -1,11 +1,12 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# LINODE DEPLOY - Deploy Linode cloud services only
+# NEBULA COMMAND - Linode Cloud Deployment
 # ═══════════════════════════════════════════════════════════════
 # Usage: ./deploy.sh [options]
 # Run from: /opt/homelab/HomeLabHub/deploy/linode
 #
 # Services deployed: Dashboard, Discord Bot, Stream Bot, Redis, Postgres
+# AI Services: OpenAI (cloud), connects to local Ollama via Tailscale
 # ═══════════════════════════════════════════════════════════════
 
 set -euo pipefail
@@ -54,9 +55,10 @@ if [[ -z "${TAILSCALE_AUTHKEY:-}" || "${TAILSCALE_AUTHKEY:-}" == *"xxxxx"* ]]; t
     echo -e "${RED}[MISSING] TAILSCALE_AUTHKEY${NC}"
     MISSING_CRITICAL=1
 fi
-if [[ -z "${OPENAI_API_KEY:-}" || "${OPENAI_API_KEY:-}" == "sk-" ]]; then
-    echo -e "${RED}[MISSING] OPENAI_API_KEY${NC}"
-    MISSING_CRITICAL=1
+if [[ -z "${AI_INTEGRATIONS_OPENAI_API_KEY:-}" && -z "${OPENAI_API_KEY:-}" ]]; then
+    echo -e "${YELLOW}[OPTIONAL] No OpenAI API key (AI_INTEGRATIONS_OPENAI_API_KEY or OPENAI_API_KEY)${NC}"
+elif [[ "${AI_INTEGRATIONS_OPENAI_API_KEY:-}" == "sk-" || "${OPENAI_API_KEY:-}" == "sk-" ]]; then
+    echo -e "${YELLOW}[INVALID] OpenAI API key appears to be a placeholder${NC}"
 fi
 if [[ -z "${DISCORD_BOT_TOKEN:-}" ]]; then
     echo -e "${RED}[MISSING] DISCORD_BOT_TOKEN${NC}"

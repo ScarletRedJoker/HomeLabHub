@@ -1,11 +1,12 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# LOCAL UBUNTU DEPLOY - Deploy local homelab services only
+# NEBULA COMMAND - Local Ubuntu Homelab Deployment
 # ═══════════════════════════════════════════════════════════════
 # Usage: ./deploy.sh [options]
 # Run from: /opt/homelab/HomeLabHub/deploy/local
 #
 # Services deployed: Plex, MinIO, Home Assistant, CloudFlare Tunnel
+# AI Services: Ollama (GPU), Stable Diffusion (optional)
 # ═══════════════════════════════════════════════════════════════
 
 set -euo pipefail

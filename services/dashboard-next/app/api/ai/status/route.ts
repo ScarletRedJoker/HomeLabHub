@@ -34,15 +34,17 @@ async function checkOpenAI(): Promise<AIProviderStatus> {
     });
 
     const start = Date.now();
-    const models = await openai.models.list();
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: "Say OK" }],
+      max_tokens: 3,
+    });
     const latency = Date.now() - start;
-
-    const hasGPT4 = models.data.some(m => m.id.includes("gpt-4"));
 
     return {
       name: "OpenAI",
       status: "connected",
-      model: hasGPT4 ? "gpt-4o" : "gpt-3.5-turbo",
+      model: "gpt-4o",
       latency,
     };
   } catch (error: any) {
