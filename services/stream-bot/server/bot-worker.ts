@@ -2213,9 +2213,13 @@ export class BotWorker {
         await this.storage.updateBotConfig({
           lastFactPostedAt: new Date(),
         });
+        
+        return fact;
       }
-
-      return successfulPlatforms.length > 0 ? fact : null;
+      
+      // All platform posts failed - throw error with details
+      const failedPlatforms = platformsReady.filter(p => !successfulPlatforms.includes(p));
+      throw new Error(`Failed to post to ${failedPlatforms.join(", ")} - please reconnect your platform(s) in Settings`);
     } catch (error) {
       console.error(`[BotWorker] Error generating/posting fact for user ${this.userId}:`, error);
 

@@ -1375,7 +1375,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!fact) {
         console.error(`[trigger] No fact returned for user ${req.user!.id}`);
-        return res.status(500).json({ error: "Failed to generate fact" });
+        return res.status(500).json({ error: "Failed to generate fact - no response from AI" });
       }
 
       console.log(`[trigger] Successfully posted fact for user ${req.user!.id}:`, fact.substring(0, 50));
@@ -1383,8 +1383,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error(`[trigger] Error posting fact:`, error?.message || error);
       res.status(500).json({ 
-        error: "Failed to trigger fact posting",
-        details: error?.message || String(error)
+        error: error?.message || "Failed to trigger fact posting"
       });
     }
   });
