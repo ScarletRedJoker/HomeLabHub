@@ -69,10 +69,23 @@ add_if_missing "SECRET_KEY" "$(generate_secret)"
 add_if_missing "REDIS_PASSWORD" "$(generate_secret)"
 add_if_missing "JWT_SECRET" "$(generate_secret)"
 
-# Source the env file
-set -a
-source .env 2>/dev/null || true
-set +a
+# Source the env file more robustly (handle special characters and = in values)
+while IFS= read -r line || [[ -n "$line" ]]; do
+    # Skip comments and empty lines
+    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+    # Extract key (everything before first =)
+    key="${line%%=*}"
+    # Extract value (everything after first =)
+    value="${line#*=}"
+    # Remove leading/trailing whitespace from key
+    key=$(echo "$key" | xargs 2>/dev/null || echo "$key")
+    # Skip if key is empty
+    [[ -z "$key" ]] && continue
+    # Remove surrounding quotes from value if present
+    value=$(echo "$value" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//" 2>/dev/null || echo "$value")
+    # Export the variable
+    export "$key=$value" 2>/dev/null || true
+done < .env
 
 # Check only for API tokens that MUST come from external services
 MISSING_CRITICAL=0
