@@ -72,18 +72,20 @@ add_if_missing "JWT_SECRET" "$(generate_secret)"
 # Helper function to get value from .env (handles special characters)
 get_env_value() {
     local key=$1
-    grep "^${key}=" .env 2>/dev/null | head -1 | cut -d'=' -f2- | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//"
+    local val=""
+    val=$(grep "^${key}=" .env 2>/dev/null | head -1 | cut -d'=' -f2- | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//") || true
+    echo "$val"
 }
 
 # Check for API tokens using grep (more reliable than shell sourcing)
 MISSING_CRITICAL=0
 MISSING_OPTIONAL=0
 
-DISCORD_TOKEN=$(get_env_value "DISCORD_BOT_TOKEN")
-TAILSCALE_KEY=$(get_env_value "TAILSCALE_AUTHKEY")
-CLOUDFLARE_TOKEN=$(get_env_value "CLOUDFLARE_API_TOKEN")
-OPENAI_KEY=$(get_env_value "OPENAI_API_KEY")
-AI_OPENAI_KEY=$(get_env_value "AI_INTEGRATIONS_OPENAI_API_KEY")
+DISCORD_TOKEN=$(get_env_value "DISCORD_BOT_TOKEN") || true
+TAILSCALE_KEY=$(get_env_value "TAILSCALE_AUTHKEY") || true
+CLOUDFLARE_TOKEN=$(get_env_value "CLOUDFLARE_API_TOKEN") || true
+OPENAI_KEY=$(get_env_value "OPENAI_API_KEY") || true
+AI_OPENAI_KEY=$(get_env_value "AI_INTEGRATIONS_OPENAI_API_KEY") || true
 
 # Critical: Required for core functionality
 if [[ -z "$DISCORD_TOKEN" || "$DISCORD_TOKEN" == *"xxxxx"* ]]; then
