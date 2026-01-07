@@ -37,10 +37,13 @@ services:
       - 9091
     environment:
       - TZ=${TZ:-America/New_York}
-      - DOMAIN=${DOMAIN:-example.com}
-      - AUTHELIA_JWT_SECRET=${AUTHELIA_JWT_SECRET:-changeme_jwt_secret_32chars_min}
-      - AUTHELIA_SESSION_SECRET=${AUTHELIA_SESSION_SECRET:-changeme_session_secret_32chars}
-      - AUTHELIA_STORAGE_ENCRYPTION_KEY=${AUTHELIA_STORAGE_KEY:-changeme_storage_key_32chars_min}
+      # Enable environment variable expansion in config
+      - X_AUTHELIA_CONFIG_FILTERS=expand-env
+      # These are expanded into the configuration file
+      - DOMAIN=${DOMAIN:-evindrake.net}
+      - AUTHELIA_JWT_SECRET=${AUTHELIA_JWT_SECRET}
+      - AUTHELIA_SESSION_SECRET=${AUTHELIA_SESSION_SECRET}
+      - AUTHELIA_STORAGE_ENCRYPTION_KEY=${AUTHELIA_STORAGE_KEY}
     volumes:
       - ./services/authelia:/config
       - authelia_data:/data
@@ -122,8 +125,9 @@ services:
       - "443:443/udp"
     environment:
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
-      - DOMAIN=${DOMAIN:-example.com}
-      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
+      - DOMAIN=${DOMAIN:-evindrake.net}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-evin@evindrake.net}
+      - GAMESTREAM_HOST=${GAMESTREAM_HOST:-192.168.122.100}
     volumes:
       - ./services/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

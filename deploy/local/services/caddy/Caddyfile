@@ -102,9 +102,11 @@ vms.{$DOMAIN} {
 
 # Sunshine Web UI - Protected (admin only)
 # Note: Moonlight clients connect directly to ports 47984-48010
+# Sunshine runs on Windows 11 VM with GPU passthrough
+# Set GAMESTREAM_HOST env var to VM's IP (default: 192.168.122.100)
 gamestream.{$DOMAIN} {
         import authelia
-        reverse_proxy host.docker.internal:47990 {
+        reverse_proxy {$GAMESTREAM_HOST:192.168.122.100}:47990 {
                 transport http {
                         tls_insecure_skip_verify
                 }
