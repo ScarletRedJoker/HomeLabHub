@@ -53,7 +53,19 @@ Secrets are managed via `.env` files (gitignore'd) and Replit Secrets. Pre-commi
 
 ## Recent Changes (January 2026)
 
-### Configuration & Deployment Fixes (Latest)
+### Security Notifications & Email System (Latest)
+- **Dashboard Security Notifications**: Authelia OTP codes now appear directly in the dashboard notification bell
+  - API endpoint `/api/authelia/notifications` reads from home server's Authelia notification file via SSH
+  - Security codes displayed with purple highlight and one-click copy button
+  - No external email dependency for basic 2FA codes
+- **Self-Hosted Email Server**: Mailu email server configuration added for Linode
+  - Docker Compose stack at `deploy/linode/services/mailu/docker-compose.yml`
+  - Subdomains: `mail.evindrake.net` (SMTP/IMAP), `webmail.evindrake.net` (web interface)
+  - Enables branded emails from `@evindrake.net` domain
+  - Authelia can use self-hosted SMTP for password reset emails
+- **DNS Records Added**: `mail`, `webmail`, `autoconfig`, `autodiscover` subdomains in `config/domains.yml`
+
+### Configuration & Deployment Fixes
 - **Authelia Configuration**: Secrets must be hardcoded in `configuration.yml` on the server (not via env vars)
   - The `expand-env` and `template` filters block variables starting with `AUTHELIA_` and ending with `SECRET`/`KEY`
   - Use `configuration.yml.example` as template, copy to `configuration.yml`, replace placeholders with actual values
