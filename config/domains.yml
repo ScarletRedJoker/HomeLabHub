@@ -1,0 +1,130 @@
+servers:
+  linode:
+    name: "Linode Cloud"
+    ip: "69.164.211.205"
+    description: "Cloud server hosting Dashboard, Discord Bot, Stream Bot"
+    tailscale_ip: null
+  
+  local:
+    name: "Local Homelab"
+    ip: "auto"
+    description: "Homelab server hosting media, storage, and protected services"
+    tailscale_ip: null
+
+subdomains:
+  # === LINODE CLOUD SERVICES ===
+  # These run on the cloud server and should point to Linode IP
+  
+  - name: dashboard
+    server: linode
+    proxied: true
+    profile: null
+    description: "Nebula Command Dashboard"
+  
+  - name: api
+    server: linode
+    proxied: true
+    profile: null
+    description: "API/Webhooks endpoint"
+  
+  - name: grafana
+    server: linode
+    proxied: true
+    profile: monitoring
+    description: "Grafana monitoring"
+  
+  - name: n8n
+    server: linode
+    proxied: true
+    profile: null
+    description: "n8n workflow automation"
+  
+  - name: code
+    server: linode
+    proxied: false
+    profile: null
+    description: "Code server / IDE"
+
+  # === LOCAL HOMELAB - MEDIA (DNS-only for FULL BANDWIDTH) ===
+  # These need direct connection for streaming performance
+  
+  - name: plex
+    server: local
+    proxied: false
+    profile: null
+    description: "Plex Media Server"
+  
+  - name: jellyfin
+    server: local
+    proxied: false
+    profile: null
+    description: "Jellyfin Community Sharing"
+  
+  - name: gamestream
+    server: local
+    proxied: false
+    profile: gamestream
+    description: "Sunshine Game Streaming"
+  
+  - name: home
+    server: local
+    proxied: false
+    profile: null
+    description: "Home Assistant"
+
+  # === LOCAL HOMELAB - PROTECTED SERVICES (Cloudflare proxy) ===
+  # These use Authelia SSO and benefit from DDoS protection
+  
+  - name: auth
+    server: local
+    proxied: true
+    profile: null
+    description: "Authelia SSO"
+  
+  - name: storage
+    server: local
+    proxied: true
+    profile: null
+    description: "MinIO Console"
+  
+  - name: s3
+    server: local
+    proxied: true
+    profile: null
+    description: "MinIO S3 API"
+  
+  - name: vnc
+    server: local
+    proxied: true
+    profile: null
+    description: "Remote Desktop (noVNC)"
+  
+  - name: ssh
+    server: local
+    proxied: true
+    profile: null
+    description: "Web SSH Terminal (ttyd)"
+  
+  - name: vms
+    server: local
+    proxied: true
+    profile: null
+    description: "Cockpit VM Manager"
+  
+  - name: torrent
+    server: local
+    proxied: true
+    profile: torrents
+    description: "qBittorrent WebUI"
+  
+  - name: nas
+    server: local
+    proxied: true
+    profile: null
+    description: "NAS file browser"
+  
+  - name: local
+    server: local
+    proxied: true
+    profile: null
+    description: "Local admin access"
