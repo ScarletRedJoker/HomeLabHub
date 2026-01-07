@@ -19,7 +19,6 @@ services:
       - mailu-overrides:/overrides:ro
     networks:
       - mailu-network
-      - nebula-network
     depends_on:
       - resolver
 
@@ -128,6 +127,3 @@ networks:
     ipam:
       config:
         - subnet: 192.168.203.0/24
-  nebula-network:
-    external: true
-    name: nebula-command_default
