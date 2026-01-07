@@ -145,6 +145,10 @@ class CloudflareSync {
   async updateRecord(zoneId, recordId, record) {
     return await this.request('PUT', `/zones/${zoneId}/dns_records/${recordId}`, record);
   }
+
+  async deleteRecord(zoneId, recordId) {
+    return await this.request('DELETE', `/zones/${zoneId}/dns_records/${recordId}`);
+  }
 }
 
 function getPublicIP() {
@@ -359,7 +363,16 @@ async function main() {
     let action = 'unchanged';
 
     if (existing) {
-      if (existing.content !== serverIP || existing.proxied !== subdomain.proxied) {
+      // If existing record is a different type (e.g., CNAME), delete it first
+      if (existing.type !== 'A') {
+        console.log(`  ⚠ ${fqdn} has ${existing.type} record, replacing with A record`);
+        await cf.deleteRecord(zoneId, existing.id);
+        console.log(`  + Creating ${fqdn} -> ${serverIP} (${proxyStatus})`);
+        await cf.createRecord(zoneId, newRecord);
+        stats.updated++;
+        stats.synced++;
+        action = 'updated';
+      } else if (existing.content !== serverIP || existing.proxied !== subdomain.proxied) {
         console.log(`  ↻ Updating ${fqdn} -> ${serverIP} (${proxyStatus})`);
         await cf.updateRecord(zoneId, existing.id, newRecord);
         stats.updated++;
