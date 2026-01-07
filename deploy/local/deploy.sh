@@ -248,15 +248,53 @@ do_git_pull() {
     repo_root="$(dirname "$(dirname "$SCRIPT_DIR")")"
     cd "$repo_root"
     
+    local secret_files=(
+        "deploy/local/services/authelia/configuration.yml"
+        "deploy/local/services/authelia/users_database.yml"
+        "deploy/linode/services/authelia/configuration.yml"
+        "deploy/linode/services/authelia/users_database.yml"
+    )
+    
+    local stashed=false
+    local has_local_changes=false
+    
+    for f in "${secret_files[@]}"; do
+        if [ -f "$f" ] && git diff --quiet "$f" 2>/dev/null; then
+            : # File exists but no changes
+        elif [ -f "$f" ]; then
+            has_local_changes=true
+            break
+        fi
+    done
+    
+    if [ "$has_local_changes" = true ]; then
+        if [ "$VERBOSE" = true ]; then
+            echo "  Stashing local secret files..."
+        fi
+        
+        git stash push -m "deploy-local-secrets-$(date +%s)" -- "${secret_files[@]}" > /dev/null 2>&1 && stashed=true || true
+    fi
+    
+    local pull_success=false
     if [ "$VERBOSE" = true ]; then
-        git pull origin main
+        if git pull origin main; then
+            pull_success=true
+        fi
     else
         echo -n "  Fetching updates... "
         if git pull origin main > /dev/null 2>&1; then
             echo -e "${GREEN}done${NC}"
+            pull_success=true
         else
             echo -e "${YELLOW}check manually${NC}"
         fi
+    fi
+    
+    if [ "$stashed" = true ]; then
+        if [ "$VERBOSE" = true ]; then
+            echo "  Restoring local secret files..."
+        fi
+        git stash pop > /dev/null 2>&1 || true
     fi
     
     cd "$SCRIPT_DIR"
