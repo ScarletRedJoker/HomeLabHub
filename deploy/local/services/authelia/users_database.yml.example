@@ -1,0 +1,21 @@
+# Authelia Users Database
+# Generate password hash: docker run authelia/authelia:latest authelia crypto hash generate argon2 --password 'YOUR_PASSWORD'
+
+users:
+  admin:
+    displayname: "Admin"
+    # Default password: changeme (CHANGE THIS!)
+    # Generate new hash: docker run authelia/authelia:latest authelia crypto hash generate argon2 --password 'YOUR_PASSWORD'
+    password: "$argon2id$v=19$m=65536,t=3,p=4$REPLACE_WITH_HASH"
+    email: admin@example.com
+    groups:
+      - admins
+      - trusted
+
+  # Example trusted user (friend who can access Jellyfin)
+  # friend:
+  #   displayname: "Friend Name"
+  #   password: "$argon2id$v=19$m=65536,t=3,p=4$HASH_HERE"
+  #   email: friend@example.com
+  #   groups:
+  #     - trusted

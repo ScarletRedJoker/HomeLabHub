@@ -54,11 +54,16 @@ Secrets are managed via `.env` files (gitignore'd) and Replit Secrets. Pre-commi
 ## Recent Changes (January 2026)
 
 ### Configuration & Deployment Fixes (Latest)
-- **Authelia Environment Variables**: Using `X_AUTHELIA_CONFIG_FILTERS=expand-env` for proper variable substitution in v4.38+
-- **Authelia Secrets**: JWT, session, and storage encryption keys loaded from environment (AUTHELIA_JWT_SECRET, AUTHELIA_SESSION_SECRET, AUTHELIA_STORAGE_KEY)
+- **Authelia Configuration**: Secrets must be hardcoded in `configuration.yml` on the server (not via env vars)
+  - The `expand-env` and `template` filters block variables starting with `AUTHELIA_` and ending with `SECRET`/`KEY`
+  - Use `configuration.yml.example` as template, copy to `configuration.yml`, replace placeholders with actual values
+  - Config files with secrets are gitignored - never commit them
+  - Generate password hashes: `docker run --rm authelia/authelia:latest authelia crypto hash generate argon2 --password 'YourPassword'`
+- **Authelia Users**: Edit `users_database.yml` with generated password hashes for each user
 - **SSH Key Path**: Dashboard uses `/root/.ssh/homelab` as default key path for server connections
 - **Local AI Access**: Dashboard connects to Ollama (port 11434) and Stable Diffusion (port 7860) via Tailscale IP
 - **Default Domain**: `evindrake.net` set as default throughout configuration files
+- **Gamestream Host**: Set `GAMESTREAM_HOST=192.168.0.159` (Windows VM LAN IP) in `.env`
 
 ### Sunshine Game Streaming (Windows VM)
 - **Architecture**: Sunshine runs on Windows 11 VM with QEMU/KVM + GPU passthrough

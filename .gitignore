@@ -107,6 +107,13 @@ caddy_config/
 *.db-shm
 *.db-wal
 
+# Authelia config (contains hardcoded secrets on server)
+# Keep .example files tracked, ignore actual configs with secrets
+deploy/*/services/authelia/configuration.yml
+!deploy/*/services/authelia/configuration.yml.example
+deploy/*/services/authelia/users_database.yml
+!deploy/*/services/authelia/users_database.yml.example
+
 # Sync script logs and state
 var/log/
 var/state/

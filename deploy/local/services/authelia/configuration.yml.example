@@ -1,0 +1,90 @@
+# Authelia Configuration for Nebula Command
+# Provides SSO and 2FA for protected homelab services
+#
+# Environment variables are expanded via X_AUTHELIA_CONFIG_FILTERS=expand-env
+# Required env vars: AUTHELIA_JWT_SECRET, AUTHELIA_SESSION_SECRET, DOMAIN
+
+theme: dark
+
+server:
+  address: tcp://0.0.0.0:9091/
+
+log:
+  level: info
+  format: text
+
+identity_validation:
+  reset_password:
+    jwt_secret: '$AUTHELIA_JWT_SECRET'
+
+totp:
+  issuer: NebulaCommand
+  period: 30
+  skew: 1
+
+authentication_backend:
+  file:
+    path: /config/users_database.yml
+    password:
+      algorithm: argon2id
+      iterations: 3
+      memory: 65536
+      parallelism: 4
+      key_length: 32
+      salt_length: 16
+
+access_control:
+  default_policy: deny
+  
+  rules:
+    # Public services (have their own auth) - bypass Authelia
+    - domain_regex:
+        - '^plex\..*'
+        - '^jellyfin\..*'
+        - '^home\..*'
+        - '^dashboard\..*'
+        - '^api\..*'
+      policy: bypass
+    
+    # Admin-only services - require 2FA
+    - domain_regex:
+        - '^torrent\..*'
+        - '^vnc\..*'
+        - '^ssh\..*'
+        - '^vms\..*'
+        - '^gamestream\..*'
+        - '^storage\..*'
+        - '^s3\..*'
+      policy: two_factor
+      subject:
+        - "group:admins"
+
+session:
+  name: authelia_session
+  secret: '$AUTHELIA_SESSION_SECRET'
+  cookies:
+    - domain: '$DOMAIN'
+      authelia_url: 'https://auth.$DOMAIN'
+      default_redirection_url: 'https://dashboard.$DOMAIN'
+      expiration: 1h
+      inactivity: 5m
+      remember_me: 1M
+  
+  redis:
+    host: authelia-redis
+    port: 6379
+
+regulation:
+  max_retries: 3
+  find_time: 2m
+  ban_time: 5m
+
+storage:
+  encryption_key: '$AUTHELIA_STORAGE_ENCRYPTION_KEY'
+  local:
+    path: /data/db.sqlite3
+
+notifier:
+  disable_startup_check: true
+  filesystem:
+    filename: /data/notification.txt
