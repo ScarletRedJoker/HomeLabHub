@@ -22,6 +22,24 @@ Internet → Cloudflare (DNS + DDoS) → Caddy (Reverse Proxy) → Services
 1. **Domain** registered and pointed to Cloudflare nameservers
 2. **Cloudflare API Token** with Zone:Edit permissions
 3. **Public IP** or Tailscale accessible server
+4. **Router port forwarding** configured (see below)
+
+## Router Port Forwarding (REQUIRED for full bandwidth)
+
+Media services use DNS-only mode to bypass Cloudflare bandwidth limits. You MUST configure your router:
+
+| External Port | Internal IP | Internal Port | Protocol | Purpose |
+|--------------|-------------|---------------|----------|---------|
+| 80 | YOUR_SERVER_IP | 80 | TCP | HTTP redirect |
+| 443 | YOUR_SERVER_IP | 443 | TCP | HTTPS/TLS |
+| 32400 | YOUR_SERVER_IP | 32400 | TCP | Plex direct (optional) |
+
+### Why This Matters
+- **With Cloudflare proxy**: Limited to ~15-20 Mbps for video (throttled)
+- **With DNS-only + port forward**: Full upload bandwidth (50+ Mbps typical)
+
+Media services (Plex, Jellyfin, Sunshine) use DNS-only for streaming performance.
+Protected services (torrent, VNC, SSH) use Cloudflare proxy for DDoS protection.
 
 ## Quick Start
 

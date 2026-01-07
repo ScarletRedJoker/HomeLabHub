@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /**
  * Cloudflare DNS Sync Script
- * Automatically creates/updates DNS records based on domains.yml configuration
+ * Creates DNS records with HYBRID proxying:
+ * - Media services: DNS-only (proxied:false) for full bandwidth
+ * - Protected services: Cloudflare proxy (proxied:true) for DDoS protection
  * 
  * Usage: CLOUDFLARE_API_TOKEN=xxx DOMAIN=yourdomain.com node cloudflare-sync.js
  */
@@ -87,21 +89,30 @@ function getPublicIP() {
   }
 }
 
-// Subdomains to create - hardcoded for reliability
+// HYBRID SUBDOMAIN CONFIGURATION
+// proxied: false = DNS-only (direct connection, full bandwidth for streaming)
+// proxied: true = Cloudflare proxy (DDoS protection, but bandwidth limited)
 const SUBDOMAINS = [
-  { name: 'auth', description: 'Authelia SSO' },
-  { name: 'plex', description: 'Plex Media Server' },
-  { name: 'jellyfin', description: 'Jellyfin Community Sharing' },
-  { name: 'home', description: 'Home Assistant' },
-  { name: 'dashboard', description: 'Nebula Command Dashboard' },
-  { name: 'api', description: 'API/Webhooks' },
-  { name: 'torrent', description: 'qBittorrent (protected)' },
-  { name: 'storage', description: 'MinIO Console (protected)' },
-  { name: 's3', description: 'MinIO S3 API (protected)' },
-  { name: 'vnc', description: 'Remote Desktop (protected)' },
-  { name: 'ssh', description: 'Web SSH Terminal (protected)' },
-  { name: 'vms', description: 'Cockpit VM Manager (protected)' },
-  { name: 'gamestream', description: 'Sunshine Game Streaming (protected)' },
+  // === MEDIA SERVICES (DNS-only for FULL BANDWIDTH) ===
+  { name: 'plex', description: 'Plex Media Server', proxied: false },
+  { name: 'jellyfin', description: 'Jellyfin Community Sharing', proxied: false },
+  { name: 'gamestream', description: 'Sunshine Game Streaming', proxied: false },
+  
+  // === HOME AUTOMATION (DNS-only for low latency) ===
+  { name: 'home', description: 'Home Assistant', proxied: false },
+  
+  // === DASHBOARD & API (Can use proxy - low bandwidth) ===
+  { name: 'dashboard', description: 'Nebula Command Dashboard', proxied: true },
+  { name: 'api', description: 'API/Webhooks', proxied: true },
+  { name: 'auth', description: 'Authelia SSO', proxied: true },
+  
+  // === PROTECTED SERVICES (Cloudflare proxy for security) ===
+  { name: 'torrent', description: 'qBittorrent (protected)', proxied: true },
+  { name: 'storage', description: 'MinIO Console (protected)', proxied: true },
+  { name: 's3', description: 'MinIO S3 API (protected)', proxied: true },
+  { name: 'vnc', description: 'Remote Desktop (protected)', proxied: true },
+  { name: 'ssh', description: 'Web SSH Terminal (protected)', proxied: true },
+  { name: 'vms', description: 'Cockpit VM Manager (protected)', proxied: true },
 ];
 
 async function main() {
@@ -118,15 +129,17 @@ async function main() {
     process.exit(1);
   }
 
+  console.log('=== Cloudflare DNS Sync (Hybrid Mode) ===\n');
+  
   console.log('Detecting public IP...');
   const serverIP = getPublicIP();
-  console.log(`Server IP: ${serverIP}`);
+  console.log(`Server IP: ${serverIP}\n`);
 
   const cf = new CloudflareSync(apiToken);
 
   console.log(`Getting zone ID for ${domain}...`);
   const zoneId = await cf.getZoneId(domain);
-  console.log(`Zone ID: ${zoneId}`);
+  console.log(`Zone ID: ${zoneId}\n`);
 
   console.log('Fetching existing DNS records...');
   const existingRecords = await cf.getRecords(zoneId);
@@ -135,8 +148,8 @@ async function main() {
     recordMap[record.name] = record;
   }
 
-  console.log('\nSyncing DNS records...');
-  for (const subdomain of SUBDOMAINS) {
+  console.log('\n--- DNS-only (Full Bandwidth for Streaming) ---');
+  for (const subdomain of SUBDOMAINS.filter(s => !s.proxied)) {
     const fqdn = `${subdomain.name}.${domain}`;
     const existing = recordMap[fqdn];
 
@@ -145,24 +158,54 @@ async function main() {
       name: fqdn,
       content: serverIP,
       ttl: 300,
-      proxied: true,
+      proxied: false,
     };
 
     if (existing) {
-      if (existing.content !== serverIP || existing.proxied !== newRecord.proxied) {
-        console.log(`  Updating ${fqdn} -> ${serverIP}`);
+      if (existing.content !== serverIP || existing.proxied !== false) {
+        console.log(`  Updating ${fqdn} -> ${serverIP} (DNS-only)`);
         await cf.updateRecord(zoneId, existing.id, newRecord);
       } else {
-        console.log(`  ${fqdn} - OK (no changes)`);
+        console.log(`  ${fqdn} - OK`);
       }
     } else {
-      console.log(`  Creating ${fqdn} -> ${serverIP}`);
+      console.log(`  Creating ${fqdn} -> ${serverIP} (DNS-only)`);
       await cf.createRecord(zoneId, newRecord);
     }
   }
 
-  console.log('\nDNS sync complete!');
-  console.log(`\nAll subdomains now point to ${serverIP}`);
+  console.log('\n--- Cloudflare Proxied (DDoS Protection) ---');
+  for (const subdomain of SUBDOMAINS.filter(s => s.proxied)) {
+    const fqdn = `${subdomain.name}.${domain}`;
+    const existing = recordMap[fqdn];
+
+    const newRecord = {
+      type: 'A',
+      name: fqdn,
+      content: serverIP,
+      ttl: 1, // Auto TTL for proxied records
+      proxied: true,
+    };
+
+    if (existing) {
+      if (existing.content !== serverIP || existing.proxied !== true) {
+        console.log(`  Updating ${fqdn} -> ${serverIP} (proxied)`);
+        await cf.updateRecord(zoneId, existing.id, newRecord);
+      } else {
+        console.log(`  ${fqdn} - OK`);
+      }
+    } else {
+      console.log(`  Creating ${fqdn} -> ${serverIP} (proxied)`);
+      await cf.createRecord(zoneId, newRecord);
+    }
+  }
+
+  console.log('\n=== DNS Sync Complete ===\n');
+  console.log('IMPORTANT: For DNS-only subdomains, ensure your router forwards:');
+  console.log('  - TCP 80 -> homelab:80 (HTTP -> HTTPS redirect)');
+  console.log('  - TCP 443 -> homelab:443 (HTTPS/TLS)');
+  console.log('  - TCP 32400 -> homelab:32400 (Plex direct, optional)');
+  console.log('\nMedia services now have FULL BANDWIDTH - no Cloudflare throttling!');
 }
 
 main().catch(err => {
