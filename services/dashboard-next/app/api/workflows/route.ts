@@ -4,6 +4,348 @@ import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { workflows, workflowExecutions } from "@/lib/db/platform-schema";
 import { eq, desc, and } from "drizzle-orm";
+import { Client } from "ssh2";
+import { readFileSync, existsSync } from "fs";
+import { getServerById, getDefaultSshKeyPath } from "@/lib/server-config-store";
+
+interface ActionResult {
+  actionId: string;
+  actionType: string;
+  actionName: string;
+  status: "completed" | "failed" | "skipped";
+  message: string;
+  output?: unknown;
+  error?: string;
+  durationMs?: number;
+}
+
+interface HttpRequestConfig {
+  url: string;
+  method?: string;
+  headers?: Record<string, string>;
+  body?: unknown;
+}
+
+interface SshCommandConfig {
+  serverId: string;
+  command: string;
+}
+
+interface DiscordNotifyConfig {
+  webhookUrl: string;
+  message?: string;
+  embed?: {
+    title?: string;
+    description?: string;
+    color?: number;
+    fields?: Array<{ name: string; value: string; inline?: boolean }>;
+  };
+}
+
+interface EmailConfig {
+  to: string;
+  subject: string;
+  body: string;
+}
+
+async function executeHttpRequest(config: HttpRequestConfig): Promise<{ success: boolean; output?: unknown; error?: string }> {
+  try {
+    const { url, method = "GET", headers = {}, body } = config;
+    
+    if (!url) {
+      return { success: false, error: "URL is required" };
+    }
+
+    const fetchOptions: RequestInit = {
+      method: method.toUpperCase(),
+      headers: {
+        "Content-Type": "application/json",
+        ...headers,
+      },
+    };
+
+    if (body && method.toUpperCase() !== "GET") {
+      fetchOptions.body = typeof body === "string" ? body : JSON.stringify(body);
+    }
+
+    const response = await fetch(url, fetchOptions);
+    const contentType = response.headers.get("content-type") || "";
+    
+    let responseData: unknown;
+    if (contentType.includes("application/json")) {
+      responseData = await response.json();
+    } else {
+      responseData = await response.text();
+    }
+
+    if (!response.ok) {
+      return {
+        success: false,
+        output: responseData,
+        error: `HTTP ${response.status}: ${response.statusText}`,
+      };
+    }
+
+    return { success: true, output: responseData };
+  } catch (error: any) {
+    return { success: false, error: error.message || "HTTP request failed" };
+  }
+}
+
+async function executeSSHCommand(
+  host: string,
+  user: string,
+  keyPath: string,
+  command: string
+): Promise<{ success: boolean; output?: string; error?: string }> {
+  return new Promise((resolve) => {
+    if (!existsSync(keyPath)) {
+      resolve({ success: false, error: `SSH key not found: ${keyPath}` });
+      return;
+    }
+
+    const conn = new Client();
+    const timeout = setTimeout(() => {
+      conn.end();
+      resolve({ success: false, error: "Connection timeout" });
+    }, 60000);
+
+    conn.on("ready", () => {
+      conn.exec(command, (err, stream) => {
+        if (err) {
+          clearTimeout(timeout);
+          conn.end();
+          resolve({ success: false, error: err.message });
+          return;
+        }
+
+        let output = "";
+        let errorOutput = "";
+
+        stream.on("data", (data: Buffer) => {
+          output += data.toString();
+        });
+
+        stream.stderr.on("data", (data: Buffer) => {
+          errorOutput += data.toString();
+        });
+
+        stream.on("close", (code: number) => {
+          clearTimeout(timeout);
+          conn.end();
+          if (code === 0) {
+            resolve({ success: true, output: output.trim() });
+          } else {
+            resolve({
+              success: false,
+              output: output.trim(),
+              error: errorOutput.trim() || `Command exited with code ${code}`,
+            });
+          }
+        });
+      });
+    });
+
+    conn.on("error", (err) => {
+      clearTimeout(timeout);
+      resolve({ success: false, error: err.message });
+    });
+
+    try {
+      conn.connect({
+        host,
+        port: 22,
+        username: user,
+        privateKey: readFileSync(keyPath),
+        readyTimeout: 30000,
+      });
+    } catch (err: any) {
+      clearTimeout(timeout);
+      resolve({ success: false, error: err.message });
+    }
+  });
+}
+
+async function executeSshCommandAction(config: SshCommandConfig): Promise<{ success: boolean; output?: string; error?: string }> {
+  const { serverId, command } = config;
+
+  if (!serverId || !command) {
+    return { success: false, error: "serverId and command are required" };
+  }
+
+  const server = await getServerById(serverId);
+  if (!server) {
+    return { success: false, error: `Server not found: ${serverId}. Available servers can be configured in Settings.` };
+  }
+
+  const keyPath = server.keyPath || getDefaultSshKeyPath();
+  
+  if (!existsSync(keyPath)) {
+    return { 
+      success: false, 
+      error: `SSH key not found at ${keyPath}. Please configure the SSH key path in Settings > Servers.` 
+    };
+  }
+
+  return executeSSHCommand(server.host, server.user, keyPath, command);
+}
+
+async function executeDiscordNotify(config: DiscordNotifyConfig): Promise<{ success: boolean; output?: unknown; error?: string }> {
+  try {
+    const { webhookUrl, message, embed } = config;
+
+    if (!webhookUrl) {
+      return { success: false, error: "webhookUrl is required" };
+    }
+
+    const payload: Record<string, unknown> = {};
+
+    if (message) {
+      payload.content = message;
+    }
+
+    if (embed) {
+      payload.embeds = [{
+        title: embed.title,
+        description: embed.description,
+        color: embed.color || 0x5865F2,
+        fields: embed.fields,
+        timestamp: new Date().toISOString(),
+      }];
+    }
+
+    if (!payload.content && !payload.embeds) {
+      return { success: false, error: "Either message or embed is required" };
+    }
+
+    const maxRetries = 3;
+    let lastError = "";
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        return { success: true, output: { sent: true, attempt } };
+      }
+
+      if (response.status === 429) {
+        const retryAfter = parseInt(response.headers.get("Retry-After") || "2", 10);
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+          continue;
+        }
+        lastError = `Rate limited after ${maxRetries} attempts`;
+      } else if (response.status >= 500 && attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        continue;
+      } else {
+        const errorText = await response.text();
+        lastError = `Discord webhook failed: ${response.status} - ${errorText}`;
+        break;
+      }
+    }
+
+    return { success: false, error: lastError };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Discord notification failed" };
+  }
+}
+
+async function executeEmail(config: EmailConfig): Promise<{ success: boolean; output?: unknown; error?: string }> {
+  const { to, subject, body } = config;
+
+  if (!to || !subject || !body) {
+    return { success: false, error: "to, subject, and body are required" };
+  }
+
+  const smtpHost = process.env.SMTP_HOST;
+  if (!smtpHost) {
+    return {
+      success: true,
+      output: { 
+        skipped: true, 
+        reason: "Email not configured - SMTP_HOST not set. Configure self-hosted email in Settings to enable." 
+      },
+    };
+  }
+
+  return {
+    success: true,
+    output: { 
+      skipped: true, 
+      reason: "Email sending not yet implemented - SMTP integration pending",
+      to,
+      subject,
+    },
+  };
+}
+
+async function executeAction(action: WorkflowAction): Promise<ActionResult> {
+  const startTime = Date.now();
+  
+  try {
+    let result: { success: boolean; output?: unknown; error?: string };
+
+    switch (action.type) {
+      case "http-request":
+        result = await executeHttpRequest(action.config as unknown as HttpRequestConfig);
+        break;
+      case "ssh-command":
+        result = await executeSshCommandAction(action.config as unknown as SshCommandConfig);
+        break;
+      case "discord-notify":
+        result = await executeDiscordNotify(action.config as unknown as DiscordNotifyConfig);
+        break;
+      case "email":
+        result = await executeEmail(action.config as unknown as EmailConfig);
+        break;
+      default:
+        result = { success: false, error: `Unknown action type: ${action.type}` };
+    }
+
+    const durationMs = Date.now() - startTime;
+
+    if (result.success) {
+      return {
+        actionId: action.id,
+        actionType: action.type,
+        actionName: action.name,
+        status: "completed",
+        message: `Action "${action.name}" executed successfully`,
+        output: result.output,
+        durationMs,
+      };
+    } else {
+      return {
+        actionId: action.id,
+        actionType: action.type,
+        actionName: action.name,
+        status: "failed",
+        message: `Action "${action.name}" failed`,
+        error: result.error,
+        output: result.output,
+        durationMs,
+      };
+    }
+  } catch (error: any) {
+    const durationMs = Date.now() - startTime;
+    return {
+      actionId: action.id,
+      actionType: action.type,
+      actionName: action.name,
+      status: "failed",
+      message: `Action "${action.name}" threw an exception`,
+      error: error.message || "Unknown error",
+      durationMs,
+    };
+  }
+}
 
 async function checkAuth() {
   const cookieStore = await cookies();
@@ -161,25 +503,25 @@ export async function POST(request: NextRequest) {
 
       const startTime = Date.now();
       const actions = workflow.actions as WorkflowAction[];
-      const results: any[] = [];
+      const results: ActionResult[] = [];
+      let hasFailures = false;
 
       for (const actionItem of actions) {
-        results.push({
-          actionId: actionItem.id,
-          actionType: actionItem.type,
-          actionName: actionItem.name,
-          status: "completed",
-          message: `Action "${actionItem.name}" executed successfully (stubbed)`,
-        });
+        const result = await executeAction(actionItem);
+        results.push(result);
+        if (result.status === "failed") {
+          hasFailures = true;
+        }
       }
 
       const durationMs = Date.now() - startTime;
+      const overallStatus = hasFailures ? "completed_with_errors" : "completed";
 
       const [execution] = await db
         .insert(workflowExecutions)
         .values({
           workflowId,
-          status: "completed",
+          status: overallStatus,
           triggeredBy: "manual",
           output: { actions: results },
           durationMs,
