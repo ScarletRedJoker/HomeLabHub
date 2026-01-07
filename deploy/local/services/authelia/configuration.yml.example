@@ -85,12 +85,7 @@ storage:
     path: /data/db.sqlite3
 
 notifier:
-  disable_startup_check: false
-  smtp:
-    address: 'submissions://mail.evindrake.net:465'
-    username: 'noreply@evindrake.net'
-    password: 'YOUR_EMAIL_PASSWORD_HERE'
-    sender: 'Nebula Command <noreply@evindrake.net>'
-    subject: "[Nebula Command] {title}"
-    startup_check_address: 'evindrake11@gmail.com'
-    disable_require_tls: false
+  # Using filesystem notifications - codes appear in dashboard notification bell
+  # The dashboard API reads from /config/notification.txt via SSH
+  filesystem:
+    filename: /config/notification.txt
