@@ -334,12 +334,27 @@ do_dns_sync() {
     fi
     
     local sync_script="$(dirname "$(dirname "$SCRIPT_DIR")")/scripts/cloudflare-sync.js"
+    local repo_root="$(dirname "$(dirname "$SCRIPT_DIR")")"
     if [ -f "$sync_script" ]; then
-        echo -n "  Syncing DNS records for $DOMAIN... "
-        if node "$sync_script" 2>&1 | tail -1; then
-            echo -e "${GREEN}done${NC}"
+        echo "  Syncing DNS records for $DOMAIN..."
+        
+        local enabled_profiles=""
+        [ "$WITH_TORRENTS" = true ] && enabled_profiles="${enabled_profiles:+$enabled_profiles,}torrents"
+        [ "$WITH_GAMESTREAM" = true ] && enabled_profiles="${enabled_profiles:+$enabled_profiles,}gamestream"
+        [ "$WITH_MONITORING" = true ] && enabled_profiles="${enabled_profiles:+$enabled_profiles,}monitoring"
+        
+        local sync_output
+        local sync_result=0
+        sync_output=$(cd "$repo_root" && ENABLED_PROFILES="$enabled_profiles" node "$sync_script" 2>&1) || sync_result=$?
+        
+        if [ $sync_result -eq 0 ]; then
+            echo "$sync_output" | tail -5
+            echo -e "  ${GREEN}✓ DNS sync complete${NC}"
         else
-            echo -e "${YELLOW}check manually${NC}"
+            echo -e "  ${RED}✗ DNS sync failed${NC}"
+            echo ""
+            echo "$sync_output" | tail -20
+            echo ""
         fi
     else
         echo -e "${YELLOW}[SKIP]${NC} cloudflare-sync.js not found"
