@@ -23,12 +23,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Notification {
   id: string;
-  type: "success" | "warning" | "info" | "error" | "security";
+  type: "success" | "warning" | "info" | "error" | "security" | "totp";
   title: string;
   message: string;
   time: string;
   read: boolean;
   code?: string;
+  qrCode?: string;
 }
 
 interface SecurityNotification {
@@ -71,10 +72,26 @@ export function Header({ onMenuClick }: HeaderProps) {
         const newNotifications: Notification[] = [];
         const now = new Date().toLocaleTimeString();
 
-        const [healthRes, securityRes] = await Promise.all([
+        const [healthRes, securityRes, totpRes] = await Promise.all([
           fetch("/api/health/status").catch(() => null),
           fetch("/api/authelia/notifications").catch(() => null),
+          fetch("/api/authelia/totp-qr").catch(() => null),
         ]);
+
+        if (totpRes?.ok) {
+          const totpData = await totpRes.json();
+          if (totpData.qrCode) {
+            newNotifications.push({
+              id: "totp-setup",
+              type: "totp",
+              title: "TOTP Setup Required",
+              message: "Scan this QR code with your authenticator app",
+              time: now,
+              read: false,
+              qrCode: totpData.qrCode,
+            });
+          }
+        }
 
         if (securityRes?.ok) {
           const secData = await securityRes.json();
@@ -169,6 +186,7 @@ export function Header({ onMenuClick }: HeaderProps) {
       case "warning": return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
       case "error": return <AlertTriangle className="h-4 w-4 text-red-500" />;
       case "security": return <Shield className="h-4 w-4 text-purple-500" />;
+      case "totp": return <Key className="h-4 w-4 text-blue-500" />;
       default: return <Info className="h-4 w-4 text-blue-500" />;
     }
   };
@@ -283,6 +301,15 @@ export function Header({ onMenuClick }: HeaderProps) {
                         <p className="text-xs text-muted-foreground line-clamp-2">
                           {notification.message}
                         </p>
+                        {notification.qrCode && (
+                          <div className="mt-2 p-2 bg-white rounded-lg inline-block">
+                            <img 
+                              src={notification.qrCode} 
+                              alt="TOTP QR Code" 
+                              className="w-32 h-32"
+                            />
+                          </div>
+                        )}
                         {notification.code && (
                           <div className="mt-2 flex items-center gap-2">
                             <code className="bg-purple-500/10 text-purple-500 px-3 py-1.5 rounded font-mono text-sm font-bold tracking-wider">

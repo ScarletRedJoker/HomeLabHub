@@ -80,7 +80,7 @@ async function fetchAutheliaNotifications(
 
     conn.on("ready", () => {
       const command = `
-        NOTIFICATION_FILE="/opt/homelab/HomeLabHub/deploy/local/data/authelia/notification.txt"
+        NOTIFICATION_FILE="/opt/homelab/HomeLabHub/deploy/local/services/authelia/notification.txt"
         if [ -f "$NOTIFICATION_FILE" ]; then
           cat "$NOTIFICATION_FILE"
         else
