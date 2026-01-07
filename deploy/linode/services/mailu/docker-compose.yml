@@ -1,0 +1,133 @@
+version: '3.8'
+
+services:
+  front:
+    image: ghcr.io/mailu/nginx:2024.06
+    container_name: mailu-front
+    restart: always
+    env_file: .env
+    ports:
+      - "25:25"
+      - "465:465"
+      - "587:587"
+      - "993:993"
+      - "110:110"
+      - "143:143"
+      - "8025:80"
+    volumes:
+      - mailu-certs:/certs
+      - mailu-overrides:/overrides:ro
+    networks:
+      - mailu-network
+      - nebula-network
+    depends_on:
+      - resolver
+
+  resolver:
+    image: ghcr.io/mailu/unbound:2024.06
+    container_name: mailu-resolver
+    restart: always
+    env_file: .env
+    networks:
+      mailu-network:
+        ipv4_address: 192.168.203.254
+
+  admin:
+    image: ghcr.io/mailu/admin:2024.06
+    container_name: mailu-admin
+    restart: always
+    env_file: .env
+    volumes:
+      - mailu-data:/data
+      - mailu-dkim:/dkim
+    networks:
+      - mailu-network
+    depends_on:
+      - redis
+      - resolver
+
+  imap:
+    image: ghcr.io/mailu/dovecot:2024.06
+    container_name: mailu-imap
+    restart: always
+    env_file: .env
+    volumes:
+      - mailu-mail:/mail
+      - mailu-overrides:/overrides:ro
+    networks:
+      - mailu-network
+    depends_on:
+      - front
+      - resolver
+
+  smtp:
+    image: ghcr.io/mailu/postfix:2024.06
+    container_name: mailu-smtp
+    restart: always
+    env_file: .env
+    volumes:
+      - mailu-mailqueue:/queue
+      - mailu-overrides:/overrides:ro
+    networks:
+      - mailu-network
+    depends_on:
+      - front
+      - resolver
+
+  antispam:
+    image: ghcr.io/mailu/rspamd:2024.06
+    container_name: mailu-antispam
+    restart: always
+    env_file: .env
+    volumes:
+      - mailu-filter:/var/lib/rspamd
+      - mailu-overrides:/overrides:ro
+    networks:
+      - mailu-network
+    depends_on:
+      - front
+      - resolver
+
+  webmail:
+    image: ghcr.io/mailu/webmail:2024.06
+    container_name: mailu-webmail
+    restart: always
+    env_file: .env
+    volumes:
+      - mailu-webmail:/data
+      - mailu-overrides:/overrides:ro
+    networks:
+      - mailu-network
+    depends_on:
+      - front
+      - resolver
+
+  redis:
+    image: redis:7-alpine
+    container_name: mailu-redis
+    restart: always
+    volumes:
+      - mailu-redis:/data
+    networks:
+      - mailu-network
+
+volumes:
+  mailu-data:
+  mailu-dkim:
+  mailu-mail:
+  mailu-mailqueue:
+  mailu-filter:
+  mailu-webmail:
+  mailu-certs:
+  mailu-overrides:
+  mailu-redis:
+
+networks:
+  mailu-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.203.0/24
+  nebula-network:
+    external: true
+    name: nebula-command_default

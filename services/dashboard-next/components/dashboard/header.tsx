@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Search, User, Moon, Sun, Menu, Settings, LogOut, UserCircle, Server, CheckCircle2, AlertTriangle, Info } from "lucide-react";
+import { Bell, Search, User, Moon, Sun, Menu, Settings, LogOut, UserCircle, Server, CheckCircle2, AlertTriangle, Info, Shield, Key, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTheme } from "next-themes";
@@ -23,10 +23,22 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Notification {
   id: string;
-  type: "success" | "warning" | "info" | "error";
+  type: "success" | "warning" | "info" | "error" | "security";
   title: string;
   message: string;
   time: string;
+  read: boolean;
+  code?: string;
+}
+
+interface SecurityNotification {
+  id: string;
+  type: "otp" | "reset" | "security";
+  recipient: string;
+  subject: string;
+  code?: string;
+  revokeUrl?: string;
+  timestamp: string;
   read: boolean;
 }
 
@@ -39,17 +51,52 @@ export function Header({ onMenuClick }: HeaderProps) {
   const [mounted, setMounted] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  const copyCode = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(code);
+      setTimeout(() => setCopiedCode(null), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
     
     const fetchNotifications = async () => {
       try {
-        const res = await fetch("/api/health/status");
-        if (res.ok) {
-          const data = await res.json();
-          const newNotifications: Notification[] = [];
-          const now = new Date().toLocaleTimeString();
+        const newNotifications: Notification[] = [];
+        const now = new Date().toLocaleTimeString();
+
+        const [healthRes, securityRes] = await Promise.all([
+          fetch("/api/health/status").catch(() => null),
+          fetch("/api/authelia/notifications").catch(() => null),
+        ]);
+
+        if (securityRes?.ok) {
+          const secData = await securityRes.json();
+          if (secData.notifications?.length > 0) {
+            secData.notifications.forEach((n: SecurityNotification) => {
+              newNotifications.push({
+                id: n.id,
+                type: "security",
+                title: n.code ? "Security Code" : n.subject,
+                message: n.code 
+                  ? `One-time code for ${n.recipient}`
+                  : `Security notification for ${n.recipient}`,
+                time: new Date(n.timestamp).toLocaleTimeString(),
+                read: false,
+                code: n.code,
+              });
+            });
+          }
+        }
+        
+        if (healthRes?.ok) {
+          const data = await healthRes.json();
           
           if (data.servers) {
             data.servers.forEach((server: any) => {
@@ -74,20 +121,20 @@ export function Header({ onMenuClick }: HeaderProps) {
               }
             });
           }
-          
-          if (newNotifications.length === 0) {
-            newNotifications.push({
-              id: "all-good",
-              type: "success",
-              title: "All Systems Operational",
-              message: "No issues detected",
-              time: now,
-              read: false,
-            });
-          }
-          
-          setNotifications(newNotifications);
         }
+          
+        if (newNotifications.length === 0) {
+          newNotifications.push({
+            id: "all-good",
+            type: "success",
+            title: "All Systems Operational",
+            message: "No issues detected",
+            time: now,
+            read: false,
+          });
+        }
+          
+        setNotifications(newNotifications);
       } catch (error) {
         setNotifications([{
           id: "fetch-error",
@@ -101,7 +148,7 @@ export function Header({ onMenuClick }: HeaderProps) {
     };
     
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60000);
+    const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -121,6 +168,7 @@ export function Header({ onMenuClick }: HeaderProps) {
       case "success": return <CheckCircle2 className="h-4 w-4 text-green-500" />;
       case "warning": return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
       case "error": return <AlertTriangle className="h-4 w-4 text-red-500" />;
+      case "security": return <Shield className="h-4 w-4 text-purple-500" />;
       default: return <Info className="h-4 w-4 text-blue-500" />;
     }
   };
@@ -225,7 +273,7 @@ export function Header({ onMenuClick }: HeaderProps) {
                       key={notification.id}
                       className={`p-3 sm:p-4 flex gap-2 sm:gap-3 hover:bg-muted/50 transition-colors ${
                         !notification.read ? "bg-muted/30" : ""
-                      }`}
+                      } ${notification.type === "security" ? "bg-purple-500/5 border-l-2 border-purple-500" : ""}`}
                     >
                       <div className="shrink-0 mt-0.5">
                         {getNotificationIcon(notification.type)}
@@ -235,6 +283,25 @@ export function Header({ onMenuClick }: HeaderProps) {
                         <p className="text-xs text-muted-foreground line-clamp-2">
                           {notification.message}
                         </p>
+                        {notification.code && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <code className="bg-purple-500/10 text-purple-500 px-3 py-1.5 rounded font-mono text-sm font-bold tracking-wider">
+                              {notification.code}
+                            </code>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              onClick={() => copyCode(notification.code!)}
+                            >
+                              {copiedCode === notification.code ? (
+                                <Check className="h-3 w-3 text-green-500" />
+                              ) : (
+                                <Copy className="h-3 w-3" />
+                              )}
+                            </Button>
+                          </div>
+                        )}
                         <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
                           {notification.time}
                         </p>
