@@ -553,7 +553,8 @@ do_post_deploy() {
         ["caddy-local"]="Caddy|http://localhost:80/|core"
         ["authelia-redis"]="Auth Redis|-|core"
         ["dashboard-postgres"]="Dashboard DB|-|core"
-        ["homelab-dashboard"]="Dashboard|http://localhost:5000/api/health|core"
+        # Dashboard runs on LINODE, not locally
+        # ["homelab-dashboard"]="Dashboard|http://localhost:5000/api/health|core"
         ["novnc"]="VNC|http://localhost:8080/|core"
         ["ttyd"]="SSH Terminal|http://localhost:7681/|core"
     )
