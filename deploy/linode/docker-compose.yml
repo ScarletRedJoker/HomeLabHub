@@ -130,6 +130,9 @@ services:
       - LINODE_SSH_USER=root
       - HOME_SSH_HOST=${TAILSCALE_LOCAL_HOST}
       - HOME_SSH_USER=evin
+      - SSH_KEY_PATH=/root/.ssh/homelab
+      - OLLAMA_URL=http://${TAILSCALE_LOCAL_HOST}:11434
+      - STABLE_DIFFUSION_URL=http://${TAILSCALE_LOCAL_HOST}:7860
     volumes:
       - /root/.ssh:/root/.ssh:ro
       - /var/run/docker.sock:/var/run/docker.sock

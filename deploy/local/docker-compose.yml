@@ -313,24 +313,27 @@ services:
       retries: 3
 
   # ============================================================================
-  # REMOTE ACCESS - Sunshine Game Streaming (optional - use: docker compose --profile gamestream up)
+  # REMOTE ACCESS - Sunshine Game Streaming
+  # NOTE: Sunshine runs on the Windows 11 VM with GPU passthrough (libvirt)
+  # NOT in Docker. The VM exposes Sunshine on ports 47984-48010.
+  # Caddy proxies gamestream.evindrake.net to the VM's Sunshine web UI.
   # ============================================================================
-  sunshine:
-    image: lizardbyte/sunshine:latest
-    container_name: sunshine
-    restart: unless-stopped
-    network_mode: host
-    privileged: true
+  # sunshine:
+  #   image: ghcr.io/lizardbyte/sunshine:latest
+  #   container_name: sunshine
+  #   -- Disabled: Sunshine runs on Windows 11 VM, not Docker --
+  #   profiles:
+  #     - gamestream-docker
+  #   ...
+
+  # Placeholder for gamestream profile (no Docker container needed)
+  gamestream-placeholder:
+    image: alpine:latest
+    container_name: gamestream-check
     profiles:
       - gamestream
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=${TZ:-America/New_York}
-    volumes:
-      - sunshine_config:/config
-      - /dev/dri:/dev/dri
-      - /dev/uinput:/dev/uinput
+    command: ["echo", "Sunshine runs on Windows 11 VM - check VM status"]
+    restart: "no"
     devices:
       - /dev/dri:/dev/dri
       - /dev/uinput:/dev/uinput

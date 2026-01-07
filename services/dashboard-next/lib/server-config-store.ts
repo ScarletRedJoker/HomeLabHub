@@ -26,7 +26,8 @@ const SETTINGS_DIR = process.env.STUDIO_PROJECTS_DIR ||
   (process.env.REPL_ID ? "./data/studio-projects" : "/opt/homelab/studio-projects");
 const SETTINGS_FILE = "user-settings.json";
 
-const DEFAULT_SSH_KEY_PATH = process.env.SSH_KEY_PATH || "/root/.ssh/id_rsa";
+// SSH key path - on Linode the key is at /root/.ssh/homelab
+const DEFAULT_SSH_KEY_PATH = process.env.SSH_KEY_PATH || "/root/.ssh/homelab";
 
 const DEFAULT_SERVERS: ServerConfig[] = [
   {
