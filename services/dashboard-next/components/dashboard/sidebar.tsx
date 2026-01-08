@@ -28,6 +28,8 @@ import {
   Monitor,
   Wand2,
   Box,
+  Factory,
+  FolderKanban,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -40,6 +42,10 @@ import {
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/factory", label: "App Factory", icon: Factory },
+  { href: "/code-assist", label: "Code Assist", icon: Wand2 },
+  { href: "/templates", label: "Templates", icon: Package },
+  { href: "/projects", label: "Projects", icon: FolderKanban },
   { href: "/activity", label: "Activity", icon: History },
   { href: "/status", label: "Status", icon: Activity },
   { href: "/services", label: "Services", icon: Server },
@@ -51,6 +57,7 @@ const navItems = [
   { href: "/designer", label: "Designer", icon: Palette },
   { href: "/editor", label: "Code Editor", icon: Code2 },
   { href: "/deploy", label: "Deploy", icon: Rocket },
+  { href: "/pipelines", label: "Pipelines", icon: Rocket },
   { href: "/servers", label: "Servers", icon: HardDrive },
   { href: "/remote", label: "Remote Console", icon: Monitor },
   { href: "/files-remote", label: "Remote Files", icon: FolderOpen },
