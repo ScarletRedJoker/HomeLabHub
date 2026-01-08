@@ -29,7 +29,7 @@ import {
   Wand2,
   Box,
   Factory,
-  FolderKanban,
+  Layers,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,7 @@ const navItems = [
   { href: "/factory", label: "App Factory", icon: Factory },
   { href: "/code-assist", label: "Code Assist", icon: Wand2 },
   { href: "/templates", label: "Templates", icon: Package },
-  { href: "/projects", label: "Projects", icon: FolderKanban },
+  { href: "/projects", label: "Projects", icon: Layers },
   { href: "/activity", label: "Activity", icon: History },
   { href: "/status", label: "Status", icon: Activity },
   { href: "/services", label: "Services", icon: Server },
