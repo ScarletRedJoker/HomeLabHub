@@ -314,3 +314,35 @@ export const homelabServers = pgTable("homelab_servers", {
 
 export type HomelabServer = typeof homelabServers.$inferSelect;
 export type NewHomelabServer = typeof homelabServers.$inferInsert;
+
+export const events = pgTable("events", {
+  id: serial("id").primaryKey(),
+  category: varchar("category", { length: 50 }).notNull(),
+  severity: varchar("severity", { length: 20 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  metadata: jsonb("metadata"),
+  channels: text("channels").array().default([]),
+  userId: varchar("user_id", { length: 255 }),
+  serverId: varchar("server_id", { length: 255 }),
+  read: boolean("read").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type Event = typeof events.$inferSelect;
+export type NewEvent = typeof events.$inferInsert;
+
+export const eventSubscriptions = pgTable("event_subscriptions", {
+  id: serial("id").primaryKey(),
+  channel: varchar("channel", { length: 50 }).notNull(),
+  webhookUrl: varchar("webhook_url", { length: 500 }),
+  email: varchar("email", { length: 255 }),
+  categories: text("categories").array().default([]),
+  severities: text("severities").array().default([]),
+  enabled: boolean("enabled").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type EventSubscription = typeof eventSubscriptions.$inferSelect;
+export type NewEventSubscription = typeof eventSubscriptions.$inferInsert;
