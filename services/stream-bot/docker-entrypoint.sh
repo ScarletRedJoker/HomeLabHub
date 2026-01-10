@@ -42,14 +42,23 @@ for i in 1 2 3 4 5 6 7 8 9 10; do
     sleep 3
 done
 
-# Run database schema push (safe, non-destructive)
+# Run database schema sync (drizzle-kit push is additive, non-destructive)
+# Note: drizzle-kit push only ADDS tables/columns, it does NOT drop existing data
 echo ""
 echo "Syncing database schema..."
 if [ -f "node_modules/.bin/drizzle-kit" ]; then
+    echo "  Running drizzle-kit push (additive schema sync)..."
     if [ "$NODE_ENV" = "production" ]; then
-        npx drizzle-kit push --force 2>&1 || echo "⚠ Schema sync had issues, continuing anyway..."
+        if ! npx drizzle-kit push --force 2>&1; then
+            echo "❌ ERROR: Database schema sync failed"
+            echo "  Check database connection and schema compatibility"
+            exit 1
+        fi
     else
-        npm run db:push 2>&1 || echo "⚠ Schema sync had issues, continuing anyway..."
+        if ! npm run db:push 2>&1; then
+            echo "❌ ERROR: Database schema sync failed"
+            exit 1
+        fi
     fi
     echo "✓ Database schema synchronized"
 else
