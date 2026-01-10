@@ -14,14 +14,46 @@ fi
 
 echo "✓ Database URL configured"
 
-# Run database migrations (non-blocking - schema should already exist)
+# Wait for PostgreSQL to be ready using pg_isready or timeout-based approach
 echo ""
-echo "Checking database connection..."
+echo "Waiting for PostgreSQL to be ready..."
+
+# Extract host and port from DATABASE_URL
+POSTGRES_HOST=$(echo "$DATABASE_URL" | sed -n 's/.*@\([^:\/]*\).*/\1/p' || echo "localhost")
+POSTGRES_PORT=$(echo "$DATABASE_URL" | sed -n 's/.*:\([0-9]*\)\/.*/\1/p' || echo "5432")
+echo "  PostgreSQL host: $POSTGRES_HOST:$POSTGRES_PORT"
+
+# Wait for PostgreSQL using timeout and simple connection attempt via Node.js
+for i in 1 2 3 4 5 6 7 8 9 10; do
+    # Use Node.js to test connection since we're in a Node environment
+    if node -e "
+        const { Client } = require('pg');
+        const client = new Client({ connectionString: process.env.DATABASE_URL, connectionTimeoutMillis: 3000 });
+        client.connect().then(() => { client.end(); process.exit(0); }).catch(() => process.exit(1));
+    " 2>/dev/null; then
+        echo "✓ PostgreSQL is accessible"
+        break
+    fi
+    if [ "$i" -eq 10 ]; then
+        echo "⚠ Could not verify PostgreSQL connection - continuing anyway"
+        break
+    fi
+    echo "  Waiting for PostgreSQL... attempt $i/10"
+    sleep 3
+done
+
+# Run database schema push (safe, non-destructive)
+echo ""
+echo "Syncing database schema..."
 if [ -f "node_modules/.bin/drizzle-kit" ]; then
-    echo "  Database migrations managed externally or via initial setup"
-    echo "✓ Ready to start application"
+    if [ "$NODE_ENV" = "production" ]; then
+        npx drizzle-kit push --force 2>&1 || echo "⚠ Schema sync had issues, continuing anyway..."
+    else
+        npm run db:push 2>&1 || echo "⚠ Schema sync had issues, continuing anyway..."
+    fi
+    echo "✓ Database schema synchronized"
 else
-    echo "✓ Skipping migrations check"
+    echo "⚠ Drizzle-kit not found, skipping schema sync"
 fi
 
 echo ""

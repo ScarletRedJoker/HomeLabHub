@@ -110,7 +110,19 @@ fi
 # =============================================================================
 print_header "Step 3: Docker Build Verification"
 
-log_check "Verifying Dockerfile syntax..."
+log_check "Validating docker-compose.yml syntax..."
+(
+    cd "$DEPLOY_DIR"
+    if docker compose config --quiet 2>/dev/null; then
+        echo -e "  ${GREEN}[PASS]${NC} docker-compose.yml is valid"
+    else
+        echo -e "  ${RED}[FAIL]${NC} docker-compose.yml has syntax errors"
+        docker compose config 2>&1 | head -10
+        exit 1
+    fi
+) || ((ERRORS++))
+
+log_check "Verifying Dockerfiles..."
 
 DOCKERFILES=(
     "$ROOT_DIR/services/dashboard-next/Dockerfile"
@@ -121,23 +133,40 @@ DOCKERFILES=(
 for dockerfile in "${DOCKERFILES[@]}"; do
     if [[ -f "$dockerfile" ]]; then
         SERVICE_NAME=$(basename "$(dirname "$dockerfile")")
+        
+        # Validate Dockerfile syntax using docker build --check (if available) or basic parsing
+        if docker build --help 2>&1 | grep -q -- '--check'; then
+            if docker build --check -f "$dockerfile" "$(dirname "$dockerfile")" 2>/dev/null; then
+                log_pass "$SERVICE_NAME: Dockerfile syntax valid"
+            else
+                log_fail "$SERVICE_NAME: Dockerfile has syntax errors"
+            fi
+        else
+            # Fallback: basic syntax validation
+            if head -1 "$dockerfile" | grep -q "^FROM"; then
+                log_pass "$SERVICE_NAME: Dockerfile syntax appears valid"
+            else
+                log_fail "$SERVICE_NAME: Dockerfile must start with FROM"
+            fi
+        fi
+        
         # Check for multi-stage build
         if grep -q "FROM.*AS" "$dockerfile"; then
             log_pass "$SERVICE_NAME: Multi-stage build configured"
         else
-            log_warn "$SERVICE_NAME: No multi-stage build"
+            log_warn "$SERVICE_NAME: No multi-stage build (larger images)"
         fi
         # Check for health check
         if grep -q "HEALTHCHECK" "$dockerfile"; then
             log_pass "$SERVICE_NAME: Health check configured"
         else
-            log_warn "$SERVICE_NAME: No health check"
+            log_warn "$SERVICE_NAME: No HEALTHCHECK in Dockerfile (using compose health check)"
         fi
         # Check for non-root user
         if grep -q "USER " "$dockerfile"; then
             log_pass "$SERVICE_NAME: Non-root user configured"
         else
-            log_warn "$SERVICE_NAME: Running as root"
+            log_warn "$SERVICE_NAME: Running as root (security consideration)"
         fi
     fi
 done
