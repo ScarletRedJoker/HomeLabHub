@@ -4,7 +4,13 @@ import OpenAI from "openai";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const openai = new OpenAI();
+let openai: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    openai = new OpenAI();
+  }
+  return openai;
+}
 
 interface ProjectConfig {
   name: string;
@@ -145,7 +151,7 @@ Return ONLY valid JSON array, no markdown formatting:
 [{"path": "...", "content": "...", "language": "..."}]`;
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: "gpt-4o",
       messages: [
         {

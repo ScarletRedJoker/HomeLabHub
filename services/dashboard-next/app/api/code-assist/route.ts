@@ -4,7 +4,13 @@ import OpenAI from "openai";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const openai = new OpenAI();
+let openai: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    openai = new OpenAI();
+  }
+  return openai;
+}
 
 type AssistMode = "refactor" | "explain" | "debug" | "optimize" | "document" | "convert" | "suggest";
 
@@ -113,7 +119,7 @@ ${mode === "suggest"
     : "Provide your response as a JSON object with 'code' (the result code) and 'explanation' (brief explanation of changes) fields."
 }`;
 
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: "gpt-4o",
       messages: [
         {
