@@ -86,7 +86,7 @@ async function installDocker(host: string, user: string): Promise<{ success: boo
   return { success: true };
 }
 
-async function setupTailscale(
+async function configureTailscale(
   host: string,
   user: string,
   authKey: string
@@ -130,8 +130,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Server ID is required" }, { status: 400 });
     }
 
-    const servers = getServerConfigs();
-    const server = servers.find((s) => s.id === serverId);
+    const servers = await getServerConfigs();
+    const server = servers.find((s: { id: string }) => s.id === serverId);
 
     if (!server) {
       return NextResponse.json({ error: "Server not found" }, { status: 404 });
@@ -216,7 +216,7 @@ export async function POST(request: Request) {
         status: "running",
       });
 
-      const tailscaleResult = await setupTailscale(
+      const tailscaleResult = await configureTailscale(
         server.host,
         server.user || "root",
         tailscaleAuthKey
