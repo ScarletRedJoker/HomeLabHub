@@ -224,8 +224,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const servers = getServerConfigs();
-    const server = servers.find((s) => s.id === serverId);
+    const servers = await getServerConfigs();
+    const server = servers.find((s: { id: string }) => s.id === serverId);
 
     if (!server) {
       return NextResponse.json({ error: "Server not found" }, { status: 404 });

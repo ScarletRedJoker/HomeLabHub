@@ -243,9 +243,7 @@ export default function QuickStartPage() {
                 {creatorKits.map((kit) => (
                   <Card
                     key={kit.id}
-                    className={`cursor-pointer transition-all hover:border-primary/50 ${
-                      selectedKit?.id === kit.id ? "border-primary" : ""
-                    }`}
+                    className="cursor-pointer transition-all hover:border-primary/50"
                     onClick={() => setSelectedKit(kit)}
                   >
                     <CardHeader className="pb-2">

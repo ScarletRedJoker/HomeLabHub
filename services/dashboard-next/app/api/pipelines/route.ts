@@ -18,7 +18,7 @@ export async function GET() {
         deployedAt: deployments.deployedAt,
         createdAt: deployments.createdAt,
         projectName: projects.name,
-        projectLanguage: projects.language,
+        projectType: projects.projectType,
         projectFramework: projects.framework,
       })
       .from(deployments)
