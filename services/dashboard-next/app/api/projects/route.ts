@@ -25,7 +25,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, description, language, framework, gitUrl, templateId, metadata } = body;
+    const { name, description, projectType, framework, path } = body;
 
     if (!name) {
       return NextResponse.json(
@@ -34,14 +34,16 @@ export async function POST(request: Request) {
       );
     }
 
+    const config = description ? { description } : null;
+
     const [newProject] = await db
       .insert(projects)
       .values({
         name,
-        description: description || null,
-        language: language || null,
+        path: path || null,
+        projectType: projectType || framework || null,
         framework: framework || null,
-        gitUrl: gitUrl || null,
+        config: config,
         status: "active",
       })
       .returning();
@@ -62,7 +64,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { id, name, description, language, framework, gitUrl, status } = body;
+    const { id, name, projectType, framework, path, status } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -75,10 +77,9 @@ export async function PUT(request: Request) {
       .update(projects)
       .set({
         ...(name && { name }),
-        ...(description !== undefined && { description }),
-        ...(language !== undefined && { language }),
+        ...(projectType !== undefined && { projectType }),
         ...(framework !== undefined && { framework }),
-        ...(gitUrl !== undefined && { gitUrl }),
+        ...(path !== undefined && { path }),
         ...(status && { status }),
         updatedAt: new Date(),
       })

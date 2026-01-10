@@ -125,12 +125,12 @@ export default function ProjectsPage() {
         const mappedProjects: Project[] = data.projects.map((p: any) => ({
           id: p.id,
           name: p.name,
-          description: p.description || "No description",
-          type: mapFrameworkToType(p.framework, p.language),
+          description: p.config?.description || p.projectType || "No description",
+          type: mapProjectType(p.projectType, p.framework),
           status: p.status === "active" ? "stopped" : p.status,
           branch: "main",
           lastModified: p.updatedAt || p.createdAt,
-          path: p.gitUrl || `/projects/${p.name.toLowerCase().replace(/\s+/g, "-")}`,
+          path: p.path || `/projects/${p.name.toLowerCase().replace(/\s+/g, "-")}`,
         }));
         setProjects(mappedProjects);
       }
@@ -146,10 +146,11 @@ export default function ProjectsPage() {
     }
   };
 
-  function mapFrameworkToType(framework: string | null, language: string | null): ProjectType {
-    if (framework?.toLowerCase().includes("discord") || framework?.toLowerCase().includes("bot")) return "bot";
-    if (framework?.toLowerCase().includes("api") || framework?.toLowerCase().includes("express")) return "api";
-    if (language?.toLowerCase().includes("service")) return "service";
+  function mapProjectType(projectType: string | null, framework: string | null): ProjectType {
+    const type = (projectType || framework || "").toLowerCase();
+    if (type.includes("discord") || type.includes("bot")) return "bot";
+    if (type.includes("api") || type.includes("express") || type.includes("fastify")) return "api";
+    if (type.includes("service")) return "service";
     return "web";
   }
 

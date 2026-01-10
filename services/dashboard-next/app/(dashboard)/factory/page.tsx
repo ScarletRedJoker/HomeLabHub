@@ -256,24 +256,21 @@ export default function AppFactoryPage() {
           const framework = selectedTemplate.stack.find(s => 
             ["next.js", "react", "vue", "angular", "express", "fastify", "flask", "django"].some(f => s.toLowerCase().includes(f))
           ) || selectedTemplate.stack[0] || "custom";
-          
-          const language = selectedTemplate.stack.find(s => 
-            ["typescript", "javascript", "python", "go", "rust"].some(l => s.toLowerCase().includes(l))
-          ) || "typescript";
 
-          const res = await fetch("/api/projects", {
+          const saveRes = await fetch("/api/projects", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               name: config.name,
               description: config.description || `${selectedTemplate.name} project`,
+              projectType: selectedTemplate.category,
               framework: framework,
-              language: language,
+              path: `/projects/${config.name.toLowerCase().replace(/\s+/g, "-")}`,
             }),
           });
           
-          if (!res.ok) {
-            console.error("Failed to save project:", await res.text());
+          if (!saveRes.ok) {
+            console.error("Failed to save project:", await saveRes.text());
           }
         } catch (saveError) {
           console.error("Failed to save project to database:", saveError);
