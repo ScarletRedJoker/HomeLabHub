@@ -59,6 +59,39 @@ All API routes use a unified server configuration store. The dashboard includes 
 - **Workflow Automation**: Triggers, actions, and execution history for automated tasks.
 - **Quick Start Templates**: One-click project starters for common application types.
 
+## Production Deployment
+
+### Deployment Status: Beta-Ready
+All services are containerized and ready for production deployment.
+
+### Quick Deploy to Linode
+```bash
+# On Linode server
+cd /opt/homelab/HomeLabHub/deploy/linode
+./scripts/verify-production-ready.sh  # Verify configuration
+./scripts/deploy.sh --dry-run          # Preview deployment
+./scripts/deploy.sh                    # Full deployment
+```
+
+### Key Production Files
+- `deploy/linode/docker-compose.yml` - Main Docker stack
+- `deploy/linode/.env.example` - Environment template
+- `deploy/linode/Caddyfile` - Reverse proxy configuration
+- `deploy/linode/scripts/deploy.sh` - Deployment automation
+- `docs/PRODUCTION_DEPLOYMENT.md` - Full deployment guide
+
+### Service URLs (Production)
+- Dashboard: `https://evindrake.net`
+- Discord Bot: `https://bot.rig-city.com`
+- Stream Bot: `https://stream.rig-city.com`
+- Grafana: `https://grafana.evindrake.net`
+
+### Required Secrets
+1. `DISCORD_BOT_TOKEN` - Discord developer portal
+2. `OPENAI_API_KEY` - OpenAI platform
+3. `TAILSCALE_AUTHKEY` - Tailscale admin console
+4. Platform OAuth credentials (Twitch, YouTube, Spotify, Kick)
+
 ## External Dependencies
 *   **PostgreSQL:** Primary relational database (Neon for development, self-hosted for production).
 *   **Redis:** Caching and session management.
