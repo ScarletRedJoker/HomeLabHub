@@ -590,6 +590,32 @@ get_local_ai_state_path() {
     echo "${repo_root}/deploy/shared/state/local-ai.json"
 }
 
+sync_local_ai_state() {
+    local LOCAL_TAILSCALE_IP="${LOCAL_TAILSCALE_IP:-100.66.61.51}"
+    local SSH_KEY="${HOME}/.ssh/homelab"
+    local REMOTE_STATE="/opt/homelab/HomeLabHub/deploy/shared/state/local-ai.json"
+    local LOCAL_STATE
+    LOCAL_STATE=$(get_local_ai_state_path)
+    
+    echo -e "${CYAN}━━━ Syncing AI State from Local Server ━━━${NC}"
+    
+    if [ ! -f "$SSH_KEY" ]; then
+        echo -e "${YELLOW}[SKIP]${NC} SSH key not found: $SSH_KEY"
+        return 1
+    fi
+    
+    mkdir -p "$(dirname "$LOCAL_STATE")"
+    
+    if scp -o ConnectTimeout=5 -o StrictHostKeyChecking=no -i "$SSH_KEY" \
+        "evin@${LOCAL_TAILSCALE_IP}:${REMOTE_STATE}" "$LOCAL_STATE" 2>/dev/null; then
+        echo -e "${GREEN}[OK]${NC} Synced state from local server"
+        return 0
+    else
+        echo -e "${YELLOW}[WARN]${NC} Could not sync state - will probe Windows VM directly"
+        return 1
+    fi
+}
+
 parse_json_value() {
     local json="$1"
     local key="$2"
@@ -690,37 +716,21 @@ configure_local_ai_env() {
     local best_ollama=""
     local ollama_online=false
     
-    if [ -n "$ollama_url" ]; then
-        local ollama_status=$(check_ollama_health "$ollama_url" 3)
-        if [ "$ollama_status" = "online" ]; then
-            echo -e "${GREEN}[OK]${NC} Ollama: $ollama_url (online)"
-            best_ollama="$ollama_url"
-            ollama_online=true
-            configured=$((configured + 1))
-        else
-            echo -e "${YELLOW}[WARN]${NC} Ollama: $ollama_url (offline - check Tailscale)"
-            best_ollama="$ollama_url"
-            if [ "$ollama_url" != "$win_ollama_url" ]; then
-                local win_status=$(check_ollama_health "$win_ollama_url" 3)
-                if [ "$win_status" = "online" ]; then
-                    echo -e "${GREEN}[OK]${NC} Windows VM Ollama: $win_ollama_url (online - GPU fallback)"
-                    best_ollama="$win_ollama_url"
-                    ollama_online=true
-                    configured=$((configured + 1))
-                else
-                    echo -e "${YELLOW}[WARN]${NC} Windows VM Ollama: $win_ollama_url (offline)"
-                fi
-            fi
-        fi
+    # Windows VM GPU is always primary - NEVER fall back to other IPs in .env
+    best_ollama="$win_ollama_url"
+    local win_status=$(check_ollama_health "$win_ollama_url" 3)
+    if [ "$win_status" = "online" ]; then
+        echo -e "${GREEN}[OK]${NC} Windows VM Ollama: $win_ollama_url (GPU primary)"
+        ollama_online=true
+        configured=$((configured + 1))
     else
-        best_ollama="$win_ollama_url"
-        local win_status=$(check_ollama_health "$win_ollama_url" 5)
-        if [ "$win_status" = "online" ]; then
-            echo -e "${GREEN}[OK]${NC} Windows VM Ollama: $win_ollama_url (online - direct probe)"
-            ollama_online=true
-            configured=$((configured + 1))
-        else
-            echo -e "${YELLOW}[WARN]${NC} Windows VM Ollama: $win_ollama_url (offline)"
+        echo -e "${YELLOW}[--]${NC} Ollama: $win_ollama_url (offline - start on Windows VM)"
+        # Check if a fallback exists for status display only (don't save to .env)
+        if [ -n "$ollama_url" ] && [ "$ollama_url" != "$win_ollama_url" ]; then
+            local fallback_status=$(check_ollama_health "$ollama_url" 3)
+            if [ "$fallback_status" = "online" ]; then
+                echo -e "${YELLOW}     ${NC} Fallback available: $ollama_url (not using - Windows VM is primary)"
+            fi
         fi
     fi
     
@@ -731,59 +741,43 @@ configure_local_ai_env() {
         fi
     fi
     
-    # Check Stable Diffusion - prefer Windows VM GPU, then state file URL
+    # Check Stable Diffusion - Windows VM GPU is always primary, NEVER fall back in .env
     local sd_win_url="http://${WINDOWS_VM_IP}:7860"
-    local best_sd=""
+    local best_sd="$sd_win_url"
     local sd_online=false
     
     if curl -sf --connect-timeout 3 "${sd_win_url}/sdapi/v1/options" > /dev/null 2>&1; then
         echo -e "${GREEN}[OK]${NC} Stable Diffusion: $sd_win_url (Windows VM GPU)"
-        best_sd="$sd_win_url"
-        sd_online=true
-        configured=$((configured + 1))
-    elif [ -n "$sd_url" ] && curl -sf --connect-timeout 3 "${sd_url}/sdapi/v1/options" > /dev/null 2>&1; then
-        echo -e "${GREEN}[OK]${NC} Stable Diffusion: $sd_url (online)"
-        best_sd="$sd_url"
         sd_online=true
         configured=$((configured + 1))
     else
-        echo -e "${YELLOW}[--]${NC} Stable Diffusion: offline"
-        best_sd="${sd_url:-$sd_win_url}"
-    fi
-    
-    if [ -n "$best_sd" ]; then
-        update_env_var "$env_file" "STABLE_DIFFUSION_URL" "$best_sd"
-        if [ "$sd_online" = false ]; then
-            echo -e "${YELLOW}[INFO]${NC} Saved SD URL for later: $best_sd"
+        echo -e "${YELLOW}[--]${NC} Stable Diffusion: $sd_win_url (offline - start on Windows VM)"
+        # Check fallback for status display only
+        if [ -n "$sd_url" ] && [ "$sd_url" != "$sd_win_url" ] && curl -sf --connect-timeout 3 "${sd_url}/sdapi/v1/options" > /dev/null 2>&1; then
+            echo -e "${YELLOW}     ${NC} Fallback available: $sd_url (not using - Windows VM is primary)"
         fi
     fi
     
-    # Check ComfyUI - prefer Windows VM GPU, then state file URL
+    update_env_var "$env_file" "STABLE_DIFFUSION_URL" "$best_sd"
+    
+    # Check ComfyUI - Windows VM GPU is always primary, NEVER fall back in .env
     local comfy_win_url="http://${WINDOWS_VM_IP}:8188"
-    local best_comfy=""
+    local best_comfy="$comfy_win_url"
     local comfy_online=false
     
     if curl -sf --connect-timeout 3 "${comfy_win_url}/system_stats" > /dev/null 2>&1; then
         echo -e "${GREEN}[OK]${NC} ComfyUI: $comfy_win_url (Windows VM GPU)"
-        best_comfy="$comfy_win_url"
-        comfy_online=true
-        configured=$((configured + 1))
-    elif [ -n "$comfy_url" ] && curl -sf --connect-timeout 3 "${comfy_url}/system_stats" > /dev/null 2>&1; then
-        echo -e "${GREEN}[OK]${NC} ComfyUI: $comfy_url (online)"
-        best_comfy="$comfy_url"
         comfy_online=true
         configured=$((configured + 1))
     else
-        echo -e "${YELLOW}[--]${NC} ComfyUI: offline"
-        best_comfy="${comfy_url:-$comfy_win_url}"
-    fi
-    
-    if [ -n "$best_comfy" ]; then
-        update_env_var "$env_file" "COMFYUI_URL" "$best_comfy"
-        if [ "$comfy_online" = false ]; then
-            echo -e "${YELLOW}[INFO]${NC} Saved ComfyUI URL for later: $best_comfy"
+        echo -e "${YELLOW}[--]${NC} ComfyUI: $comfy_win_url (offline - start on Windows VM)"
+        # Check fallback for status display only
+        if [ -n "$comfy_url" ] && [ "$comfy_url" != "$comfy_win_url" ] && curl -sf --connect-timeout 3 "${comfy_url}/system_stats" > /dev/null 2>&1; then
+            echo -e "${YELLOW}     ${NC} Fallback available: $comfy_url (not using - Windows VM is primary)"
         fi
     fi
+    
+    update_env_var "$env_file" "COMFYUI_URL" "$best_comfy"
     
     if [ $configured -eq 0 ]; then
         echo -e "${YELLOW}[INFO]${NC} No local AI services reachable"
