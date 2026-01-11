@@ -62,6 +62,7 @@ const navItems = [
   { href: "/pipelines", label: "Pipelines", icon: Rocket },
   { href: "/servers", label: "Servers", icon: HardDrive },
   { href: "/remote", label: "Remote Console", icon: Monitor },
+  { href: "/windows", label: "Windows VM", icon: Monitor },
   { href: "/files-remote", label: "Remote Files", icon: FolderOpen },
   { href: "/terminal", label: "Terminal", icon: Terminal },
   { href: "/creative", label: "Creative Studio", icon: Sparkles },
