@@ -61,6 +61,46 @@ All API routes use a unified server configuration store. The dashboard includes 
   - Database persistence for event history
   - Subscription management for notification routing
 
+### AI Gateway Architecture (Completed)
+- **Unified AI Chat** (`/ai`): GPT-like chat interface with provider selection
+  - Provider selector: OpenAI (cloud), Ollama (local), Auto (best available)
+  - Model selector based on available models per provider
+  - Real-time streaming responses with SSE
+  - Provider status badges showing online/offline state
+  - Automatic fallback from local to cloud if Ollama is unavailable
+- **API Endpoint** (`/api/ai/chat`):
+  - GET: Returns provider metadata, available models, and health status
+  - POST: Handles chat with provider/model selection and streaming support
+- **Circuit Breaker Pattern**: Auto provider selection checks Ollama health first, falls back to OpenAI
+
+### Tailscale Local AI Integration (Production Setup)
+To connect your local Ollama/Stable Diffusion to the cloud dashboard:
+
+**1. On Homelab Server:**
+```bash
+# Ensure Tailscale is running
+tailscale status
+
+# Start Ollama (listens on all interfaces)
+ollama serve  # Default port 11434
+
+# Start Stable Diffusion WebUI with API enabled
+./webui.sh --api --listen  # Default port 7860
+```
+
+**2. Environment Variables on Linode:**
+```bash
+# Add to deploy/linode/.env
+OLLAMA_URL=http://100.x.x.x:11434           # Your homelab Tailscale IP
+STABLE_DIFFUSION_URL=http://100.x.x.x:7860   # Your homelab Tailscale IP
+COMFYUI_URL=http://100.x.x.x:8188            # Optional ComfyUI
+```
+
+**3. Verify Connection:**
+- Dashboard will auto-discover local services via `/api/ai/runtime`
+- Green badges appear for online services on `/ai` page
+- Chat will automatically route to local Ollama when available
+
 ### Creation Engine Features (Legacy)
 - **Ollama Model Catalog**: Manages local LLM models.
 - **AI Code Generation**: Natural language code creation with templates and preview.
