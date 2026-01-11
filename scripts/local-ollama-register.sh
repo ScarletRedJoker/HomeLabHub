@@ -34,7 +34,7 @@ check_ollama() {
     local url="http://${host}:${port}"
     
     local version=""
-    local models=()
+    local models=""
     local status="offline"
     
     if curl -sf --connect-timeout 3 "${url}/api/version" > /dev/null 2>&1; then
@@ -43,7 +43,8 @@ check_ollama() {
         
         local models_json
         models_json=$(curl -sf --connect-timeout 5 "${url}/api/tags" 2>/dev/null || echo '{"models":[]}')
-        models=$(echo "$models_json" | grep -o '"name":"[^"]*"' | cut -d'"' -f4 | tr '\n' ',' | sed 's/,$//' || echo "")
+        models=$(echo "$models_json" | grep -o '"name":"[^"]*"' | cut -d'"' -f4 | tr '\n' ',' | sed 's/,$//' || true)
+        models="${models:-}"
     fi
     
     echo "{\"status\":\"$status\",\"version\":\"$version\",\"models\":\"$models\",\"url\":\"$url\"}"
