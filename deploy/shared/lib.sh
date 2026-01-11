@@ -637,31 +637,33 @@ configure_local_ai_env() {
     
     echo -e "${CYAN}━━━ Local AI Auto-Discovery ━━━${NC}"
     
-    if [ ! -f "$state_file" ]; then
-        echo -e "${YELLOW}[SKIP]${NC} No local AI state file found"
-        echo "       Run 'scripts/local-ollama-register.sh' on your homelab server first"
-        return 0
-    fi
+    local ollama_url=""
+    local sd_url=""
+    local comfy_url=""
+    local configured=0
     
-    local state_age=0
     if [ -f "$state_file" ]; then
+        local state_age=0
         local state_mtime=$(stat -c %Y "$state_file" 2>/dev/null || stat -f %m "$state_file" 2>/dev/null || echo 0)
         local now=$(date +%s)
         state_age=$(( (now - state_mtime) / 3600 ))
+        
+        if [ "$state_age" -gt 24 ]; then
+            echo -e "${YELLOW}[WARN]${NC} Local AI state is ${state_age}h old - may be stale"
+        fi
+        
+        local ai_config
+        ai_config=$(discover_local_ai_from_state)
+        
+        ollama_url=$(echo "$ai_config" | grep "^OLLAMA_URL=" | cut -d= -f2-)
+        sd_url=$(echo "$ai_config" | grep "^STABLE_DIFFUSION_URL=" | cut -d= -f2-)
+        comfy_url=$(echo "$ai_config" | grep "^COMFYUI_URL=" | cut -d= -f2-)
+    else
+        echo -e "${YELLOW}[INFO]${NC} No state file - probing Windows VM directly"
     fi
     
-    if [ "$state_age" -gt 24 ]; then
-        echo -e "${YELLOW}[WARN]${NC} Local AI state is ${state_age}h old - may be stale"
-    fi
-    
-    local ai_config
-    ai_config=$(discover_local_ai_from_state)
-    
-    local ollama_url=$(echo "$ai_config" | grep "^OLLAMA_URL=" | cut -d= -f2-)
-    local sd_url=$(echo "$ai_config" | grep "^STABLE_DIFFUSION_URL=" | cut -d= -f2-)
-    local comfy_url=$(echo "$ai_config" | grep "^COMFYUI_URL=" | cut -d= -f2-)
-    
-    local configured=0
+    local WINDOWS_VM_IP="${WINDOWS_VM_TAILSCALE_IP:-100.118.44.102}"
+    local win_ollama_url="http://${WINDOWS_VM_IP}:11434"
     
     if [ -n "$ollama_url" ]; then
         local ollama_status=$(check_ollama_health "$ollama_url" 3)
@@ -671,6 +673,25 @@ configure_local_ai_env() {
             configured=$((configured + 1))
         else
             echo -e "${YELLOW}[WARN]${NC} Ollama: $ollama_url (offline - check Tailscale)"
+            if [ "$ollama_url" != "$win_ollama_url" ]; then
+                local win_status=$(check_ollama_health "$win_ollama_url" 3)
+                if [ "$win_status" = "online" ]; then
+                    echo -e "${GREEN}[OK]${NC} Windows VM Ollama: $win_ollama_url (online - GPU fallback)"
+                    update_env_var "$env_file" "OLLAMA_URL" "$win_ollama_url"
+                    configured=$((configured + 1))
+                else
+                    echo -e "${YELLOW}[WARN]${NC} Windows VM Ollama: $win_ollama_url (offline)"
+                fi
+            fi
+        fi
+    else
+        local win_status=$(check_ollama_health "$win_ollama_url" 5)
+        if [ "$win_status" = "online" ]; then
+            echo -e "${GREEN}[OK]${NC} Windows VM Ollama: $win_ollama_url (online - direct probe)"
+            update_env_var "$env_file" "OLLAMA_URL" "$win_ollama_url"
+            configured=$((configured + 1))
+        else
+            echo -e "${YELLOW}[WARN]${NC} Windows VM Ollama: $win_ollama_url (offline)"
         fi
     fi
     
@@ -682,6 +703,15 @@ configure_local_ai_env() {
         else
             echo -e "${YELLOW}[WARN]${NC} Stable Diffusion: $sd_url (offline)"
         fi
+    else
+        local sd_fallback="http://${WINDOWS_VM_IP}:7860"
+        if curl -sf --connect-timeout 3 "${sd_fallback}/sdapi/v1/options" > /dev/null 2>&1; then
+            echo -e "${GREEN}[OK]${NC} Stable Diffusion: $sd_fallback (online - direct probe)"
+            update_env_var "$env_file" "STABLE_DIFFUSION_URL" "$sd_fallback"
+            configured=$((configured + 1))
+        else
+            echo -e "${YELLOW}[--]${NC} Stable Diffusion: offline"
+        fi
     fi
     
     if [ -n "$comfy_url" ]; then
@@ -691,6 +721,15 @@ configure_local_ai_env() {
             configured=$((configured + 1))
         else
             echo -e "${YELLOW}[WARN]${NC} ComfyUI: $comfy_url (offline)"
+        fi
+    else
+        local comfy_fallback="http://${WINDOWS_VM_IP}:8188"
+        if curl -sf --connect-timeout 3 "${comfy_fallback}/system_stats" > /dev/null 2>&1; then
+            echo -e "${GREEN}[OK]${NC} ComfyUI: $comfy_fallback (online - direct probe)"
+            update_env_var "$env_file" "COMFYUI_URL" "$comfy_fallback"
+            configured=$((configured + 1))
+        else
+            echo -e "${YELLOW}[--]${NC} ComfyUI: offline"
         fi
     fi
     
