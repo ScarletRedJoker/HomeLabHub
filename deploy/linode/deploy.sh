@@ -177,6 +177,8 @@ do_env_setup() {
     
     ensure_ssh_keys
     
+    configure_local_ai_env ".env"
+    
     if ! check_external_tokens ".env"; then
         echo ""
         echo -e "${YELLOW}Missing required tokens detected.${NC}"

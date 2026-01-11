@@ -462,3 +462,263 @@ post_deploy_wait() {
         sleep "$wait_time"
     fi
 }
+
+get_tailscale_ip() {
+    if command -v tailscale &> /dev/null; then
+        tailscale ip -4 2>/dev/null | head -1 || echo ""
+    else
+        echo ""
+    fi
+}
+
+get_tailscale_peers() {
+    if command -v tailscale &> /dev/null; then
+        tailscale status --json 2>/dev/null || echo "{}"
+    else
+        echo "{}"
+    fi
+}
+
+check_ollama_health() {
+    local url="${1:-http://localhost:11434}"
+    local timeout="${2:-5}"
+    
+    if curl -sf --connect-timeout "$timeout" "${url}/api/version" > /dev/null 2>&1; then
+        echo "online"
+    else
+        echo "offline"
+    fi
+}
+
+get_local_ai_state_path() {
+    if [ -n "${LOCAL_AI_STATE_FILE:-}" ]; then
+        echo "$LOCAL_AI_STATE_FILE"
+        return
+    fi
+    
+    local repo_root="${REPO_ROOT:-}"
+    if [ -z "$repo_root" ]; then
+        if [ -n "${SCRIPT_DIR:-}" ]; then
+            repo_root="$(cd "$SCRIPT_DIR/../.." 2>/dev/null && pwd)"
+        else
+            repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)"
+        fi
+    fi
+    
+    echo "${repo_root}/deploy/shared/state/local-ai.json"
+}
+
+parse_json_value() {
+    local json="$1"
+    local key="$2"
+    
+    if command -v jq &> /dev/null; then
+        echo "$json" | jq -r "$key // empty" 2>/dev/null || echo ""
+    else
+        local pattern
+        case "$key" in
+            ".services.ollama.url")
+                pattern='"ollama"[^}]*"url"[[:space:]]*:[[:space:]]*"([^"]*)"'
+                ;;
+            ".services.stableDiffusion.url")
+                pattern='"stableDiffusion"[^}]*"url"[[:space:]]*:[[:space:]]*"([^"]*)"'
+                ;;
+            ".services.comfyui.url")
+                pattern='"comfyui"[^}]*"url"[[:space:]]*:[[:space:]]*"([^"]*)"'
+                ;;
+            *)
+                echo ""
+                return
+                ;;
+        esac
+        echo "$json" | tr '\n' ' ' | grep -oE "$pattern" | sed -E 's/.*"url"[[:space:]]*:[[:space:]]*"([^"]*)".*/\1/' | head -1 || echo ""
+    fi
+}
+
+discover_local_ai_from_state() {
+    local state_file
+    state_file=$(get_local_ai_state_path)
+    
+    if [ ! -f "$state_file" ]; then
+        echo ""
+        return 1
+    fi
+    
+    local json
+    json=$(cat "$state_file" 2>/dev/null) || return 1
+    
+    local ollama_url sd_url comfy_url
+    ollama_url=$(parse_json_value "$json" ".services.ollama.url")
+    sd_url=$(parse_json_value "$json" ".services.stableDiffusion.url")
+    comfy_url=$(parse_json_value "$json" ".services.comfyui.url")
+    
+    echo "OLLAMA_URL=$ollama_url"
+    echo "STABLE_DIFFUSION_URL=$sd_url"
+    echo "COMFYUI_URL=$comfy_url"
+}
+
+configure_local_ai_env() {
+    local env_file="${1:-.env}"
+    local state_file
+    state_file=$(get_local_ai_state_path)
+    
+    echo -e "${CYAN}━━━ Local AI Auto-Discovery ━━━${NC}"
+    
+    if [ ! -f "$state_file" ]; then
+        echo -e "${YELLOW}[SKIP]${NC} No local AI state file found"
+        echo "       Run 'scripts/local-ollama-register.sh' on your homelab server first"
+        return 0
+    fi
+    
+    local state_age=0
+    if [ -f "$state_file" ]; then
+        local state_mtime=$(stat -c %Y "$state_file" 2>/dev/null || stat -f %m "$state_file" 2>/dev/null || echo 0)
+        local now=$(date +%s)
+        state_age=$(( (now - state_mtime) / 3600 ))
+    fi
+    
+    if [ "$state_age" -gt 24 ]; then
+        echo -e "${YELLOW}[WARN]${NC} Local AI state is ${state_age}h old - may be stale"
+    fi
+    
+    local ai_config
+    ai_config=$(discover_local_ai_from_state)
+    
+    local ollama_url=$(echo "$ai_config" | grep "^OLLAMA_URL=" | cut -d= -f2-)
+    local sd_url=$(echo "$ai_config" | grep "^STABLE_DIFFUSION_URL=" | cut -d= -f2-)
+    local comfy_url=$(echo "$ai_config" | grep "^COMFYUI_URL=" | cut -d= -f2-)
+    
+    local configured=0
+    
+    if [ -n "$ollama_url" ]; then
+        local ollama_status=$(check_ollama_health "$ollama_url" 3)
+        if [ "$ollama_status" = "online" ]; then
+            echo -e "${GREEN}[OK]${NC} Ollama: $ollama_url (online)"
+            update_env_var "$env_file" "OLLAMA_URL" "$ollama_url"
+            configured=$((configured + 1))
+        else
+            echo -e "${YELLOW}[WARN]${NC} Ollama: $ollama_url (offline - check Tailscale)"
+        fi
+    fi
+    
+    if [ -n "$sd_url" ]; then
+        if curl -sf --connect-timeout 3 "${sd_url}/sdapi/v1/options" > /dev/null 2>&1; then
+            echo -e "${GREEN}[OK]${NC} Stable Diffusion: $sd_url (online)"
+            update_env_var "$env_file" "STABLE_DIFFUSION_URL" "$sd_url"
+            configured=$((configured + 1))
+        else
+            echo -e "${YELLOW}[WARN]${NC} Stable Diffusion: $sd_url (offline)"
+        fi
+    fi
+    
+    if [ -n "$comfy_url" ]; then
+        if curl -sf --connect-timeout 3 "${comfy_url}/system_stats" > /dev/null 2>&1; then
+            echo -e "${GREEN}[OK]${NC} ComfyUI: $comfy_url (online)"
+            update_env_var "$env_file" "COMFYUI_URL" "$comfy_url"
+            configured=$((configured + 1))
+        else
+            echo -e "${YELLOW}[WARN]${NC} ComfyUI: $comfy_url (offline)"
+        fi
+    fi
+    
+    if [ $configured -eq 0 ]; then
+        echo -e "${YELLOW}[INFO]${NC} No local AI services reachable"
+        echo "       Dashboard will use OpenAI as fallback"
+    else
+        echo -e "${GREEN}✓${NC} Configured $configured local AI service(s)"
+    fi
+    
+    echo ""
+}
+
+update_env_var() {
+    local env_file="$1"
+    local key="$2"
+    local value="$3"
+    
+    if grep -q "^${key}=" "$env_file" 2>/dev/null; then
+        sed -i "s|^${key}=.*|${key}=${value}|" "$env_file"
+    else
+        echo "${key}=${value}" >> "$env_file"
+    fi
+}
+
+register_local_ai_services() {
+    echo -e "${CYAN}━━━ Registering Local AI Services ━━━${NC}"
+    
+    local state_file
+    state_file=$(get_local_ai_state_path)
+    local state_dir
+    state_dir=$(dirname "$state_file")
+    
+    mkdir -p "$state_dir"
+    chmod 750 "$state_dir" 2>/dev/null || true
+    
+    local tailscale_ip=$(get_tailscale_ip)
+    local local_ip=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "127.0.0.1")
+    local hostname=$(hostname)
+    local timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    
+    local preferred_ip="${tailscale_ip:-$local_ip}"
+    
+    local ollama_status="offline"
+    local ollama_url="http://${preferred_ip}:11434"
+    local ollama_version=""
+    local ollama_models=""
+    
+    if curl -sf --connect-timeout 3 "${ollama_url}/api/version" > /dev/null 2>&1; then
+        ollama_status="online"
+        ollama_version=$(curl -sf --connect-timeout 3 "${ollama_url}/api/version" 2>/dev/null | grep -o '"version":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
+        ollama_models=$(curl -sf --connect-timeout 5 "${ollama_url}/api/tags" 2>/dev/null | grep -o '"name":"[^"]*"' | cut -d'"' -f4 | tr '\n' ',' | sed 's/,$//' || echo "")
+        echo -e "${GREEN}[OK]${NC} Ollama: online (v${ollama_version})"
+    else
+        echo -e "${RED}[--]${NC} Ollama: offline"
+    fi
+    
+    local sd_status="offline"
+    local sd_url="http://${preferred_ip}:7860"
+    if curl -sf --connect-timeout 3 "${sd_url}/sdapi/v1/options" > /dev/null 2>&1; then
+        sd_status="online"
+        echo -e "${GREEN}[OK]${NC} Stable Diffusion: online"
+    else
+        echo -e "${RED}[--]${NC} Stable Diffusion: offline"
+    fi
+    
+    local comfy_status="offline"
+    local comfy_url="http://${preferred_ip}:8188"
+    if curl -sf --connect-timeout 3 "${comfy_url}/system_stats" > /dev/null 2>&1; then
+        comfy_status="online"
+        echo -e "${GREEN}[OK]${NC} ComfyUI: online"
+    else
+        echo -e "${RED}[--]${NC} ComfyUI: offline"
+    fi
+    
+    cat > "$state_file" << EOF
+{
+  "hostname": "$hostname",
+  "localIp": "$local_ip",
+  "tailscaleIp": "${tailscale_ip:-null}",
+  "preferredIp": "$preferred_ip",
+  "registeredAt": "$timestamp",
+  "services": {
+    "ollama": {
+      "status": "$ollama_status",
+      "url": "$ollama_url",
+      "version": "$ollama_version",
+      "models": "$ollama_models"
+    },
+    "stableDiffusion": {
+      "status": "$sd_status",
+      "url": "$sd_url"
+    },
+    "comfyui": {
+      "status": "$comfy_status",
+      "url": "$comfy_url"
+    }
+  }
+}
+EOF
+    
+    echo -e "${GREEN}✓${NC} State saved to: $state_file"
+    echo ""
+}

@@ -87,33 +87,39 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJL8fIGHczJbg2r8xFPNb7tRXA4wpCvCcokk0e3PIsK+
   - POST: Handles chat with provider/model selection and streaming support
 - **Circuit Breaker Pattern**: Auto provider selection checks Ollama health first, falls back to OpenAI
 
-### Tailscale Local AI Integration (Production Setup)
-To connect your local Ollama/Stable Diffusion to the cloud dashboard:
+### Tailscale Local AI Integration (Auto-Provisioning)
+Local AI services (Ollama, Stable Diffusion, ComfyUI) are **automatically discovered and configured** between Linode and homelab servers.
 
-**1. On Homelab Server:**
+**How It Works:**
+1. **Local deploy** runs `register_local_ai_services()` which scans for AI services and saves state to `deploy/shared/state/local-ai.json`
+2. **Linode deploy** runs `configure_local_ai_env()` which reads the state file, validates connectivity via Tailscale, and auto-configures `OLLAMA_URL`, `STABLE_DIFFUSION_URL`, `COMFYUI_URL` in `.env`
+3. **Dashboard** checks provider status and shows fallback banner if local AI is offline
+
+**Deployment Flow:**
 ```bash
-# Ensure Tailscale is running
-tailscale status
+# 1. On Homelab: Deploy local services (auto-registers AI endpoints)
+cd /opt/homelab/HomeLabHub/deploy/local
+./deploy.sh
 
-# Start Ollama (listens on all interfaces)
-ollama serve  # Default port 11434
-
-# Start Stable Diffusion WebUI with API enabled
-./webui.sh --api --listen  # Default port 7860
+# 2. On Linode: Deploy cloud services (auto-discovers local AI)
+cd /opt/homelab/HomeLabHub/deploy/linode
+./deploy.sh
 ```
 
-**2. Environment Variables on Linode:**
+**Manual Registration (if needed):**
 ```bash
-# Add to deploy/linode/.env
-OLLAMA_URL=http://100.x.x.x:11434           # Your homelab Tailscale IP
-STABLE_DIFFUSION_URL=http://100.x.x.x:7860   # Your homelab Tailscale IP
-COMFYUI_URL=http://100.x.x.x:8188            # Optional ComfyUI
+# On homelab server
+scripts/local-ollama-register.sh register   # Scan and save state
+scripts/local-ollama-register.sh status     # View current state
 ```
 
-**3. Verify Connection:**
-- Dashboard will auto-discover local services via `/api/ai/runtime`
-- Green badges appear for online services on `/ai` page
-- Chat will automatically route to local Ollama when available
+**State File Location:** `deploy/shared/state/local-ai.json`
+
+**Dashboard Features:**
+- Provider status badges (green=online, gray=offline)
+- Yellow fallback banner when Ollama is offline but OpenAI is available
+- Automatic routing to local Ollama when available, cloud fallback otherwise
+- API endpoint `/api/ai/state` returns registration state and connectivity
 
 ### Creation Engine Features (Legacy)
 - **Ollama Model Catalog**: Manages local LLM models.

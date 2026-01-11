@@ -341,7 +341,7 @@ export default function AIPage() {
         </div>
       </div>
 
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-4 flex-wrap">
         {providers.map(provider => {
           const Icon = getProviderIcon(provider.type);
           return (
@@ -367,6 +367,24 @@ export default function AIPage() {
           );
         })}
       </div>
+
+      {providers.find(p => p.id === "ollama" && !p.available) && providers.find(p => p.id === "openai" && p.available) && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 px-4 py-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center gap-3"
+        >
+          <AlertCircle className="h-5 w-5 text-yellow-500 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm text-yellow-600 dark:text-yellow-400 font-medium">
+              Local AI (Ollama) is offline
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Using OpenAI cloud as fallback. Check Tailscale connection or start Ollama on your homelab.
+            </p>
+          </div>
+        </motion.div>
+      )}
 
       <Card className="flex-1 flex flex-col overflow-hidden border-2">
         <div className="flex-1 overflow-auto p-4 space-y-4">

@@ -504,6 +504,8 @@ do_post_deploy() {
     
     post_deploy_wait 20
     
+    register_local_ai_services
+    
     local domain="${DOMAIN:-example.com}"
     
     echo ""
