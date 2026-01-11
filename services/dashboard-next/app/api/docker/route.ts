@@ -2,8 +2,29 @@ import { NextRequest, NextResponse } from "next/server";
 import Docker from "dockerode";
 import { verifySession } from "@/lib/session";
 import { cookies } from "next/headers";
+import { Client } from "ssh2";
+import { readFileSync, existsSync } from "fs";
+import { getDefaultSshKeyPath } from "@/lib/server-config-store";
 
 const docker = new Docker({ socketPath: "/var/run/docker.sock" });
+
+interface RemoteServer {
+  id: string;
+  name: string;
+  host: string;
+  user: string;
+  keyPath: string;
+}
+
+const REMOTE_SERVERS: RemoteServer[] = [
+  {
+    id: "home",
+    name: "Home Server",
+    host: process.env.HOME_SSH_HOST || "host.evindrake.net",
+    user: process.env.HOME_SSH_USER || "evin",
+    keyPath: getDefaultSshKeyPath(),
+  },
+];
 
 async function checkAuth() {
   const cookieStore = await cookies();
@@ -13,10 +34,103 @@ async function checkAuth() {
   return !!user;
 }
 
-export async function GET() {
+async function getRemoteContainers(server: RemoteServer): Promise<any[]> {
+  return new Promise((resolve) => {
+    const keyPath = server.keyPath;
+    
+    if (!existsSync(keyPath)) {
+      console.log(`SSH key not found for ${server.name} at ${keyPath}`);
+      resolve([]);
+      return;
+    }
+
+    const conn = new Client();
+    const timeout = setTimeout(() => {
+      conn.end();
+      resolve([]);
+    }, 15000);
+
+    conn.on("ready", () => {
+      const dockerCmd = `docker ps -a --format '{{json .}}' 2>/dev/null || echo '[]'`;
+      
+      conn.exec(dockerCmd, (err, stream) => {
+        if (err) {
+          clearTimeout(timeout);
+          conn.end();
+          console.error(`SSH exec error for ${server.name}:`, err.message);
+          resolve([]);
+          return;
+        }
+
+        let output = "";
+        stream.on("data", (data: Buffer) => {
+          output += data.toString();
+        });
+
+        stream.on("close", () => {
+          clearTimeout(timeout);
+          conn.end();
+
+          try {
+            const containers = output
+              .trim()
+              .split("\n")
+              .filter((line) => line.startsWith("{"))
+              .map((line) => {
+                const c = JSON.parse(line);
+                const state = c.State?.toLowerCase() || "unknown";
+                return {
+                  id: c.ID?.substring(0, 12) || "unknown",
+                  name: c.Names || "unknown",
+                  image: c.Image || "unknown",
+                  status: state === "running" ? "running" : state === "exited" ? "stopped" : state,
+                  state: state,
+                  ports: c.Ports || "",
+                  uptime: c.Status || "",
+                  cpu: 0,
+                  memory: 0,
+                  created: c.CreatedAt || "",
+                  server: server.id,
+                  serverName: server.name,
+                };
+              });
+            resolve(containers);
+          } catch (parseErr) {
+            console.error(`Failed to parse docker output from ${server.name}:`, parseErr);
+            resolve([]);
+          }
+        });
+      });
+    });
+
+    conn.on("error", (err) => {
+      clearTimeout(timeout);
+      console.error(`SSH connection error for ${server.name}:`, err.message);
+      resolve([]);
+    });
+
+    try {
+      conn.connect({
+        host: server.host,
+        port: 22,
+        username: server.user,
+        privateKey: readFileSync(keyPath),
+        readyTimeout: 10000,
+      });
+    } catch (err: any) {
+      clearTimeout(timeout);
+      console.error(`SSH connect error for ${server.name}:`, err.message);
+      resolve([]);
+    }
+  });
+}
+
+export async function GET(request: NextRequest) {
   if (!(await checkAuth())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const serverFilter = request.nextUrl.searchParams.get("server");
 
   if (process.env.NODE_ENV !== "production") {
     return NextResponse.json({
@@ -27,39 +141,58 @@ export async function GET() {
   }
 
   try {
-    const containers = await docker.listContainers({ all: true });
-    
-    const services = await Promise.all(
-      containers.map(async (container) => {
-        const stats = await docker.getContainer(container.Id).stats({ stream: false }).catch(() => null);
-        
-        const cpuPercent = stats ? calculateCpuPercent(stats) : 0;
-        const memoryMB = stats ? Math.round((stats.memory_stats.usage || 0) / 1024 / 1024) : 0;
-        
-        const status = container.State === "running" ? "running" 
-          : container.State === "exited" ? "stopped" 
-          : container.State;
-        
-        const uptimeSeconds = container.State === "running" && container.Status 
-          ? parseUptime(container.Status) 
-          : 0;
+    const allServices: any[] = [];
 
-        return {
-          id: container.Id.substring(0, 12),
-          name: container.Names[0]?.replace(/^\//, "") || "unknown",
-          image: container.Image,
-          status,
-          state: container.State,
-          ports: container.Ports.map(p => `${p.PublicPort || p.PrivatePort}/${p.Type}`).filter(Boolean),
-          uptime: formatUptime(uptimeSeconds),
-          cpu: Math.round(cpuPercent),
-          memory: memoryMB,
-          created: new Date(container.Created * 1000).toISOString(),
-        };
-      })
-    );
+    if (!serverFilter || serverFilter === "linode" || serverFilter === "all") {
+      const containers = await docker.listContainers({ all: true });
+      
+      const localServices = await Promise.all(
+        containers.map(async (container) => {
+          const stats = await docker.getContainer(container.Id).stats({ stream: false }).catch(() => null);
+          
+          const cpuPercent = stats ? calculateCpuPercent(stats) : 0;
+          const memoryMB = stats ? Math.round((stats.memory_stats.usage || 0) / 1024 / 1024) : 0;
+          
+          const status = container.State === "running" ? "running" 
+            : container.State === "exited" ? "stopped" 
+            : container.State;
+          
+          const uptimeSeconds = container.State === "running" && container.Status 
+            ? parseUptime(container.Status) 
+            : 0;
 
-    return NextResponse.json({ services, server: "local" });
+          return {
+            id: container.Id.substring(0, 12),
+            name: container.Names[0]?.replace(/^\//, "") || "unknown",
+            image: container.Image,
+            status,
+            state: container.State,
+            ports: container.Ports.map(p => `${p.PublicPort || p.PrivatePort}/${p.Type}`).filter(Boolean),
+            uptime: formatUptime(uptimeSeconds),
+            cpu: Math.round(cpuPercent),
+            memory: memoryMB,
+            created: new Date(container.Created * 1000).toISOString(),
+            server: "linode",
+            serverName: "Linode Server",
+          };
+        })
+      );
+      allServices.push(...localServices);
+    }
+
+    if (!serverFilter || serverFilter === "home" || serverFilter === "all") {
+      const remotePromises = REMOTE_SERVERS
+        .filter(s => !serverFilter || serverFilter === "all" || s.id === serverFilter)
+        .map(getRemoteContainers);
+      
+      const remoteResults = await Promise.all(remotePromises);
+      remoteResults.forEach(containers => allServices.push(...containers));
+    }
+
+    return NextResponse.json({ 
+      services: allServices, 
+      servers: ["linode", ...REMOTE_SERVERS.map(s => s.id)],
+    });
   } catch (error: any) {
     console.error("Docker API error:", error);
     return NextResponse.json(
@@ -75,10 +208,20 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { action, containerId } = await request.json();
+    const { action, containerId, server } = await request.json();
     
     if (!containerId || !action) {
       return NextResponse.json({ error: "Missing containerId or action" }, { status: 400 });
+    }
+
+    if (server && server !== "linode") {
+      const remoteServer = REMOTE_SERVERS.find(s => s.id === server);
+      if (!remoteServer) {
+        return NextResponse.json({ error: "Unknown server" }, { status: 400 });
+      }
+      
+      const result = await executeRemoteDockerAction(remoteServer, containerId, action);
+      return NextResponse.json(result);
     }
 
     const container = docker.getContainer(containerId);
@@ -113,6 +256,89 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+async function executeRemoteDockerAction(server: RemoteServer, containerId: string, action: string): Promise<any> {
+  return new Promise((resolve) => {
+    const keyPath = server.keyPath;
+    
+    if (!existsSync(keyPath)) {
+      resolve({ error: "SSH key not found", success: false });
+      return;
+    }
+
+    const conn = new Client();
+    const timeout = setTimeout(() => {
+      conn.end();
+      resolve({ error: "Connection timeout", success: false });
+    }, 15000);
+
+    conn.on("ready", () => {
+      let cmd = "";
+      switch (action) {
+        case "start":
+          cmd = `docker start ${containerId}`;
+          break;
+        case "stop":
+          cmd = `docker stop ${containerId}`;
+          break;
+        case "restart":
+          cmd = `docker restart ${containerId}`;
+          break;
+        case "logs":
+          cmd = `docker logs --tail 100 --timestamps ${containerId}`;
+          break;
+        default:
+          clearTimeout(timeout);
+          conn.end();
+          resolve({ error: "Invalid action", success: false });
+          return;
+      }
+      
+      conn.exec(cmd, (err, stream) => {
+        if (err) {
+          clearTimeout(timeout);
+          conn.end();
+          resolve({ error: err.message, success: false });
+          return;
+        }
+
+        let output = "";
+        stream.on("data", (data: Buffer) => {
+          output += data.toString();
+        });
+
+        stream.on("close", (code: number) => {
+          clearTimeout(timeout);
+          conn.end();
+          
+          if (action === "logs") {
+            resolve({ logs: output, success: true });
+          } else {
+            resolve({ success: code === 0, action, containerId, output: output.trim() });
+          }
+        });
+      });
+    });
+
+    conn.on("error", (err) => {
+      clearTimeout(timeout);
+      resolve({ error: err.message, success: false });
+    });
+
+    try {
+      conn.connect({
+        host: server.host,
+        port: 22,
+        username: server.user,
+        privateKey: readFileSync(keyPath),
+        readyTimeout: 10000,
+      });
+    } catch (err: any) {
+      clearTimeout(timeout);
+      resolve({ error: err.message, success: false });
+    }
+  });
 }
 
 function calculateCpuPercent(stats: any): number {
