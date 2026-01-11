@@ -3020,6 +3020,17 @@ export async function startBot(storage: IStorage, broadcast: (data: any) => void
         console.error(`[Discord] Failed to auto-provision guild ${guild.name}:`, provError);
       }
       
+      // Sync guild identity (nickname/avatar) for the new guild
+      try {
+        const profile = await guildIdentityService.getOrCreateProfile(guild.id);
+        if (profile.nickname || profile.avatarUrl) {
+          await guildIdentityService.syncToDiscord(guild.id);
+          console.log(`[GuildIdentity] ✅ Synced identity for new guild ${guild.name}`);
+        }
+      } catch (identityError) {
+        console.error(`[GuildIdentity] Failed to sync identity for new guild ${guild.name}:`, identityError);
+      }
+      
       // Load custom commands for the new guild
       try {
         await commandEngine.loadCommands(guild.id);
