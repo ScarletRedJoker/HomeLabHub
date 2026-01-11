@@ -127,20 +127,43 @@ COMFYUI_URL=http://100.x.x.x:8188            # Optional ComfyUI
 ### Deployment Status: Beta-Ready
 All services are containerized and ready for production deployment.
 
+### Deploy Scripts (Jan 2026 - Improved)
+Both Linode and Local deployments now use a shared library with improved reliability:
+- **Shared Library** (`deploy/shared/lib.sh`): Common preflight checks, health verification, safe Docker operations
+- **Preflight Checks**: Docker/compose availability, disk space, memory verification
+- **Health Reports**: Post-deployment service health checks with actionable diagnostics
+- **Structured Logging**: Build/deploy logs saved for debugging failures
+
 ### Quick Deploy to Linode
 ```bash
 # On Linode server
 cd /opt/homelab/HomeLabHub/deploy/linode
-./scripts/verify-production-ready.sh  # Verify configuration
-./scripts/deploy.sh --dry-run          # Preview deployment
-./scripts/deploy.sh                    # Full deployment
+./deploy.sh preflight   # Check prerequisites
+./deploy.sh setup       # Interactive environment setup
+./deploy.sh             # Full deployment (preflight + build + deploy + health check)
+./deploy.sh -v          # Verbose mode for debugging
+./deploy.sh status      # Check service health
+```
+
+### Quick Deploy to Local Ubuntu
+```bash
+# On homelab server
+cd /opt/homelab/HomeLabHub/deploy/local
+./deploy.sh                           # Core services only
+./deploy.sh --with-torrents           # Include torrent services
+./deploy.sh --with-gamestream         # Include gamestream services
+./deploy.sh --with-monitoring -v      # Include monitoring + verbose
+./deploy.sh dns-sync                  # Update Cloudflare DNS records
+./deploy.sh install                   # Install systemd service for auto-start
 ```
 
 ### Key Production Files
-- `deploy/linode/docker-compose.yml` - Main Docker stack
-- `deploy/linode/.env.example` - Environment template
-- `deploy/linode/Caddyfile` - Reverse proxy configuration
-- `deploy/linode/scripts/deploy.sh` - Deployment automation
+- `deploy/shared/lib.sh` - Shared deployment library with common functions
+- `deploy/shared/env-lib.sh` - Environment variable and secrets management
+- `deploy/linode/deploy.sh` - Linode deployment script
+- `deploy/linode/docker-compose.yml` - Linode Docker stack
+- `deploy/local/deploy.sh` - Local Ubuntu deployment script
+- `deploy/local/docker-compose.yml` - Local Docker stack
 - `docs/PRODUCTION_DEPLOYMENT.md` - Full deployment guide
 
 ### Service URLs (Production)
