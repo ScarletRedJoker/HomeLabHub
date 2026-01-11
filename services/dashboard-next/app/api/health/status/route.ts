@@ -109,14 +109,18 @@ async function getServerSystemMetrics(server: ServerConfig): Promise<ServerHealt
   }
 
   const keyPath = server.keyPath;
+  const isReplit = !!process.env.REPL_ID;
 
   if (!existsSync(keyPath)) {
+    const errorMsg = isReplit 
+      ? "SSH key not found. Run dashboard locally to monitor servers (see docs/LOCAL_DEVELOPMENT.md)"
+      : `SSH key not found at ${keyPath}`;
     const result: ServerHealth = {
       id: server.id,
       name: server.name,
       status: "error",
       lastChecked: new Date().toISOString(),
-      error: "SSH key not found",
+      error: errorMsg,
     };
     serverHealthCache.set(server.id, { health: result, expires: Date.now() + CACHE_TTL });
     return result;
@@ -124,12 +128,15 @@ async function getServerSystemMetrics(server: ServerConfig): Promise<ServerHealt
 
   const isReachable = await quickPortCheck(server.host, 22, 2000);
   if (!isReachable) {
+    const errorMsg = isReplit
+      ? "Cannot reach server from Replit. Run dashboard locally to monitor servers."
+      : "Host unreachable";
     const result: ServerHealth = {
       id: server.id,
       name: server.name,
       status: "offline",
       lastChecked: new Date().toISOString(),
-      error: "Host unreachable",
+      error: errorMsg,
     };
     serverHealthCache.set(server.id, { health: result, expires: Date.now() + CACHE_TTL });
     return result;
