@@ -5,13 +5,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SHARED_DIR="$(dirname "$SCRIPT_DIR")/shared"
 
 source "$SHARED_DIR/env-lib.sh"
+source "$SHARED_DIR/lib.sh"
 
 cd "$SCRIPT_DIR"
 
 VERBOSE=false
+NO_CACHE=true
+SKIP_PREFLIGHT=false
+SKIP_BUILD=false
+
 for arg in "$@"; do
     case $arg in
         -v|--verbose) VERBOSE=true ;;
+        --cache) NO_CACHE=false ;;
+        --skip-preflight) SKIP_PREFLIGHT=true ;;
+        --skip-build) SKIP_BUILD=true ;;
     esac
 done
 
@@ -21,21 +29,53 @@ show_help() {
     echo "Usage: ./deploy.sh [options] [command]"
     echo ""
     echo "Options:"
-    echo "  -v, --verbose  Show full build output (default: compact spinners)"
+    echo "  -v, --verbose     Show full build/deploy output"
+    echo "  --cache           Use Docker cache (default: no-cache for clean builds)"
+    echo "  --skip-preflight  Skip host prerequisite checks"
+    echo "  --skip-build      Skip Docker build (use existing images)"
     echo ""
     echo "Commands:"
-    echo "  (none)       Full deployment (setup + build + deploy)"
+    echo "  (none)       Full deployment (preflight + setup + build + deploy)"
     echo "  setup        Interactive environment setup only"
-    echo "  check        Check environment health"
+    echo "  check        Check environment and service health"
+    echo "  preflight    Run host prerequisite checks only"
     echo "  build        Build images only"
-    echo "  up           Start services only"
+    echo "  up           Start services only (no build)"
     echo "  down         Stop services"
+    echo "  restart      Restart all services"
     echo "  logs         View service logs (docker compose logs)"
-    echo "  build-logs   View saved build logs"
+    echo "  status       Show service status"
+    echo "  build-logs   View saved build/deploy logs"
+    echo "  prune        Clean up Docker resources"
     echo "  help         Show this help"
     echo ""
-    echo "Environment:"
-    echo "  KEEP_BUILD_LOGS=true  Keep build logs even on success"
+    echo "Environment Variables:"
+    echo "  KEEP_BUILD_LOGS=true  Keep logs even on success"
+    echo "  VERBOSE=true          Same as -v flag"
+    echo "  DRY_RUN=true          Show what would be done without executing"
+    echo ""
+    echo "Examples:"
+    echo "  ./deploy.sh                    # Full deployment"
+    echo "  ./deploy.sh -v                 # Verbose deployment"
+    echo "  ./deploy.sh --cache build      # Build with cache"
+    echo "  ./deploy.sh status             # Check service status"
+    echo ""
+}
+
+do_preflight() {
+    echo -e "${CYAN}[0/5] Preflight checks...${NC}"
+    
+    if [ "$SKIP_PREFLIGHT" = true ]; then
+        echo -e "${YELLOW}[SKIP]${NC} Preflight checks skipped (--skip-preflight)"
+        echo ""
+        return 0
+    fi
+    
+    if ! preflight_host; then
+        echo ""
+        echo -e "${RED}Preflight failed. Fix issues above or use --skip-preflight to bypass.${NC}"
+        exit 1
+    fi
     echo ""
 }
 
@@ -56,19 +96,14 @@ do_git_pull() {
     local has_local_changes=false
     
     for f in "${secret_files[@]}"; do
-        if [ -f "$f" ] && git diff --quiet "$f" 2>/dev/null; then
-            : # File exists but no changes
-        elif [ -f "$f" ]; then
+        if [ -f "$f" ] && ! git diff --quiet "$f" 2>/dev/null; then
             has_local_changes=true
             break
         fi
     done
     
     if [ "$has_local_changes" = true ]; then
-        if [ "$VERBOSE" = true ]; then
-            echo "  Stashing local secret files..."
-        fi
-        
+        [ "$VERBOSE" = true ] && echo "  Stashing local secret files..."
         git stash push -m "deploy-linode-secrets-$(date +%s)" -- "${secret_files[@]}" > /dev/null 2>&1 && stashed=true || true
     fi
     
@@ -88,9 +123,7 @@ do_git_pull() {
     fi
     
     if [ "$stashed" = true ]; then
-        if [ "$VERBOSE" = true ]; then
-            echo "  Restoring local secret files..."
-        fi
+        [ "$VERBOSE" = true ] && echo "  Restoring local secret files..."
         git stash pop > /dev/null 2>&1 || true
     fi
     
@@ -181,71 +214,51 @@ do_env_setup() {
 do_build() {
     echo -e "${CYAN}[3/5] Building images...${NC}"
     
-    local log_dir="$SCRIPT_DIR/logs"
-    mkdir -p "$log_dir"
-    local log_file="$log_dir/build_$(date +%Y%m%d_%H%M%S).log"
-    
-    local build_result=0
-    
-    if [ "$VERBOSE" = true ]; then
-        echo "Build log: $log_file"
+    if [ "$SKIP_BUILD" = true ]; then
+        echo -e "${YELLOW}[SKIP]${NC} Build skipped (--skip-build)"
         echo ""
-        docker compose build --no-cache --progress=plain 2>&1 | tee "$log_file" || build_result=$?
-    else
-        echo -n "  Building (this may take a few minutes)... "
-        if docker compose build --no-cache 2>&1 > "$log_file"; then
-            echo -e "${GREEN}done${NC}"
-        else
-            build_result=$?
-            echo -e "${RED}failed${NC}"
-        fi
+        return 0
     fi
     
-    if [ $build_result -eq 0 ]; then
-        echo -e "${GREEN}✓ Build complete${NC}"
-        if [ "${KEEP_BUILD_LOGS:-}" != "true" ]; then
-            rm -f "$log_file"
-        fi
-    else
-        echo ""
-        echo -e "${RED}✗ Build failed!${NC}"
-        echo -e "${YELLOW}Full build log saved to: $log_file${NC}"
-        echo ""
-        echo "Last 50 lines of errors:"
-        echo "─────────────────────────"
-        tail -50 "$log_file"
-        echo "─────────────────────────"
-        echo ""
-        echo "To view full log: less $log_file"
-        echo "To rebuild with verbose: ./deploy.sh -v build"
+    init_logging "build"
+    
+    docker_prune_if_needed
+    
+    local cache_flag=true
+    [ "$NO_CACHE" = true ] && cache_flag=false
+    
+    if ! safe_docker_build "docker-compose.yml" "$DEPLOY_LOG" "$cache_flag"; then
         exit 1
     fi
+    
+    if [ "${KEEP_BUILD_LOGS:-}" != "true" ]; then
+        rm -f "$DEPLOY_LOG" 2>/dev/null || true
+    fi
+    
+    cleanup_old_logs "$LOG_DIR" 10
     echo ""
 }
 
 do_deploy() {
     echo -e "${CYAN}[4/5] Deploying services...${NC}"
     
-    if [ "$VERBOSE" = true ]; then
-        docker compose down --remove-orphans 2>/dev/null || true
-        docker compose up -d
-    else
-        echo -n "  Stopping old containers... "
-        docker compose down --remove-orphans 2>/dev/null || true
-        echo -e "${GREEN}done${NC}"
-        echo -n "  Starting services... "
-        docker compose up -d > /dev/null 2>&1
-        echo -e "${GREEN}done${NC}"
+    init_logging "deploy"
+    
+    if ! safe_docker_deploy "docker-compose.yml" "$DEPLOY_LOG"; then
+        exit 1
     fi
     
-    echo -e "${GREEN}✓ Services started${NC}"
+    if [ "${KEEP_BUILD_LOGS:-}" != "true" ]; then
+        rm -f "$DEPLOY_LOG" 2>/dev/null || true
+    fi
+    
     echo ""
 }
 
 do_post_deploy() {
     echo -e "${CYAN}[5/5] Post-deployment tasks...${NC}"
     
-    sleep 10
+    post_deploy_wait 10
     
     [ -f "scripts/sync-streambot-db.sh" ] && bash scripts/sync-streambot-db.sh 2>/dev/null || true
     [ -f "scripts/sync-discordbot-db.sh" ] && bash scripts/sync-discordbot-db.sh 2>/dev/null || true
@@ -253,44 +266,21 @@ do_post_deploy() {
     docker restart stream-bot discord-bot 2>/dev/null || true
     
     echo -e "${GREEN}✓ Database synced${NC}"
-    echo ""
     
-    echo -e "${CYAN}Waiting for services (15s)...${NC}"
-    sleep 15
+    post_deploy_wait 10
     
+    health_report "linode"
+    
+    show_deployment_summary "linode"
+}
+
+do_status() {
+    echo -e "${CYAN}═══ Nebula Command - Service Status ═══${NC}"
     echo ""
-    echo -e "${CYAN}━━━ Service Status ━━━${NC}"
+    echo -e "${CYAN}━━━ Docker Containers ━━━${NC}"
     docker compose ps
-    
     echo ""
-    echo -e "${CYAN}━━━ Health Checks ━━━${NC}"
-    
-    check_health() {
-        local name=$1
-        local url=$2
-        if curl -sf "$url" > /dev/null 2>&1; then
-            echo -e "  ${GREEN}✓${NC} $name"
-        else
-            echo -e "  ${YELLOW}⏳${NC} $name (starting...)"
-        fi
-    }
-    
-    check_health "Dashboard" "http://localhost:5000/health"
-    check_health "Discord Bot" "http://localhost:4000/health"
-    check_health "Stream Bot" "http://localhost:3000/health"
-    
-    echo ""
-    echo -e "${GREEN}═══ Deployment Complete ═══${NC}"
-    echo ""
-    echo "Access URLs (configure your domain DNS to point here):"
-    echo "  Dashboard:   http://localhost:5000 (or https://dashboard.yourdomain.com)"
-    echo "  Discord Bot: http://localhost:4000 (or https://discord.yourdomain.com)"
-    echo "  Stream Bot:  http://localhost:3000 (or https://stream.yourdomain.com)"
-    echo ""
-    echo "Commands:"
-    echo "  Logs:    docker compose logs -f [service]"
-    echo "  Status:  docker compose ps"
-    echo "  Restart: docker compose restart [service]"
+    health_report "linode"
 }
 
 case "${1:-}" in
@@ -302,7 +292,11 @@ case "${1:-}" in
         interactive_setup ".env"
         ;;
     check)
-        env_doctor ".env" "check"
+        do_status
+        ;;
+    preflight)
+        echo -e "${CYAN}═══ Nebula Command - Preflight Checks ═══${NC}"
+        preflight_host
         ;;
     build)
         echo -e "${CYAN}═══ Nebula Command - Build Only ═══${NC}"
@@ -311,19 +305,30 @@ case "${1:-}" in
     up)
         echo -e "${CYAN}═══ Nebula Command - Start Services ═══${NC}"
         do_deploy
+        post_deploy_wait 15
+        health_report "linode"
         ;;
     down)
         echo -e "${CYAN}═══ Nebula Command - Stop Services ═══${NC}"
         docker compose down
         echo -e "${GREEN}✓ Services stopped${NC}"
         ;;
+    restart)
+        echo -e "${CYAN}═══ Nebula Command - Restart Services ═══${NC}"
+        docker compose restart
+        post_deploy_wait 10
+        health_report "linode"
+        ;;
+    status)
+        do_status
+        ;;
     logs)
         docker compose logs -f "${2:-}"
         ;;
     build-logs)
-        local log_dir="$SCRIPT_DIR/logs"
+        log_dir="$SCRIPT_DIR/logs"
         if [ -d "$log_dir" ] && [ "$(ls -A "$log_dir" 2>/dev/null)" ]; then
-            echo -e "${CYAN}═══ Build Logs ═══${NC}"
+            echo -e "${CYAN}═══ Build/Deploy Logs ═══${NC}"
             ls -lt "$log_dir"/*.log 2>/dev/null | head -10
             echo ""
             latest=$(ls -t "$log_dir"/*.log 2>/dev/null | head -1)
@@ -336,8 +341,18 @@ case "${1:-}" in
                 fi
             fi
         else
-            echo "No build logs found. Logs are saved when builds fail."
+            echo "No logs found. Logs are saved when builds/deploys fail."
             echo "To keep logs on success: KEEP_BUILD_LOGS=true ./deploy.sh"
+        fi
+        ;;
+    prune)
+        echo -e "${CYAN}═══ Nebula Command - Cleanup ═══${NC}"
+        echo "This will remove unused Docker resources."
+        read -r -p "Continue? (y/N) " confirm
+        if [[ "$confirm" =~ ^[Yy]$ ]]; then
+            docker system prune -f
+            docker image prune -f
+            echo -e "${GREEN}✓ Cleanup complete${NC}"
         fi
         ;;
     *)
@@ -345,6 +360,7 @@ case "${1:-}" in
         echo "Directory: $SCRIPT_DIR"
         echo ""
         
+        do_preflight
         do_git_pull
         do_env_setup
         do_build

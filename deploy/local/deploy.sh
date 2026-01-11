@@ -5,20 +5,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SHARED_DIR="$(dirname "$SCRIPT_DIR")/shared"
 
 source "$SHARED_DIR/env-lib.sh"
+source "$SHARED_DIR/lib.sh"
 
 cd "$SCRIPT_DIR"
 
 VERBOSE=false
-PROFILES=""
+SKIP_PREFLIGHT=false
 WITH_TORRENTS=false
 WITH_GAMESTREAM=false
 WITH_MONITORING=false
-COMMAND=""
 POSITIONAL_ARGS=()
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         -v|--verbose) VERBOSE=true; shift ;;
+        --skip-preflight) SKIP_PREFLIGHT=true; shift ;;
         --with-torrents) WITH_TORRENTS=true; shift ;;
         --with-gamestream) WITH_GAMESTREAM=true; shift ;;
         --with-monitoring) WITH_MONITORING=true; shift ;;
@@ -27,7 +28,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-set -- "${POSITIONAL_ARGS[@]}"
+set -- "${POSITIONAL_ARGS[@]+"${POSITIONAL_ARGS[@]}"}"
 
 build_profiles() {
     local profiles=""
@@ -51,18 +52,22 @@ show_help() {
     echo "Usage: ./deploy.sh [options] [command]"
     echo ""
     echo "Options:"
-    echo "  -v, --verbose       Show full output (default: compact)"
+    echo "  -v, --verbose       Show full output"
+    echo "  --skip-preflight    Skip host prerequisite checks"
     echo "  --with-torrents     Enable torrent profile (qBittorrent, etc)"
     echo "  --with-gamestream   Enable gamestream profile (Sunshine, etc)"
     echo "  --with-monitoring   Enable monitoring profile (Prometheus, Grafana, etc)"
     echo ""
     echo "Commands:"
-    echo "  (none)       Full deployment (setup + deploy)"
+    echo "  (none)       Full deployment (preflight + setup + deploy)"
     echo "  setup        Interactive environment setup only"
-    echo "  check        Check environment health"
+    echo "  check        Check environment and service health"
+    echo "  preflight    Run host prerequisite checks only"
     echo "  up           Start services only"
     echo "  down         Stop services"
+    echo "  restart      Restart all services"
     echo "  logs         View service logs (docker compose logs)"
+    echo "  status       Show service status"
     echo "  deploy-logs  View saved deploy logs"
     echo "  nas          Mount NAS storage"
     echo "  dns-sync     Sync Cloudflare DNS records"
@@ -71,10 +76,12 @@ show_help() {
     echo "  install      Install systemd service for auto-start on boot"
     echo "  uninstall    Remove systemd service"
     echo "  authelia     Generate Authelia password hash"
+    echo "  prune        Clean up Docker resources"
     echo "  help         Show this help"
     echo ""
-    echo "Environment:"
+    echo "Environment Variables:"
     echo "  KEEP_BUILD_LOGS=true  Keep deploy logs even on success"
+    echo "  VERBOSE=true          Same as -v flag"
     echo ""
     echo "Examples:"
     echo "  ./deploy.sh                           # Default deployment"
@@ -242,6 +249,23 @@ validate_dns() {
     echo ""
 }
 
+do_preflight() {
+    echo -e "${CYAN}[0/5] Preflight checks...${NC}"
+    
+    if [ "$SKIP_PREFLIGHT" = true ]; then
+        echo -e "${YELLOW}[SKIP]${NC} Preflight checks skipped (--skip-preflight)"
+        echo ""
+        return 0
+    fi
+    
+    if ! preflight_host; then
+        echo ""
+        echo -e "${RED}Preflight failed. Fix issues above or use --skip-preflight to bypass.${NC}"
+        exit 1
+    fi
+    echo ""
+}
+
 do_git_pull() {
     echo -e "${CYAN}[1/5] Pulling latest code...${NC}"
     local repo_root
@@ -259,19 +283,14 @@ do_git_pull() {
     local has_local_changes=false
     
     for f in "${secret_files[@]}"; do
-        if [ -f "$f" ] && git diff --quiet "$f" 2>/dev/null; then
-            : # File exists but no changes
-        elif [ -f "$f" ]; then
+        if [ -f "$f" ] && ! git diff --quiet "$f" 2>/dev/null; then
             has_local_changes=true
             break
         fi
     done
     
     if [ "$has_local_changes" = true ]; then
-        if [ "$VERBOSE" = true ]; then
-            echo "  Stashing local secret files..."
-        fi
-        
+        [ "$VERBOSE" = true ] && echo "  Stashing local secret files..."
         git stash push -m "deploy-local-secrets-$(date +%s)" -- "${secret_files[@]}" > /dev/null 2>&1 && stashed=true || true
     fi
     
@@ -291,9 +310,7 @@ do_git_pull() {
     fi
     
     if [ "$stashed" = true ]; then
-        if [ "$VERBOSE" = true ]; then
-            echo "  Restoring local secret files..."
-        fi
+        [ "$VERBOSE" = true ] && echo "  Restoring local secret files..."
         git stash pop > /dev/null 2>&1 || true
     fi
     
@@ -458,7 +475,6 @@ do_dns_sync() {
 do_deploy() {
     echo -e "${CYAN}[4/5] Deploying services...${NC}"
     
-    # Export user UID/GID so containers run as host user (avoids root-owned files)
     export LOCAL_UID=$(id -u)
     export LOCAL_GID=$(id -g)
     
@@ -466,105 +482,27 @@ do_deploy() {
         echo -e "  Active profiles: ${GREEN}${PROFILES}${NC}"
     fi
     
-    local log_dir="$SCRIPT_DIR/logs"
-    mkdir -p "$log_dir"
-    local log_file="$log_dir/deploy_$(date +%Y%m%d_%H%M%S).log"
-    local deploy_result=0
+    init_logging "deploy"
     
     mkdir -p /srv/media/community 2>/dev/null || sudo mkdir -p /srv/media/community
     sudo chown 1000:1000 /srv/media/community 2>/dev/null || true
     
-    if [ "$VERBOSE" = true ]; then
-        echo "Deploy log: $log_file"
-        echo ""
-        {
-            echo "=== Docker Pull ===" 
-            docker compose $PROFILES pull
-            echo ""
-            echo "=== Docker Up ==="
-            docker compose $PROFILES down --remove-orphans 2>/dev/null || true
-            docker compose $PROFILES up -d
-        } 2>&1 | tee "$log_file" || deploy_result=$?
-    else
-        echo -n "  Pulling images... "
-        if docker compose $PROFILES pull > "$log_file" 2>&1; then
-            echo -e "${GREEN}done${NC}"
-        else
-            deploy_result=$?
-            echo -e "${RED}failed${NC}"
-        fi
-        
-        if [ $deploy_result -eq 0 ]; then
-            echo -n "  Stopping old containers... "
-            docker compose $PROFILES down --remove-orphans >> "$log_file" 2>&1 || true
-            echo -e "${GREEN}done${NC}"
-            
-            echo -n "  Starting services... "
-            if docker compose $PROFILES up -d >> "$log_file" 2>&1; then
-                echo -e "${GREEN}done${NC}"
-            else
-                deploy_result=$?
-                echo -e "${RED}failed${NC}"
-            fi
-        fi
-    fi
-    
-    if [ $deploy_result -eq 0 ]; then
-        echo -e "${GREEN}✓ Services started${NC}"
-        if [ "${KEEP_BUILD_LOGS:-}" != "true" ]; then
-            rm -f "$log_file"
-        fi
-    else
-        echo ""
-        echo -e "${RED}✗ Deploy failed!${NC}"
-        echo -e "${YELLOW}Full log saved to: $log_file${NC}"
-        echo ""
-        echo "Last 30 lines:"
-        tail -30 "$log_file"
-        echo ""
-        echo "To retry with verbose: ./deploy.sh -v"
+    if ! safe_docker_deploy "docker-compose.yml" "$DEPLOY_LOG" "$PROFILES"; then
         exit 1
     fi
+    
+    if [ "${KEEP_BUILD_LOGS:-}" != "true" ]; then
+        rm -f "$DEPLOY_LOG" 2>/dev/null || true
+    fi
+    
+    cleanup_old_logs "$LOG_DIR" 10
     echo ""
-}
-
-get_container_health() {
-    local container_name=$1
-    local health
-    health=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container_name" 2>/dev/null)
-    echo "${health:-unknown}"
-}
-
-print_health_table_row() {
-    local service=$1
-    local status=$2
-    local url=$3
-    local profile=${4:-"core"}
-    
-    local status_color
-    local status_icon
-    case "$status" in
-        healthy|running)
-            status_color="${GREEN}"
-            status_icon="●"
-            ;;
-        starting|unhealthy)
-            status_color="${YELLOW}"
-            status_icon="◐"
-            ;;
-        *)
-            status_color="${RED}"
-            status_icon="○"
-            ;;
-    esac
-    
-    printf "  │ %-18s │ %b%-12s%b │ %-35s │ %-10s │\n" \
-        "$service" "$status_color" "$status_icon $status" "$NC" "$url" "$profile"
 }
 
 do_post_deploy() {
     echo -e "${CYAN}[5/5] Health checks...${NC}"
-    sleep 20
+    
+    post_deploy_wait 20
     
     local domain="${DOMAIN:-example.com}"
     
@@ -580,183 +518,65 @@ do_post_deploy() {
         echo -e "  ${CYAN}Tip:${NC} Use --with-torrents, --with-gamestream, --with-monitoring to enable more"
     fi
     
-    echo ""
-    echo -e "${CYAN}━━━ Service Health Report ━━━${NC}"
-    echo "  ┌────────────────────┬──────────────┬─────────────────────────────────────┬────────────┐"
-    echo "  │ Service            │ Status       │ URL                                 │ Profile    │"
-    echo "  ├────────────────────┼──────────────┼─────────────────────────────────────┼────────────┤"
+    health_report "local"
     
-    declare -A services=(
-        ["plex"]="Plex|http://localhost:32400/identity|core"
-        ["jellyfin"]="Jellyfin|http://localhost:8096/health|core"
-        ["homelab-minio"]="MinIO|http://localhost:9000/minio/health/live|core"
-        ["homeassistant"]="Home Assistant|http://localhost:8123/|core"
-        ["authelia"]="Authelia|http://localhost:9091/api/health|core"
-        ["caddy-local"]="Caddy|http://localhost:80/|core"
-        ["authelia-redis"]="Auth Redis|-|core"
-        ["dashboard-postgres"]="Dashboard DB|-|core"
-        # Dashboard runs on LINODE, not locally
-        # ["homelab-dashboard"]="Dashboard|http://localhost:5000/api/health|core"
-        ["novnc"]="VNC|http://localhost:8080/|core"
-        ["ttyd"]="SSH Terminal|http://localhost:7681/|core"
-    )
-    
-    if [ "$WITH_TORRENTS" = true ]; then
-        services["gluetun"]="VPN Tunnel|-|torrents"
-        services["qbittorrent"]="qBittorrent|-|torrents"
-    fi
-    
-    if [ "$WITH_GAMESTREAM" = true ]; then
-        services["sunshine"]="Sunshine|-|gamestream"
-    fi
-    
-    if [ "$WITH_MONITORING" = true ]; then
-        services["smartctl-exporter"]="SMART Exporter|http://localhost:9633/|monitoring"
-    fi
-    
-    for container in "${!services[@]}"; do
-        IFS='|' read -r name check_url profile <<< "${services[$container]}"
-        
-        local status
-        local container_status
-        container_status=$(get_container_health "$container" 2>/dev/null)
-        
-        if [ "$container_status" = "healthy" ] || [ "$container_status" = "running" ]; then
-            if [ "$check_url" = "-" ] || [ -z "$check_url" ]; then
-                status="healthy"
-            elif curl -sf --connect-timeout 2 "$check_url" > /dev/null 2>&1; then
-                status="healthy"
-            else
-                status="starting"
-            fi
-        elif [ "$container_status" = "starting" ]; then
-            status="starting"
-        elif [ -n "$container_status" ] && [ "$container_status" != "unknown" ]; then
-            status="$container_status"
-        else
-            status="not running"
-        fi
-        
-        local public_url=""
-        case "$container" in
-            plex) public_url="https://plex.$domain" ;;
-            jellyfin) public_url="https://jellyfin.$domain" ;;
-            homeassistant) public_url="https://home.$domain" ;;
-            authelia) public_url="https://auth.$domain" ;;
-            homelab-minio) public_url="https://storage.$domain" ;;
-            caddy-local) public_url="(reverse proxy)" ;;
-            authelia-redis|dashboard-redis|dashboard-postgres) public_url="(internal)" ;;
-            homelab-dashboard) public_url="https://dashboard.$domain" ;;
-            novnc) public_url="https://vnc.$domain" ;;
-            ttyd) public_url="https://ssh.$domain" ;;
-            qbittorrent) public_url="https://torrent.$domain" ;;
-            gluetun) public_url="(VPN tunnel)" ;;
-            sunshine) public_url="https://gamestream.$domain" ;;
-            smartctl-exporter) public_url="(internal metrics)" ;;
-            *) public_url="https://${container}.$domain" ;;
-        esac
-        
-        print_health_table_row "$name" "$status" "$public_url" "$profile"
-    done
-    
-    echo "  └────────────────────┴──────────────┴─────────────────────────────────────┴────────────┘"
-    
-    local healthy_count=0
-    local total_count=0
-    for container in "${!services[@]}"; do
-        total_count=$((total_count + 1))
-        local status
-        status=$(get_container_health "$container" 2>/dev/null)
-        if [ "$status" = "healthy" ] || [ "$status" = "running" ]; then
-            healthy_count=$((healthy_count + 1))
-        fi
-    done
-    
-    echo ""
-    if [ "$healthy_count" -eq "$total_count" ]; then
-        echo -e "  ${GREEN}✓ All $total_count services healthy${NC}"
-    elif [ "$healthy_count" -gt 0 ]; then
-        echo -e "  ${YELLOW}◐ $healthy_count/$total_count services healthy (some still starting)${NC}"
-    else
-        echo -e "  ${RED}○ Services may still be starting...${NC}"
-    fi
-    
-    echo ""
-    echo -e "${GREEN}═══ Local Deployment Complete ═══${NC}"
-    echo ""
-    echo "Public URLs (after DNS propagation):"
-    echo "  Dashboard:      https://dashboard.$domain"
-    echo "  Plex:           https://plex.$domain"
-    echo "  Jellyfin:       https://jellyfin.$domain"
-    echo "  Home Assistant: https://home.$domain"
-    echo "  Auth Portal:    https://auth.$domain"
-    echo ""
-    echo "Protected URLs (require Authelia login):"
-    echo "  Storage:        https://storage.$domain"
-    [ "$WITH_TORRENTS" = true ] && echo "  Torrents:       https://torrent.$domain"
-    [ "$WITH_GAMESTREAM" = true ] && echo "  Game Stream:    https://gamestream.$domain"
-    echo "  VNC Desktop:    https://vnc.$domain"
-    echo "  SSH Terminal:   https://ssh.$domain"
-    echo "  VM Manager:     https://vms.$domain"
-    [ "$WITH_MONITORING" = true ] && echo "  Grafana:        https://grafana.$domain"
-    echo ""
-    echo "Commands:"
-    echo "  Logs:       docker compose logs -f [service]"
-    echo "  Status:     docker compose ps"
-    echo "  Restart:    docker compose restart [service]"
-    echo "  Port Check: ./deploy.sh port-check"
-    echo "  DNS Check:  ./deploy.sh dns-check"
-    echo "  Auto-start: ./deploy.sh install"
+    show_deployment_summary "local"
 }
 
-do_install_systemd() {
+do_status() {
+    echo -e "${CYAN}═══ Nebula Command - Service Status ═══${NC}"
+    echo ""
+    echo -e "${CYAN}━━━ Docker Containers ━━━${NC}"
+    docker compose $PROFILES ps 2>/dev/null || docker compose ps
+    echo ""
+    health_report "local"
+}
+
+install_systemd() {
     echo -e "${CYAN}═══ Installing Systemd Service ═══${NC}"
     
-    local service_file="$SCRIPT_DIR/nebula-stack.service"
-    local target_path="/etc/systemd/system/nebula-stack.service"
+    local service_file="/etc/systemd/system/nebula-homelab.service"
     
-    if [ ! -f "$service_file" ]; then
-        echo -e "${RED}[ERROR]${NC} nebula-stack.service not found"
-        exit 1
-    fi
+    sudo tee "$service_file" > /dev/null << EOF
+[Unit]
+Description=Nebula Command Homelab Services
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=$SCRIPT_DIR
+ExecStart=/usr/bin/docker compose $PROFILES up -d
+ExecStop=/usr/bin/docker compose $PROFILES down
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
+EOF
     
-    echo "Installing systemd service..."
-    sudo cp "$service_file" "$target_path"
     sudo systemctl daemon-reload
-    sudo systemctl enable nebula-stack.service
+    sudo systemctl enable nebula-homelab.service
     
-    echo -e "${GREEN}✓ Systemd service installed${NC}"
-    echo ""
-    echo "The stack will now automatically start on boot!"
+    echo -e "${GREEN}✓ Systemd service installed and enabled${NC}"
     echo ""
     echo "Commands:"
-    echo "  Start:   sudo systemctl start nebula-stack"
-    echo "  Stop:    sudo systemctl stop nebula-stack"
-    echo "  Status:  sudo systemctl status nebula-stack"
-    echo "  Logs:    sudo journalctl -u nebula-stack -f"
+    echo "  Start:   sudo systemctl start nebula-homelab"
+    echo "  Stop:    sudo systemctl stop nebula-homelab"
+    echo "  Status:  sudo systemctl status nebula-homelab"
+    echo "  Disable: sudo systemctl disable nebula-homelab"
 }
 
-do_uninstall_systemd() {
+uninstall_systemd() {
     echo -e "${CYAN}═══ Removing Systemd Service ═══${NC}"
     
-    sudo systemctl stop nebula-stack.service 2>/dev/null || true
-    sudo systemctl disable nebula-stack.service 2>/dev/null || true
-    sudo rm -f /etc/systemd/system/nebula-stack.service
+    sudo systemctl stop nebula-homelab.service 2>/dev/null || true
+    sudo systemctl disable nebula-homelab.service 2>/dev/null || true
+    sudo rm -f /etc/systemd/system/nebula-homelab.service
     sudo systemctl daemon-reload
     
     echo -e "${GREEN}✓ Systemd service removed${NC}"
-}
-
-do_authelia_hash() {
-    echo -e "${CYAN}═══ Generate Authelia Password Hash ═══${NC}"
-    echo ""
-    echo "Enter the password to hash:"
-    read -rs password
-    echo ""
-    
-    docker run --rm authelia/authelia:latest authelia crypto hash generate argon2 --password "$password"
-    echo ""
-    echo "Copy the hash above into services/authelia/users_database.yml"
 }
 
 case "${1:-}" in
@@ -768,32 +588,34 @@ case "${1:-}" in
         interactive_setup ".env"
         ;;
     check)
-        env_doctor ".env" "check"
-        check_nas
+        do_status
         ;;
-    port-check)
-        set -a
-        source .env 2>/dev/null || true
-        set +a
-        check_port_forwarding
-        ;;
-    dns-check)
-        set -a
-        source .env 2>/dev/null || true
-        set +a
-        validate_dns
+    preflight)
+        echo -e "${CYAN}═══ Nebula Command - Preflight Checks ═══${NC}"
+        preflight_host
         ;;
     up)
         echo -e "${CYAN}═══ Nebula Command - Start Services ═══${NC}"
         do_deploy
+        post_deploy_wait 15
+        health_report "local"
         ;;
     down)
         echo -e "${CYAN}═══ Nebula Command - Stop Services ═══${NC}"
         docker compose $PROFILES down
         echo -e "${GREEN}✓ Services stopped${NC}"
         ;;
+    restart)
+        echo -e "${CYAN}═══ Nebula Command - Restart Services ═══${NC}"
+        docker compose $PROFILES restart
+        post_deploy_wait 10
+        health_report "local"
+        ;;
+    status)
+        do_status
+        ;;
     logs)
-        docker compose logs -f "${2:-}"
+        docker compose $PROFILES logs -f "${2:-}"
         ;;
     deploy-logs)
         log_dir="$SCRIPT_DIR/logs"
@@ -811,45 +633,60 @@ case "${1:-}" in
                 fi
             fi
         else
-            echo "No deploy logs found. Logs are saved when deploys fail."
+            echo "No logs found. Logs are saved when deploys fail."
             echo "To keep logs on success: KEEP_BUILD_LOGS=true ./deploy.sh"
         fi
         ;;
     nas)
-        echo -e "${CYAN}═══ Nebula Command - Mount NAS ═══${NC}"
-        sudo ./scripts/setup-nas-mounts.sh
+        echo -e "${CYAN}═══ Nebula Command - NAS Mount ═══${NC}"
+        check_nas
         ;;
     dns-sync)
-        set -a
-        source .env 2>/dev/null || true
-        set +a
+        echo -e "${CYAN}═══ Nebula Command - DNS Sync ═══${NC}"
+        source ".env" 2>/dev/null || true
         do_dns_sync
         ;;
+    port-check)
+        echo -e "${CYAN}═══ Nebula Command - Port Check ═══${NC}"
+        check_port_forwarding
+        ;;
+    dns-check)
+        echo -e "${CYAN}═══ Nebula Command - DNS Validation ═══${NC}"
+        source ".env" 2>/dev/null || true
+        validate_dns
+        ;;
     install)
-        do_install_systemd
+        install_systemd
         ;;
     uninstall)
-        do_uninstall_systemd
+        uninstall_systemd
         ;;
     authelia)
-        do_authelia_hash
+        echo -e "${CYAN}═══ Nebula Command - Authelia Password Hash ═══${NC}"
+        read -r -s -p "Enter password to hash: " password
+        echo ""
+        docker run --rm authelia/authelia:latest authelia crypto hash generate argon2 --password "$password"
+        ;;
+    prune)
+        echo -e "${CYAN}═══ Nebula Command - Cleanup ═══${NC}"
+        echo "This will remove unused Docker resources."
+        read -r -p "Continue? (y/N) " confirm
+        if [[ "$confirm" =~ ^[Yy]$ ]]; then
+            docker system prune -f
+            docker image prune -f
+            echo -e "${GREEN}✓ Cleanup complete${NC}"
+        fi
         ;;
     *)
         echo -e "${CYAN}═══ Nebula Command - Local Ubuntu Deployment ═══${NC}"
         echo "Directory: $SCRIPT_DIR"
         echo ""
         
-        set -a
-        source .env 2>/dev/null || true
-        set +a
+        source ".env" 2>/dev/null || true
         
+        do_preflight
         do_git_pull
         do_env_setup
-        
-        set -a
-        source .env 2>/dev/null || true
-        set +a
-        
         check_nas
         do_dns_sync
         do_deploy
