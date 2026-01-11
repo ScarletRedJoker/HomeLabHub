@@ -7,7 +7,7 @@ import { localAIRuntime } from "@/lib/local-ai-runtime";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type AIProvider = "openai" | "ollama" | "auto";
+type AIProvider = "openai" | "ollama" | "auto" | "custom";
 
 interface ChatRequestBody {
   message: string;
@@ -15,6 +15,82 @@ interface ChatRequestBody {
   provider?: AIProvider;
   model?: string;
   stream?: boolean;
+  customEndpoint?: string;
+}
+
+function getOllamaEndpoints(): string[] {
+  const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
+  const UBUNTU_IP = process.env.UBUNTU_TAILSCALE_IP || "100.66.61.51";
+  
+  const endpoints: string[] = [];
+  
+  if (process.env.OLLAMA_URL) {
+    endpoints.push(process.env.OLLAMA_URL);
+  } else {
+    endpoints.push(`http://${WINDOWS_VM_IP}:11434`);
+  }
+  
+  if (process.env.OLLAMA_FALLBACK_URL) {
+    endpoints.push(process.env.OLLAMA_FALLBACK_URL);
+  } else {
+    endpoints.push(`http://${UBUNTU_IP}:11434`);
+  }
+  
+  return endpoints;
+}
+
+const ALLOWED_CUSTOM_ENDPOINTS = [
+  "api.groq.com",
+  "api.together.xyz",
+  "api.fireworks.ai",
+  "api.mistral.ai",
+  "api.perplexity.ai",
+  "api.deepseek.com",
+  "api.anthropic.com",
+  "generativelanguage.googleapis.com",
+  "openrouter.ai",
+  "api.cohere.ai",
+];
+
+function validateCustomEndpoint(endpoint: string): { valid: boolean; error?: string } {
+  try {
+    const url = new URL(endpoint);
+    
+    if (!["http:", "https:"].includes(url.protocol)) {
+      return { valid: false, error: "Only HTTP/HTTPS protocols allowed" };
+    }
+    
+    if (url.hostname === "localhost" || 
+        url.hostname === "127.0.0.1" || 
+        url.hostname.startsWith("192.168.") ||
+        url.hostname.startsWith("10.") ||
+        url.hostname.startsWith("172.16.") ||
+        url.hostname.endsWith(".local") ||
+        url.hostname.includes("169.254.") ||
+        url.hostname.includes("metadata")) {
+      return { valid: false, error: "Internal/private endpoints not allowed" };
+    }
+    
+    const isAllowed = ALLOWED_CUSTOM_ENDPOINTS.some(allowed => 
+      url.hostname === allowed || url.hostname.endsWith(`.${allowed}`)
+    );
+    
+    const customAllowed = process.env.CUSTOM_AI_ENDPOINTS?.split(",").map(s => s.trim()) || [];
+    const isCustomAllowed = customAllowed.some(allowed => 
+      url.hostname === allowed || url.hostname.endsWith(`.${allowed}`)
+    );
+    
+    if (!isAllowed && !isCustomAllowed) {
+      return { 
+        valid: false, 
+        error: `Endpoint not in allowlist. Allowed: ${ALLOWED_CUSTOM_ENDPOINTS.join(", ")}` 
+      };
+    }
+    
+    return { valid: true };
+  } catch {
+    return { valid: false, error: "Invalid URL format" };
+  }
 }
 
 function getOpenAIClient() {
@@ -165,13 +241,13 @@ async function chatWithOpenAI(
   };
 }
 
-async function chatWithOllama(
+async function tryOllamaEndpoint(
+  endpoint: string,
   messages: { role: string; content: string }[],
   model: string,
   stream: boolean
 ): Promise<Response | { content: string; provider: string; model: string }> {
-  const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
-  const ollamaUrl = process.env.OLLAMA_URL || `http://${WINDOWS_VM_IP}:11434`;
+  const ollamaUrl = endpoint;
 
   const formattedMessages = [
     { role: "system", content: systemPrompt },
@@ -274,6 +350,74 @@ async function chatWithOllama(
   };
 }
 
+async function chatWithOllama(
+  messages: { role: string; content: string }[],
+  model: string,
+  stream: boolean
+): Promise<Response | { content: string; provider: string; model: string }> {
+  const endpoints = getOllamaEndpoints();
+  let lastError: Error | null = null;
+  
+  for (const endpoint of endpoints) {
+    try {
+      console.log(`Trying Ollama endpoint: ${endpoint}`);
+      const result = await tryOllamaEndpoint(endpoint, messages, model, stream);
+      console.log(`Successfully used Ollama endpoint: ${endpoint}`);
+      return result;
+    } catch (error: any) {
+      console.warn(`Ollama endpoint ${endpoint} failed: ${error.message}`);
+      lastError = error;
+    }
+  }
+  
+  throw lastError || new Error("All Ollama endpoints failed");
+}
+
+async function chatWithCustomEndpoint(
+  endpoint: string,
+  messages: { role: string; content: string }[],
+  model: string,
+  stream: boolean
+): Promise<Response | { content: string; provider: string; model: string }> {
+  const formattedMessages = [
+    { role: "system", content: systemPrompt },
+    ...messages.slice(-10).map((m) => ({
+      role: m.role,
+      content: m.content,
+    })),
+  ];
+
+  const response = await fetch(`${endpoint}/v1/chat/completions`, {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json",
+      ...(process.env.CUSTOM_AI_API_KEY && { "Authorization": `Bearer ${process.env.CUSTOM_AI_API_KEY}` }),
+    },
+    body: JSON.stringify({
+      model,
+      messages: formattedMessages,
+      temperature: 0.7,
+      max_tokens: 2000,
+      stream,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Custom endpoint error: ${response.statusText}`);
+  }
+
+  if (stream) {
+    return response;
+  }
+
+  const data = await response.json();
+  return {
+    content: data.choices?.[0]?.message?.content || "",
+    provider: "custom",
+    model,
+  };
+}
+
 export async function POST(request: NextRequest) {
   const user = await checkAuth();
   if (!user) {
@@ -282,7 +426,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: ChatRequestBody = await request.json();
-    const { message, history = [], provider = "auto", model, stream = false } = body;
+    const { message, history = [], provider = "auto", model, stream = false, customEndpoint } = body;
 
     if (!message) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 });
@@ -290,33 +434,46 @@ export async function POST(request: NextRequest) {
 
     const messages = [...history, { role: "user", content: message }];
 
-    const { provider: selectedProvider, fallback } = await selectProvider(provider);
-
-    const defaultModel = selectedProvider === "openai" ? "gpt-4o" : "llama3.2:latest";
-    const finalModel = model || defaultModel;
-
     let result: Response | { content: string; provider: string; model: string };
-    let usedFallback = fallback;
+    let usedFallback = false;
 
-    if (selectedProvider === "ollama") {
-      try {
-        result = await chatWithOllama(messages, finalModel, stream);
-      } catch (ollamaError: any) {
-        console.warn("Ollama failed, falling back to OpenAI:", ollamaError.message);
-        const openaiModel = "gpt-4o";
-        try {
-          result = await chatWithOpenAI(messages, openaiModel, stream);
-          usedFallback = true;
-        } catch (openaiError: any) {
-          console.error("Both Ollama and OpenAI failed:", openaiError.message);
-          return NextResponse.json(
-            { error: "AI service unavailable", details: "Both local and cloud AI providers are unavailable" },
-            { status: 503 }
-          );
-        }
+    if (provider === "custom" && customEndpoint) {
+      const validation = validateCustomEndpoint(customEndpoint);
+      if (!validation.valid) {
+        return NextResponse.json(
+          { error: "Invalid custom endpoint", details: validation.error },
+          { status: 400 }
+        );
       }
+      const customModel = model || "default";
+      result = await chatWithCustomEndpoint(customEndpoint, messages, customModel, stream);
     } else {
-      result = await chatWithOpenAI(messages, finalModel, stream);
+      const { provider: selectedProvider, fallback } = await selectProvider(provider as AIProvider);
+      usedFallback = fallback;
+
+      const defaultModel = selectedProvider === "openai" ? "gpt-4o" : "llama3.2:latest";
+      const finalModel = model || defaultModel;
+
+      if (selectedProvider === "ollama") {
+        try {
+          result = await chatWithOllama(messages, finalModel, stream);
+        } catch (ollamaError: any) {
+          console.warn("All Ollama endpoints failed, falling back to OpenAI:", ollamaError.message);
+          const openaiModel = "gpt-4o";
+          try {
+            result = await chatWithOpenAI(messages, openaiModel, stream);
+            usedFallback = true;
+          } catch (openaiError: any) {
+            console.error("Both Ollama and OpenAI failed:", openaiError.message);
+            return NextResponse.json(
+              { error: "AI service unavailable", details: "Both local and cloud AI providers are unavailable" },
+              { status: 503 }
+            );
+          }
+        }
+      } else {
+        result = await chatWithOpenAI(messages, finalModel, stream);
+      }
     }
 
     if (result instanceof Response) {
@@ -350,6 +507,31 @@ export async function POST(request: NextRequest) {
   }
 }
 
+async function fetchOllamaModels(): Promise<string[]> {
+  const endpoints = getOllamaEndpoints();
+  
+  for (const endpoint of endpoints) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+      
+      const response = await fetch(`${endpoint}/api/tags`, {
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      
+      if (response.ok) {
+        const data = await response.json();
+        return (data.models || []).map((m: { name: string }) => m.name);
+      }
+    } catch {
+      continue;
+    }
+  }
+  
+  return [];
+}
+
 export async function GET(request: NextRequest) {
   const user = await checkAuth();
   if (!user) {
@@ -357,24 +539,40 @@ export async function GET(request: NextRequest) {
   }
 
   const openai = getOpenAIClient();
-  const ollamaAvailable = await isOllamaAvailable();
+  
+  const [ollamaAvailable, ollamaModels] = await Promise.all([
+    isOllamaAvailable(),
+    fetchOllamaModels(),
+  ]);
 
+  const ollamaEndpoints = getOllamaEndpoints();
+  
   const providers = [
     {
       id: "openai",
-      name: "OpenAI GPT-4o",
-      description: "Cloud-based, most capable",
+      name: "OpenAI",
+      description: "Cloud-based GPT models",
       models: ["gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo"],
       available: openai !== null,
       type: "cloud",
     },
     {
       id: "ollama",
-      name: "Ollama (Local)",
-      description: "Self-hosted on homelab GPU",
-      models: ["llama3.2:latest", "mistral:latest", "codellama:latest"],
+      name: "Ollama (Local GPU)",
+      description: `Self-hosted LLMs on homelab (${ollamaEndpoints.length} endpoints)`,
+      models: ollamaModels.length > 0 ? ollamaModels : ["llama3.2:latest", "mistral:latest", "codellama:latest"],
       available: ollamaAvailable,
       type: "local",
+      endpoints: ollamaEndpoints,
+    },
+    {
+      id: "custom",
+      name: "Custom Endpoint",
+      description: "OpenAI-compatible APIs (Groq, Together, Fireworks, etc)",
+      models: [],
+      available: true,
+      type: "custom",
+      allowedDomains: ALLOWED_CUSTOM_ENDPOINTS,
     },
   ];
 
@@ -382,5 +580,6 @@ export async function GET(request: NextRequest) {
     providers,
     defaultProvider: ollamaAvailable ? "ollama" : "openai",
     fallbackEnabled: true,
+    fallbackChain: ["ollama (primary)", "ollama (fallback)", "openai"],
   });
 }
