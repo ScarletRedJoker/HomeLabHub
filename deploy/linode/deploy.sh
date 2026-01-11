@@ -215,6 +215,13 @@ do_env_setup() {
     
     echo -e "${GREEN}✓ Environment ready${NC}"
     echo ""
+    
+    # Sync SSH keys to dashboard volume with proper permissions
+    if [ -f "scripts/sync-dashboard-ssh.sh" ]; then
+        echo -e "${CYAN}━━━ Dashboard SSH Keys ━━━${NC}"
+        bash scripts/sync-dashboard-ssh.sh || echo -e "${YELLOW}[WARN] SSH key sync failed - dashboard may not connect to servers${NC}"
+        echo ""
+    fi
 }
 
 do_build() {

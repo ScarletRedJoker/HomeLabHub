@@ -119,6 +119,10 @@ set_var_if_missing "TAILSCALE_LOCAL_HOST" "192.168.0.177" "Local Ubuntu IP via T
 set_var_if_missing "WINDOWS_VM_TAILSCALE_IP" "100.118.44.102" "Windows VM with GPU (Ollama)"
 set_var_if_missing "TZ" "America/New_York" "Timezone"
 
+# Docker socket GID for container access
+DOCKER_GID=$(stat -c '%g' /var/run/docker.sock 2>/dev/null || echo "999")
+set_var_if_missing "DOCKER_GID" "$DOCKER_GID" "Docker socket group ID"
+
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  Checking External API Keys (requires your input)"

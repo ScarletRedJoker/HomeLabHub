@@ -14,6 +14,7 @@ volumes:
   loki_data:
   tailscale_state:
   studio_projects:
+  dashboard_ssh:
 
 services:
   tailscale:
@@ -109,6 +110,9 @@ services:
       dockerfile: Dockerfile
     container_name: homelab-dashboard
     restart: unless-stopped
+    user: "1001:${DOCKER_GID:-999}"
+    group_add:
+      - "${DOCKER_GID:-999}"
     depends_on:
       homelab-postgres:
         condition: service_healthy
@@ -132,17 +136,17 @@ services:
       - HOME_ASSISTANT_TOKEN=${HOME_ASSISTANT_TOKEN}
       - TAILSCALE_LOCAL_HOST=${TAILSCALE_LOCAL_HOST}
       - TAILSCALE_LINODE_HOST=${TAILSCALE_LINODE_HOST}
-      - LINODE_SSH_HOST=${TAILSCALE_LINODE_HOST}
+      - LINODE_SSH_HOST=${TAILSCALE_LINODE_HOST:-localhost}
       - LINODE_SSH_USER=root
       - HOME_SSH_HOST=${TAILSCALE_LOCAL_HOST}
       - HOME_SSH_USER=evin
-      - SSH_KEY_PATH=/root/.ssh/homelab
+      - SSH_KEY_PATH=/app/.ssh/homelab
       - OLLAMA_URL=http://${WINDOWS_VM_TAILSCALE_IP:-${TAILSCALE_LOCAL_HOST}}:11434
       - STABLE_DIFFUSION_URL=http://${TAILSCALE_LOCAL_HOST}:7860
       - WINDOWS_VM_TAILSCALE_IP=${WINDOWS_VM_TAILSCALE_IP}
       - WINDOWS_VM_SSH_USER=${WINDOWS_VM_SSH_USER:-evin}
     volumes:
-      - /root/.ssh:/root/.ssh:ro
+      - dashboard_ssh:/app/.ssh:ro
       - /var/run/docker.sock:/var/run/docker.sock
       - studio_projects:/opt/homelab/studio-projects
     healthcheck:

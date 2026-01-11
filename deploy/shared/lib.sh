@@ -576,6 +576,12 @@ parse_json_value() {
     else
         local pattern
         case "$key" in
+            ".primaryOllama.url")
+                pattern='"primaryOllama"[^}]*"url"[[:space:]]*:[[:space:]]*"([^"]*)"'
+                ;;
+            ".windowsVm.services.ollama.url")
+                pattern='"windowsVm"[^}]*"ollama"[^}]*"url"[[:space:]]*:[[:space:]]*"([^"]*)"'
+                ;;
             ".services.ollama.url")
                 pattern='"ollama"[^}]*"url"[[:space:]]*:[[:space:]]*"([^"]*)"'
                 ;;
@@ -607,7 +613,15 @@ discover_local_ai_from_state() {
     json=$(cat "$state_file" 2>/dev/null) || return 1
     
     local ollama_url sd_url comfy_url
-    ollama_url=$(parse_json_value "$json" ".services.ollama.url")
+    
+    ollama_url=$(parse_json_value "$json" ".primaryOllama.url")
+    if [ -z "$ollama_url" ] || [ "$ollama_url" = "null" ]; then
+        ollama_url=$(parse_json_value "$json" ".windowsVm.services.ollama.url")
+    fi
+    if [ -z "$ollama_url" ] || [ "$ollama_url" = "null" ]; then
+        ollama_url=$(parse_json_value "$json" ".services.ollama.url")
+    fi
+    
     sd_url=$(parse_json_value "$json" ".services.stableDiffusion.url")
     comfy_url=$(parse_json_value "$json" ".services.comfyui.url")
     
