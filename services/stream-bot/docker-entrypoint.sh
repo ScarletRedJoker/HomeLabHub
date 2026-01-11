@@ -6,13 +6,49 @@ echo "================================================"
 echo "  Stream-Bot Starting..."
 echo "================================================"
 
-# Check if DATABASE_URL is set
+# Check critical environment variables
+echo ""
+echo "Checking required environment variables..."
+
+STARTUP_ERRORS=0
+
+# Check DATABASE_URL
 if [ -z "$DATABASE_URL" ]; then
-    echo "❌ ERROR: DATABASE_URL environment variable is not set"
-    exit 1
+    echo "❌ ERROR: DATABASE_URL not set"
+    STARTUP_ERRORS=$((STARTUP_ERRORS + 1))
+else
+    echo "✓ DATABASE_URL configured"
 fi
 
-echo "✓ Database URL configured"
+# Check SESSION_SECRET
+if [ -z "$SESSION_SECRET" ]; then
+    echo "❌ ERROR: SESSION_SECRET not set"
+    STARTUP_ERRORS=$((STARTUP_ERRORS + 1))
+else
+    echo "✓ SESSION_SECRET configured"
+fi
+
+# Optional: Check OAuth secrets and warn if missing
+if [ -z "$TWITCH_CLIENT_ID" ]; then
+    echo "○ TWITCH_CLIENT_ID not set (Twitch OAuth disabled)"
+fi
+if [ -z "$YOUTUBE_CLIENT_ID" ]; then
+    echo "○ YOUTUBE_CLIENT_ID not set (YouTube OAuth disabled)"
+fi
+if [ -z "$SPOTIFY_CLIENT_ID" ]; then
+    echo "○ SPOTIFY_CLIENT_ID not set (Spotify OAuth disabled)"
+fi
+
+# Exit early if critical secrets are missing
+if [ "$STARTUP_ERRORS" -gt 0 ]; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "FATAL: $STARTUP_ERRORS required secrets missing!"
+    echo "Run './deploy.sh doctor' to check configuration"
+    echo "Run './deploy.sh setup' to configure secrets"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    exit 1
+fi
 
 # Wait for PostgreSQL to be ready using pg_isready or timeout-based approach
 echo ""

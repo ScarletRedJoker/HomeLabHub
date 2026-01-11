@@ -74,32 +74,81 @@ const servers: ServerConfig[] = [
   },
 ];
 
-async function getServerSystemMetrics(server: ServerConfig): Promise<ServerHealth> {
+const SSH_TIMEOUT = 5000;
+const serverHealthCache = new Map<string, { health: ServerHealth; expires: number }>();
+const CACHE_TTL = 30000;
+
+async function quickPortCheck(host: string, port: number = 22, timeout: number = 2000): Promise<boolean> {
+  const net = await import("net");
   return new Promise((resolve) => {
-    const keyPath = server.keyPath;
+    const socket = new net.Socket();
+    const timer = setTimeout(() => {
+      socket.destroy();
+      resolve(false);
+    }, timeout);
+    
+    socket.on("connect", () => {
+      clearTimeout(timer);
+      socket.destroy();
+      resolve(true);
+    });
+    
+    socket.on("error", () => {
+      clearTimeout(timer);
+      resolve(false);
+    });
+    
+    socket.connect(port, host);
+  });
+}
 
-    if (!existsSync(keyPath)) {
-      resolve({
-        id: server.id,
-        name: server.name,
-        status: "error",
-        lastChecked: new Date().toISOString(),
-        error: "SSH key not found",
-      });
-      return;
-    }
+async function getServerSystemMetrics(server: ServerConfig): Promise<ServerHealth> {
+  const cached = serverHealthCache.get(server.id);
+  if (cached && cached.expires > Date.now()) {
+    return cached.health;
+  }
 
+  const keyPath = server.keyPath;
+
+  if (!existsSync(keyPath)) {
+    const result: ServerHealth = {
+      id: server.id,
+      name: server.name,
+      status: "error",
+      lastChecked: new Date().toISOString(),
+      error: "SSH key not found",
+    };
+    serverHealthCache.set(server.id, { health: result, expires: Date.now() + CACHE_TTL });
+    return result;
+  }
+
+  const isReachable = await quickPortCheck(server.host, 22, 2000);
+  if (!isReachable) {
+    const result: ServerHealth = {
+      id: server.id,
+      name: server.name,
+      status: "offline",
+      lastChecked: new Date().toISOString(),
+      error: "Host unreachable",
+    };
+    serverHealthCache.set(server.id, { health: result, expires: Date.now() + CACHE_TTL });
+    return result;
+  }
+
+  return new Promise((resolve) => {
     const conn = new Client();
     const timeout = setTimeout(() => {
       conn.end();
-      resolve({
+      const result: ServerHealth = {
         id: server.id,
         name: server.name,
         status: "offline",
         lastChecked: new Date().toISOString(),
         error: "Connection timeout",
-      });
-    }, 10000);
+      };
+      serverHealthCache.set(server.id, { health: result, expires: Date.now() + CACHE_TTL });
+      resolve(result);
+    }, SSH_TIMEOUT);
 
     conn.on("ready", () => {
       const commands = `
@@ -161,7 +210,7 @@ async function getServerSystemMetrics(server: ServerConfig): Promise<ServerHealt
             return `${bytes} B`;
           };
 
-          resolve({
+          const result: ServerHealth = {
             id: server.id,
             name: server.name,
             status: "online",
@@ -192,20 +241,25 @@ async function getServerSystemMetrics(server: ServerConfig): Promise<ServerHealt
               uptime: data.UPTIME_HUMAN || "Unknown",
               uptimeSeconds: parseFloat(data.UPTIME_SECONDS) || 0,
             },
-          });
+          };
+          serverHealthCache.set(server.id, { health: result, expires: Date.now() + CACHE_TTL });
+          resolve(result);
         });
       });
     });
 
     conn.on("error", (err) => {
       clearTimeout(timeout);
-      resolve({
+      console.log(`SSH connection error: ${err.message}`);
+      const result: ServerHealth = {
         id: server.id,
         name: server.name,
         status: "offline",
         lastChecked: new Date().toISOString(),
         error: err.message,
-      });
+      };
+      serverHealthCache.set(server.id, { health: result, expires: Date.now() + CACHE_TTL });
+      resolve(result);
     });
 
     try {
@@ -214,7 +268,7 @@ async function getServerSystemMetrics(server: ServerConfig): Promise<ServerHealt
         port: 22,
         username: server.user,
         privateKey: readFileSync(keyPath),
-        readyTimeout: 10000,
+        readyTimeout: SSH_TIMEOUT,
       });
     } catch (err: any) {
       clearTimeout(timeout);

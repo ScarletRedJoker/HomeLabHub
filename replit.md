@@ -44,11 +44,22 @@ Includes a Server Provisioning API for SSH key generation, Docker installation, 
 ### Deployment Script Features
 Both Linode and local deployment scripts (`deploy/linode/deploy.sh`, `deploy/local/deploy.sh`) include:
 - **Preflight checks:** Validates Docker, disk space, and prerequisites
-- **Auto-secret generation:** Internal secrets (Postgres, JWT, session) auto-generated
+- **Auto-secret generation:** Internal secrets (Postgres, JWT, session, per-service session secrets) auto-generated
 - **Authelia first-run setup:** Auto-creates users_database.yml with random admin credentials on first deploy
 - **Health check retries:** Extended wait with retry logic (up to 60s) for slow-starting services
-- **Commands:** `verify` (extended health checks), `status`, `up`, `down`, `restart`, `logs`, `prune`
+- **Commands:**
+  - `deploy` - Full deployment with build and health checks
+  - `doctor` - Check all required secrets and configuration
+  - `test` - Run smoke tests for all services
+  - `monitor` - Start continuous health monitoring daemon with Discord alerts
+  - `verify` - Extended health checks with retries (up to 60s)
+  - `status` - Show service status
+  - `up`, `down`, `restart` - Service lifecycle commands
+  - `logs` - View service logs
+  - `prune` - Clean up Docker resources
 - **Cloudflare DNS sync:** Automatic DNS record management (requires `CLOUDFLARE_API_TOKEN` in .env)
+- **Smoke tests:** Automated validation of all service endpoints and container health
+- **Health monitoring:** Continuous monitoring with Discord webhook alerts for service state changes
 
 ### AI Gateway Architecture
 Features a unified AI Chat interface with provider selection (OpenAI, Ollama), model selection, real-time streaming responses, and a circuit breaker pattern for automatic fallback from local to cloud AI if local services are unavailable. Local AI services (Ollama, Stable Diffusion, ComfyUI) are automatically discovered and configured between Linode and homelab servers using Tailscale.

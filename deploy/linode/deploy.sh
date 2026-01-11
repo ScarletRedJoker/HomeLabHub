@@ -45,6 +45,8 @@ show_help() {
     echo "  restart      Restart all services"
     echo "  verify       Extended health checks with retries (up to 60s)"
     echo "  doctor       Check all required secrets and configuration"
+    echo "  test         Run smoke tests for all services"
+    echo "  monitor      Start health monitoring daemon with alerts"
     echo "  logs         View service logs (docker compose logs)"
     echo "  status       Show service status"
     echo "  build-logs   View saved build/deploy logs"
@@ -364,6 +366,15 @@ case "${1:-}" in
         echo -e "${CYAN}═══ Nebula Command - Secrets Doctor ═══${NC}"
         source ".env" 2>/dev/null || true
         env_doctor ".env" "check" "linode"
+        ;;
+    test)
+        source "../shared/smoke-tests.sh"
+        run_linode_tests
+        print_summary
+        ;;
+    monitor)
+        source "../shared/health-monitor.sh"
+        run_daemon "linode"
         ;;
     prune)
         echo -e "${CYAN}═══ Nebula Command - Cleanup ═══${NC}"

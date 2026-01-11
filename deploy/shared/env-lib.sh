@@ -66,6 +66,8 @@ ensure_internal_secrets() {
         "JARVIS_DB_PASSWORD"
         "SERVICE_AUTH_TOKEN"
         "SESSION_SECRET"
+        "DISCORD_SESSION_SECRET"
+        "STREAMBOT_SESSION_SECRET"
         "SECRET_KEY"
         "REDIS_PASSWORD"
         "JWT_SECRET"
@@ -260,6 +262,8 @@ env_doctor() {
                 "JARVIS_DB_PASSWORD"
                 "SERVICE_AUTH_TOKEN"
                 "SESSION_SECRET"
+                "DISCORD_SESSION_SECRET"
+                "STREAMBOT_SESSION_SECRET"
             )
             
             for var in "${internal_vars[@]}"; do
