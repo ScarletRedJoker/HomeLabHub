@@ -464,6 +464,64 @@ export const projectAssets = pgTable("project_assets", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const aiSessions = pgTable("ai_sessions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  title: varchar("title", { length: 500 }),
+  provider: varchar("provider", { length: 50 }),
+  model: varchar("model", { length: 100 }),
+  toolsUsed: text("tools_used").array().default([]),
+  totalMessages: integer("total_messages").default(0),
+  totalTokens: integer("total_tokens").default(0),
+  isActive: boolean("is_active").default(true),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const aiMessages = pgTable("ai_messages", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: uuid("session_id").references(() => aiSessions.id).notNull(),
+  role: varchar("role", { length: 20 }).notNull(),
+  content: text("content").notNull(),
+  provider: varchar("provider", { length: 50 }),
+  model: varchar("model", { length: 100 }),
+  toolCalls: jsonb("tool_calls"),
+  toolResults: jsonb("tool_results"),
+  tokensUsed: integer("tokens_used"),
+  durationMs: integer("duration_ms"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const aiMemories = pgTable("ai_memories", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  memoryType: varchar("memory_type", { length: 50 }).notNull(),
+  content: text("content").notNull(),
+  embedding: text("embedding"),
+  tags: text("tags").array().default([]),
+  importance: integer("importance").default(5),
+  accessCount: integer("access_count").default(0),
+  lastAccessed: timestamp("last_accessed"),
+  expiresAt: timestamp("expires_at"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const aiLearnings = pgTable("ai_learnings", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  category: varchar("category", { length: 100 }).notNull(),
+  pattern: text("pattern").notNull(),
+  correction: text("correction"),
+  confidence: integer("confidence").default(50),
+  occurrences: integer("occurrences").default(1),
+  isActive: boolean("is_active").default(true),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export type DeploymentPipeline = typeof deploymentPipelines.$inferSelect;
 export type NewDeploymentPipeline = typeof deploymentPipelines.$inferInsert;
 export type PipelineRun = typeof pipelineRuns.$inferSelect;
@@ -476,3 +534,11 @@ export type NewAiModelUsage = typeof aiModelUsage.$inferInsert;
 export type QuickStartKit = typeof quickStartKits.$inferSelect;
 export type NewQuickStartKit = typeof quickStartKits.$inferInsert;
 export type ProjectAsset = typeof projectAssets.$inferSelect;
+export type AiSession = typeof aiSessions.$inferSelect;
+export type NewAiSession = typeof aiSessions.$inferInsert;
+export type AiMessage = typeof aiMessages.$inferSelect;
+export type NewAiMessage = typeof aiMessages.$inferInsert;
+export type AiMemory = typeof aiMemories.$inferSelect;
+export type NewAiMemory = typeof aiMemories.$inferInsert;
+export type AiLearning = typeof aiLearnings.$inferSelect;
+export type NewAiLearning = typeof aiLearnings.$inferInsert;
