@@ -232,12 +232,7 @@ services:
       DISCORD_BOT_URL: http://discord-bot:4000
     volumes:
       - ./services/stream-bot/logs:/app/logs
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:5000/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+    # Healthcheck defined in Dockerfile uses Node.js (no wget/curl needed in alpine)
 
   n8n:
     image: docker.n8n.io/n8nio/n8n:latest

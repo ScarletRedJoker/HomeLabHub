@@ -292,11 +292,9 @@ services:
     volumes:
       - novnc_data:/home/user
     healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 8080 || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+      # noVNC uses Debian dash shell which lacks curl/wget/nc - disable healthcheck
+      # Container restart policy (unless-stopped) handles failures
+      disable: true
 
   # ============================================================================
   # REMOTE ACCESS - Web SSH (ttyd)
@@ -313,7 +311,7 @@ services:
     volumes:
       - /home/${LOCAL_USER:-evin}:/home/user:rw
     healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 7681 || exit 1"]
+      test: ["CMD-SHELL", "(echo > /dev/tcp/127.0.0.1/7681) 2>/dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
