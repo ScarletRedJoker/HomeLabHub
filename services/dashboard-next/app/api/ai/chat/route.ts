@@ -296,9 +296,25 @@ export async function POST(request: NextRequest) {
     const finalModel = model || defaultModel;
 
     let result: Response | { content: string; provider: string; model: string };
+    let usedFallback = fallback;
 
     if (selectedProvider === "ollama") {
-      result = await chatWithOllama(messages, finalModel, stream);
+      try {
+        result = await chatWithOllama(messages, finalModel, stream);
+      } catch (ollamaError: any) {
+        console.warn("Ollama failed, falling back to OpenAI:", ollamaError.message);
+        const openaiModel = "gpt-4o";
+        try {
+          result = await chatWithOpenAI(messages, openaiModel, stream);
+          usedFallback = true;
+        } catch (openaiError: any) {
+          console.error("Both Ollama and OpenAI failed:", openaiError.message);
+          return NextResponse.json(
+            { error: "AI service unavailable", details: "Both local and cloud AI providers are unavailable" },
+            { status: 503 }
+          );
+        }
+      }
     } else {
       result = await chatWithOpenAI(messages, finalModel, stream);
     }
@@ -322,7 +338,7 @@ export async function POST(request: NextRequest) {
       response: result.content,
       provider: result.provider,
       model: result.model,
-      fallback,
+      fallback: usedFallback,
       codeBlocks: codeBlocks.length > 0 ? codeBlocks : undefined,
     });
   } catch (error: any) {
