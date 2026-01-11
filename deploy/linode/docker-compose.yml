@@ -140,6 +140,7 @@ services:
       - OLLAMA_URL=http://${WINDOWS_VM_TAILSCALE_IP:-${TAILSCALE_LOCAL_HOST}}:11434
       - STABLE_DIFFUSION_URL=http://${TAILSCALE_LOCAL_HOST}:7860
       - WINDOWS_VM_TAILSCALE_IP=${WINDOWS_VM_TAILSCALE_IP}
+      - WINDOWS_VM_SSH_USER=${WINDOWS_VM_SSH_USER:-evin}
     volumes:
       - /root/.ssh:/root/.ssh:ro
       - /var/run/docker.sock:/var/run/docker.sock
