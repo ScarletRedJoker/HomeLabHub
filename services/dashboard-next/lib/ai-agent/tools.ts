@@ -365,6 +365,67 @@ export const tools: Tool[] = [
   },
 
   {
+    name: "deep_research",
+    description: "Perform comprehensive web research on a topic by searching multiple queries and synthesizing findings. Use this for complex research tasks that need multiple perspectives.",
+    category: "research",
+    parameters: [
+      { name: "topic", type: "string", description: "Main topic to research", required: true },
+      { name: "aspects", type: "array", description: "Specific aspects/questions to research (up to 5)", required: false },
+    ],
+    requiresApproval: false,
+    execute: async (params, workingDir) => {
+      try {
+        const DDG = await import("duck-duck-scrape");
+        const { topic, aspects = [] } = params;
+        
+        const queries = [topic];
+        if (aspects && aspects.length > 0) {
+          queries.push(...aspects.slice(0, 5).map((a: string) => `${topic} ${a}`));
+        } else {
+          queries.push(
+            `${topic} how does it work`,
+            `${topic} best practices`,
+            `${topic} latest research 2025`
+          );
+        }
+
+        const allResults: string[] = [];
+        
+        for (const query of queries.slice(0, 5)) {
+          try {
+            const searchResults = await DDG.search(query, {
+              safeSearch: DDG.SafeSearchType.MODERATE,
+            });
+
+            if (searchResults.results?.length) {
+              const results = searchResults.results.slice(0, 3).map((r: any) => 
+                `- ${r.title}: ${r.description || ""} (${r.url})`
+              ).join("\n");
+              allResults.push(`### ${query}\n${results}`);
+            }
+          } catch (e) {
+            continue;
+          }
+        }
+
+        if (allResults.length === 0) {
+          return { success: true, output: "No research results found for this topic." };
+        }
+
+        const output = `# Deep Research: ${topic}\n\n${allResults.join("\n\n")}\n\n---\nNote: This research provides a starting point. For medical, legal, or critical decisions, please consult qualified professionals.`;
+
+        return { 
+          success: true, 
+          output,
+          data: { topic, queriesSearched: queries.length, resultsFound: allResults.length }
+        };
+      } catch (error: any) {
+        return { success: false, output: "", error: `Research failed: ${error.message}` };
+      }
+    },
+  },
+
+  {
     name: "git_status",
     description: "Get the current git status showing modified, staged, and untracked files.",
     category: "codebase",

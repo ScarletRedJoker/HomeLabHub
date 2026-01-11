@@ -522,6 +522,56 @@ export const aiLearnings = pgTable("ai_learnings", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const websiteBuilds = pgTable("website_builds", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull().unique(),
+  html: text("html").notNull(),
+  css: text("css"),
+  js: text("js"),
+  version: integer("version").default(1),
+  isPublished: boolean("is_published").default(false),
+  publishedUrl: varchar("published_url", { length: 500 }),
+  thumbnail: text("thumbnail"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const websiteVersions = pgTable("website_versions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  websiteId: uuid("website_id").references(() => websiteBuilds.id).notNull(),
+  version: integer("version").notNull(),
+  html: text("html").notNull(),
+  css: text("css"),
+  js: text("js"),
+  label: varchar("label", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const automationWorkflows = pgTable("automation_workflows", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  nodes: jsonb("nodes").notNull().default([]),
+  connections: jsonb("connections").notNull().default([]),
+  isActive: boolean("is_active").default(false),
+  lastRun: timestamp("last_run"),
+  runCount: integer("run_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const botConfigs = pgTable("bot_configs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  botType: varchar("bot_type", { length: 50 }).notNull(),
+  config: jsonb("config").notNull(),
+  commands: jsonb("commands").notNull().default([]),
+  isRunning: boolean("is_running").default(false),
+  lastStarted: timestamp("last_started"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export type DeploymentPipeline = typeof deploymentPipelines.$inferSelect;
 export type NewDeploymentPipeline = typeof deploymentPipelines.$inferInsert;
 export type PipelineRun = typeof pipelineRuns.$inferSelect;
