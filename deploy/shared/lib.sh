@@ -463,6 +463,65 @@ post_deploy_wait() {
     fi
 }
 
+wait_for_services_with_retry() {
+    local deployment_type="${1:-linode}"
+    local max_attempts="${2:-6}"
+    local wait_between="${3:-10}"
+    
+    echo ""
+    echo -e "${CYAN}Waiting for services to be healthy...${NC}"
+    
+    local attempt=1
+    while [ $attempt -le $max_attempts ]; do
+        echo ""
+        echo -e "${CYAN}[Attempt $attempt/$max_attempts]${NC}"
+        
+        local all_healthy=true
+        local starting_count=0
+        
+        declare -a critical_services
+        if [ "$deployment_type" = "linode" ]; then
+            critical_services=("homelab-dashboard" "discord-bot" "stream-bot" "homelab-postgres" "homelab-redis" "caddy")
+        else
+            critical_services=("plex" "authelia" "caddy-local" "homelab-minio" "dashboard-postgres" "authelia-redis")
+        fi
+        
+        for svc in "${critical_services[@]}"; do
+            local status
+            status=$(docker inspect -f '{{.State.Health.Status}}' "$svc" 2>/dev/null || docker inspect -f '{{.State.Status}}' "$svc" 2>/dev/null || echo "not found")
+            
+            if [ "$status" = "healthy" ] || [ "$status" = "running" ]; then
+                echo -e "  ${GREEN}●${NC} $svc: $status"
+            elif [ "$status" = "starting" ]; then
+                echo -e "  ${YELLOW}◐${NC} $svc: $status"
+                all_healthy=false
+                starting_count=$((starting_count + 1))
+            else
+                echo -e "  ${RED}○${NC} $svc: $status"
+                all_healthy=false
+            fi
+        done
+        
+        if [ "$all_healthy" = true ]; then
+            echo ""
+            echo -e "${GREEN}✓ All critical services are healthy!${NC}"
+            return 0
+        fi
+        
+        if [ $attempt -lt $max_attempts ]; then
+            echo ""
+            echo -e "${YELLOW}Waiting ${wait_between}s before retry...${NC}"
+            sleep "$wait_between"
+        fi
+        
+        attempt=$((attempt + 1))
+    done
+    
+    echo ""
+    echo -e "${YELLOW}⚠ Some services may still be starting. Check logs if issues persist.${NC}"
+    return 1
+}
+
 get_tailscale_ip() {
     if command -v tailscale &> /dev/null; then
         tailscale ip -4 2>/dev/null | head -1 || echo ""

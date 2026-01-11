@@ -43,6 +43,7 @@ show_help() {
     echo "  up           Start services only (no build)"
     echo "  down         Stop services"
     echo "  restart      Restart all services"
+    echo "  verify       Extended health checks with retries (up to 60s)"
     echo "  logs         View service logs (docker compose logs)"
     echo "  status       Show service status"
     echo "  build-logs   View saved build/deploy logs"
@@ -269,11 +270,19 @@ do_post_deploy() {
     
     echo -e "${GREEN}✓ Database synced${NC}"
     
-    post_deploy_wait 10
+    wait_for_services_with_retry "linode" 6 10
     
     health_report "linode"
     
     show_deployment_summary "linode"
+}
+
+do_verify() {
+    echo -e "${CYAN}═══ Nebula Command - Extended Health Verification ═══${NC}"
+    echo "Running extended health checks with retry..."
+    wait_for_services_with_retry "linode" 12 5
+    echo ""
+    health_report "linode"
 }
 
 do_status() {
@@ -346,6 +355,9 @@ case "${1:-}" in
             echo "No logs found. Logs are saved when builds/deploys fail."
             echo "To keep logs on success: KEEP_BUILD_LOGS=true ./deploy.sh"
         fi
+        ;;
+    verify)
+        do_verify
         ;;
     prune)
         echo -e "${CYAN}═══ Nebula Command - Cleanup ═══${NC}"

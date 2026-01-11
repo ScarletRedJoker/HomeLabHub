@@ -41,6 +41,15 @@ The platform includes:
 ### Auto-Deployment System
 Includes a Server Provisioning API for SSH key generation, Docker installation, and Tailscale setup, and a Deployment Execution API for Docker/PM2 deployments with real-time logging.
 
+### Deployment Script Features
+Both Linode and local deployment scripts (`deploy/linode/deploy.sh`, `deploy/local/deploy.sh`) include:
+- **Preflight checks:** Validates Docker, disk space, and prerequisites
+- **Auto-secret generation:** Internal secrets (Postgres, JWT, session) auto-generated
+- **Authelia first-run setup:** Auto-creates users_database.yml with random admin credentials on first deploy
+- **Health check retries:** Extended wait with retry logic (up to 60s) for slow-starting services
+- **Commands:** `verify` (extended health checks), `status`, `up`, `down`, `restart`, `logs`, `prune`
+- **Cloudflare DNS sync:** Automatic DNS record management (requires `CLOUDFLARE_API_TOKEN` in .env)
+
 ### AI Gateway Architecture
 Features a unified AI Chat interface with provider selection (OpenAI, Ollama), model selection, real-time streaming responses, and a circuit breaker pattern for automatic fallback from local to cloud AI if local services are unavailable. Local AI services (Ollama, Stable Diffusion, ComfyUI) are automatically discovered and configured between Linode and homelab servers using Tailscale.
 
