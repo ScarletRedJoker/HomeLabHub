@@ -181,9 +181,8 @@ do_env_setup() {
     
     ensure_ssh_keys
     
-    # Try to sync AI state from local server before discovery
-    sync_local_ai_state || true
-    
+    # Configure AI endpoints by probing Windows VM directly via Tailscale
+    # No need to sync state from local server - just probe 100.118.44.102 directly
     configure_local_ai_env ".env"
     
     if ! check_external_tokens ".env"; then
