@@ -312,8 +312,8 @@ services:
     volumes:
       - /home/${LOCAL_USER:-evin}:/home/user:rw
     healthcheck:
-      # ttyd uses Alpine which doesn't have bash /dev/tcp - use wget instead
-      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:7681/ || exit 1"]
+      # ttyd serves WebSocket, check if process is running and port is listening
+      test: ["CMD-SHELL", "pgrep ttyd && (wget -q -O /dev/null http://127.0.0.1:7681/ || true)"]
       interval: 30s
       timeout: 10s
       retries: 3

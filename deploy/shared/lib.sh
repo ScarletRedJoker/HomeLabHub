@@ -41,6 +41,22 @@ log_section() {
     echo "═══════════════════════════════════════════════════════════════" >> "$DEPLOY_LOG"
 }
 
+print_header() {
+    echo -e "${CYAN}━━━ $1 ━━━${NC}"
+}
+
+print_success() {
+    echo -e "${GREEN}✓${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}✗${NC} $1"
+}
+
+print_warn() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
+}
+
 preflight_host() {
     echo -e "${CYAN}━━━ Preflight Host Checks ━━━${NC}"
     local errors=0
