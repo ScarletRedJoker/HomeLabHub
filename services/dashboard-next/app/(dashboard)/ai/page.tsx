@@ -73,7 +73,7 @@ export default function AIPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<string>("auto");
-  const [selectedModel, setSelectedModel] = useState<string>("");
+  const [selectedModel, setSelectedModel] = useState<string>("default");
   const [streamingContent, setStreamingContent] = useState("");
   const [loadingProviders, setLoadingProviders] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -324,7 +324,7 @@ export default function AIPage() {
                   <SelectValue placeholder="Default model" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Default</SelectItem>
+                  <SelectItem value="default">Auto-select</SelectItem>
                   {availableModels.map(model => (
                     <SelectItem key={model} value={model}>
                       {model}
