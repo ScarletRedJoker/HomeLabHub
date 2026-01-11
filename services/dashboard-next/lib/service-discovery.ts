@@ -58,12 +58,12 @@ const SERVICE_ENDPOINTS: Record<string, Record<Environment, string>> = {
     development: process.env.HOME_ASSISTANT_URL || getLocalServiceUrl(8123),
   },
   "discord-bot": {
-    production: "http://localhost:4000",
+    production: process.env.DISCORD_BOT_URL || "http://discord-bot:4000",
     development: process.env.DISCORD_BOT_URL || "http://localhost:4000",
   },
   "stream-bot": {
-    production: "http://localhost:3000",
-    development: "http://localhost:3000",
+    production: process.env.STREAM_BOT_URL || "http://stream-bot:5000",
+    development: process.env.STREAM_BOT_URL || "http://localhost:3000",
   },
 };
 

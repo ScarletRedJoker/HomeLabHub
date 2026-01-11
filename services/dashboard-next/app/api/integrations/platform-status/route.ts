@@ -30,7 +30,7 @@ interface DiscordBotHealth {
 }
 
 async function checkStreamBotPlatforms(): Promise<PlatformStatus[]> {
-  const streamBotUrl = process.env.STREAM_BOT_URL || "http://localhost:3000";
+  const streamBotUrl = process.env.STREAM_BOT_URL || (process.env.NODE_ENV === "production" ? "http://stream-bot:5000" : "http://localhost:3000");
   const platforms: PlatformStatus[] = [];
 
   try {
@@ -87,7 +87,7 @@ async function checkStreamBotPlatforms(): Promise<PlatformStatus[]> {
 }
 
 async function checkDiscordBot(): Promise<PlatformStatus> {
-  const discordBotUrl = process.env.DISCORD_BOT_URL || "http://localhost:4000";
+  const discordBotUrl = process.env.DISCORD_BOT_URL || (process.env.NODE_ENV === "production" ? "http://discord-bot:4000" : "http://localhost:4000");
 
   try {
     const res = await fetch(`${discordBotUrl}/health`, {

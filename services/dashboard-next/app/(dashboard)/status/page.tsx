@@ -231,11 +231,11 @@ export default function StatusPage() {
             </div>
             <div className="flex justify-between p-2 rounded bg-muted/50">
               <span>Discord Bot</span>
-              <span className="text-muted-foreground">http://localhost:4000/health</span>
+              <span className="text-muted-foreground">discord-bot:4000/health</span>
             </div>
             <div className="flex justify-between p-2 rounded bg-muted/50">
               <span>Stream Bot</span>
-              <span className="text-muted-foreground">http://localhost:3000/health</span>
+              <span className="text-muted-foreground">stream-bot:5000/health</span>
             </div>
             <div className="flex justify-between p-2 rounded bg-muted/50">
               <span>PostgreSQL</span>

@@ -15,6 +15,7 @@ volumes:
   tailscale_state:
   studio_projects:
   dashboard_ssh:
+  resources_data:
 
 services:
   tailscale:
@@ -153,6 +154,7 @@ services:
       - DATABASE_URL=postgresql://jarvis:${JARVIS_DB_PASSWORD}@homelab-postgres:5432/homelab_jarvis
       - REDIS_URL=redis://redis:6379/0
       - DISCORD_BOT_URL=http://discord-bot:4000
+      - STREAM_BOT_URL=http://stream-bot:5000
       - SERVICE_AUTH_TOKEN=${SERVICE_AUTH_TOKEN}
       - PLEX_URL=http://${TAILSCALE_LOCAL_HOST}:32400
       - PLEX_TOKEN=${PLEX_TOKEN}
@@ -173,6 +175,7 @@ services:
       - dashboard_ssh:/app/.ssh:ro
       - /var/run/docker.sock:/var/run/docker.sock
       - studio_projects:/opt/homelab/studio-projects
+      - resources_data:/opt/homelab/resources
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5000/api/health || exit 1"]
       interval: 30s

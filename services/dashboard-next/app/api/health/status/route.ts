@@ -532,10 +532,13 @@ export async function GET() {
   const ollamaUrl = process.env.OLLAMA_URL || `http://${WINDOWS_VM_IP}:11434`;
   const sdUrl = process.env.STABLE_DIFFUSION_URL || `http://${WINDOWS_VM_IP}:7860`;
   const comfyUrl = process.env.COMFYUI_URL || `http://${WINDOWS_VM_IP}:8188`;
+  
+  const discordBotUrl = process.env.DISCORD_BOT_URL || (process.env.NODE_ENV === "production" ? "http://discord-bot:4000" : "http://localhost:4000");
+  const streamBotUrl = process.env.STREAM_BOT_URL || (process.env.NODE_ENV === "production" ? "http://stream-bot:5000" : "http://localhost:3000");
 
   const [discordBot, streamBot, database, serverMetrics, ollama, stableDiffusion, comfyui] = await Promise.all([
-    checkServiceHealth("http://localhost:4000/health"),
-    checkServiceHealth("http://localhost:3000/health"),
+    checkServiceHealth(`${discordBotUrl}/health`),
+    checkServiceHealth(`${streamBotUrl}/health`),
     checkDatabaseHealth(),
     Promise.all(servers.map(getServerSystemMetrics)),
     checkAIService("Ollama", ollamaUrl, "/api/tags"),
