@@ -1,1 +1,1 @@
-export { registerConfigCommands } from './configCommands';
+export { registerConfigCommands, handleConfigAutocomplete } from './configCommands';

@@ -430,6 +430,36 @@ async function handleOverviewCommand(
   await interaction.editReply({ embeds: [embed] });
 }
 
+export async function handleConfigAutocomplete(interaction: any): Promise<void> {
+  try {
+    const focusedOption = interaction.options.getFocused(true);
+    
+    if (focusedOption.name === 'feature') {
+      const searchValue = focusedOption.value.toLowerCase();
+      const allFeatures = featureRegistry.getAllFeatures();
+      
+      const filtered = allFeatures
+        .filter(feature => 
+          feature.id.toLowerCase().includes(searchValue) ||
+          feature.name.toLowerCase().includes(searchValue) ||
+          feature.category.toLowerCase().includes(searchValue)
+        )
+        .slice(0, 25)
+        .map(feature => ({
+          name: `${feature.emoji} ${feature.name} (${feature.category})`,
+          value: feature.id
+        }));
+      
+      await interaction.respond(filtered);
+    }
+  } catch (error) {
+    console.error('[Config] Error handling autocomplete:', error);
+    try {
+      await interaction.respond([]);
+    } catch (e) {}
+  }
+}
+
 export function registerConfigCommands(commands: Collection<string, Command>) {
   commands.set(configCommand.data.name, configCommand as unknown as Command);
   console.log('[Config] Registered /config command');

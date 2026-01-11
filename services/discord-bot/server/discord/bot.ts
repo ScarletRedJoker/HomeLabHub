@@ -33,7 +33,7 @@ import { registerCustomCommandCommands, initializeCustomCommandEvents } from './
 import { registerPollCommands, handlePollButtonInteraction, handlePollSelectMenuInteraction, startPollScheduler, stopPollScheduler } from './features/polls';
 import { registerGiveawayCommands, handleGiveawayButtonInteraction, startGiveawayScheduler, stopGiveawayScheduler } from './features/giveaways';
 import { registerModerationCommands, registerAutomodConfigCommands, initializeAutomodEvents } from './features/moderation';
-import { registerConfigCommands } from './features/config';
+import { registerConfigCommands, handleConfigAutocomplete } from './features/config';
 import { commandEngine } from '../services/commandEngine';
 import { guildIdentityService } from '../services/guildIdentityService';
 import { welcomeCardRenderer } from '../services/welcomeCardRenderer';
@@ -242,6 +242,17 @@ export async function startBot(storage: IStorage, broadcast: (data: any) => void
             console.error('Failed to send error message to user:', replyError);
           }
         }
+      }
+      
+      // Handle autocomplete interactions
+      else if (interaction.isAutocomplete()) {
+        const commandName = interaction.commandName;
+        
+        // Route to appropriate autocomplete handler
+        if (commandName === 'config') {
+          await handleConfigAutocomplete(interaction);
+        }
+        // Add more autocomplete handlers here as needed
       }
       
       // Handle ticket panel button clicks to create new tickets
