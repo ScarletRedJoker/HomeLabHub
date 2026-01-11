@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<Response> {
   if (!(await checkAuth())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -186,7 +186,7 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
 
-      return new Promise((resolve) => {
+      return new Promise<Response>((resolve) => {
         const conn = new Client();
         const timeout = setTimeout(() => {
           conn.end();
