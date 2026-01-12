@@ -35,12 +35,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
     }
 
+    let selectedProvider = provider || "auto";
+    
+    if (selectedProvider === "auto") {
+      const sdAvailable = await aiOrchestrator.checkStableDiffusion();
+      selectedProvider = sdAvailable ? "stable-diffusion" : "openai";
+    }
+
     const result = await aiOrchestrator.generateImage({
       prompt,
       negativePrompt,
       size: size || "1024x1024",
       style: style || "vivid",
-      provider: provider || "openai",
+      provider: selectedProvider,
     });
 
     if (saveLocally && (result.url || result.base64)) {
@@ -84,24 +91,36 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const sdAvailable = await aiOrchestrator.checkStableDiffusion();
+
   const providers = [
     {
+      id: "auto",
+      name: "Auto (Local First)",
+      description: "Uses local Stable Diffusion if available, falls back to DALL-E",
+      sizes: ["512x512", "768x768", "1024x1024", "1792x1024", "1024x1792"],
+      styles: ["vivid", "natural"],
+      available: true,
+      recommended: true,
+    },
+    {
+      id: "stable-diffusion",
+      name: "Stable Diffusion (Local)",
+      description: "Self-hosted on RTX 3060 - No content restrictions",
+      sizes: ["512x512", "768x768", "1024x1024"],
+      styles: [],
+      available: sdAvailable,
+      unrestricted: true,
+    },
+    {
       id: "openai",
-      name: "DALL-E 3",
-      description: "OpenAI's state-of-the-art image generation",
+      name: "DALL-E 3 (Cloud)",
+      description: "OpenAI's image generation - Has content moderation",
       sizes: ["1024x1024", "1792x1024", "1024x1792"],
       styles: ["vivid", "natural"],
       available: aiOrchestrator.hasOpenAI(),
     },
-    {
-      id: "stable-diffusion",
-      name: "Stable Diffusion",
-      description: "Self-hosted on RTX 3060 (when available)",
-      sizes: ["512x512", "768x768", "1024x1024"],
-      styles: [],
-      available: false,
-    },
   ];
 
-  return NextResponse.json({ providers });
+  return NextResponse.json({ providers, sdAvailable });
 }

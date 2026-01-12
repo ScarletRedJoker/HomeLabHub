@@ -71,7 +71,9 @@ export default function CreativeStudioPage() {
   const [negativePrompt, setNegativePrompt] = useState("");
   const [imageSize, setImageSize] = useState("1024x1024");
   const [imageStyle, setImageStyle] = useState("vivid");
-  const [imageProvider, setImageProvider] = useState("openai");
+  const [imageProvider, setImageProvider] = useState("auto");
+  const [imageProviders, setImageProviders] = useState<any[]>([]);
+  const [sdAvailable, setSdAvailable] = useState(false);
   const [saveLocally, setSaveLocally] = useState(true);
   const [generatingImage, setGeneratingImage] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<GeneratedImage | null>(null);
@@ -91,7 +93,21 @@ export default function CreativeStudioPage() {
 
   useEffect(() => {
     fetchAIStatus();
+    fetchImageProviders();
   }, []);
+
+  async function fetchImageProviders() {
+    try {
+      const res = await fetch("/api/ai/image");
+      if (res.ok) {
+        const data = await res.json();
+        setImageProviders(data.providers || []);
+        setSdAvailable(data.sdAvailable || false);
+      }
+    } catch (error) {
+      console.error("Failed to fetch image providers:", error);
+    }
+  }
 
   async function fetchAIStatus() {
     try {
@@ -378,14 +394,29 @@ export default function CreativeStudioPage() {
                 </div>
 
                 <Select value={imageProvider} onValueChange={setImageProvider}>
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-48">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="openai">DALL-E 3</SelectItem>
-                    <SelectItem value="stable-diffusion" disabled>
-                      Stable Diffusion
-                    </SelectItem>
+                    {imageProviders.length > 0 ? (
+                      imageProviders.map((p) => (
+                        <SelectItem 
+                          key={p.id} 
+                          value={p.id} 
+                          disabled={!p.available}
+                        >
+                          {p.name} {p.unrestricted && "(No Restrictions)"}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <>
+                        <SelectItem value="auto">Auto (Local First)</SelectItem>
+                        <SelectItem value="stable-diffusion" disabled={!sdAvailable}>
+                          Stable Diffusion {sdAvailable ? "(Available)" : "(Offline)"}
+                        </SelectItem>
+                        <SelectItem value="openai">DALL-E 3</SelectItem>
+                      </>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
