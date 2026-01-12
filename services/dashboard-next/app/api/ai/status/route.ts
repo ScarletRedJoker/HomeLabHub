@@ -110,27 +110,26 @@ async function checkStableDiffusion(): Promise<AIProviderStatus> {
   const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
   const sdUrl = process.env.STABLE_DIFFUSION_URL || `http://${WINDOWS_VM_IP}:7860`;
 
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+  // Try multiple endpoints - API may vary by SD WebUI version
+  const endpoints = [
+    { url: `${sdUrl}/sdapi/v1/sd-models`, parseModels: true },
+    { url: `${sdUrl}/internal/ping`, parseModels: false },
+    { url: `${sdUrl}/`, parseModels: false },
+  ];
 
-    // Try multiple endpoints - API may vary by SD WebUI version
-    const endpoints = [
-      { url: `${sdUrl}/sdapi/v1/sd-models`, parseModels: true },
-      { url: `${sdUrl}/internal/ping`, parseModels: false },
-      { url: `${sdUrl}/`, parseModels: false },
-    ];
-
-    for (const endpoint of endpoints) {
-      try {
-        const response = await fetch(endpoint.url, {
-          signal: controller.signal,
-        });
-        
-        if (response.ok) {
-          clearTimeout(timeout);
-          
-          if (endpoint.parseModels) {
+  for (const endpoint of endpoints) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      
+      const response = await fetch(endpoint.url, {
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      
+      if (response.ok) {
+        if (endpoint.parseModels) {
+          try {
             const models = await response.json();
             const modelName = models[0]?.model_name || "Default";
             return {
@@ -138,24 +137,27 @@ async function checkStableDiffusion(): Promise<AIProviderStatus> {
               status: "connected",
               model: modelName,
             };
+          } catch {
+            return {
+              name: "Stable Diffusion",
+              status: "connected",
+              model: "WebUI Online",
+            };
           }
-          
-          return {
-            name: "Stable Diffusion",
-            status: "connected",
-            model: "WebUI Online",
-          };
         }
-      } catch {
-        // Try next endpoint
+        
+        return {
+          name: "Stable Diffusion",
+          status: "connected",
+          model: "WebUI Online",
+        };
       }
+    } catch {
+      // Try next endpoint
     }
-
-    clearTimeout(timeout);
-    return { name: "Stable Diffusion", status: "not_configured", error: "Not reachable" };
-  } catch (error: any) {
-    return { name: "Stable Diffusion", status: "not_configured", error: "Not reachable" };
   }
+
+  return { name: "Stable Diffusion", status: "not_configured", error: "Not reachable" };
 }
 
 async function checkComfyUI(): Promise<AIProviderStatus> {
