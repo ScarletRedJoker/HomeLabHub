@@ -44,7 +44,7 @@ discord.rig-city.com {
 }
 
 dashboard.rig-city.com {
-    reverse_proxy homelab-dashboard:5000 {
+    reverse_proxy dashboard-tailscale:5000 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_up Upgrade {http.request.header.Upgrade}
@@ -73,7 +73,7 @@ n8n.evindrake.net {
 }
 
 host.evindrake.net, dashboard.evindrake.net {
-    reverse_proxy homelab-dashboard:5000 {
+    reverse_proxy dashboard-tailscale:5000 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_down Cache-Control "no-cache, no-store, must-revalidate, private"
@@ -193,7 +193,7 @@ dns.evindrake.net {
 }
 
 dash.evindrake.net {
-    reverse_proxy homelab-dashboard:5000
+    reverse_proxy dashboard-tailscale:5000
 }
 
 mail.evindrake.net {
