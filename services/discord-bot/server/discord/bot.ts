@@ -34,6 +34,7 @@ import { registerPollCommands, handlePollButtonInteraction, handlePollSelectMenu
 import { registerGiveawayCommands, handleGiveawayButtonInteraction, startGiveawayScheduler, stopGiveawayScheduler } from './features/giveaways';
 import { registerModerationCommands, registerAutomodConfigCommands, initializeAutomodEvents } from './features/moderation';
 import { registerConfigCommands, handleConfigAutocomplete } from './features/config';
+import { registerPresenceCommands, initPresenceFeature } from './features/presence';
 import { commandEngine } from '../services/commandEngine';
 import { guildIdentityService } from '../services/guildIdentityService';
 import { welcomeCardRenderer } from '../services/welcomeCardRenderer';
@@ -78,6 +79,7 @@ registerGiveawayCommands(commands);
 registerModerationCommands(commands);
 registerAutomodConfigCommands(commands);
 registerConfigCommands(commands);
+registerPresenceCommands(commands as any);
 console.log('[Discord] Total commands after all registrations:', Array.from(commands.keys()).join(', '));
 
 export async function startBot(storage: IStorage, broadcast: (data: any) => void): Promise<void> {
@@ -3017,6 +3019,15 @@ export async function startBot(storage: IStorage, broadcast: (data: any) => void
         console.log('[Bot] ✅ Automod events initialized successfully');
       } catch (automodError) {
         console.error('[Bot] Failed to initialize automod events:', automodError);
+      }
+      
+      // Initialize user presence feature (Now Playing / Profile commands)
+      console.log('[Bot] Initializing presence feature...');
+      try {
+        initPresenceFeature(client!);
+        console.log('[Bot] ✅ Presence feature initialized successfully');
+      } catch (presenceFeatureError) {
+        console.error('[Bot] Failed to initialize presence feature:', presenceFeatureError);
       }
     });
 
