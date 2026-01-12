@@ -32,9 +32,9 @@ services:
       DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
       DISCORD_APP_ID: ${DISCORD_APP_ID}
       VITE_DISCORD_CLIENT_ID: ${VITE_DISCORD_CLIENT_ID}
-      DISCORD_CALLBACK_URL: https://bot.rig-city.com/auth/discord/callback
-      APP_URL: https://bot.rig-city.com
-      PUBLIC_DOMAIN: https://bot.rig-city.com
+      DISCORD_CALLBACK_URL: https://bot.evindrake.net/auth/discord/callback
+      APP_URL: https://bot.evindrake.net
+      PUBLIC_DOMAIN: https://bot.evindrake.net
       VITE_CUSTOM_WS_URL: ${VITE_CUSTOM_WS_URL:-}
       SESSION_SECRET: ${DISCORD_SESSION_SECRET}
       TWITCH_CLIENT_ID: ${TWITCH_CLIENT_ID}

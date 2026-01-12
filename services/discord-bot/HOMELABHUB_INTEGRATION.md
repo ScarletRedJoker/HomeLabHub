@@ -26,7 +26,7 @@ labels:
   - "homelabhub.importance=critical"
   
   # Web interface
-  - "homelabhub.web.url=https://bot.rig-city.com"
+  - "homelabhub.web.url=https://bot.evindrake.net"
   - "homelabhub.web.port=5000"
   - "homelabhub.web.protocol=https"
   
@@ -106,7 +106,7 @@ labels:
     }
   },
   "endpoints": {
-    "web": "https://bot.rig-city.com",
+    "web": "https://bot.evindrake.net",
     "health": "/health",
     "metrics": "/api/homelabhub/metrics",
     "control": "/api/homelabhub/control"

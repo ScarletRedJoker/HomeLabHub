@@ -77,7 +77,7 @@ function validateTokenResponse(data: any): void {
  * This ensures the redirect always goes to /auth/* not /api/auth/*
  */
 function getSpotifyRedirectUri(): string {
-  const appUrl = getEnv('APP_URL') || 'https://stream.rig-city.com';
+  const appUrl = getEnv('APP_URL') || 'https://stream.evindrake.net';
   let redirectUri = getEnv('SPOTIFY_REDIRECT_URI') || `${appUrl}/auth/spotify/callback`;
   
   // Auto-correct common misconfiguration: /api/auth/* -> /auth/*

@@ -99,10 +99,10 @@ curl -H "X-Homelabhub-Key: YOUR_KEY" http://localhost:5001/api/homelabhub/status
 - [x] **Homelabhub Discovery**: Bot appears in homelabhub with labels
 - [x] **Network Configuration**: All services on `homelabhub_homelab` network
 - [x] **Port Mapping**: Bot exposed on host port 5001
-- [ ] **Nginx Proxy Manager**: Updated to forward `bot.rig-city.com` → port 5001
+- [ ] **Nginx Proxy Manager**: Updated to forward `bot.evindrake.net` → port 5001
 - [ ] **API Key Configured**: `HOMELABHUB_API_KEY` set in production .env
 - [ ] **Bot Online in Discord**: Shows as online in Discord servers
-- [ ] **Dashboard Accessible**: Can access bot.rig-city.com
+- [ ] **Dashboard Accessible**: Can access bot.evindrake.net
 
 ## 🎯 Expected Results
 
@@ -137,8 +137,8 @@ $ curl -H "X-Homelabhub-Key: YOUR_KEY" http://localhost:5001/api/homelabhub/metr
 
 ### Your Sites (via Traefik/NPM)
 ```bash
-✅ https://bot.rig-city.com         → Discord Bot Dashboard
-✅ https://stream.rig-city.com      → Stream Bot
+✅ https://bot.evindrake.net         → Discord Bot Dashboard
+✅ https://stream.evindrake.net      → Stream Bot
 ✅ https://plex.evindrake.net       → Plex Media Server
 ✅ https://n8n.evindrake.net        → n8n Automation
 ✅ https://scarletredjoker.com      → Personal Website

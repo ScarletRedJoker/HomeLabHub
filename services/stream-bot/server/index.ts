@@ -33,7 +33,7 @@ app.set('env', NODE_ENV);
 
 // CORS Configuration
 const allowedOrigins = [
-  'https://stream.rig-city.com',
+  'https://stream.evindrake.net',
   NODE_ENV === 'development' ? 'http://localhost:5173' : null,
   NODE_ENV === 'development' ? 'http://localhost:5000' : null,
 ].filter(Boolean) as string[];
@@ -111,7 +111,7 @@ export const sessionMiddleware = session({
     httpOnly: true,
     maxAge: 1000 * 60 * 60 * 24 * 7,
     sameSite: NODE_ENV === "production" ? "none" : "lax",
-    domain: NODE_ENV === "production" ? ".rig-city.com" : undefined,
+    domain: NODE_ENV === "production" ? ".evindrake.net" : undefined,
   },
 });
 

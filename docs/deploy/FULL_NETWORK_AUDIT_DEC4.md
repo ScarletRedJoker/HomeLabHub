@@ -107,8 +107,8 @@ curl -sk https://192.168.122.250:47990 | head -c 50
 |---------|-----------|------|--------|
 | Caddy | caddy | 80, 443 | - |
 | Dashboard | homelab-dashboard | 5000 | host.evindrake.net |
-| Discord Bot | discord-bot | 4000 | bot.rig-city.com |
-| Stream Bot | stream-bot | 5000 | stream.rig-city.com |
+| Discord Bot | discord-bot | 4000 | bot.evindrake.net |
+| Stream Bot | stream-bot | 5000 | stream.evindrake.net |
 | PostgreSQL | homelab-postgres | 5432 | internal |
 | Redis | homelab-redis | 6379 | internal |
 | n8n | n8n | 5678 | n8n.evindrake.net |
@@ -192,8 +192,8 @@ These are normal for Replit dev environment:
 # Test all domains
 curl -sI https://host.evindrake.net | head -2
 curl -sI https://dashboard.evindrake.net | head -2
-curl -sI https://bot.rig-city.com | head -2
-curl -sI https://stream.rig-city.com | head -2
+curl -sI https://bot.evindrake.net | head -2
+curl -sI https://stream.evindrake.net | head -2
 curl -sI https://n8n.evindrake.net | head -2
 curl -sI https://rig-city.com | head -2
 curl -sI https://scarletredjoker.com | head -2

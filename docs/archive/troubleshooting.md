@@ -322,7 +322,7 @@ docker compose logs stream-bot --tail 100
 docker exec stream-bot npm run db:check
 
 # Check OAuth tokens
-curl https://stream.rig-city.com/api/auth/status
+curl https://stream.evindrake.net/api/auth/status
 ```
 
 ### Plex Not Accessible

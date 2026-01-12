@@ -67,7 +67,7 @@ https://discord.com/developers/applications
 **Add Redirect URI:**
 Under OAuth2 → Redirects, add:
 ```
-https://bot.rig-city.com/auth/discord/callback
+https://bot.evindrake.net/auth/discord/callback
 ```
 
 ---
@@ -101,7 +101,7 @@ https://dev.twitch.tv/console/apps
 2. Click "Register Your Application"
 3. Fill in:
    - Name: `SnappleBotAI` (or your bot name)
-   - OAuth Redirect URLs: `https://stream.rig-city.com/api/auth/twitch/callback`
+   - OAuth Redirect URLs: `https://stream.evindrake.net/api/auth/twitch/callback`
    - Category: Chat Bot
 4. Click "Create"
 5. Click "Manage" on your new app
@@ -123,7 +123,7 @@ This is more complex because you need a refresh token.
 2. Click "Create Credentials" → "OAuth client ID"
 3. Application type: "Web application"
 4. Name: "StreamBot YouTube"
-5. Authorized redirect URIs: Add `https://stream.rig-city.com/api/auth/youtube/callback`
+5. Authorized redirect URIs: Add `https://stream.evindrake.net/api/auth/youtube/callback`
 6. Click "Create"
 7. Copy:
    - `YOUTUBE_CLIENT_ID` = Client ID
@@ -138,7 +138,7 @@ This is more complex because you need a refresh token.
 
 **Option A: Use the Stream Bot OAuth Flow**
 1. Start Stream Bot with your client ID/secret configured
-2. Go to https://stream.rig-city.com
+2. Go to https://stream.evindrake.net
 3. Click "Connect YouTube"
 4. Authorize your YouTube channel
 5. The refresh token will be saved automatically in your database
@@ -147,12 +147,12 @@ This is more complex because you need a refresh token.
 
 1. Open this URL in your browser (replace YOUR_CLIENT_ID):
 ```
-https://accounts.google.com/o/oauth2/v2/auth?client_id=YOUR_CLIENT_ID&redirect_uri=https://stream.rig-city.com/api/auth/youtube/callback&response_type=code&scope=https://www.googleapis.com/auth/youtube.readonly&access_type=offline&prompt=consent
+https://accounts.google.com/o/oauth2/v2/auth?client_id=YOUR_CLIENT_ID&redirect_uri=https://stream.evindrake.net/api/auth/youtube/callback&response_type=code&scope=https://www.googleapis.com/auth/youtube.readonly&access_type=offline&prompt=consent
 ```
 
 2. Authorize with your Google account
 3. You'll be redirected to a URL like:
-   `https://stream.rig-city.com/api/auth/youtube/callback?code=XXXXXXX`
+   `https://stream.evindrake.net/api/auth/youtube/callback?code=XXXXXXX`
 4. Copy the `code` parameter
 5. Exchange it for tokens using curl:
 
@@ -161,7 +161,7 @@ curl -X POST https://oauth2.googleapis.com/token \
   -d "code=YOUR_CODE" \
   -d "client_id=YOUR_CLIENT_ID" \
   -d "client_secret=YOUR_CLIENT_SECRET" \
-  -d "redirect_uri=https://stream.rig-city.com/api/auth/youtube/callback" \
+  -d "redirect_uri=https://stream.evindrake.net/api/auth/youtube/callback" \
   -d "grant_type=authorization_code"
 ```
 
@@ -180,7 +180,7 @@ curl -X POST https://oauth2.googleapis.com/token \
 3. Fill in:
    - App name: "StreamBot"
    - App description: "Stream overlay integration"
-   - Redirect URIs: `https://stream.rig-city.com/api/auth/spotify/callback`
+   - Redirect URIs: `https://stream.evindrake.net/api/auth/spotify/callback`
    - APIs: Check "Web API"
 4. Click "Create"
 5. Go to Settings and copy:
@@ -191,7 +191,7 @@ curl -X POST https://oauth2.googleapis.com/token \
 
 **Option A: Use Stream Bot OAuth Flow**
 1. Start Stream Bot
-2. Go to https://stream.rig-city.com
+2. Go to https://stream.evindrake.net
 3. Click "Connect Spotify"
 4. Authorize with your Spotify account
 5. Token saved automatically
@@ -200,7 +200,7 @@ curl -X POST https://oauth2.googleapis.com/token \
 
 1. Open this URL (replace YOUR_CLIENT_ID):
 ```
-https://accounts.spotify.com/authorize?client_id=YOUR_CLIENT_ID&response_type=code&redirect_uri=https://stream.rig-city.com/api/auth/spotify/callback&scope=user-read-currently-playing%20user-read-playback-state
+https://accounts.spotify.com/authorize?client_id=YOUR_CLIENT_ID&response_type=code&redirect_uri=https://stream.evindrake.net/api/auth/spotify/callback&scope=user-read-currently-playing%20user-read-playback-state
 ```
 
 2. Authorize with Spotify
@@ -215,7 +215,7 @@ curl -X POST https://accounts.spotify.com/api/token \
   -H "Authorization: Basic $AUTH" \
   -d "grant_type=authorization_code" \
   -d "code=YOUR_CODE" \
-  -d "redirect_uri=https://stream.rig-city.com/api/auth/spotify/callback"
+  -d "redirect_uri=https://stream.evindrake.net/api/auth/spotify/callback"
 ```
 
 5. Copy `refresh_token` from response
@@ -270,7 +270,7 @@ Note: Kick's API is currently in limited access. If you have credentials, add:
 ```ini
 KICK_CLIENT_ID=your_id
 KICK_CLIENT_SECRET=your_secret
-KICK_REDIRECT_URI=https://stream.rig-city.com/api/auth/kick/callback
+KICK_REDIRECT_URI=https://stream.evindrake.net/api/auth/kick/callback
 ```
 
 ---

@@ -17,7 +17,7 @@ The stream bot now includes a beautiful Spotify "now playing" overlay that you c
 
 ### 1. Verify Spotify Connection
 
-1. Go to your Stream Bot dashboard: https://stream.rig-city.com
+1. Go to your Stream Bot dashboard: https://stream.evindrake.net
 2. Navigate to **Settings**
 3. Scroll down to the **Spotify Integration** card
 4. Verify it shows **"Connected"** status
@@ -28,7 +28,7 @@ The stream bot now includes a beautiful Spotify "now playing" overlay that you c
 The overlay URL is displayed in the Spotify Integration card on the Settings page:
 
 ```
-https://stream.rig-city.com/overlay/spotify
+https://stream.evindrake.net/overlay/spotify
 ```
 
 You can:
@@ -51,7 +51,7 @@ In the Browser Source properties:
 
 | Setting | Value |
 |---------|-------|
-| **URL** | `https://stream.rig-city.com/overlay/spotify` |
+| **URL** | `https://stream.evindrake.net/overlay/spotify` |
 | **Width** | `600` |
 | **Height** | `200` |
 | **FPS** | `30` |

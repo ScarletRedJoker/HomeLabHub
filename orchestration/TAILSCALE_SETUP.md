@@ -240,7 +240,7 @@ services:
 ```
 
 Consul on Host 1 will see `discord-bot` registered with Host 2's Tailscale IP.
-Traefik on Host 1 can then route `bot.rig-city.com` → `100.64.0.2:4000`.
+Traefik on Host 1 can then route `bot.evindrake.net` → `100.64.0.2:4000`.
 
 ## Troubleshooting
 

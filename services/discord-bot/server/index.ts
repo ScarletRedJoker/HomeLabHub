@@ -98,8 +98,8 @@ app.set('trust proxy', 1);
  * CORS Configuration
  */
 const allowedOrigins = [
-  'https://bot.rig-city.com',
-  'https://discord.rig-city.com',
+  'https://bot.evindrake.net',
+  'https://discord.evindrake.net',
   NODE_ENV === 'development' ? 'http://localhost:5173' : null,
   NODE_ENV === 'development' ? 'http://localhost:5000' : null,
 ].filter(Boolean) as string[];

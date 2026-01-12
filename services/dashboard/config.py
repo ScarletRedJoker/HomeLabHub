@@ -146,14 +146,14 @@ class Config:
     SERVICES = {
         'discord-bot': {
             'name': 'Discord Ticket Bot',
-            'url': 'https://bot.rig-city.com',
+            'url': 'https://bot.evindrake.net',
             'container': 'discord-bot',
             'description': 'Discord ticket system with web dashboard',
             'favicon': None
         },
         'stream-bot': {
             'name': 'Stream Bot',
-            'url': 'https://stream.rig-city.com',
+            'url': 'https://stream.evindrake.net',
             'container': 'stream-bot',
             'description': 'AI-powered Snapple facts for Twitch and Kick',
             'favicon': None

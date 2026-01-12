@@ -397,7 +397,7 @@ def seed_service_configs(connection):
             'category': 'bots',
             'is_enabled': True,
             'is_critical': False,
-            'public_url': 'https://bot.rig-city.com',
+            'public_url': 'https://bot.evindrake.net',
             'health_check_interval': 60
         },
         {
@@ -408,7 +408,7 @@ def seed_service_configs(connection):
             'category': 'bots',
             'is_enabled': True,
             'is_critical': False,
-            'public_url': 'https://stream.rig-city.com',
+            'public_url': 'https://stream.evindrake.net',
             'health_check_interval': 60
         },
         {

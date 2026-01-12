@@ -1015,8 +1015,8 @@ print_summary() {
     if [ "$ROLE" = "cloud" ]; then
         echo -e "${CYAN}Cloud Endpoints:${NC}"
         echo "  Dashboard:    https://host.evindrake.net"
-        echo "  Discord Bot:  https://bot.rig-city.com"
-        echo "  Stream Bot:   https://stream.rig-city.com"
+        echo "  Discord Bot:  https://bot.evindrake.net"
+        echo "  Stream Bot:   https://stream.evindrake.net"
         echo "  n8n:          https://n8n.evindrake.net"
         echo "  Code Server:  https://code.evindrake.net"
     else

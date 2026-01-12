@@ -88,8 +88,8 @@ docker compose stop discord-bot stream-bot homelab-dashboard \
 In Cloudflare (or your DNS provider), update these A records:
 
 **Point to Linode IP:**
-- `bot.rig-city.com`
-- `stream.rig-city.com`
+- `bot.evindrake.net`
+- `stream.evindrake.net`
 - `rig-city.com`
 - `www.rig-city.com`
 - `dashboard.evindrake.net`
@@ -140,8 +140,8 @@ deploy/
 ### Linode Cloud Services
 | Service | Domain | Port |
 |---------|--------|------|
-| Discord Bot | bot.rig-city.com | 4000 |
-| Stream Bot | stream.rig-city.com | 5000 |
+| Discord Bot | bot.evindrake.net | 4000 |
+| Stream Bot | stream.evindrake.net | 5000 |
 | Dashboard | dashboard.evindrake.net | 5000 |
 | n8n | n8n.evindrake.net | 5678 |
 | Code Server | code.evindrake.net | 8443 |

@@ -246,25 +246,25 @@ echo ""
 echo "=== Spotify OAuth Configuration ==="
 echo "For multi-user Spotify overlay feature, create OAuth app at:"
 echo "https://developer.spotify.com/dashboard"
-echo "Set redirect URI to: https://stream.rig-city.com/auth/spotify/callback"
+echo "Set redirect URI to: https://stream.evindrake.net/auth/spotify/callback"
 SPOTIFY_CLIENT_ID=$(get_or_generate "SPOTIFY_CLIENT_ID" "Spotify OAuth client ID (optional)" "PROMPT" "")
 SPOTIFY_CLIENT_SECRET=$(get_or_generate "SPOTIFY_CLIENT_SECRET" "Spotify OAuth client secret (optional)" "PROMPT" "")
-SPOTIFY_REDIRECT_URI=$(get_or_generate "SPOTIFY_REDIRECT_URI" "Spotify OAuth redirect URI" "PROMPT" "https://stream.rig-city.com/auth/spotify/callback")
+SPOTIFY_REDIRECT_URI=$(get_or_generate "SPOTIFY_REDIRECT_URI" "Spotify OAuth redirect URI" "PROMPT" "https://stream.evindrake.net/auth/spotify/callback")
 
 # YouTube OAuth credentials (for per-user connections)
 echo ""
 echo "=== YouTube OAuth Configuration ==="
 echo "For multi-user YouTube livestream feature, create OAuth app at:"
 echo "https://console.cloud.google.com/apis/credentials"
-echo "Set redirect URI to: https://stream.rig-city.com/auth/youtube/callback"
+echo "Set redirect URI to: https://stream.evindrake.net/auth/youtube/callback"
 YOUTUBE_CLIENT_ID=$(get_or_generate "YOUTUBE_CLIENT_ID" "YouTube OAuth client ID (optional)" "PROMPT" "")
 YOUTUBE_CLIENT_SECRET=$(get_or_generate "YOUTUBE_CLIENT_SECRET" "YouTube OAuth client secret (optional)" "PROMPT" "")
-YOUTUBE_REDIRECT_URI=$(get_or_generate "YOUTUBE_REDIRECT_URI" "YouTube OAuth redirect URI" "PROMPT" "https://stream.rig-city.com/auth/youtube/callback")
+YOUTUBE_REDIRECT_URI=$(get_or_generate "YOUTUBE_REDIRECT_URI" "YouTube OAuth redirect URI" "PROMPT" "https://stream.evindrake.net/auth/youtube/callback")
 
 # Write to temp file
 cat >> "$TEMP_ENV" << EOF
 # ============================================
-# Stream Bot (Snapple Facts AI - stream.rig-city.com)
+# Stream Bot (Snapple Facts AI - stream.evindrake.net)
 # ============================================
 # Note: Stream Bot uses AI_INTEGRATIONS_OPENAI_API_KEY (shared with Dashboard)
 STREAMBOT_DB_PASSWORD=${STREAMBOT_DB_PASSWORD}

@@ -466,8 +466,8 @@ test_ssh_connection() {
 check_web_services() {
     echo -e "${BLUE}Cloud Services (Linode):${NC}"
     echo "------------------------"
-    check_url "Discord Bot" "https://bot.rig-city.com/health"
-    check_url "Stream Bot" "https://stream.rig-city.com/health"
+    check_url "Discord Bot" "https://bot.evindrake.net/health"
+    check_url "Stream Bot" "https://stream.evindrake.net/health"
     check_url "Dashboard" "https://dashboard.evindrake.net"
     check_url "n8n" "https://n8n.evindrake.net"
     check_url "Code Server" "https://code.evindrake.net"

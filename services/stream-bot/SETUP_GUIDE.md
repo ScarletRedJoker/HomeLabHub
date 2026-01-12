@@ -17,7 +17,7 @@ Complete guide for deploying and configuring StreamBot on any platform.
 # 2. Start the application
 docker-compose up -d
 
-# 3. Access at https://stream.rig-city.com (or your domain)
+# 3. Access at https://stream.evindrake.net (or your domain)
 ```
 
 ### Unified Homelab Deployment
@@ -31,7 +31,7 @@ StreamBot automatically detects STREAMBOT_-prefixed variables and handles databa
 STREAMBOT_DATABASE_URL=postgresql://streambot:password@postgres:5432/streambot
 STREAMBOT_SESSION_SECRET=$(openssl rand -hex 32)
 STREAMBOT_OPENAI_API_KEY=sk-your-openai-key
-STREAMBOT_PRODUCTION_DOMAIN=stream.rig-city.com
+STREAMBOT_PRODUCTION_DOMAIN=stream.evindrake.net
 STREAMBOT_NODE_ENV=production
 STREAMBOT_PORT=5000
 
@@ -83,7 +83,7 @@ docker exec streambot npm run db:push
 ## 👤 Create Account
 
 ### 1. Access the App
-Navigate to `https://stream.rig-city.com` (or your deployed URL)
+Navigate to `https://stream.evindrake.net` (or your deployed URL)
 
 ### 2. Sign Up
 1. Click "Sign Up"

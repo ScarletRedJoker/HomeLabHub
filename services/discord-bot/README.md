@@ -2,7 +2,7 @@
 
 A production-ready Discord bot for support ticket management, music playback, and server administration. Features a modern web dashboard, real-time updates via WebSockets, Spotify playlist import, Discord thread integration, and comprehensive admin tools.
 
-**Live Deployment**: bot.rig-city.com
+**Live Deployment**: bot.evindrake.net
 
 ## ✨ Key Features
 

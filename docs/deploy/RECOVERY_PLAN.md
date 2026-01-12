@@ -104,8 +104,8 @@ docker logs caddy --tail 50
 Wait 1-2 minutes for Let's Encrypt to issue certificates, then test:
 ```bash
 curl -I https://host.evindrake.net
-curl -I https://bot.rig-city.com
-curl -I https://stream.rig-city.com
+curl -I https://bot.evindrake.net
+curl -I https://stream.evindrake.net
 ```
 
 **If SSL fails**, check:
@@ -288,13 +288,13 @@ Schedule this to run at startup via Task Scheduler.
 - [ ] Docker status shows all containers
 - [ ] Jarvis AI responds
 
-### Discord Bot (bot.rig-city.com)
+### Discord Bot (bot.evindrake.net)
 - [ ] Can login with Discord OAuth
 - [ ] No CSP errors in browser console
 - [ ] Channels load properly
 - [ ] WebSocket stable
 
-### Stream Bot (stream.rig-city.com)
+### Stream Bot (stream.evindrake.net)
 - [ ] Onboarding flow works
 - [ ] Twitch connection works
 - [ ] Spotify integration works

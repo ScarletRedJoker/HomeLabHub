@@ -34,7 +34,7 @@ You **must** register OAuth applications with streaming platforms to enable user
 1. Go to [Twitch Developers Console](https://dev.twitch.tv/console)
 2. Create a new application:
    - **Name**: Stream-Bot (or your custom name)
-   - **OAuth Redirect URLs**: `https://stream.rig-city.com/api/auth/twitch/callback`
+   - **OAuth Redirect URLs**: `https://stream.evindrake.net/api/auth/twitch/callback`
    - **Category**: Chat Bot
 3. Copy the **Client ID** and **Client Secret**
 
@@ -45,14 +45,14 @@ You **must** register OAuth applications with streaming platforms to enable user
 3. Enable **YouTube Data API v3**
 4. Create OAuth 2.0 credentials:
    - **Application type**: Web application
-   - **Authorized redirect URIs**: `https://stream.rig-city.com/api/auth/youtube/callback`
+   - **Authorized redirect URIs**: `https://stream.evindrake.net/api/auth/youtube/callback`
 5. Copy the **Client ID** and **Client Secret**
 
 #### **Kick (Optional)**
 
 1. Go to [Kick Developers](https://kick.com/developer) (if available)
 2. Register an application with:
-   - **Redirect URI**: `https://stream.rig-city.com/api/auth/kick/callback`
+   - **Redirect URI**: `https://stream.evindrake.net/api/auth/kick/callback`
 3. Copy the **Client ID** and **Client Secret**
 
 > **Note**: As of November 2025, Kick's official OAuth API may be in beta or limited availability. Check their developer documentation.
@@ -79,10 +79,10 @@ OPENAI_API_KEY=<your-openai-api-key>
 # Twitch OAuth (REQUIRED - Primary authentication)
 TWITCH_CLIENT_ID=<your-twitch-client-id>
 TWITCH_CLIENT_SECRET=<your-twitch-client-secret>
-TWITCH_SIGNIN_CALLBACK_URL=https://stream.rig-city.com/api/auth/twitch/callback
+TWITCH_SIGNIN_CALLBACK_URL=https://stream.evindrake.net/api/auth/twitch/callback
 
 # Application URL (REQUIRED)
-APP_URL=https://stream.rig-city.com
+APP_URL=https://stream.evindrake.net
 ```
 
 ### Variable Explanations
@@ -95,8 +95,8 @@ APP_URL=https://stream.rig-city.com
 | `STREAMBOT_OPENAI_API_KEY` | OpenAI API key for AI fact generation (OR use `OPENAI_API_KEY`) | `sk-proj-...` |
 | `TWITCH_CLIENT_ID` | Twitch OAuth application client ID | `abc123xyz456...` |
 | `TWITCH_CLIENT_SECRET` | Twitch OAuth application secret | `def789uvw012...` |
-| `TWITCH_SIGNIN_CALLBACK_URL` | OAuth redirect URL (must match Twitch app settings) | `https://stream.rig-city.com/api/auth/twitch/callback` |
-| `APP_URL` | Public URL where Stream-Bot is hosted | `https://stream.rig-city.com` |
+| `TWITCH_SIGNIN_CALLBACK_URL` | OAuth redirect URL (must match Twitch app settings) | `https://stream.evindrake.net/api/auth/twitch/callback` |
+| `APP_URL` | Public URL where Stream-Bot is hosted | `https://stream.evindrake.net` |
 
 ---
 
@@ -106,12 +106,12 @@ APP_URL=https://stream.rig-city.com
 # YouTube OAuth (Optional)
 YOUTUBE_CLIENT_ID=<your-youtube-client-id>
 YOUTUBE_CLIENT_SECRET=<your-youtube-client-secret>
-YOUTUBE_SIGNIN_CALLBACK_URL=https://stream.rig-city.com/api/auth/youtube/callback
+YOUTUBE_SIGNIN_CALLBACK_URL=https://stream.evindrake.net/api/auth/youtube/callback
 
 # Kick OAuth (Optional)
 KICK_CLIENT_ID=<your-kick-client-id>
 KICK_CLIENT_SECRET=<your-kick-client-secret>
-KICK_SIGNIN_CALLBACK_URL=https://stream.rig-city.com/api/auth/kick/callback
+KICK_SIGNIN_CALLBACK_URL=https://stream.evindrake.net/api/auth/kick/callback
 
 # Custom OpenAI Endpoint (Optional - for Azure OpenAI, LocalAI, etc.)
 STREAMBOT_OPENAI_BASE_URL=https://your-custom-openai-endpoint.com/v1
@@ -218,7 +218,7 @@ Look for:
 ### User Perspective
 
 1. **Navigate to Stream-Bot**
-   - Go to `https://stream.rig-city.com` in your browser
+   - Go to `https://stream.evindrake.net` in your browser
 
 2. **Sign In with Twitch/YouTube/Kick**
    - Click "Sign in with Twitch" (or other platform)
@@ -561,14 +561,14 @@ Update callback URLs to support multiple environments:
 
 **Twitch OAuth App**:
 - Add both callback URLs:
-  - `https://stream.rig-city.com/api/auth/twitch/callback` (production)
+  - `https://stream.evindrake.net/api/auth/twitch/callback` (production)
   - `http://localhost:5000/api/auth/twitch/callback` (local dev)
 
 **Environment Variables**:
 ```bash
 # Production
-APP_URL=https://stream.rig-city.com
-TWITCH_SIGNIN_CALLBACK_URL=https://stream.rig-city.com/api/auth/twitch/callback
+APP_URL=https://stream.evindrake.net
+TWITCH_SIGNIN_CALLBACK_URL=https://stream.evindrake.net/api/auth/twitch/callback
 
 # Development (override in .env.local)
 APP_URL=http://localhost:5000

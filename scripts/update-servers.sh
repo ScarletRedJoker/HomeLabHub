@@ -350,8 +350,8 @@ show_post_update_summary() {
         echo ""
         echo "  Cloud Services:"
         echo "    Dashboard:      https://dashboard.evindrake.net"
-        echo "    Discord Bot:    https://bot.rig-city.com"
-        echo "    Stream Bot:     https://stream.rig-city.com"
+        echo "    Discord Bot:    https://bot.evindrake.net"
+        echo "    Stream Bot:     https://stream.evindrake.net"
     fi
     
     echo ""

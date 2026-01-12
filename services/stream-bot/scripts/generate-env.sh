@@ -139,7 +139,7 @@ if [ "$IS_REPLIT" = true ]; then
     DOMAIN=""
     log_info "Domain auto-detected on Replit"
 else
-    DOMAIN=$(prompt "Production domain" "stream.rig-city.com")
+    DOMAIN=$(prompt "Production domain" "stream.evindrake.net")
 fi
 
 # Create .env

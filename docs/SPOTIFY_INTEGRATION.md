@@ -71,15 +71,15 @@ git pull
 ```
 
 The Spotify integration will be automatically available at:
-- **Dashboard**: https://stream.rig-city.com/settings
-- **OBS Overlay**: https://stream.rig-city.com/overlay/spotify
+- **Dashboard**: https://stream.evindrake.net/settings
+- **OBS Overlay**: https://stream.evindrake.net/overlay/spotify
 
 ## Usage
 
 ### For Streamers
 
 1. **Connect Spotify** (already done via Replit integration)
-2. **Go to Settings** at https://stream.rig-city.com/settings
+2. **Go to Settings** at https://stream.evindrake.net/settings
 3. **Copy OBS URL** from the Spotify Integration card
 4. **Add to OBS** as a Browser Source
 
@@ -104,7 +104,7 @@ const { isPlaying, title, artist, albumImageUrl } = await response.json();
 ```
 ┌─────────────────────────────────────────────────┐
 │ OBS Browser Source                              │
-│ https://stream.rig-city.com/overlay/spotify     │
+│ https://stream.evindrake.net/overlay/spotify     │
 └────────────┬────────────────────────────────────┘
              │ Polls every 5s
              ↓
@@ -174,7 +174,7 @@ services/stream-bot/package.json
 
 After deployment:
 
-1. Visit https://stream.rig-city.com/settings
+1. Visit https://stream.evindrake.net/settings
 2. Verify Spotify shows "Connected"
 3. Copy OBS overlay URL
 4. Open in browser to preview

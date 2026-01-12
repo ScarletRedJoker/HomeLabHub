@@ -264,7 +264,7 @@ Leave blank if you don't need the feature. You can add them later.
 TWITCH_CLIENT_ID=_________________________
 TWITCH_CLIENT_SECRET=_____________________
 TWITCH_CHANNEL=your_twitch_username
-TWITCH_REDIRECT_URI=https://stream.rig-city.com/api/auth/twitch/callback
+TWITCH_REDIRECT_URI=https://stream.evindrake.net/api/auth/twitch/callback
 ```
 
 #### YouTube Integration (Stream Bot)
@@ -308,7 +308,7 @@ SPOTIFY_REFRESH_TOKEN=AQB_________________________________
 # Get from: Kick Developer Portal (if you have access)
 KICK_CLIENT_ID=___________________________________
 KICK_CLIENT_SECRET=_______________________________
-KICK_REDIRECT_URI=https://stream.rig-city.com/api/auth/kick/callback
+KICK_REDIRECT_URI=https://stream.evindrake.net/api/auth/kick/callback
 ```
 
 #### Cloudflare (Dynamic DNS / DNS Automation)
@@ -2558,7 +2558,7 @@ docker compose up -d --force-recreate  # Recreate containers
 4. **OAuth2 → General:**
    - Copy **Client ID**
    - Copy **Client Secret** (click Reset Secret if needed)
-   - Add Redirect URL: `https://bot.rig-city.com/auth/discord/callback`
+   - Add Redirect URL: `https://bot.evindrake.net/auth/discord/callback`
 
 **Update .env on Linode:**
 ```bash
@@ -2587,7 +2587,7 @@ https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=8&
 2. Click **Register Your Application**
 3. Fill in:
    - Name: HomeLabHub Stream Bot
-   - OAuth Redirect URL: `https://stream.rig-city.com/api/auth/twitch/callback`
+   - OAuth Redirect URL: `https://stream.evindrake.net/api/auth/twitch/callback`
    - Category: Chat Bot
 4. Copy **Client ID** and generate **Client Secret**
 
@@ -2645,7 +2645,7 @@ TWITCH_CLIENT_SECRET=your_twitch_secret
 4. Name: `HomeLabHub`
 5. **Authorized redirect URIs** - Click **Add URI** for each:
    ```
-   https://stream.rig-city.com/api/auth/youtube/callback
+   https://stream.evindrake.net/api/auth/youtube/callback
    https://dash.evindrake.net/api/google/callback
    http://localhost:3000/callback
    ```
@@ -2811,10 +2811,10 @@ EOF
 4. Fill in the form:
    - **App name:** `HomeLabHub Stream Bot`
    - **App description:** `Now playing integration for stream bot`
-   - **Website:** `https://stream.rig-city.com` (or your domain)
+   - **Website:** `https://stream.evindrake.net` (or your domain)
    - **Redirect URI:** Click **Add** and enter:
      ```
-     https://stream.rig-city.com/api/auth/spotify/callback
+     https://stream.evindrake.net/api/auth/spotify/callback
      http://localhost:3000/callback
      ```
    - **APIs used:** Check **Web API**
@@ -4586,8 +4586,8 @@ After setup, you have two access methods for each service:
 | Service | URL | Expected |
 |---------|-----|----------|
 | Dashboard | https://dash.evindrake.net | Login page |
-| Discord Bot | https://bot.rig-city.com | Bot dashboard |
-| Stream Bot | https://stream.rig-city.com | Stream dashboard |
+| Discord Bot | https://bot.evindrake.net | Bot dashboard |
+| Stream Bot | https://stream.evindrake.net | Stream dashboard |
 | n8n | https://n8n.evindrake.net | n8n login |
 | Code Server | https://code.evindrake.net | VS Code |
 
@@ -5049,7 +5049,7 @@ All environment variables in one place. The bootstrap script generates most secr
 | `TWITCH_CLIENT_ID` | Twitch app client ID | [dev.twitch.tv/console](https://dev.twitch.tv/console/apps) |
 | `TWITCH_CLIENT_SECRET` | Twitch app secret | Same as above |
 | `TWITCH_CHANNEL` | Your channel name | Your Twitch username |
-| `TWITCH_REDIRECT_URI` | OAuth callback | `https://stream.rig-city.com/api/auth/twitch/callback` |
+| `TWITCH_REDIRECT_URI` | OAuth callback | `https://stream.evindrake.net/api/auth/twitch/callback` |
 
 ### Stream Bot - YouTube (Optional)
 
@@ -5058,7 +5058,7 @@ All environment variables in one place. The bootstrap script generates most secr
 | `YOUTUBE_CLIENT_ID` | Google OAuth client ID | [Google Cloud Console](https://console.cloud.google.com) |
 | `YOUTUBE_CLIENT_SECRET` | Google OAuth secret | Same as above |
 | `YOUTUBE_REFRESH_TOKEN` | OAuth refresh token | Generated after first OAuth flow |
-| `YOUTUBE_REDIRECT_URI` | OAuth callback | `https://stream.rig-city.com/api/auth/youtube/callback` |
+| `YOUTUBE_REDIRECT_URI` | OAuth callback | `https://stream.evindrake.net/api/auth/youtube/callback` |
 
 ### Stream Bot - Spotify (Optional)
 
@@ -5067,7 +5067,7 @@ All environment variables in one place. The bootstrap script generates most secr
 | `SPOTIFY_CLIENT_ID` | Spotify app client ID | [developer.spotify.com](https://developer.spotify.com/dashboard) |
 | `SPOTIFY_CLIENT_SECRET` | Spotify app secret | Same as above |
 | `SPOTIFY_REFRESH_TOKEN` | OAuth refresh token | Generated after first OAuth flow |
-| `SPOTIFY_REDIRECT_URI` | OAuth callback | `https://stream.rig-city.com/api/auth/spotify/callback` |
+| `SPOTIFY_REDIRECT_URI` | OAuth callback | `https://stream.evindrake.net/api/auth/spotify/callback` |
 
 ### Stream Bot - Kick (Optional)
 
@@ -5075,7 +5075,7 @@ All environment variables in one place. The bootstrap script generates most secr
 |----------|-------------|--------------|
 | `KICK_CLIENT_ID` | Kick app client ID | Kick Developer Portal |
 | `KICK_CLIENT_SECRET` | Kick app secret | Same as above |
-| `KICK_REDIRECT_URI` | OAuth callback | `https://stream.rig-city.com/api/auth/kick/callback` |
+| `KICK_REDIRECT_URI` | OAuth callback | `https://stream.evindrake.net/api/auth/kick/callback` |
 
 ### n8n Automation (Optional)
 
@@ -5227,7 +5227,7 @@ Token permissions required: Zone.Zone (Read), Zone.DNS (Edit), Zone.Cache Purge 
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `DISCORD_BOT_URL` | Discord bot public URL | https://bot.rig-city.com |
+| `DISCORD_BOT_URL` | Discord bot public URL | https://bot.evindrake.net |
 | `N8N_URL` | n8n public URL | https://n8n.evindrake.net |
 | `STATIC_SITE_URL` | Static site URL | https://scarletredjoker.com |
 | `LETSENCRYPT_EMAIL` | SSL certificate email | your_email@example.com |
@@ -5473,7 +5473,7 @@ LINODE_IP="YOUR_LINODE_IP"
 echo "Checking DNS records..."
 
 # Cloud services
-for domain in dash.evindrake.net n8n.evindrake.net code.evindrake.net bot.rig-city.com stream.rig-city.com; do
+for domain in dash.evindrake.net n8n.evindrake.net code.evindrake.net bot.evindrake.net stream.evindrake.net; do
   resolved=$(dig +short $domain)
   if [ "$resolved" == "$LINODE_IP" ]; then
     echo "✓ $domain → $resolved"
@@ -5486,7 +5486,7 @@ done
 echo ""
 echo "Checking via public DNS servers..."
 for dns in 8.8.8.8 1.1.1.1 9.9.9.9; do
-  for domain in dash.evindrake.net bot.rig-city.com; do
+  for domain in dash.evindrake.net bot.evindrake.net; do
     resolved=$(dig +short @$dns $domain)
     echo "  $domain via $dns → $resolved"
   done
@@ -5580,8 +5580,8 @@ crontab -e
 | Service | URL | Access Method |
 |---------|-----|---------------|
 | Dashboard | https://dash.evindrake.net | Public |
-| Discord Bot | https://bot.rig-city.com | Public |
-| Stream Bot | https://stream.rig-city.com | Public |
+| Discord Bot | https://bot.evindrake.net | Public |
+| Stream Bot | https://stream.evindrake.net | Public |
 | n8n | https://n8n.evindrake.net | Public |
 | Code Server | https://code.evindrake.net | Public |
 | Plex | app.plex.tv | Plex Native |

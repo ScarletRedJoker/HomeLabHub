@@ -120,7 +120,7 @@ services:
       - "homelabhub.category=application"
       - "homelabhub.importance=critical"
       # Service endpoints for homelabhub
-      - "homelabhub.web.url=https://bot.rig-city.com"
+      - "homelabhub.web.url=https://bot.evindrake.net"
       - "homelabhub.web.port=5000"
       - "homelabhub.web.protocol=https"
       # Health and metrics endpoints

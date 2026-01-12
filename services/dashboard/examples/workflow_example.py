@@ -119,11 +119,11 @@ def example_dns_workflow():
     
     print("\n1. Creating DNS update workflow...")
     workflow = workflow_service.create_workflow(
-        name="Update DNS for bot.rig-city.com",
+        name="Update DNS for bot.evindrake.net",
         workflow_type="dns_update",
         created_by="admin",
         metadata={
-            "domain": "bot.rig-city.com",
+            "domain": "bot.evindrake.net",
             "record_type": "A",
             "new_value": "192.168.1.100"
         }
@@ -132,7 +132,7 @@ def example_dns_workflow():
     
     print("\n2. Dispatching DNS update task...")
     dns_config = {
-        'domain': 'bot.rig-city.com',
+        'domain': 'bot.evindrake.net',
         'record_type': 'A',
         'value': '192.168.1.100'
     }

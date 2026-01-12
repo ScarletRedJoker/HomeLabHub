@@ -107,8 +107,8 @@ These services run 24/7 in the cloud for reliability and low-latency API access:
 
 | Service | Domain | Port | Purpose |
 |---------|--------|------|---------|
-| **Discord Bot** | bot.rig-city.com | 4000 | Discord slash commands, tickets |
-| **Stream Bot** | stream.rig-city.com | 5000 | Twitch/YouTube integration |
+| **Discord Bot** | bot.evindrake.net | 4000 | Discord slash commands, tickets |
+| **Stream Bot** | stream.evindrake.net | 5000 | Twitch/YouTube integration |
 | **Dashboard** | dashboard.evindrake.net | 5000 | Nebula Command control panel |
 | **n8n** | n8n.evindrake.net | 5678 | Workflow automation |
 | **Code-Server** | code.evindrake.net | 8443 | VS Code in browser |
@@ -236,8 +236,8 @@ ping 100.x.x.x
 | A | dashboard | YOUR_LINODE_IP | Proxied |
 | A | code | YOUR_LINODE_IP | Proxied |
 | A | n8n | YOUR_LINODE_IP | Proxied |
-| A | bot.rig-city.com | YOUR_LINODE_IP | DNS Only |
-| A | stream.rig-city.com | YOUR_LINODE_IP | DNS Only |
+| A | bot.evindrake.net | YOUR_LINODE_IP | DNS Only |
+| A | stream.evindrake.net | YOUR_LINODE_IP | DNS Only |
 
 3. **Add A Records for Local Services:**
 
@@ -321,7 +321,7 @@ docker compose ps
 curl -I https://dashboard.evindrake.net/health
 
 # Test Discord Bot
-curl -I https://bot.rig-city.com/health
+curl -I https://bot.evindrake.net/health
 
 # Test Plex (local)
 curl -I http://localhost:32400/identity
@@ -337,8 +337,8 @@ curl -I http://localhost:32400/identity
 |--------|------|---------|-------|
 | `dashboard.evindrake.net` | Linode | Dashboard | Main control panel |
 | `code.evindrake.net` | Linode | Code-Server | VS Code in browser |
-| `bot.rig-city.com` | Linode | Discord Bot | Webhook endpoint |
-| `stream.rig-city.com` | Linode | Stream Bot | Twitch/YouTube |
+| `bot.evindrake.net` | Linode | Discord Bot | Webhook endpoint |
+| `stream.evindrake.net` | Linode | Stream Bot | Twitch/YouTube |
 | `n8n.evindrake.net` | Linode | n8n | Automation workflows |
 | `rig-city.com` | Linode | Static Site | Gaming portal |
 | `scarletredjoker.com` | Linode | Static Site | Portfolio |
@@ -447,11 +447,11 @@ dashboard.evindrake.net {
     reverse_proxy homelab-dashboard:5000
 }
 
-bot.rig-city.com {
+bot.evindrake.net {
     reverse_proxy discord-bot:4000
 }
 
-stream.rig-city.com {
+stream.evindrake.net {
     reverse_proxy stream-bot:5000
 }
 
@@ -674,8 +674,8 @@ tailscale ip -4
 | Service | URL |
 |---------|-----|
 | Dashboard | https://dashboard.evindrake.net |
-| Discord Bot | https://bot.rig-city.com |
-| Stream Bot | https://stream.rig-city.com |
+| Discord Bot | https://bot.evindrake.net |
+| Stream Bot | https://stream.evindrake.net |
 | n8n | https://n8n.evindrake.net |
 | Code-Server | https://code.evindrake.net |
 | Plex | https://plex.evindrake.net |

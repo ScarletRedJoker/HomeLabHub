@@ -34,24 +34,24 @@ services:
       NODE_ENV: ${STREAMBOT_NODE_ENV:-production}
       PORT: ${STREAMBOT_PORT:-5000}
       HOST: 0.0.0.0
-      APP_URL: https://stream.rig-city.com
+      APP_URL: https://stream.evindrake.net
       TWITCH_CLIENT_ID: ${TWITCH_CLIENT_ID}
       TWITCH_CLIENT_SECRET: ${TWITCH_CLIENT_SECRET}
-      TWITCH_REDIRECT_URI: ${TWITCH_REDIRECT_URI:-https://stream.rig-city.com/api/auth/twitch/callback}
-      TWITCH_SIGNIN_CALLBACK_URL: https://stream.rig-city.com/api/auth/twitch/callback
+      TWITCH_REDIRECT_URI: ${TWITCH_REDIRECT_URI:-https://stream.evindrake.net/api/auth/twitch/callback}
+      TWITCH_SIGNIN_CALLBACK_URL: https://stream.evindrake.net/api/auth/twitch/callback
       YOUTUBE_CLIENT_ID: ${YOUTUBE_CLIENT_ID:-}
       YOUTUBE_CLIENT_SECRET: ${YOUTUBE_CLIENT_SECRET:-}
       YOUTUBE_REFRESH_TOKEN: ${YOUTUBE_REFRESH_TOKEN:-}
-      YOUTUBE_REDIRECT_URI: ${YOUTUBE_REDIRECT_URI:-https://stream.rig-city.com/api/auth/youtube/callback}
-      YOUTUBE_SIGNIN_CALLBACK_URL: https://stream.rig-city.com/api/auth/youtube/callback
+      YOUTUBE_REDIRECT_URI: ${YOUTUBE_REDIRECT_URI:-https://stream.evindrake.net/api/auth/youtube/callback}
+      YOUTUBE_SIGNIN_CALLBACK_URL: https://stream.evindrake.net/api/auth/youtube/callback
       SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}
       SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:-}
       SPOTIFY_REFRESH_TOKEN: ${SPOTIFY_REFRESH_TOKEN:-}
-      SPOTIFY_REDIRECT_URI: ${SPOTIFY_REDIRECT_URI:-https://stream.rig-city.com/api/auth/spotify/callback}
+      SPOTIFY_REDIRECT_URI: ${SPOTIFY_REDIRECT_URI:-https://stream.evindrake.net/api/auth/spotify/callback}
       KICK_CLIENT_ID: ${KICK_CLIENT_ID:-}
       KICK_CLIENT_SECRET: ${KICK_CLIENT_SECRET:-}
-      KICK_REDIRECT_URI: ${KICK_REDIRECT_URI:-https://stream.rig-city.com/api/auth/kick/callback}
-      KICK_SIGNIN_CALLBACK_URL: https://stream.rig-city.com/api/auth/kick/callback
+      KICK_REDIRECT_URI: ${KICK_REDIRECT_URI:-https://stream.evindrake.net/api/auth/kick/callback}
+      KICK_SIGNIN_CALLBACK_URL: https://stream.evindrake.net/api/auth/kick/callback
       SERVICE_AUTH_TOKEN: ${SERVICE_AUTH_TOKEN}
     volumes:
       - ../services/stream-bot/logs:/app/logs

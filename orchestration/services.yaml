@@ -266,7 +266,7 @@ services:
         protocol: http
         endpoint: /health
     domains:
-      - bot.rig-city.com
+      - bot.evindrake.net
     placement: local_or_remote
     health_endpoint: http://localhost:4000/health
     health_check_type: http
@@ -274,7 +274,7 @@ services:
     discovery:
       traefik_labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.discord-bot.rule=Host(`bot.rig-city.com`)"
+        - "traefik.http.routers.discord-bot.rule=Host(`bot.evindrake.net`)"
         - "traefik.http.routers.discord-bot.entrypoints=websecure"
         - "traefik.http.routers.discord-bot.tls=true"
         - "traefik.http.routers.discord-bot.tls.certresolver=cloudflare"
@@ -308,7 +308,7 @@ services:
     dns:
       records:
         - type: A
-          name: bot.rig-city.com
+          name: bot.evindrake.net
           content: ${DNS_TARGET_IP}
           ttl: 300
           proxied: true
@@ -325,7 +325,7 @@ services:
         protocol: http
         endpoint: /health
     domains:
-      - stream.rig-city.com
+      - stream.evindrake.net
     placement: local_or_remote
     health_endpoint: http://localhost:5000/health
     health_check_type: http
@@ -333,7 +333,7 @@ services:
     discovery:
       traefik_labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.stream-bot.rule=Host(`stream.rig-city.com`)"
+        - "traefik.http.routers.stream-bot.rule=Host(`stream.evindrake.net`)"
         - "traefik.http.routers.stream-bot.entrypoints=websecure"
         - "traefik.http.routers.stream-bot.tls=true"
         - "traefik.http.routers.stream-bot.tls.certresolver=cloudflare"
@@ -368,7 +368,7 @@ services:
     dns:
       records:
         - type: A
-          name: stream.rig-city.com
+          name: stream.evindrake.net
           content: ${DNS_TARGET_IP}
           ttl: 300
           proxied: true

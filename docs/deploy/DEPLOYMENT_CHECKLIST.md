@@ -93,8 +93,8 @@ docker compose logs -f --tail=50
 ### Step 8: Test Endpoints
 ```bash
 curl -I https://dashboard.evindrake.net/health
-curl -I https://bot.rig-city.com/health
-curl -I https://stream.rig-city.com/health
+curl -I https://bot.evindrake.net/health
+curl -I https://stream.evindrake.net/health
 curl -I https://grafana.evindrake.net/api/health
 ```
 
@@ -173,8 +173,8 @@ Run from Linode:
 #!/bin/bash
 DOMAINS=(
     "https://dashboard.evindrake.net/health"
-    "https://bot.rig-city.com/health"
-    "https://stream.rig-city.com/health"
+    "https://bot.evindrake.net/health"
+    "https://stream.evindrake.net/health"
     "https://rig-city.com"
     "https://scarletredjoker.com"
     "https://n8n.evindrake.net"
@@ -285,8 +285,8 @@ sudo systemctl restart wg-quick@wg0
 After deployment, verify:
 
 - [ ] Dashboard accessible at https://dashboard.evindrake.net
-- [ ] Discord Bot responds at https://bot.rig-city.com/health
-- [ ] Stream Bot responds at https://stream.rig-city.com/health
+- [ ] Discord Bot responds at https://bot.evindrake.net/health
+- [ ] Stream Bot responds at https://stream.evindrake.net/health
 - [ ] Grafana accessible at https://grafana.evindrake.net
 - [ ] Static sites load (rig-city.com, scarletredjoker.com)
 - [ ] Code Server accessible at https://code.evindrake.net

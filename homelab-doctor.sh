@@ -32,8 +32,8 @@ OUTPUT_MODE="${1:-human}"  # human or json
 # Domains to check (from Caddyfile)
 DOMAINS=(
     "host.evindrake.net"
-    "bot.rig-city.com"
-    "stream.rig-city.com"
+    "bot.evindrake.net"
+    "stream.evindrake.net"
     "rig-city.com"
     "plex.evindrake.net"
     "n8n.evindrake.net"

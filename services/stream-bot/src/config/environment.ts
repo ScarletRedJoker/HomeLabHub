@@ -103,7 +103,7 @@ export function getYouTubeConfig(): YouTubeConfig {
   // YOUTUBE_REDIRECT_URI is for platform connection (direct OAuth at /auth/youtube/callback)
   // YOUTUBE_SIGNIN_CALLBACK_URL is for passport signin (at /api/auth/youtube/callback)
   // For platform connection, default to /auth/youtube/callback
-  const appUrl = process.env.APP_URL || "https://stream.rig-city.com";
+  const appUrl = process.env.APP_URL || "https://stream.evindrake.net";
   let redirectUri = process.env.YOUTUBE_REDIRECT_URI || `${appUrl}/auth/youtube/callback`;
   
   // Auto-correct common misconfigurations

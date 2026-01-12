@@ -53,8 +53,8 @@
 |--------|----------|--------|--------|
 | dashboard.evindrake.net | Login page | Redirect to /login | ✓ Working |
 | plex.evindrake.net | Plex server | 502 Bad Gateway | ✗ Broken |
-| bot.rig-city.com | Discord bot UI | Not tested | ❓ |
-| stream.rig-city.com | Stream bot UI | Not tested | ❓ |
+| bot.evindrake.net | Discord bot UI | Not tested | ❓ |
+| stream.evindrake.net | Stream bot UI | Not tested | ❓ |
 | n8n.evindrake.net | n8n workflows | Not tested | ❓ |
 
 ### Plex Issue Analysis

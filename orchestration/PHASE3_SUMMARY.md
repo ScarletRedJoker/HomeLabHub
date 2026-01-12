@@ -52,8 +52,8 @@ Added discovery metadata to all services:
 - **Health checks** - HTTP/TCP health monitoring
 
 **Services Enhanced:**
-- discord-bot → `bot.rig-city.com`
-- stream-bot → `stream.rig-city.com`
+- discord-bot → `bot.evindrake.net`
+- stream-bot → `stream.evindrake.net`
 - dashboard → `host.evindrake.net`, `dashboard.evindrake.net`
 - n8n → `n8n.evindrake.net`
 - vnc-desktop → `vnc.evindrake.net`
@@ -295,8 +295,8 @@ docker compose stop caddy
 #
 # HTTP Routers:
 #   dashboard: Host(`host.evindrake.net`) -> dashboard
-#   discord-bot: Host(`bot.rig-city.com`) -> discord-bot
-#   stream-bot: Host(`stream.rig-city.com`) -> stream-bot
+#   discord-bot: Host(`bot.evindrake.net`) -> discord-bot
+#   stream-bot: Host(`stream.evindrake.net`) -> stream-bot
 ```
 
 ### Network (Tailscale)
@@ -342,8 +342,8 @@ docker compose stop caddy
 ┌──────────────────────────────────────┐
 │         Service Backends             │
 │  - dashboard (host.evindrake.net)    │
-│  - discord-bot (bot.rig-city.com)    │
-│  - stream-bot (stream.rig-city.com)  │
+│  - discord-bot (bot.evindrake.net)    │
+│  - stream-bot (stream.evindrake.net)  │
 │  - n8n (n8n.evindrake.net)           │
 └──────────────────────────────────────┘
          │

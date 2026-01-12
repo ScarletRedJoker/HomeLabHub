@@ -117,8 +117,8 @@ nano Caddyfile
 
 Default domains:
 - `evindrake.net` - Main dashboard
-- `bot.rig-city.com` - Discord bot dashboard
-- `stream.rig-city.com` - Stream bot dashboard
+- `bot.evindrake.net` - Discord bot dashboard
+- `stream.evindrake.net` - Stream bot dashboard
 - `grafana.evindrake.net` - Monitoring dashboard
 
 ## Step 5: Verify Production Readiness
@@ -177,7 +177,7 @@ docker compose logs -f homelab-dashboard
 
 ## Step 9: Configure Stream Bot
 
-1. Navigate to `https://stream.rig-city.com`
+1. Navigate to `https://stream.evindrake.net`
 2. Log in with Twitch/YouTube OAuth
 3. Connect your streaming platforms
 4. Configure fact posting intervals and triggers
@@ -214,8 +214,8 @@ docker system df
 
 - **Health Endpoints**:
   - Dashboard: `https://evindrake.net/api/health`
-  - Discord Bot: `https://bot.rig-city.com/health`
-  - Stream Bot: `https://stream.rig-city.com/health`
+  - Discord Bot: `https://bot.evindrake.net/health`
+  - Stream Bot: `https://stream.evindrake.net/health`
 
 ## Troubleshooting
 

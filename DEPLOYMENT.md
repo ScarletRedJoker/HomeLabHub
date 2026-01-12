@@ -163,8 +163,8 @@ home.evindrake.net     → YOUR_SERVER_IP
 
 ### A Records (rig-city.com):
 ```
-bot.rig-city.com       → YOUR_SERVER_IP
-stream.rig-city.com    → YOUR_SERVER_IP
+bot.evindrake.net       → YOUR_SERVER_IP
+stream.evindrake.net    → YOUR_SERVER_IP
 rig-city.com           → YOUR_SERVER_IP
 ```
 
@@ -241,10 +241,10 @@ Visit these URLs in your browser (Caddy will auto-generate SSL certificates):
    - Login: Use credentials from your .env file (WEB_USERNAME / WEB_PASSWORD)
    - Should show Jarvis AI assistant
 
-2. **Discord Bot**: https://bot.rig-city.com
+2. **Discord Bot**: https://bot.evindrake.net
    - Should show ticket management interface
 
-3. **Stream Bot**: https://stream.rig-city.com
+3. **Stream Bot**: https://stream.evindrake.net
    - Should show SnappleBotAI dashboard
 
 4. **n8n**: https://n8n.evindrake.net
@@ -266,7 +266,7 @@ Visit these URLs in your browser (Caddy will auto-generate SSL certificates):
 5. Invite bot to your Discord server
 
 ### Stream Bot Setup
-1. Connect Twitch account at https://stream.rig-city.com
+1. Connect Twitch account at https://stream.evindrake.net
 2. Connect YouTube account (optional)
 3. Connect Spotify account (optional)
 4. Configure bot settings, commands, and chatbot personality
@@ -393,8 +393,8 @@ docker exec -i homelab-postgres psql -U postgres < backup_20251122.sql
 | Service | URL | Port | Notes |
 |---------|-----|------|-------|
 | Dashboard (Jarvis) | https://host.evindrake.net | 5000 | Main control panel |
-| Discord Bot | https://bot.rig-city.com | 4000 | Ticket system |
-| Stream Bot | https://stream.rig-city.com | 5000 | Multi-platform bot |
+| Discord Bot | https://bot.evindrake.net | 4000 | Ticket system |
+| Stream Bot | https://stream.evindrake.net | 5000 | Multi-platform bot |
 | n8n | https://n8n.evindrake.net | 5678 | Workflow automation |
 | Home Assistant | https://home.evindrake.net | 8123 | Smart home |
 | Plex | https://plex.evindrake.net | 32400 | Media server |

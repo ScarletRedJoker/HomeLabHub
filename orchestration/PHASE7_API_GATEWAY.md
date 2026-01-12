@@ -249,7 +249,7 @@ Add to .env:
 $ ./homelab gateway logs
 2025-11-23T12:00:00Z dashboard.evindrake.net GET /api/services 200 45ms
 2025-11-23T12:00:01Z auth.evindrake.net POST /api/v1/auth/login 200 120ms
-2025-11-23T12:00:02Z bot.rig-city.com GET /health 200 5ms
+2025-11-23T12:00:02Z bot.evindrake.net GET /health 200 5ms
 ```
 
 ## Security Best Practices

@@ -20,7 +20,7 @@ class Config:
             'name': 'Discord Ticket Bot',
             'container': 'discordticketbot',
             'path': '/home/evin/contain/DiscordTicketBot',
-            'domain': 'bot.rig-city.com',
+            'domain': 'bot.evindrake.net',
             'type': 'container'
         },
         'plex': {

@@ -769,7 +769,7 @@ export function createAdminHelpEmbed(): EmbedBuilder {
       },
       {
         name: '🌐 Web Dashboard',
-        value: 'For advanced configuration, visit the web dashboard at:\n**bot.rig-city.com**',
+        value: 'For advanced configuration, visit the web dashboard at:\n**bot.evindrake.net**',
         inline: false
       }
     )

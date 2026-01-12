@@ -45,9 +45,9 @@ check "Stream Bot /health" "curl -sf http://localhost:3000/health"
 echo ""
 
 echo -e "${CYAN}External Access (via Caddy):${NC}"
-check "dashboard.rig-city.com" "curl -sf https://dashboard.rig-city.com/health"
-check "discord.rig-city.com" "curl -sf https://discord.rig-city.com/health"
-check "stream.rig-city.com" "curl -sf https://stream.rig-city.com/health"
+check "host.evindrake.net" "curl -sf https://host.evindrake.net/health"
+check "bot.evindrake.net" "curl -sf https://bot.evindrake.net/health"
+check "stream.evindrake.net" "curl -sf https://stream.evindrake.net/health"
 echo ""
 
 echo -e "${CYAN}Database Connectivity:${NC}"

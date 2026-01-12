@@ -10,8 +10,8 @@
 
 | Domain | Container | Internal Port | Health Endpoint | Status |
 |--------|-----------|---------------|-----------------|--------|
-| bot.rig-city.com | discord-bot | 4000 | `/health` | ✅ Active |
-| stream.rig-city.com | stream-bot | 5000 | `/health` | ✅ Active |
+| bot.evindrake.net | discord-bot | 4000 | `/health` | ✅ Active |
+| stream.evindrake.net | stream-bot | 5000 | `/health` | ✅ Active |
 | rig-city.com | rig-city-site | 80 | - | ✅ Static |
 | www.rig-city.com | → redirect | - | - | ✅ Redirect |
 | dashboard.evindrake.net | homelab-dashboard | 5000 | `/health` | ✅ Active |
@@ -142,8 +142,8 @@ docker compose down && docker compose up -d
 
 # Test health endpoints
 curl -I https://dashboard.evindrake.net/health
-curl -I https://bot.rig-city.com/health
-curl -I https://stream.rig-city.com/health
+curl -I https://bot.evindrake.net/health
+curl -I https://stream.evindrake.net/health
 curl -I https://grafana.evindrake.net/api/health
 ```
 
@@ -298,8 +298,8 @@ See `docs/deploy/FULL_DEPLOYMENT_GUIDE.md` Section 14 for DDNS setup options.
 #!/bin/bash
 DOMAINS=(
     "https://dashboard.evindrake.net"
-    "https://bot.rig-city.com"
-    "https://stream.rig-city.com"
+    "https://bot.evindrake.net"
+    "https://stream.evindrake.net"
     "https://rig-city.com"
     "https://scarletredjoker.com"
     "https://n8n.evindrake.net"

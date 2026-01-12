@@ -14,8 +14,8 @@ docker exec homelab-redis redis-cli FLUSHDB
 ### Issue: OAuth redirect fails
 **Cause**: Incorrect redirect URL configuration  
 **Solution**: Verify redirect URLs match:
-- Twitch Dev Console: `https://stream.rig-city.com/auth/twitch/callback`
-- Google Console: `https://stream.rig-city.com/auth/google/callback`
+- Twitch Dev Console: `https://stream.evindrake.net/auth/twitch/callback`
+- Google Console: `https://stream.evindrake.net/auth/google/callback`
 
 ### Issue: "SESSION_SECRET required"
 **Cause**: Missing SESSION_SECRET environment variable  
@@ -67,7 +67,7 @@ docker exec discord-bot printenv | grep DATABASE_URL
 
 ### Issue: OAuth callback fails
 **Cause**: Incorrect callback URL in Discord Developer Portal  
-**Solution**: Ensure callback URL is exactly: `https://bot.rig-city.com/auth/discord/callback`
+**Solution**: Ensure callback URL is exactly: `https://bot.evindrake.net/auth/discord/callback`
 
 ## Dashboard Issues
 
@@ -113,7 +113,7 @@ docker exec homelab-dashboard python -c "from app import db; print(db.engine.url
 ### Issue: "Certificate error"
 **Cause**: Let's Encrypt rate limit or DNS not propagated  
 **Solution**:
-1. Check DNS: `nslookup stream.rig-city.com`
+1. Check DNS: `nslookup stream.evindrake.net`
 2. Check Caddy logs: `docker-compose -f docker-compose.unified.yml logs caddy`
 3. Wait for DNS propagation (up to 48 hours)
 

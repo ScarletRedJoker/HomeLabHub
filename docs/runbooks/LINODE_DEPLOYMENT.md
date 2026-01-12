@@ -279,8 +279,8 @@ After deployment, verify these endpoints respond:
 | Service | URL | Expected |
 |---------|-----|----------|
 | Dashboard | https://host.evindrake.net | 200/401 |
-| Discord Bot | https://bot.rig-city.com | 200/301 |
-| Stream Bot | https://stream.rig-city.com | 200/301 |
+| Discord Bot | https://bot.evindrake.net | 200/301 |
+| Stream Bot | https://stream.evindrake.net | 200/301 |
 | n8n | https://n8n.evindrake.net | 200/401 |
 | Code Server | https://code.evindrake.net | 200/401 |
 | Grafana | https://grafana.evindrake.net | 200/302 |

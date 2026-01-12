@@ -220,11 +220,11 @@ When setting up OAuth credentials, use these redirect URLs:
 
 | Service | Redirect URL |
 |---------|-------------|
-| Discord (Bot Dashboard) | `https://bot.rig-city.com/auth/discord/callback` |
-| Twitch (Stream Bot) | `https://stream.rig-city.com/api/auth/twitch/callback` |
-| YouTube (Stream Bot) | `https://stream.rig-city.com/api/auth/youtube/callback` |
-| Spotify (Stream Bot) | `https://stream.rig-city.com/api/auth/spotify/callback` |
-| Kick (Stream Bot) | `https://stream.rig-city.com/api/auth/kick/callback` |
+| Discord (Bot Dashboard) | `https://bot.evindrake.net/auth/discord/callback` |
+| Twitch (Stream Bot) | `https://stream.evindrake.net/api/auth/twitch/callback` |
+| YouTube (Stream Bot) | `https://stream.evindrake.net/api/auth/youtube/callback` |
+| Spotify (Stream Bot) | `https://stream.evindrake.net/api/auth/spotify/callback` |
+| Kick (Stream Bot) | `https://stream.evindrake.net/api/auth/kick/callback` |
 
 ## Environment Variable Reference
 

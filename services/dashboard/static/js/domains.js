@@ -1,8 +1,8 @@
 // Domain Status Monitoring Page JavaScript
 
 const DOMAINS = [
-    { name: 'bot.rig-city.com', service: 'Discord Bot' },
-    { name: 'stream.rig-city.com', service: 'Stream Bot' },
+    { name: 'bot.evindrake.net', service: 'Discord Bot' },
+    { name: 'stream.evindrake.net', service: 'Stream Bot' },
     { name: 'plex.evindrake.net', service: 'Plex Media Server' },
     { name: 'n8n.evindrake.net', service: 'n8n Automation' },
     { name: 'scarletredjoker.com', service: 'Personal Website' },

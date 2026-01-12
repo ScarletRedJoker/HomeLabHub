@@ -38,7 +38,7 @@ services:
 ### Fix 3: Update Nginx Proxy Manager
 
 After making the changes, update your Nginx Proxy Manager:
-- Change `bot.rig-city.com` to forward to `http://discord-bot:5001` (or `http://192.168.x.x:5001`)
+- Change `bot.evindrake.net` to forward to `http://discord-bot:5001` (or `http://192.168.x.x:5001`)
 
 ## Quick Commands
 
@@ -137,7 +137,7 @@ services:
     labels:
       - "homelabhub.enable=true"
       - "homelabhub.name=Discord Ticket Bot"
-      - "homelabhub.web.url=https://bot.rig-city.com"
+      - "homelabhub.web.url=https://bot.evindrake.net"
       - "homelabhub.metrics.endpoint=/api/homelabhub/metrics"
       - "homelabhub.control.endpoint=/api/homelabhub/control"
 

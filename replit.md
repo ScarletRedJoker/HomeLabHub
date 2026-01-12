@@ -82,6 +82,12 @@ Features a per-server customization system allowing server admins to configure t
 *   **Ollama:** Local large language model (LLM) inference.
 *   **Stable Diffusion:** Local image generation.
 
+## Production Domains
+*   **Dashboard:** evindrake.net - Main dashboard and homelab control
+*   **Discord Bot:** bot.evindrake.net - Discord bot dashboard and OAuth
+*   **Stream Bot:** stream.evindrake.net - Multi-platform streaming bot
+*   **Static Landing:** rig-city.com - Static landing page only (no services)
+
 ## Infrastructure IPs
 *   **Windows VM (GPU):** 100.118.44.102 (Tailscale) - Hosts Ollama with RTX 3060, primary for AI inference
 *   **Local Ubuntu Server:** 100.66.61.51 (Tailscale) - Hosts Plex, MinIO, Home Assistant, media services
@@ -134,6 +140,13 @@ When running on Linode (Tailscale network):
 - Ubuntu Ollama fallback: `http://100.66.61.51:11434`
 
 ## Recent Changes (January 2026)
+
+### Domain Migration (January 12, 2026)
+- Migrated all services from rig-city.com subdomains to evindrake.net
+- bot.rig-city.com → bot.evindrake.net
+- stream.rig-city.com → stream.evindrake.net
+- rig-city.com remains as static landing page only
+- Updated all OAuth callback URLs, CORS origins, and configuration
 
 ### Stream Bot Overlays
 - Added OBS overlay endpoints: `/api/overlay/youtube/obs`, `/api/overlay/alerts/obs`, `/api/overlay/chat/obs`

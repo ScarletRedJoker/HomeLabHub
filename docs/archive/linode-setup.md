@@ -306,7 +306,7 @@ Wait 5-10 minutes for DNS propagation, then verify:
 ```bash
 # Check DNS resolution
 dig host.evindrake.net +short
-dig bot.rig-city.com +short
+dig bot.evindrake.net +short
 
 # Test HTTPS access
 curl -I https://host.evindrake.net/health

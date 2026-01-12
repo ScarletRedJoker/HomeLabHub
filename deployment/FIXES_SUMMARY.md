@@ -170,7 +170,7 @@ docker logs stream-bot --tail 30
 docker exec -it discord-bot-db psql -U ticketbot -d streambot -c '\dt'
 
 # Access web interface
-curl -I https://stream.rig-city.com
+curl -I https://stream.evindrake.net
 ```
 
 ### Code-Server
@@ -203,11 +203,11 @@ curl -I https://vnc.evindrake.net
 
 After fixes are applied, access your services:
 
-- **Stream-Bot:** https://stream.rig-city.com
+- **Stream-Bot:** https://stream.evindrake.net
 - **Code-Server:** https://code.evindrake.net
 - **VNC Desktop:** https://vnc.evindrake.net
 - **Dashboard:** https://host.evindrake.net
-- **Discord Bot:** https://bot.rig-city.com
+- **Discord Bot:** https://bot.evindrake.net
 - **Plex:** https://plex.evindrake.net
 - **n8n:** https://n8n.evindrake.net
 - **Home Assistant:** https://home.evindrake.net

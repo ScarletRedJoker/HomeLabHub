@@ -70,8 +70,8 @@ sunshine_name = RDPWindows
 |---------|-----------|------|--------|--------|
 | Caddy (Reverse Proxy) | caddy | 80, 443 | - | CONFIGURED |
 | Dashboard | homelab-dashboard | 5000 | host.evindrake.net, dashboard.evindrake.net | CONFIGURED |
-| Discord Bot | discord-bot | 4000 | bot.rig-city.com | RUNNING |
-| Stream Bot | stream-bot | 5000 | stream.rig-city.com | RUNNING |
+| Discord Bot | discord-bot | 4000 | bot.evindrake.net | RUNNING |
+| Stream Bot | stream-bot | 5000 | stream.evindrake.net | RUNNING |
 | PostgreSQL | homelab-postgres | 5432 | internal | CONFIGURED |
 | Redis | homelab-redis | 6379 | internal | CONFIGURED |
 | n8n | n8n | 5678 | n8n.evindrake.net | CONFIGURED |
@@ -172,8 +172,8 @@ sunshine_name = RDPWindows
 |-----------|--------|-----|
 | rig-city.com | Static site | Auto (Caddy) |
 | www.rig-city.com | Redirect to rig-city.com | Auto |
-| bot.rig-city.com | Discord Bot (port 4000) | Auto |
-| stream.rig-city.com | Stream Bot (port 5000) | Auto |
+| bot.evindrake.net | Discord Bot (port 4000) | Auto |
+| stream.evindrake.net | Stream Bot (port 5000) | Auto |
 
 ### evindrake.net
 | Subdomain | Target | SSL |
@@ -279,8 +279,8 @@ ssh evin@100.118.44.102  # or use RDP
 | Service | URL |
 |---------|-----|
 | Dashboard | https://dashboard.evindrake.net |
-| Discord Bot | https://bot.rig-city.com |
-| Stream Bot | https://stream.rig-city.com |
+| Discord Bot | https://bot.evindrake.net |
+| Stream Bot | https://stream.evindrake.net |
 | n8n | https://n8n.evindrake.net |
 | Code Server | https://code.evindrake.net |
 | Plex | https://plex.evindrake.net |

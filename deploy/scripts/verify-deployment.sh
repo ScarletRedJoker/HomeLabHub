@@ -27,8 +27,8 @@ VERBOSE="false"
 JSON_OUTPUT="false"
 
 CLOUD_DASHBOARD_URL="${CLOUD_DASHBOARD_URL:-https://dashboard.evindrake.net}"
-CLOUD_DISCORD_BOT_URL="${CLOUD_DISCORD_BOT_URL:-https://bot.rig-city.com}"
-CLOUD_STREAM_BOT_URL="${CLOUD_STREAM_BOT_URL:-https://stream.rig-city.com}"
+CLOUD_DISCORD_BOT_URL="${CLOUD_DISCORD_BOT_URL:-https://bot.evindrake.net}"
+CLOUD_STREAM_BOT_URL="${CLOUD_STREAM_BOT_URL:-https://stream.evindrake.net}"
 CLOUD_N8N_URL="${CLOUD_N8N_URL:-https://n8n.evindrake.net}"
 CLOUD_PLEX_URL="${CLOUD_PLEX_URL:-https://plex.evindrake.net}"
 CLOUD_HOMEASSISTANT_URL="${CLOUD_HOMEASSISTANT_URL:-https://home.evindrake.net}"
@@ -67,8 +67,8 @@ Examples:
 
 Environment Variables:
     CLOUD_DASHBOARD_URL      Dashboard URL (default: https://dashboard.evindrake.net)
-    CLOUD_DISCORD_BOT_URL    Discord Bot URL (default: https://bot.rig-city.com)
-    CLOUD_STREAM_BOT_URL     Stream Bot URL (default: https://stream.rig-city.com)
+    CLOUD_DISCORD_BOT_URL    Discord Bot URL (default: https://bot.evindrake.net)
+    CLOUD_STREAM_BOT_URL     Stream Bot URL (default: https://stream.evindrake.net)
     CLOUD_N8N_URL            n8n URL (default: https://n8n.evindrake.net)
     WIREGUARD_LOCAL_IP       WireGuard local IP (default: 10.200.0.2)
     LOCAL_PLEX_URL           Local Plex URL (default: http://localhost:32400)

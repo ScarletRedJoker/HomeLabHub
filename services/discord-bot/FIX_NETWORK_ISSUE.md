@@ -65,7 +65,7 @@ docker compose up -d
 
 **3. Connect to Nginx Proxy Manager:**
 - The bot will run on port 5000
-- Configure NPM to proxy bot.rig-city.com → localhost:5000
+- Configure NPM to proxy bot.evindrake.net → localhost:5000
 
 ### Option 3: Fix Port Conflict (If Port 5000 Taken)
 
@@ -82,7 +82,7 @@ discord-bot:
 ```
 
 **2. Update Nginx Proxy Manager:**
-- Change bot.rig-city.com to proxy to port 5001 instead of 5000
+- Change bot.evindrake.net to proxy to port 5001 instead of 5000
 
 ## 🔍 Verification Commands
 
@@ -135,7 +135,7 @@ Connected to 2 server(s):
 - [ ] Verify postgres is accessible from bot container
 - [ ] Check bot logs for successful connection
 - [ ] Test bot in Discord
-- [ ] Test dashboard at bot.rig-city.com
+- [ ] Test dashboard at bot.evindrake.net
 - [ ] Verify homelabhub can discover bot
 
 ## 🆘 Still Not Working?

@@ -341,8 +341,8 @@ Shows Traefik routing configuration:
 # │ Router        │ Domain              │ Service │ Status │
 # ├───────────────┼─────────────────────┼─────────┼────────┤
 # │ dashboard     │ host.evindrake.net  │ ✓       │ Active │
-# │ discord-bot   │ bot.rig-city.com    │ ✓       │ Active │
-# │ stream-bot    │ stream.rig-city.com │ ✓       │ Active │
+# │ discord-bot   │ bot.evindrake.net    │ ✓       │ Active │
+# │ stream-bot    │ stream.evindrake.net │ ✓       │ Active │
 # └────────────────────────────────────────────────────────┘
 ```
 

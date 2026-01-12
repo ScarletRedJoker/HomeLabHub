@@ -26,15 +26,15 @@ class DomainService:
         },
         {
             'name': 'Discord Ticket Bot',
-            'url': 'https://bot.rig-city.com',
-            'subdomain': 'bot.rig-city.com',
+            'url': 'https://bot.evindrake.net',
+            'subdomain': 'bot.evindrake.net',
             'type': 'web',
             'container': 'discord-bot'
         },
         {
             'name': 'Stream Bot',
-            'url': 'https://stream.rig-city.com',
-            'subdomain': 'stream.rig-city.com',
+            'url': 'https://stream.evindrake.net',
+            'subdomain': 'stream.evindrake.net',
             'type': 'web',
             'container': 'stream-bot'
         },

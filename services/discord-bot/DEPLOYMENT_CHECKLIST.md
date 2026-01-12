@@ -9,8 +9,8 @@ Use this checklist before deploying to production to ensure everything is config
 - [ ] `DISCORD_CLIENT_ID` - Application ID from Discord
 - [ ] `DISCORD_CLIENT_SECRET` - OAuth client secret
 - [ ] `DISCORD_APP_ID` - Same as DISCORD_CLIENT_ID
-- [ ] `DISCORD_CALLBACK_URL` - Your OAuth callback URL (e.g., `https://bot.rig-city.com/auth/discord/callback`)
-- [ ] `PUBLIC_DOMAIN` - Your public domain (e.g., `https://bot.rig-city.com`)
+- [ ] `DISCORD_CALLBACK_URL` - Your OAuth callback URL (e.g., `https://bot.evindrake.net/auth/discord/callback`)
+- [ ] `PUBLIC_DOMAIN` - Your public domain (e.g., `https://bot.evindrake.net`)
 - [ ] `SESSION_SECRET` - Random 32+ character string
 - [ ] `POSTGRES_PASSWORD` - Strong database password
 - [ ] `DATABASE_URL` - PostgreSQL connection string

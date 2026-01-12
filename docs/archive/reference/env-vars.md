@@ -252,7 +252,7 @@ Multi-platform streaming integration (Twitch, YouTube, Spotify, Kick).
 | `TWITCH_CLIENT_ID` | ○ | Stream Bot | `abc123...` | Twitch application Client ID |
 | `TWITCH_CLIENT_SECRET` | ○ | Stream Bot | `********` | Twitch application Client Secret |
 | `TWITCH_CHANNEL` | ○ | Stream Bot | `your_channel` | Default Twitch channel |
-| `TWITCH_REDIRECT_URI` | ○ | Stream Bot | `https://stream.rig-city.com/api/auth/twitch/callback` | OAuth callback URL |
+| `TWITCH_REDIRECT_URI` | ○ | Stream Bot | `https://stream.evindrake.net/api/auth/twitch/callback` | OAuth callback URL |
 
 **How to Obtain**:
 1. Go to [Twitch Developer Console](https://dev.twitch.tv/console/apps)
@@ -267,7 +267,7 @@ Multi-platform streaming integration (Twitch, YouTube, Spotify, Kick).
 | `YOUTUBE_CLIENT_ID` | ○ | Stream Bot | `123...apps.googleusercontent.com` | Google OAuth Client ID |
 | `YOUTUBE_CLIENT_SECRET` | ○ | Stream Bot | `GOCSPX-...` | Google OAuth Client Secret |
 | `YOUTUBE_REFRESH_TOKEN` | ○ | Stream Bot | `1//0g...` | OAuth refresh token |
-| `YOUTUBE_REDIRECT_URI` | ○ | Stream Bot | `https://stream.rig-city.com/api/auth/youtube/callback` | OAuth callback URL |
+| `YOUTUBE_REDIRECT_URI` | ○ | Stream Bot | `https://stream.evindrake.net/api/auth/youtube/callback` | OAuth callback URL |
 
 **How to Obtain**:
 1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
@@ -283,7 +283,7 @@ Multi-platform streaming integration (Twitch, YouTube, Spotify, Kick).
 | `SPOTIFY_CLIENT_ID` | ○ | Stream Bot | `abc123...` | Spotify application Client ID |
 | `SPOTIFY_CLIENT_SECRET` | ○ | Stream Bot | `********` | Spotify application Client Secret |
 | `SPOTIFY_REFRESH_TOKEN` | ○ | Stream Bot | `AQB...` | OAuth refresh token |
-| `SPOTIFY_REDIRECT_URI` | ○ | Stream Bot | `https://stream.rig-city.com/api/auth/spotify/callback` | OAuth callback URL |
+| `SPOTIFY_REDIRECT_URI` | ○ | Stream Bot | `https://stream.evindrake.net/api/auth/spotify/callback` | OAuth callback URL |
 
 **How to Obtain**:
 1. Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
@@ -297,7 +297,7 @@ Multi-platform streaming integration (Twitch, YouTube, Spotify, Kick).
 |----------|----------|---------|---------|-------------|
 | `KICK_CLIENT_ID` | ○ | Stream Bot | `abc123...` | Kick application Client ID |
 | `KICK_CLIENT_SECRET` | ○ | Stream Bot | `********` | Kick application Client Secret |
-| `KICK_REDIRECT_URI` | ○ | Stream Bot | `https://stream.rig-city.com/api/auth/kick/callback` | OAuth callback URL |
+| `KICK_REDIRECT_URI` | ○ | Stream Bot | `https://stream.evindrake.net/api/auth/kick/callback` | OAuth callback URL |
 
 **How to Obtain**:
 1. Go to [Kick Developer Portal](https://kick.com/developers)
@@ -564,7 +564,7 @@ Public URLs for your services (update with your domains).
 
 | Variable | Required | Service | Example | Description |
 |----------|----------|---------|---------|-------------|
-| `DISCORD_BOT_URL` | ○ | Discord Bot | `https://bot.rig-city.com` | Public Discord bot URL |
+| `DISCORD_BOT_URL` | ○ | Discord Bot | `https://bot.evindrake.net` | Public Discord bot URL |
 | `N8N_URL` | ○ | n8n | `https://n8n.evindrake.net` | Public n8n URL |
 | `STATIC_SITE_URL` | ○ | Static Site | `https://scarletredjoker.com` | Static website URL |
 | `LETSENCRYPT_EMAIL` | ○ | Caddy | `you@example.com` | Email for SSL certificates |

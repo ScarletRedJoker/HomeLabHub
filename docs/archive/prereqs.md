@@ -67,7 +67,7 @@ Complete this checklist before starting deployment.
 3. Copy:
    - [ ] `TWITCH_CLIENT_ID`
    - [ ] `TWITCH_CLIENT_SECRET`
-4. Set OAuth redirect URL: `https://stream.rig-city.com/api/auth/twitch/callback`
+4. Set OAuth redirect URL: `https://stream.evindrake.net/api/auth/twitch/callback`
 
 ### YouTube Integration (Optional)
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
@@ -77,7 +77,7 @@ Complete this checklist before starting deployment.
 5. Copy:
    - [ ] `YOUTUBE_CLIENT_ID`
    - [ ] `YOUTUBE_CLIENT_SECRET`
-6. Set redirect URL: `https://stream.rig-city.com/api/auth/youtube/callback`
+6. Set redirect URL: `https://stream.evindrake.net/api/auth/youtube/callback`
 
 ### Spotify Integration (Optional)
 1. Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
@@ -85,7 +85,7 @@ Complete this checklist before starting deployment.
 3. Copy:
    - [ ] `SPOTIFY_CLIENT_ID`
    - [ ] `SPOTIFY_CLIENT_SECRET`
-4. Set redirect URL: `https://stream.rig-city.com/api/auth/spotify/callback`
+4. Set redirect URL: `https://stream.evindrake.net/api/auth/spotify/callback`
 
 ### Plex Token (Local Services)
 1. Sign in to Plex at [plex.tv](https://www.plex.tv/)

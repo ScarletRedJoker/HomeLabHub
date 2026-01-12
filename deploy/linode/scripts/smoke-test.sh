@@ -233,7 +233,7 @@ test_core_services() {
 test_bots() {
     log_section "Bot Services"
     
-    local discord_health=$(curl_check "https://bot.rig-city.com/health" "$TIMEOUT_STANDARD")
+    local discord_health=$(curl_check "https://bot.evindrake.net/health" "$TIMEOUT_STANDARD")
     if [[ -n "$discord_health" ]]; then
         if echo "$discord_health" | grep -qiE '"status"\s*:\s*"(ok|healthy)"'; then
             pass "Discord Bot" "Health OK"
@@ -252,7 +252,7 @@ test_bots() {
         fi
     fi
     
-    local stream_health=$(curl_check "https://stream.rig-city.com/health" "$TIMEOUT_STANDARD")
+    local stream_health=$(curl_check "https://stream.evindrake.net/health" "$TIMEOUT_STANDARD")
     if [[ -n "$stream_health" ]]; then
         if echo "$stream_health" | grep -qiE '"status"\s*:\s*"(ok|healthy)"'; then
             pass "Stream Bot" "Health OK"

@@ -36,7 +36,7 @@ This document tracks the production readiness of all integrations in the Nebula 
 ```env
 TWITCH_CLIENT_ID=your_client_id
 TWITCH_CLIENT_SECRET=your_client_secret
-TWITCH_REDIRECT_URI=https://stream.rig-city.com/api/auth/twitch/callback
+TWITCH_REDIRECT_URI=https://stream.evindrake.net/api/auth/twitch/callback
 ```
 
 **Verification:** Ensure redirect URI is registered in Twitch Developer Console.
@@ -54,7 +54,7 @@ TWITCH_REDIRECT_URI=https://stream.rig-city.com/api/auth/twitch/callback
 ```env
 YOUTUBE_CLIENT_ID=your_client_id
 YOUTUBE_CLIENT_SECRET=your_client_secret
-YOUTUBE_REDIRECT_URI=https://stream.rig-city.com/api/auth/youtube/callback
+YOUTUBE_REDIRECT_URI=https://stream.evindrake.net/api/auth/youtube/callback
 ```
 
 **Verification:**
@@ -74,7 +74,7 @@ YOUTUBE_REDIRECT_URI=https://stream.rig-city.com/api/auth/youtube/callback
 ```env
 SPOTIFY_CLIENT_ID=your_client_id
 SPOTIFY_CLIENT_SECRET=your_client_secret
-SPOTIFY_REDIRECT_URI=https://stream.rig-city.com/api/auth/spotify/callback
+SPOTIFY_REDIRECT_URI=https://stream.evindrake.net/api/auth/spotify/callback
 ```
 
 **To Enable:**

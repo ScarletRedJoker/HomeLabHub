@@ -93,7 +93,7 @@ services:
       - "homelabhub.icon=discord"
       - "homelabhub.category=application"
       - "homelabhub.importance=critical"
-      - "homelabhub.web.url=https://bot.rig-city.com"
+      - "homelabhub.web.url=https://bot.evindrake.net"
       - "homelabhub.web.port=5000"
       - "homelabhub.web.protocol=https"
       - "homelabhub.health.endpoint=/health"

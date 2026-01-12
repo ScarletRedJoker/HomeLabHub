@@ -46,29 +46,29 @@ curl -I https://dashboard.evindrake.net
 docker logs homelab-dashboard --tail 50 | grep -i error
 ```
 
-### Discord Bot (bot.rig-city.com)
+### Discord Bot (bot.evindrake.net)
 | Test | Command | Expected | Fix |
 |------|---------|----------|-----|
-| Health | `curl -I https://bot.rig-city.com/health` | 200 OK | Check container logs |
+| Health | `curl -I https://bot.evindrake.net/health` | 200 OK | Check container logs |
 | Bot Online | Check Discord server | Bot shows online | Check DISCORD_BOT_TOKEN |
 | Commands | Type `!ping` in Discord | Bot replies | Check DB/permissions |
 
 ```bash
 # Functional test
-curl -I https://bot.rig-city.com/health
+curl -I https://bot.evindrake.net/health
 docker logs discord-bot --tail 50 | grep -i error
 ```
 
-### Stream Bot (stream.rig-city.com)
+### Stream Bot (stream.evindrake.net)
 | Test | Command | Expected | Fix |
 |------|---------|----------|-----|
-| Health | `curl -I https://stream.rig-city.com/health` | 200 OK | Check container logs |
+| Health | `curl -I https://stream.evindrake.net/health` | 200 OK | Check container logs |
 | OAuth | Visit site, try Twitch login | OAuth flow works | Check TWITCH_CLIENT_ID/SECRET |
 | Dashboard | Login and view dashboard | Loads correctly | Check DB migrations |
 
 ```bash
 # Functional test
-curl -I https://stream.rig-city.com/health
+curl -I https://stream.evindrake.net/health
 docker logs stream-bot --tail 50 | grep -i error
 ```
 
@@ -240,10 +240,10 @@ echo -e "\n[5] Dashboard"
 curl -s -o /dev/null -w "%{http_code}" https://dashboard.evindrake.net
 
 echo -e "\n[6] Discord Bot"
-curl -s -o /dev/null -w "%{http_code}" https://bot.rig-city.com/health
+curl -s -o /dev/null -w "%{http_code}" https://bot.evindrake.net/health
 
 echo -e "\n[7] Stream Bot"
-curl -s -o /dev/null -w "%{http_code}" https://stream.rig-city.com/health
+curl -s -o /dev/null -w "%{http_code}" https://stream.evindrake.net/health
 
 echo -e "\n[8] n8n"
 curl -s -o /dev/null -w "%{http_code}" https://n8n.evindrake.net
