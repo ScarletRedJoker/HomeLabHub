@@ -35,6 +35,7 @@ import { registerGiveawayCommands, handleGiveawayButtonInteraction, startGiveawa
 import { registerModerationCommands, registerAutomodConfigCommands, initializeAutomodEvents } from './features/moderation';
 import { registerConfigCommands, handleConfigAutocomplete } from './features/config';
 import { registerPresenceCommands, initPresenceFeature } from './features/presence';
+import { registerMusicCommands, initMusicPlayer } from './features/music';
 import { commandEngine } from '../services/commandEngine';
 import { guildIdentityService } from '../services/guildIdentityService';
 import { welcomeCardRenderer } from '../services/welcomeCardRenderer';
@@ -80,6 +81,7 @@ registerModerationCommands(commands);
 registerAutomodConfigCommands(commands);
 registerConfigCommands(commands);
 registerPresenceCommands(commands as any);
+registerMusicCommands(commands as any);
 console.log('[Discord] Total commands after all registrations:', Array.from(commands.keys()).join(', '));
 
 export async function startBot(storage: IStorage, broadcast: (data: any) => void): Promise<void> {
@@ -3028,6 +3030,16 @@ export async function startBot(storage: IStorage, broadcast: (data: any) => void
         console.log('[Bot] ✅ Presence feature initialized successfully');
       } catch (presenceFeatureError) {
         console.error('[Bot] Failed to initialize presence feature:', presenceFeatureError);
+      }
+      
+      // Initialize music player
+      console.log('[Bot] Initializing music player...');
+      try {
+        await initMusicPlayer(client!);
+        console.log('[Bot] ✅ Music player initialized successfully');
+      } catch (musicError) {
+        console.error('[Bot] Failed to initialize music player:', musicError);
+        console.log('[Bot] Music commands will not be available');
       }
     });
 
