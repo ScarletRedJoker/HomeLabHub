@@ -16,6 +16,24 @@ interface ServerConfig {
 const DEFAULT_SSH_KEY_PATH = process.env.SSH_KEY_PATH || 
   (process.env.REPL_ID ? `${process.env.HOME}/.ssh/homelab` : "/root/.ssh/homelab");
 
+function getSSHPrivateKey(): Buffer | null {
+  if (process.env.SSH_PRIVATE_KEY) {
+    return Buffer.from(process.env.SSH_PRIVATE_KEY);
+  }
+  
+  const keyPath = DEFAULT_SSH_KEY_PATH;
+  if (existsSync(keyPath)) {
+    try {
+      return readFileSync(keyPath);
+    } catch (err: any) {
+      console.error(`Failed to read SSH key from file: ${err.message}`);
+      return null;
+    }
+  }
+  
+  return null;
+}
+
 const servers: Record<string, ServerConfig> = {
   linode: {
     id: "linode",
@@ -100,23 +118,11 @@ class TerminalServer {
     const conn = new Client();
     let stream: ClientChannel | null = null;
 
-    const keyPath = serverConfig.keyPath;
-    if (!existsSync(keyPath)) {
+    const privateKey = getSSHPrivateKey();
+    if (!privateKey) {
       ws.send(JSON.stringify({ 
         type: "error", 
-        message: `SSH key not found at ${keyPath}` 
-      }));
-      ws.close();
-      return;
-    }
-
-    let privateKey: Buffer;
-    try {
-      privateKey = readFileSync(keyPath);
-    } catch (err: any) {
-      ws.send(JSON.stringify({ 
-        type: "error", 
-        message: `Failed to read SSH key: ${err.message}` 
+        message: "SSH key not configured. Please add SSH_PRIVATE_KEY secret." 
       }));
       ws.close();
       return;
