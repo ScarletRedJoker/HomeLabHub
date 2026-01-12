@@ -41,11 +41,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let selectedModel = model;
+    
+    if (!selectedModel || selectedModel === "auto") {
+      const comfyAvailable = await aiOrchestrator.checkComfyUI();
+      if (comfyAvailable) {
+        selectedModel = inputImage ? "svd-local" : "animatediff";
+      } else if (aiOrchestrator.hasReplicate()) {
+        selectedModel = inputImage ? "wan-i2v" : "wan-t2v";
+      }
+    }
+
     const result = await aiOrchestrator.generateVideo({
       prompt: prompt || "Animate this image with natural motion",
       inputImage,
       aspectRatio: aspectRatio || "16:9",
-      model: model || (inputImage ? "wan-i2v" : "wan-t2v"),
+      model: selectedModel || (inputImage ? "wan-i2v" : "wan-t2v"),
+      provider: selectedModel?.includes("local") || selectedModel === "animatediff" ? "local" : undefined,
     });
 
     if (saveLocally && result.url) {

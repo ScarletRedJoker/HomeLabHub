@@ -141,6 +141,16 @@ When running on Linode (Tailscale network):
 
 ## Recent Changes (January 2026)
 
+### Creative Studio Local AI Improvements (January 12, 2026)
+- Fixed Docker Compose environment variables to point Stable Diffusion and ComfyUI to Windows VM IP (was incorrectly pointing to Ubuntu server)
+- Added `extra_hosts` routing to dashboard container for Tailscale IP accessibility
+- Updated AI orchestrator to prioritize local generation (ComfyUI/Stable Diffusion) before falling back to cloud APIs
+- Improved error messages with specific troubleshooting guidance for local AI connectivity
+- Updated Creative Studio UI to default to local models (AnimateDiff) and clearly show "Unrestricted" labeling
+- Local image/video generation now works without content restrictions when Stable Diffusion/ComfyUI are running on Windows VM
+
+
+
 ### Domain Migration (January 12, 2026)
 - Migrated all services from rig-city.com subdomains to evindrake.net
 - bot.rig-city.com → bot.evindrake.net

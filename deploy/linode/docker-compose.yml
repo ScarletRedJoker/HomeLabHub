@@ -137,6 +137,10 @@ services:
         condition: service_healthy
     networks:
       - homelab
+    extra_hosts:
+      - "windows-vm:${WINDOWS_VM_TAILSCALE_IP:-100.118.44.102}"
+      - "ubuntu-home:${TAILSCALE_LOCAL_HOST:-100.66.61.51}"
+      - "host.docker.internal:host-gateway"
     deploy:
       resources:
         limits:
@@ -167,11 +171,11 @@ services:
       - HOME_SSH_HOST=${TAILSCALE_LOCAL_HOST}
       - HOME_SSH_USER=evin
       - SSH_KEY_PATH=/app/.ssh/homelab
-      - OLLAMA_URL=http://${WINDOWS_VM_TAILSCALE_IP:-${TAILSCALE_LOCAL_HOST}}:11434
-      - OLLAMA_FALLBACK_URL=http://${TAILSCALE_LOCAL_HOST}:11434
-      - STABLE_DIFFUSION_URL=http://${TAILSCALE_LOCAL_HOST}:7860
-      - COMFYUI_URL=http://${TAILSCALE_LOCAL_HOST}:8188
-      - WINDOWS_VM_TAILSCALE_IP=${WINDOWS_VM_TAILSCALE_IP}
+      - OLLAMA_URL=http://${WINDOWS_VM_TAILSCALE_IP:-100.118.44.102}:11434
+      - OLLAMA_FALLBACK_URL=http://${TAILSCALE_LOCAL_HOST:-100.66.61.51}:11434
+      - STABLE_DIFFUSION_URL=http://${WINDOWS_VM_TAILSCALE_IP:-100.118.44.102}:7860
+      - COMFYUI_URL=http://${WINDOWS_VM_TAILSCALE_IP:-100.118.44.102}:8188
+      - WINDOWS_VM_TAILSCALE_IP=${WINDOWS_VM_TAILSCALE_IP:-100.118.44.102}
       - WINDOWS_VM_SSH_USER=${WINDOWS_VM_SSH_USER:-evin}
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
       - LOCAL_AI_STATE_FILE=/opt/homelab/state/local-ai.json

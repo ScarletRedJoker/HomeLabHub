@@ -248,9 +248,11 @@ class AIOrchestrator {
     const provider = request.provider || "openai";
 
     if (provider === "stable-diffusion") {
+      console.log(`[AI Orchestrator] Generating image with local Stable Diffusion at ${this.stableDiffusionUrl}`);
       return this.generateWithSD(request);
     }
 
+    console.log("[AI Orchestrator] Generating image with DALL-E 3 (cloud)");
     return this.generateWithDALLE(request);
   }
 
@@ -276,27 +278,47 @@ class AIOrchestrator {
   }
 
   private async generateWithSD(request: ImageRequest): Promise<ImageResponse> {
+    const sizeMap: Record<string, { width: number; height: number }> = {
+      "512x512": { width: 512, height: 512 },
+      "768x768": { width: 768, height: 768 },
+      "1024x1024": { width: 1024, height: 1024 },
+      "1792x1024": { width: 1024, height: 576 },
+      "1024x1792": { width: 576, height: 1024 },
+    };
+    
+    const dimensions = sizeMap[request.size || "1024x1024"] || { width: 1024, height: 1024 };
+    
     const response = await fetch(`${this.stableDiffusionUrl}/sdapi/v1/txt2img`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         prompt: request.prompt,
-        negative_prompt: request.negativePrompt || "blurry, low quality, distorted",
-        width: 1024,
-        height: 1024,
+        negative_prompt: request.negativePrompt || "blurry, low quality, distorted, watermark, text",
+        width: dimensions.width,
+        height: dimensions.height,
         steps: 30,
         cfg_scale: 7,
+        sampler_name: "DPM++ 2M Karras",
+        enable_hr: dimensions.width > 768,
+        hr_scale: dimensions.width > 768 ? 1.5 : 1,
+        hr_upscaler: "Latent",
+        denoising_strength: 0.5,
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`Stable Diffusion error: ${response.statusText}`);
+      const errorText = await response.text().catch(() => response.statusText);
+      throw new Error(`Stable Diffusion error at ${this.stableDiffusionUrl}: ${errorText}`);
     }
 
     const data = await response.json();
 
+    if (!data.images?.[0]) {
+      throw new Error("Stable Diffusion returned no image data");
+    }
+
     return {
-      base64: data.images?.[0],
+      base64: data.images[0],
       provider: "stable-diffusion",
     };
   }
@@ -661,26 +683,29 @@ class AIOrchestrator {
   }
 
   async generateVideo(request: VideoRequest): Promise<VideoResponse> {
-    // Check for local ComfyUI video generation first
-    if (request.provider === "local" || request.provider === "comfyui" || 
-        request.model === "animatediff" || request.model === "svd-local") {
-      const comfyAvailable = await this.checkComfyUI();
+    const comfyAvailable = await this.checkComfyUI();
+    const isLocalModel = request.model === "animatediff" || request.model === "svd-local";
+    const isLocalProvider = request.provider === "local" || request.provider === "comfyui";
+    const isCloudModel = request.model === "wan-t2v" || request.model === "wan-i2v" || request.model === "svd";
+    
+    console.log(`[AI Orchestrator] Video generation - model: ${request.model}, provider: ${request.provider}, ComfyUI: ${comfyAvailable}, Replicate: ${this.hasReplicate()}`);
+    
+    if (isLocalProvider || isLocalModel) {
       if (comfyAvailable) {
+        console.log("[AI Orchestrator] Using local ComfyUI for video generation - no content restrictions");
         return this.generateVideoWithComfyUI(request);
       }
-      if (request.provider === "local" || request.provider === "comfyui") {
-        throw new Error("ComfyUI not available - ensure ComfyUI is running on your Windows VM with AnimateDiff/SVD installed");
-      }
-      // Fall through to Replicate if auto-selecting
+      throw new Error(`ComfyUI not reachable at ${this.comfyuiUrl} - ensure ComfyUI is running on your Windows VM with AnimateDiff/SVD installed. Check that Tailscale is connected.`);
     }
 
-    if (!this.replicateClient) {
-      // Try ComfyUI as fallback if available
-      const comfyAvailable = await this.checkComfyUI();
+    if (isCloudModel && this.replicateClient) {
+      console.log(`[AI Orchestrator] Using Replicate for ${request.model}`);
+    } else if (!this.replicateClient) {
       if (comfyAvailable) {
+        console.log("[AI Orchestrator] Replicate not configured, falling back to local ComfyUI");
         return this.generateVideoWithComfyUI(request);
       }
-      throw new Error("No video generation provider available - add REPLICATE_API_TOKEN or configure ComfyUI on your Windows VM");
+      throw new Error(`No video generation provider available. Options:\n1. Start ComfyUI on Windows VM (${this.comfyuiUrl}) for local generation\n2. Add REPLICATE_API_TOKEN for cloud generation\n\nTip: Local generation has no content restrictions and is free.`);
     }
 
     const modelId = request.model || (request.inputImage ? "wan-i2v" : "wan-t2v");

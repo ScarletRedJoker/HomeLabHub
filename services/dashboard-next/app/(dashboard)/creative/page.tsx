@@ -79,7 +79,7 @@ export default function CreativeStudioPage() {
   const [generatedImage, setGeneratedImage] = useState<GeneratedImage | null>(null);
 
   const [videoPrompt, setVideoPrompt] = useState("");
-  const [videoModel, setVideoModel] = useState("wan-t2v");
+  const [videoModel, setVideoModel] = useState("animatediff");
   const [videoAspectRatio, setVideoAspectRatio] = useState("16:9");
   const [inputImageUrl, setInputImageUrl] = useState("");
   const [saveVideoLocally, setSaveVideoLocally] = useState(true);
@@ -495,13 +495,13 @@ export default function CreativeStudioPage() {
                     <SelectItem value="animatediff">
                       <span className="flex items-center gap-2">
                         <Cpu className="h-3 w-3 text-green-500" />
-                        AnimateDiff (Local GPU)
+                        AnimateDiff (Local - Unrestricted)
                       </span>
                     </SelectItem>
                     <SelectItem value="svd-local">
                       <span className="flex items-center gap-2">
                         <Cpu className="h-3 w-3 text-green-500" />
-                        SVD Local (Image-to-Video)
+                        SVD Local (Image-to-Video - Unrestricted)
                       </span>
                     </SelectItem>
                     <SelectItem value="wan-t2v">
@@ -594,8 +594,11 @@ export default function CreativeStudioPage() {
               </Button>
 
               <p className="text-xs text-muted-foreground">
-                Video generation uses Replicate API. ~5 second clips, 480p quality.
-                Requires REPLICATE_API_TOKEN secret.
+                {videoModel === "animatediff" || videoModel === "svd-local" ? (
+                  <>Local generation via ComfyUI on Windows VM. <strong className="text-green-400">No content restrictions.</strong> Free to use.</>
+                ) : (
+                  <>Cloud generation via Replicate API. ~5 second clips, 480p quality. Requires REPLICATE_API_TOKEN.</>
+                )}
               </p>
             </div>
 

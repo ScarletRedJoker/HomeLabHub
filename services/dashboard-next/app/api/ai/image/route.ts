@@ -39,7 +39,18 @@ export async function POST(request: NextRequest) {
     
     if (selectedProvider === "auto") {
       const sdAvailable = await aiOrchestrator.checkStableDiffusion();
-      selectedProvider = sdAvailable ? "stable-diffusion" : "openai";
+      if (sdAvailable) {
+        selectedProvider = "stable-diffusion";
+        console.log("[Image API] Using local Stable Diffusion - no content restrictions");
+      } else if (aiOrchestrator.hasOpenAI()) {
+        selectedProvider = "openai";
+        console.log("[Image API] Falling back to DALL-E 3 (local SD not available)");
+      } else {
+        return NextResponse.json(
+          { error: "No image generation provider available", details: "Configure Stable Diffusion on Windows VM or add OpenAI API key" },
+          { status: 503 }
+        );
+      }
     }
 
     const result = await aiOrchestrator.generateImage({
