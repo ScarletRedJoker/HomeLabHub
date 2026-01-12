@@ -15,6 +15,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@discord-player/extractor": "^7.1.0",
     "@hookform/resolvers": "^3.9.1",
     "@jridgewell/trace-mapping": "^0.3.25",
     "@napi-rs/canvas": "^0.1.67",
@@ -59,6 +60,7 @@
     "connect-pg-simple": "^10.0.0",
     "cors": "^2.8.5",
     "date-fns": "^3.6.0",
+    "discord-player": "^7.1.0",
     "discord.js": "^14.18.0",
     "dockerode": "^4.0.9",
     "dotenv": "^16.4.7",

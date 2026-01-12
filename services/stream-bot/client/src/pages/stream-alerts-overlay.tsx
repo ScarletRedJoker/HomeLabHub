@@ -146,7 +146,8 @@ export default function StreamAlertsOverlay() {
       if (!userId) return;
 
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      // Use overlay-specific WebSocket endpoint with token-based auth (OBS doesn't have session cookies)
+      const wsUrl = `${protocol}//${window.location.host}/ws/overlay?token=${encodeURIComponent(token!)}`;
 
       try {
         const ws = new WebSocket(wsUrl);

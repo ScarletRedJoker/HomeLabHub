@@ -91,10 +91,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Initialize WebSocket server on /ws path (Reference: javascript_websocket blueprint)
   const wss = new WebSocketServer({ noServer: true });
+  
+  // Separate WebSocket server for overlay connections (token-based auth for OBS)
+  const overlayWss = new WebSocketServer({ noServer: true });
 
-  // Authenticate WebSocket upgrades using session middleware
+  // Import token verification for overlay WebSocket
+  const { verifyOverlayToken } = await import('./crypto-utils');
+
+  // Authenticate WebSocket upgrades using session middleware or overlay token
   httpServer.on("upgrade", (request: any, socket, head) => {
-    if (request.url !== "/ws") {
+    const url = new URL(request.url || '', `http://${request.headers.host}`);
+    const pathname = url.pathname;
+
+    // Handle overlay WebSocket connections with token-based auth
+    if (pathname === "/ws/overlay") {
+      const token = url.searchParams.get('token');
+      
+      if (!token) {
+        console.log('[WebSocket/Overlay] Rejecting connection: missing token');
+        socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+        socket.destroy();
+        return;
+      }
+
+      try {
+        const userId = verifyOverlayToken(token);
+        overlayWss.handleUpgrade(request, socket, head, (ws) => {
+          (ws as any).userId = userId;
+          (ws as any).isOverlay = true;
+          overlayWss.emit("connection", ws, request);
+        });
+      } catch (error: any) {
+        console.log(`[WebSocket/Overlay] Rejecting connection: ${error.message}`);
+        socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+        socket.destroy();
+      }
+      return;
+    }
+
+    // Handle regular dashboard WebSocket connections with session auth
+    if (pathname !== "/ws") {
       socket.destroy();
       return;
     }
@@ -129,6 +165,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (ws as any).userId = userId;
         wss.emit("connection", ws, request);
       });
+    });
+  });
+  
+  // Handle overlay WebSocket connections
+  overlayWss.on("connection", (ws: WebSocket) => {
+    const userId = (ws as any).userId;
+
+    if (!userId) {
+      ws.close();
+      return;
+    }
+
+    // Register WebSocket client with botManager (same as regular clients)
+    botManager.addWSClient(ws, userId);
+    console.log(`[WebSocket/Overlay] Overlay client connected for user ${userId}`);
+
+    ws.on("close", () => {
+      botManager.removeWSClient(ws);
+      console.log(`[WebSocket/Overlay] Overlay client disconnected for user ${userId}`);
+    });
+
+    ws.on("error", (error) => {
+      console.error(`[WebSocket/Overlay] Error for user ${userId}:`, error);
     });
   });
 

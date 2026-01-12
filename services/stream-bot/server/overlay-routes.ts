@@ -46,8 +46,8 @@ router.post('/generate-token', requireAuth, async (req, res) => {
   try {
     const { platform, expiresIn } = req.body;
 
-    if (!platform || !['spotify', 'youtube', 'alerts'].includes(platform)) {
-      return res.status(400).json({ error: 'Invalid platform. Must be spotify, youtube, or alerts.' });
+    if (!platform || !['spotify', 'youtube', 'alerts', 'chat', 'nowplaying'].includes(platform)) {
+      return res.status(400).json({ error: 'Invalid platform. Must be spotify, youtube, alerts, chat, or nowplaying.' });
     }
 
     const userId = req.user!.id;
@@ -74,8 +74,10 @@ router.post('/generate-token', requireAuth, async (req, res) => {
     // Platform-specific overlay URLs - use OBS-optimized endpoints with inline CSS
     const overlayUrls: Record<string, string> = {
       spotify: `/api/overlay/spotify/obs?token=${token}`,
-      youtube: `/overlay/youtube?token=${token}`,
-      alerts: `/overlay/stream-alerts?token=${token}`,
+      youtube: `/api/overlay/youtube/obs?token=${token}`,
+      alerts: `/api/overlay/alerts/obs?token=${token}`,
+      chat: `/api/overlay/chat/obs?token=${token}`,
+      nowplaying: `/api/overlay/spotify/obs?token=${token}`,
     };
 
     const overlayUrl = overlayUrls[platform];
