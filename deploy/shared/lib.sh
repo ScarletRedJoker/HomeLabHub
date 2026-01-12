@@ -748,14 +748,17 @@ configure_local_ai_env() {
     local best_sd="$sd_win_url"
     local sd_online=false
     
-    if curl -sf --connect-timeout 3 "${sd_win_url}/sdapi/v1/options" > /dev/null 2>&1; then
+    # Check multiple endpoints - API may vary by version
+    if curl -sf --connect-timeout 3 "${sd_win_url}/sdapi/v1/sd-models" > /dev/null 2>&1 || \
+       curl -sf --connect-timeout 3 "${sd_win_url}/internal/ping" > /dev/null 2>&1 || \
+       curl -s --connect-timeout 3 -o /dev/null -w "%{http_code}" "${sd_win_url}/" 2>/dev/null | grep -q "200"; then
         echo -e "${GREEN}[OK]${NC} Stable Diffusion: $sd_win_url (Windows VM GPU)"
         sd_online=true
         configured=$((configured + 1))
     else
         echo -e "${YELLOW}[--]${NC} Stable Diffusion: $sd_win_url (offline - start on Windows VM)"
         # Check fallback for status display only
-        if [ -n "$sd_url" ] && [ "$sd_url" != "$sd_win_url" ] && curl -sf --connect-timeout 3 "${sd_url}/sdapi/v1/options" > /dev/null 2>&1; then
+        if [ -n "$sd_url" ] && [ "$sd_url" != "$sd_win_url" ] && (curl -sf --connect-timeout 3 "${sd_url}/sdapi/v1/sd-models" > /dev/null 2>&1 || curl -s --connect-timeout 3 -o /dev/null -w "%{http_code}" "${sd_url}/" 2>/dev/null | grep -q "200"); then
             echo -e "${YELLOW}     ${NC} Fallback available: $sd_url (not using - Windows VM is primary)"
         fi
     fi
@@ -871,7 +874,10 @@ register_local_ai_services() {
     
     # Check Windows VM first for Stable Diffusion (GPU preferred)
     local win_sd_url="http://${WINDOWS_VM_IP}:7860"
-    if curl -sf --connect-timeout 3 "${win_sd_url}/sdapi/v1/options" > /dev/null 2>&1; then
+    # Check multiple endpoints - API may vary by version
+    if curl -sf --connect-timeout 3 "${win_sd_url}/sdapi/v1/sd-models" > /dev/null 2>&1 || \
+       curl -sf --connect-timeout 3 "${win_sd_url}/internal/ping" > /dev/null 2>&1 || \
+       curl -s --connect-timeout 3 -o /dev/null -w "%{http_code}" "${win_sd_url}/" 2>/dev/null | grep -q "200"; then
         sd_status="online"
         sd_url="$win_sd_url"
         sd_source="windows-vm-gpu"
@@ -879,7 +885,8 @@ register_local_ai_services() {
     else
         # Fallback to local Ubuntu
         local local_sd_url="http://${preferred_ip}:7860"
-        if curl -sf --connect-timeout 3 "${local_sd_url}/sdapi/v1/options" > /dev/null 2>&1; then
+        if curl -sf --connect-timeout 3 "${local_sd_url}/sdapi/v1/sd-models" > /dev/null 2>&1 || \
+           curl -s --connect-timeout 3 -o /dev/null -w "%{http_code}" "${local_sd_url}/" 2>/dev/null | grep -q "200"; then
             sd_status="online"
             sd_url="$local_sd_url"
             sd_source="ubuntu-host"
