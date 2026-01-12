@@ -294,7 +294,11 @@ class AIOrchestrator {
     try {
       response = await fetch(`${this.stableDiffusionUrl}/sdapi/v1/txt2img`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest"
+        },
         body: JSON.stringify({
           prompt: request.prompt,
           negative_prompt: request.negativePrompt || "blurry, low quality, distorted, watermark, text",
@@ -500,7 +504,7 @@ class AIOrchestrator {
         "class_type": "ADE_AnimateDiffLoaderWithContext",
         "inputs": {
           "model": ["1", 0],
-          "motion_model": "mm_sd_v15_v2.ckpt",
+          "model_name": "mm_sd_v15_v2.ckpt",
           "beta_schedule": "sqrt_linear (AnimateDiff)",
           "context_length": 16,
           "context_stride": 1,
