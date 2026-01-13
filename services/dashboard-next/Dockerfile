@@ -42,10 +42,14 @@ RUN apk add --no-cache wget
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy built assets
-COPY --from=builder /app/public ./public
+# Copy built assets with proper ownership
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Create directories for generated content with proper permissions
+RUN mkdir -p /app/public/generated-images /app/public/generated-videos && \
+    chown -R nextjs:nodejs /app/public
 
 USER nextjs
 
