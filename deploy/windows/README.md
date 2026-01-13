@@ -242,6 +242,43 @@ Dashboard can send commands:
 
 ## Troubleshooting
 
+### Ollama "server not responding" during setup
+The Ollama server needs time to start before pulling models:
+```powershell
+# Start Ollama manually
+ollama serve
+
+# In another terminal, pull models
+ollama pull qwen2.5-coder:7b
+ollama pull nomic-embed-text
+```
+
+### Stable Diffusion git authentication failure
+The Stability-AI repo requires a GitHub Personal Access Token:
+```powershell
+# Option 1: Use SSH (recommended)
+git config --global url."git@github.com:".insteadOf "https://github.com/"
+
+# Option 2: Create a GitHub PAT with 'repo' scope
+# Go to: https://github.com/settings/tokens
+# Then set credential helper:
+git config --global credential.helper manager
+
+# Option 3: Skip the problematic repo (SD will use a fallback)
+# Delete the partial clone and restart:
+Remove-Item -Recurse C:\AI\stable-diffusion-webui
+# Then run webui.bat manually (not with --exit)
+```
+
+### SSH from Linux fails with "Too many authentication failures"
+```bash
+# Limit SSH to password-only:
+ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no Evin@100.118.44.102
+
+# Or limit identity attempts:
+ssh -o IdentitiesOnly=yes Evin@100.118.44.102
+```
+
 ### Service won't start
 ```powershell
 # Check Windows Event Log

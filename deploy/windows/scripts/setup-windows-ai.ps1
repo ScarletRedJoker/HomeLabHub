@@ -124,13 +124,51 @@ if (-not $SkipOllama) {
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
     }
     
-    # Pull recommended models
-    $defaultModel = if ($env:DEFAULT_LLM_MODEL) { $env:DEFAULT_LLM_MODEL } else { "qwen2.5-coder:7b" }
-    Write-Host "[Ollama] Pulling default model: $defaultModel" -ForegroundColor Yellow
-    & ollama pull $defaultModel
+    # Ensure Ollama server is running before pulling models
+    Write-Host "[Ollama] Starting Ollama server..." -ForegroundColor Yellow
+    $ollamaProcess = Get-Process -Name "ollama" -ErrorAction SilentlyContinue
+    if (-not $ollamaProcess) {
+        # Start Ollama serve in background
+        Start-Process -FilePath "ollama" -ArgumentList "serve" -WindowStyle Hidden
+        Write-Host "[Ollama] Waiting for server to start..." -ForegroundColor Yellow
+        
+        # Wait for Ollama API to respond (up to 30 seconds)
+        $maxRetries = 30
+        $retryCount = 0
+        $serverReady = $false
+        
+        while (-not $serverReady -and $retryCount -lt $maxRetries) {
+            Start-Sleep -Seconds 1
+            $retryCount++
+            try {
+                $response = Invoke-WebRequest -Uri "http://localhost:11434/api/tags" -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue
+                if ($response.StatusCode -eq 200) {
+                    $serverReady = $true
+                    Write-Host "[Ollama] Server ready!" -ForegroundColor Green
+                }
+            } catch {
+                Write-Host "[Ollama] Waiting... ($retryCount/$maxRetries)" -ForegroundColor Gray
+            }
+        }
+        
+        if (-not $serverReady) {
+            Write-Host "[Ollama] WARNING: Server did not start in time. Skipping model pull." -ForegroundColor Yellow
+            Write-Host "[Ollama] Run 'ollama serve' manually, then 'ollama pull qwen2.5-coder:7b'" -ForegroundColor Yellow
+        }
+    } else {
+        $serverReady = $true
+        Write-Host "[Ollama] Server already running" -ForegroundColor Green
+    }
     
-    Write-Host "[Ollama] Pulling embeddings model..." -ForegroundColor Yellow
-    & ollama pull nomic-embed-text
+    # Pull recommended models only if server is ready
+    if ($serverReady) {
+        $defaultModel = if ($env:DEFAULT_LLM_MODEL) { $env:DEFAULT_LLM_MODEL } else { "qwen2.5-coder:7b" }
+        Write-Host "[Ollama] Pulling default model: $defaultModel" -ForegroundColor Yellow
+        & ollama pull $defaultModel
+        
+        Write-Host "[Ollama] Pulling embeddings model..." -ForegroundColor Yellow
+        & ollama pull nomic-embed-text
+    }
     
     Write-Host "[Ollama] Installation complete" -ForegroundColor Green
 }
@@ -148,20 +186,33 @@ if (-not $SkipStableDiffusion) {
         Write-Host "[Stable Diffusion] Cloning repository..." -ForegroundColor Yellow
         & git clone https://github.com/AUTOMATIC1111/stable-diffusion-webui.git $sdPath
         
-        # Create webui-user.bat with optimal settings
+        # Create webui-user.bat with optimal settings (skip Stability-AI repo that requires auth)
         $webuiUser = @"
 @echo off
 set PYTHON=
 set GIT=
 set VENV_DIR=
-set COMMANDLINE_ARGS=--xformers --api --listen --port 7860 --enable-insecure-extension-access
+set COMMANDLINE_ARGS=--xformers --api --listen --port 7860 --enable-insecure-extension-access --no-download-sd-model
 "@
         $webuiUser | Set-Content -Path "$sdPath\webui-user.bat"
         
-        Write-Host "[Stable Diffusion] Running first-time setup (this may take a while)..." -ForegroundColor Yellow
-        Push-Location $sdPath
-        & .\webui.bat --exit
-        Pop-Location
+        # Note: First-time setup requires interaction for git auth
+        # Skip auto-setup in unattended mode - user will run webui.bat manually
+        if ($Unattended) {
+            Write-Host "[Stable Diffusion] Skipping first-time setup (unattended mode)" -ForegroundColor Yellow
+            Write-Host "[Stable Diffusion] To complete setup, run: cd $sdPath && .\webui.bat" -ForegroundColor Yellow
+            Write-Host "[Stable Diffusion] Note: May require GitHub authentication for Stability-AI repo" -ForegroundColor Yellow
+        } else {
+            Write-Host "[Stable Diffusion] Running first-time setup (this may take a while)..." -ForegroundColor Yellow
+            Write-Host "[Stable Diffusion] Note: If prompted for GitHub auth, you may need to create a Personal Access Token" -ForegroundColor Yellow
+            Push-Location $sdPath
+            try {
+                & .\webui.bat --exit
+            } catch {
+                Write-Host "[Stable Diffusion] Setup encountered an error. Run webui.bat manually to complete." -ForegroundColor Yellow
+            }
+            Pop-Location
+        }
     }
     
     Write-Host "[Stable Diffusion] Installation complete" -ForegroundColor Green
