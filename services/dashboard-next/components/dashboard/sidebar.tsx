@@ -110,6 +110,10 @@ const navGroups: NavGroup[] = [
     icon: Sparkles,
     items: [
       { href: "/ai", label: "Jarvis AI", icon: Bot },
+      { href: "/ai-jobs", label: "AI Jobs", icon: Cpu },
+      { href: "/ai-training", label: "Training", icon: Play },
+      { href: "/ai-speech", label: "Speech", icon: Wand2 },
+      { href: "/ai-knowledge", label: "Knowledge Base", icon: Layers },
       { href: "/ai-sandbox", label: "AI Sandbox", icon: Wand2 },
       { href: "/creative", label: "Creative Studio", icon: Sparkles },
       { href: "/models", label: "Model Catalog", icon: Box },
