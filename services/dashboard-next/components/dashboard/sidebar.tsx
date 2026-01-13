@@ -84,6 +84,7 @@ const navGroups: NavGroup[] = [
     icon: Server,
     defaultOpen: true,
     items: [
+      { href: "/infrastructure", label: "Infrastructure", icon: Server },
       { href: "/servers", label: "Servers", icon: HardDrive },
       { href: "/services", label: "Services", icon: Server },
       { href: "/resources", label: "Resources", icon: Shield },
