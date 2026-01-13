@@ -92,37 +92,39 @@ Once running, you should be able to access:
 - Local: http://localhost:7860
 - From Linode: http://100.118.44.102:7860
 
-## 5. ComfyUI Installation
+## 5. ComfyUI Installation (Portable Version)
 
-### Installation
-```powershell
-cd C:\Users\Evin\Documents
-# Download portable version
-# Get from: https://github.com/comfyanonymous/ComfyUI/releases
+### Download & Extract
+1. Go to [ComfyUI Releases](https://github.com/comfyanonymous/ComfyUI/releases)
+2. Download the latest `ComfyUI_windows_portable_nvidia.7z`
+3. Extract to `C:\Users\Evin\Documents\ComfyUI_windows_portable`
 
-# Or clone and setup manually:
-git clone https://github.com/comfyanonymous/ComfyUI.git
-cd ComfyUI
-pip install -r requirements.txt
+Your folder structure should be:
+```
+C:\Users\Evin\Documents\ComfyUI_windows_portable\
+├── ComfyUI\
+├── python_embeded\
+├── run_nvidia_gpu.bat
+└── ...
 ```
 
 ### Configure for Network Access
-Create a startup script `start_comfyui.bat`:
+Create a startup script `start_comfyui_network.bat` in the ComfyUI_windows_portable folder:
 ```batch
 @echo off
-cd C:\Users\Evin\Documents\ComfyUI_windows_portable
-.\python_embeded\python.exe -s ComfyUI\main.py --windows-standalone-build --listen 0.0.0.0
+cd /d C:\Users\Evin\Documents\ComfyUI_windows_portable
+.\python_embeded\python.exe -s ComfyUI\main.py --listen 0.0.0.0 --port 8188
 ```
 
 ### Install Video Generation Extensions
 For AnimateDiff video generation:
 ```powershell
-cd C:\Users\Evin\Documents\ComfyUI\custom_nodes
+cd C:\Users\Evin\Documents\ComfyUI_windows_portable\ComfyUI\custom_nodes
 git clone https://github.com/Kosinkadink/ComfyUI-AnimateDiff-Evolved.git
 git clone https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git
 ```
 
-Download AnimateDiff models to `ComfyUI/custom_nodes/ComfyUI-AnimateDiff-Evolved/models/`:
+Download AnimateDiff models to `ComfyUI_windows_portable\ComfyUI\custom_nodes\ComfyUI-AnimateDiff-Evolved\models\`:
 - [mm_sd_v15_v2.ckpt](https://huggingface.co/guoyww/animatediff/resolve/main/mm_sd_v15_v2.ckpt)
 
 ### Verify Access
@@ -179,7 +181,7 @@ For Stable Diffusion:
 - Start in: `C:\stable-diffusion-webui`
 
 For ComfyUI:
-- Program: `C:\Users\Evin\Documents\ComfyUI_windows_portable\start_comfyui.bat`
+- Program: `C:\Users\Evin\Documents\ComfyUI_windows_portable\start_comfyui_network.bat`
 - Start in: `C:\Users\Evin\Documents\ComfyUI_windows_portable`
 
 ### Option B: Startup Folder
