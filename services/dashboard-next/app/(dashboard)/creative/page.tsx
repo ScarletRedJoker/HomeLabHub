@@ -443,10 +443,10 @@ export default function CreativeStudioPage() {
             <div className="space-y-4">
               <Label>Generated Image</Label>
               <div className="border rounded-lg bg-muted/50 min-h-[400px] flex items-center justify-center">
-                {generatedImage?.url ? (
+                {generatedImage?.base64 ? (
                   <div className="relative w-full">
                     <img
-                      src={generatedImage.url}
+                      src={`data:image/png;base64,${generatedImage.base64}`}
                       alt="Generated"
                       className="w-full rounded-lg"
                     />
@@ -454,15 +454,20 @@ export default function CreativeStudioPage() {
                       <Button
                         size="sm"
                         variant="secondary"
-                        onClick={() => window.open(generatedImage.url, "_blank")}
+                        onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = `data:image/png;base64,${generatedImage.base64}`;
+                          link.download = `generated-${Date.now()}.png`;
+                          link.click();
+                        }}
                       >
                         <Download className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
-                ) : generatedImage?.base64 ? (
+                ) : generatedImage?.url ? (
                   <img
-                    src={`data:image/png;base64,${generatedImage.base64}`}
+                    src={generatedImage.url}
                     alt="Generated"
                     className="w-full rounded-lg"
                   />

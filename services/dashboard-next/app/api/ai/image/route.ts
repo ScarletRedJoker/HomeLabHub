@@ -85,6 +85,7 @@ export async function POST(request: NextRequest) {
         
         return NextResponse.json({
           url: publicUrl,
+          base64: result.base64,
           provider: result.provider,
           savedPath: filepath,
           filename,
