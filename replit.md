@@ -1,7 +1,7 @@
 # Nebula Command
 
 ## Overview
-Nebula Command is a creation engine designed for homelab management, AI-powered content creation, Discord community integration, and multi-platform streaming. It functions as a custom development and automation platform optimized for homelab environments, supporting distributed deployment across cloud and local infrastructure. Its core capabilities include a web-based dashboard for homelab control, a Discord bot for community management, a Stream bot for multi-platform streaming, and hybrid cloud/local AI services.
+Nebula Command is a creation engine for homelab management, AI-powered content creation, Discord community integration, and multi-platform streaming. It serves as a custom development and automation platform optimized for homelab environments, supporting distributed deployment across cloud and local infrastructure. Its core capabilities include a web-based dashboard for homelab control, a Discord bot for community management, a Stream bot for multi-platform streaming, and hybrid cloud/local AI services. The project's vision is to provide a comprehensive, integrated solution for managing homelabs, fostering online communities, and streamlining content creation and distribution, aiming to offer a versatile and powerful toolset for both personal and community-driven projects.
 
 ## User Preferences
 - **Development Workflow:** Edit in Replit → Push to GitHub → Pull on servers
@@ -11,16 +11,16 @@ Nebula Command is a creation engine designed for homelab management, AI-powered 
 ## System Architecture
 
 ### Core Services
-The platform is composed of three main services designed for distributed deployment:
+The platform is built around three distributed core services:
 *   **Dashboard (Next.js 14):** A web interface for homelab management, featuring real-time statistics, Docker container controls, SSH-based server metrics, deployment pipelines, a Monaco code editor, a visual website designer, and an OpenAI-powered AI chat assistant (Jarvis AI).
-*   **Discord Bot (Node.js/React):** A highly customizable "swiss army knife" Discord bot with per-server identity and granular feature toggles for community management (tickets, music, stream notifications, analytics, leveling, giveaways, polls, moderation).
-*   **Stream Bot (Node.js/React/Vite):** Handles multi-platform content posting and interaction across Twitch, YouTube, and Kick, supporting OAuth, token encryption, and rate limiting, along with an OBS overlay editor.
+*   **Discord Bot (Node.js/React):** A highly customizable bot with per-server identity and granular feature toggles for community management (tickets, music, stream notifications, analytics, leveling, giveaways, polls, moderation).
+*   **Stream Bot (Node.js/React/Vite):** Manages multi-platform content posting and interaction across Twitch, YouTube, and Kick, including OAuth, token encryption, and rate limiting.
 
 ### Cross-Service Integration
-Services utilize a shared PostgreSQL database and Redis for caching. The Stream Bot uses webhooks for Discord notifications, and the Dashboard and Discord Bot communicate via APIs.
+Services share a PostgreSQL database and Redis for caching. The Stream Bot uses webhooks for Discord notifications, and the Dashboard and Discord Bot communicate via APIs.
 
 ### Deployment Architecture
-The system employs a distributed deployment model where a cloud server hosts the Dashboard, Discord Bot, and Stream Bot, while a local Ubuntu Homelab hosts Plex, MinIO, Home Assistant, Ollama, and Stable Diffusion. Tailscale provides secure mesh networking for cloud services to access local homelab resources.
+The system utilizes a distributed deployment model where a cloud server hosts the Dashboard, Discord Bot, and Stream Bot. A local Ubuntu Homelab hosts Plex, MinIO, Home Assistant, Ollama, and Stable Diffusion. Tailscale provides secure mesh networking for cloud services to access local homelab resources.
 
 ### Database Schema
 A shared PostgreSQL instance organizes data into distinct databases for each core service: `homelab_jarvis` (Dashboard), `discord_bot`, and `stream_bot`.
@@ -30,7 +30,7 @@ The system features a three-layer design (Experience, Control Plane, Execution P
 
 ### Universal Creation Engine
 The platform includes:
-- **Quick Start Wizard:** One-click creator kits for various user types with pre-configured bundles.
+- **Quick Start Wizard:** One-click creator kits with pre-configured bundles.
 - **Universal Builder:** Allows building various applications (websites, mobile, desktop, bots) with framework and feature selections.
 - **App Factory:** Visual project scaffolding with AI-powered code generation.
 - **AI Code Assistant:** For code refactoring, debugging, optimization, documentation, and language conversion.
@@ -39,33 +39,20 @@ The platform includes:
 - **Project Manager:** For project organization, status tracking, and resource monitoring.
 
 ### Auto-Deployment System
-Includes a Server Provisioning API for SSH key generation, Docker installation, and Tailscale setup, and a Deployment Execution API for Docker/PM2 deployments with real-time logging.
-
-### Deployment Script Features
-Both Linode and local deployment scripts (`deploy/linode/deploy.sh`, `deploy/local/deploy.sh`) include:
-- **Preflight checks:** Validates Docker, disk space, and prerequisites
-- **Auto-secret generation:** Internal secrets (Postgres, JWT, session, per-service session secrets) auto-generated
-- **Authelia first-run setup:** Auto-creates users_database.yml with random admin credentials on first deploy
-- **Health check retries:** Extended wait with retry logic (up to 60s) for slow-starting services
-- **Commands:**
-  - `deploy` - Full deployment with build and health checks
-  - `doctor` - Check all required secrets and configuration
-  - `test` - Run smoke tests for all services
-  - `monitor` - Start continuous health monitoring daemon with Discord alerts
-  - `verify` - Extended health checks with retries (up to 60s)
-  - `status` - Show service status
-  - `up`, `down`, `restart` - Service lifecycle commands
-  - `logs` - View service logs
-  - `prune` - Clean up Docker resources
-- **Cloudflare DNS sync:** Automatic DNS record management (requires `CLOUDFLARE_API_TOKEN` in .env)
-- **Smoke tests:** Automated validation of all service endpoints and container health
-- **Health monitoring:** Continuous monitoring with Discord webhook alerts for service state changes
+Includes a Server Provisioning API for SSH key generation, Docker installation, and Tailscale setup, and a Deployment Execution API for Docker/PM2 deployments with real-time logging. Deployment scripts include preflight checks, auto-secret generation, Authelia setup, health check retries, Cloudflare DNS sync, smoke tests, and continuous health monitoring.
 
 ### AI Gateway Architecture
-Features a unified AI Chat interface with provider selection (OpenAI, Ollama), model selection, real-time streaming responses, and a circuit breaker pattern for automatic fallback from local to cloud AI if local services are unavailable. Local AI services (Ollama, Stable Diffusion, ComfyUI) are automatically discovered and configured between Linode and homelab servers using Tailscale.
+Features a unified AI Chat interface with provider selection (OpenAI, Ollama), model selection, real-time streaming responses, and a circuit breaker for automatic fallback from local to cloud AI. Local AI services (Ollama, Stable Diffusion, ComfyUI) are automatically discovered and configured between Linode and homelab servers using Tailscale.
 
 ### Discord Bot Architecture
-Features a per-server customization system allowing server admins to configure the bot's identity and enable/disable 16+ toggleable features across 8 categories (moderation, community, engagement, utility, notifications, tickets, media, logging).
+Features a per-server customization system allowing server admins to configure the bot's identity and enable/disable 16+ toggleable features across 8 categories.
+
+### Production Configuration
+- **Environment Detection:** The dashboard automatically detects Replit (dev) or Production (Linode) environments, adjusting AI access accordingly.
+- **SSH Key Handling:** SSH-dependent features prioritize `SSH_PRIVATE_KEY` environment variable, with a file fallback.
+- **Jarvis AI Tools:** Jarvis has 6 autonomous tools with OpenAI function calling for image/video generation, Docker actions, deployments, and server/container status.
+- **Local AI (Production Only):** When running on Linode (Tailscale network), local AI services on Windows VM (Ollama, ComfyUI) and Ubuntu (Ollama fallback) are utilized.
+- **VM & Service Management:** An `/infrastructure` page provides remote control for VMs (via libvirt over SSH) and Windows services (Ollama, Stable Diffusion WebUI, ComfyUI) on homelab resources.
 
 ## External Dependencies
 *   **PostgreSQL:** Primary relational database (Neon for development, self-hosted for production).
@@ -81,147 +68,3 @@ Features a per-server customization system allowing server admins to configure t
 *   **Caddy:** Reverse proxy.
 *   **Ollama:** Local large language model (LLM) inference.
 *   **Stable Diffusion:** Local image generation.
-
-## Production Domains
-*   **Dashboard:** evindrake.net - Main dashboard and homelab control
-*   **Discord Bot:** bot.evindrake.net - Discord bot dashboard and OAuth
-*   **Stream Bot:** stream.evindrake.net - Multi-platform streaming bot
-*   **Static Landing:** rig-city.com - Static landing page only (no services)
-
-## Infrastructure IPs
-*   **Windows VM (GPU):** 100.118.44.102 (Tailscale) - Hosts Ollama with RTX 3060, primary for AI inference
-*   **Local Ubuntu Server:** 100.66.61.51 (Tailscale) - Hosts Plex, MinIO, Home Assistant, media services
-*   **Linode Cloud:** 69.164.211.205 - Hosts Dashboard, Discord Bot, Stream Bot
-
-## AI Priority Chain
-1. Windows VM Ollama (GPU accelerated) - Primary
-2. Ubuntu Ollama (CPU fallback) - Secondary
-3. OpenAI API - Cloud fallback
-
-## Status Page
-The dashboard includes a comprehensive status page at `/status` that monitors:
-- Core services (Dashboard, Discord Bot, Stream Bot)
-- Databases (PostgreSQL, Redis)
-- AI services (Ollama, Stable Diffusion, ComfyUI)
-- Server health via SSH (when accessible)
-
-## Production Configuration
-
-### Required Secrets (Production)
-- `SESSION_SECRET` - JWT session signing (min 32 chars)
-- `SSH_PRIVATE_KEY` - SSH private key for server access (from env var, not file)
-- `DATABASE_URL` - PostgreSQL connection string
-- `AI_INTEGRATIONS_OPENAI_API_KEY` - OpenAI API key for AI features
-- `CLOUDFLARE_API_TOKEN` - DNS management
-
-### Environment Detection
-The dashboard automatically detects environment:
-- **Replit (dev)**: Uses `REPL_ID` detection, skips local AI (unreachable), uses OpenAI fallback
-- **Production (Linode)**: Reads `/opt/homelab/HomeLabHub/deploy/shared/state/local-ai.json` for local AI state, connects to Windows VM via Tailscale
-
-### SSH Key Handling
-All SSH-dependent features (terminal, Docker management, deployments) read keys from:
-1. `SSH_PRIVATE_KEY` environment variable (preferred)
-2. File at `SSH_KEY_PATH` or `/root/.ssh/homelab` (fallback)
-
-### Jarvis AI Tools
-Jarvis has 6 autonomous tools with OpenAI function calling:
-- `generate_image` - DALL-E 3 or local Stable Diffusion
-- `generate_video` - Replicate or local ComfyUI
-- `docker_action` - Start/stop/restart containers
-- `deploy` - Trigger deployment to Linode or Home server
-- `get_server_status` - Health check all services
-- `get_container_logs` - Retrieve container logs
-
-### Local AI (Production Only)
-When running on Linode (Tailscale network):
-- Windows VM Ollama: `http://100.118.44.102:11434`
-- Windows VM ComfyUI: `http://100.118.44.102:8188`
-- Ubuntu Ollama fallback: `http://100.66.61.51:11434`
-
-## Recent Changes (January 2026)
-
-### AI Provider & Redis Improvements (January 13, 2026)
-- Fixed Redis connection spam in Replit dev environment - REDIS_URL now only configured in production
-- Added graceful Redis error handling with retry strategy and error event listeners to EventBus
-- Removed Replit-specific code blocks that prevented local AI usage in production  
-- AI orchestrator "auto" mode now properly: tries local Windows VM first (SD/ComfyUI), falls back to cloud (DALL-E/Replicate) if unreachable
-- Explicit "local" selection degrades gracefully to cloud providers when local services unavailable
-- Added safeParseJSON() helper to prevent crashes from non-JSON error responses
-- Production on Linode uses local AI on Windows VM GPU via Tailscale; dev in Replit uses cloud-only
-
-### Creative Studio Local AI Improvements (January 12, 2026)
-- Fixed Docker Compose environment variables to point Stable Diffusion and ComfyUI to Windows VM IP (was incorrectly pointing to Ubuntu server)
-- Added `extra_hosts` routing to dashboard container for Tailscale IP accessibility
-- Updated AI orchestrator to prioritize local generation (ComfyUI/Stable Diffusion) before falling back to cloud APIs
-- Improved error messages with specific troubleshooting guidance for local AI connectivity
-- Updated Creative Studio UI to default to local models (AnimateDiff) and clearly show "Unrestricted" labeling
-- Local image/video generation now works without content restrictions when Stable Diffusion/ComfyUI are running on Windows VM
-- Added detailed error messages for missing ComfyUI custom nodes with installation instructions
-
-**ComfyUI Required Custom Nodes for Video Generation:**
-1. **AnimateDiff Evolved** - For text-to-video generation
-   - Install via ComfyUI Manager → Install Custom Nodes → Search "AnimateDiff Evolved"
-   - Download motion model `mm_sd_v15_v2.ckpt` to `ComfyUI/custom_nodes/ComfyUI-AnimateDiff-Evolved/models/`
-2. **VideoHelperSuite** - For video output encoding
-   - Install via ComfyUI Manager → Install Custom Nodes → Search "VideoHelperSuite"
-
-**Stable Diffusion WebUI API Requirements:**
-- Must be started with `--api` flag: `webui-user.bat` should include `set COMMANDLINE_ARGS=--api --listen`
-- Port 7860 must be accessible via Tailscale
-
-
-
-### Domain Migration (January 12, 2026)
-- Migrated all services from rig-city.com subdomains to evindrake.net
-- bot.rig-city.com → bot.evindrake.net
-- stream.rig-city.com → stream.evindrake.net
-- rig-city.com remains as static landing page only
-- Updated all OAuth callback URLs, CORS origins, and configuration
-
-### Stream Bot Overlays
-- Added OBS overlay endpoints: `/api/overlay/youtube/obs`, `/api/overlay/alerts/obs`, `/api/overlay/chat/obs`
-- Token-based authentication for all overlay endpoints
-- WebSocket support for real-time alerts and chat
-
-### Discord Bot Presence
-- User presence visibility settings now persist to database (survives restarts)
-- Added `presenceVisible` and `mediaPreferences` columns to `discord_users` table
-- Plex integration added to `/profile` and `/nowplaying` commands - shows what users are watching
-
-### Stable Diffusion WebUI Setup (Windows VM)
-Location: `C:\stable-diffusion-webui`
-Port: 7860 (local only via Tailscale)
-
-**IMPORTANT FIX**: Stability-AI made their repo private (Dec 2024). Edit `webui-user.bat` to add:
-```batch
-set STABLE_DIFFUSION_REPO=https://github.com/w-e-w/stablediffusion.git
-```
-
-Full `webui-user.bat`:
-```batch
-@echo off
-set STABLE_DIFFUSION_REPO=https://github.com/w-e-w/stablediffusion.git
-set PYTHON=
-set GIT=
-set VENV_DIR=
-set COMMANDLINE_ARGS=
-call webui.bat
-```
-
-### ComfyUI Setup (Windows VM)
-Location: `C:\Users\Evin\Documents\ComfyUI_windows_portable`
-Port: 8188 (listening on 0.0.0.0)
-
-Start command:
-```powershell
-cd C:\Users\Evin\Documents\ComfyUI_windows_portable
-.\python_embeded\python.exe -s ComfyUI\main.py --windows-standalone-build --listen 0.0.0.0
-```
-
-Models installed via ComfyUI-Manager:
-- Stable Video Diffusion (SVD)
-- SDXL Refiner 1.0
-- SDXL Inpainting
-- AnimateDiff v3
-- ControlNet LoRAs (Canny, Depth)
