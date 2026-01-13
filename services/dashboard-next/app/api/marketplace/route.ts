@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySession } from "@/lib/session";
 import { cookies } from "next/headers";
-import fs from "fs";
-import path from "path";
-import yaml from "js-yaml";
+import { 
+  MARKETPLACE_CATALOG, 
+  getPackagesByCategory, 
+  searchPackages,
+  getFeaturedPackages,
+} from "@/lib/marketplace/catalog";
+import { CATEGORIES, type MarketplacePackage } from "@/lib/marketplace/packages";
 import { db } from "@/lib/db";
-import { marketplacePackages, installations as installationsTable } from "@/lib/db/platform-schema";
-import { eq } from "drizzle-orm";
+import { installations, marketplacePackages } from "@/lib/db/platform-schema";
+import { eq, inArray } from "drizzle-orm";
 import { Client } from "ssh2";
-import { getServerById, getDefaultSshKeyPath, getSSHPrivateKey } from "@/lib/server-config-store";
+import { getServerById, getSSHPrivateKey } from "@/lib/server-config-store";
 
 async function checkAuth() {
   const cookieStore = await cookies();
@@ -17,176 +21,66 @@ async function checkAuth() {
   return await verifySession(session.value);
 }
 
-interface MarketplacePackage {
+interface PackageForAPI {
+  id: string;
   name: string;
   version: string;
   displayName: string;
   description: string;
   category: string;
+  categoryInfo?: {
+    name: string;
+    color: string;
+  };
   icon?: string;
   repository: string;
-  variables?: Array<{
+  ports: { container: number; host: number; description?: string }[];
+  volumes: { container: string; description?: string }[];
+  variables: {
     name: string;
     description: string;
     default?: string;
     required?: boolean;
     secret?: boolean;
-  }>;
+  }[];
+  tags?: string[];
+  featured?: boolean;
+  installed?: boolean;
+  installationStatus?: string;
 }
 
-function loadPackagesFromFile(): MarketplacePackage[] {
-  const packagesDir = path.join(process.cwd(), "../../marketplace/packages");
-  const altPackagesDir = path.join(process.cwd(), "../../../marketplace/packages");
-  
-  let dir = packagesDir;
-  if (!fs.existsSync(dir)) {
-    dir = altPackagesDir;
-  }
-  if (!fs.existsSync(dir)) {
-    return getBuiltinPackages();
-  }
-
-  const packages: MarketplacePackage[] = [];
-  const files = fs.readdirSync(dir).filter(f => f.endsWith(".yml") || f.endsWith(".yaml"));
-
-  for (const file of files) {
-    try {
-      const content = fs.readFileSync(path.join(dir, file), "utf-8");
-      const pkg = yaml.load(content) as MarketplacePackage;
-      if (pkg && pkg.name) {
-        packages.push(pkg);
-      }
-    } catch (error) {
-      console.error(`Failed to load package ${file}:`, error);
-    }
-  }
-
-  return packages.length > 0 ? packages : getBuiltinPackages();
-}
-
-function getBuiltinPackages(): MarketplacePackage[] {
-  return [
-    {
-      name: "ollama",
-      version: "0.1.0",
-      displayName: "Ollama",
-      description: "Run large language models locally. Supports Llama 3.2, CodeLlama, Mistral, and more.",
-      category: "ai",
-      repository: "docker.io/ollama/ollama",
-      variables: [
-        { name: "PORT", description: "API port", default: "11434" },
-        { name: "OLLAMA_MODELS", description: "Models to pull", default: "llama3.2" },
-      ],
-    },
-    {
-      name: "uptime-kuma",
-      version: "1.23.0",
-      displayName: "Uptime Kuma",
-      description: "Self-hosted monitoring tool. Monitor HTTP, TCP, DNS, and Docker containers.",
-      category: "monitoring",
-      repository: "docker.io/louislam/uptime-kuma",
-      variables: [
-        { name: "PORT", description: "Web UI port", default: "3001" },
-      ],
-    },
-    {
-      name: "n8n",
-      version: "1.20.0",
-      displayName: "n8n Workflow Automation",
-      description: "Fair-code workflow automation with 400+ integrations. Visual workflow editor.",
-      category: "tools",
-      repository: "docker.io/n8nio/n8n",
-      variables: [
-        { name: "PORT", description: "Web UI port", default: "5678" },
-        { name: "ADMIN_USER", description: "Admin username", default: "admin" },
-        { name: "ADMIN_PASSWORD", description: "Admin password", required: true, secret: true },
-      ],
-    },
-    {
-      name: "code-server",
-      version: "4.20.0",
-      displayName: "VS Code (code-server)",
-      description: "Run VS Code in the browser. Full IDE experience with extensions and terminal.",
-      category: "tools",
-      repository: "docker.io/codercom/code-server",
-      variables: [
-        { name: "PORT", description: "Web UI port", default: "8443" },
-        { name: "PASSWORD", description: "Access password", required: true, secret: true },
-      ],
-    },
-    {
-      name: "grafana",
-      version: "10.2.0",
-      displayName: "Grafana",
-      description: "The open observability platform. Create dashboards for metrics, logs, and traces.",
-      category: "monitoring",
-      repository: "docker.io/grafana/grafana",
-      variables: [
-        { name: "PORT", description: "Web UI port", default: "3000" },
-        { name: "ADMIN_USER", description: "Admin username", default: "admin" },
-        { name: "ADMIN_PASSWORD", description: "Admin password", required: true, secret: true },
-      ],
-    },
-    {
-      name: "postgres",
-      version: "16.0",
-      displayName: "PostgreSQL",
-      description: "The world's most advanced open source relational database.",
-      category: "database",
-      repository: "docker.io/library/postgres",
-      variables: [
-        { name: "PORT", description: "Database port", default: "5432" },
-        { name: "POSTGRES_USER", description: "Database user", default: "postgres" },
-        { name: "POSTGRES_PASSWORD", description: "Database password", required: true, secret: true },
-        { name: "POSTGRES_DB", description: "Default database", default: "nebula" },
-      ],
-    },
-    {
-      name: "redis",
-      version: "7.2",
-      displayName: "Redis",
-      description: "In-memory data store for caching, messaging, and real-time data.",
-      category: "database",
-      repository: "docker.io/library/redis",
-      variables: [
-        { name: "PORT", description: "Redis port", default: "6379" },
-      ],
-    },
-    {
-      name: "stable-diffusion",
-      version: "1.0.0",
-      displayName: "Stable Diffusion WebUI",
-      description: "AI image generation with Automatic1111 WebUI. Requires NVIDIA GPU.",
-      category: "ai",
-      repository: "ghcr.io/automatic1111/stable-diffusion-webui",
-      variables: [
-        { name: "PORT", description: "WebUI port", default: "7860" },
-      ],
-    },
-  ];
-}
-
-async function getMarketplacePackages(): Promise<MarketplacePackage[]> {
-  try {
-    const dbPackages = await db.select().from(marketplacePackages);
-    
-    if (dbPackages.length > 0) {
-      return dbPackages.map(pkg => ({
-        name: pkg.name,
-        version: pkg.version || "1.0.0",
-        displayName: pkg.displayName,
-        description: pkg.description || "",
-        category: pkg.category || "tools",
-        icon: pkg.iconUrl || undefined,
-        repository: pkg.repository || "",
-        variables: (pkg.manifest as any)?.variables || [],
-      }));
-    }
-  } catch (error) {
-    console.error("Failed to query packages from database:", error);
-  }
-
-  return loadPackagesFromFile();
+function transformPackage(pkg: MarketplacePackage, installedPackages: Set<string>): PackageForAPI {
+  const category = CATEGORIES.find(c => c.id === pkg.category);
+  return {
+    id: pkg.id,
+    name: pkg.name,
+    version: pkg.version,
+    displayName: pkg.displayName,
+    description: pkg.description,
+    category: pkg.category,
+    categoryInfo: category ? { name: category.name, color: category.color } : undefined,
+    icon: pkg.iconUrl,
+    repository: pkg.image,
+    ports: pkg.ports.map(p => ({
+      container: p.container,
+      host: p.host,
+      description: p.description,
+    })),
+    volumes: pkg.volumes.map(v => ({
+      container: v.container,
+      description: v.description,
+    })),
+    variables: pkg.envVars.map(v => ({
+      name: v.name,
+      description: v.description,
+      default: v.default,
+      required: v.required,
+      secret: v.secret,
+    })),
+    tags: pkg.tags,
+    featured: pkg.featured,
+    installed: installedPackages.has(pkg.id),
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -198,38 +92,60 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const category = searchParams.get("category");
   const search = searchParams.get("search");
+  const featured = searchParams.get("featured");
 
-  let packages = await getMarketplacePackages();
-
-  if (category && category !== "all") {
-    packages = packages.filter(p => p.category === category);
+  let installedPackages = new Set<string>();
+  try {
+    const allInstallations = await db.select({ config: installations.config })
+      .from(installations)
+      .where(eq(installations.status, "running"));
+    
+    allInstallations.forEach(inst => {
+      const config = inst.config as Record<string, any>;
+      if (config?.packageId) {
+        installedPackages.add(config.packageId);
+      }
+    });
+  } catch (e) {
+    console.error("Error fetching installed packages:", e);
   }
 
-  if (search) {
-    const searchLower = search.toLowerCase();
-    packages = packages.filter(
-      p =>
-        p.name.toLowerCase().includes(searchLower) ||
-        p.displayName.toLowerCase().includes(searchLower) ||
-        p.description.toLowerCase().includes(searchLower)
-    );
+  let packages: MarketplacePackage[];
+
+  if (featured === "true") {
+    packages = getFeaturedPackages();
+  } else if (search) {
+    packages = searchPackages(search);
+    if (category && category !== "all") {
+      packages = packages.filter(p => p.category === category);
+    }
+  } else {
+    packages = getPackagesByCategory(category || "all");
   }
 
-  const allPackages = await getMarketplacePackages();
+  const transformedPackages = packages.map(pkg => transformPackage(pkg, installedPackages));
+
+  const categoryCounts: Record<string, number> = { all: MARKETPLACE_CATALOG.length };
+  MARKETPLACE_CATALOG.forEach(pkg => {
+    categoryCounts[pkg.category] = (categoryCounts[pkg.category] || 0) + 1;
+  });
+
   const categories = [
-    { id: "all", name: "All", count: allPackages.length },
-    { id: "ai", name: "AI & ML", count: allPackages.filter(p => p.category === "ai").length },
-    { id: "database", name: "Databases", count: allPackages.filter(p => p.category === "database").length },
-    { id: "monitoring", name: "Monitoring", count: allPackages.filter(p => p.category === "monitoring").length },
-    { id: "tools", name: "Developer Tools", count: allPackages.filter(p => p.category === "tools").length },
-    { id: "web", name: "Web Apps", count: allPackages.filter(p => p.category === "web").length },
-    { id: "media", name: "Media", count: allPackages.filter(p => p.category === "media").length },
+    { id: "all", name: "All", count: MARKETPLACE_CATALOG.length },
+    ...CATEGORIES.map(cat => ({
+      id: cat.id,
+      name: cat.name,
+      count: categoryCounts[cat.id] || 0,
+      color: cat.color,
+      icon: cat.icon,
+    })).filter(cat => cat.count > 0),
   ];
 
   return NextResponse.json({
-    packages,
+    packages: transformedPackages,
     categories,
-    total: packages.length,
+    total: transformedPackages.length,
+    installedCount: installedPackages.size,
   });
 }
 
@@ -241,22 +157,22 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { packageName, config = {}, server = "linode" } = body;
+    const { package: packageName, packageId, variables = {}, server = "linode" } = body;
 
-    if (!packageName) {
-      return NextResponse.json({ error: "Package name is required" }, { status: 400 });
+    const pkgIdentifier = packageId || packageName;
+    if (!pkgIdentifier) {
+      return NextResponse.json({ error: "Package name or ID is required" }, { status: 400 });
     }
 
-    const allPackages = await getMarketplacePackages();
-    const pkg = allPackages.find(p => p.name === packageName);
+    const pkg = MARKETPLACE_CATALOG.find(p => p.id === pkgIdentifier || p.name === pkgIdentifier);
     if (!pkg) {
       return NextResponse.json({ error: "Package not found" }, { status: 404 });
     }
 
-    const missingRequired = pkg.variables
-      ?.filter(v => v.required && !config[v.name] && !v.default)
+    const missingRequired = pkg.envVars
+      ?.filter(v => v.required && !variables[v.name] && !v.default)
       .map(v => v.name);
-    
+
     if (missingRequired && missingRequired.length > 0) {
       return NextResponse.json(
         { error: `Missing required variables: ${missingRequired.join(", ")}` },
@@ -264,27 +180,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let packageId: string | null = null;
+    let dbPackageId: string | null = null;
     try {
       const [dbPkg] = await db.select({ id: marketplacePackages.id })
         .from(marketplacePackages)
-        .where(eq(marketplacePackages.name, packageName))
+        .where(eq(marketplacePackages.name, pkg.name))
         .limit(1);
-      if (dbPkg) packageId = dbPkg.id;
+      if (dbPkg) dbPackageId = dbPkg.id;
     } catch (e) {
       console.error("Error finding package ID in DB:", e);
     }
 
-    const [installation] = await db.insert(installationsTable).values({
-      packageId: packageId as any,
+    const [installation] = await db.insert(installations).values({
+      packageId: dbPackageId as any,
       status: "pending",
-      config: config,
-      projectId: null, 
+      config: { ...variables, packageId: pkg.id, displayName: pkg.displayName },
+      projectId: null,
     }).returning();
 
     const installId = installation.id;
 
-    queueInstallation(installId, pkg, config, server);
+    queueInstallation(installId, pkg, variables, server);
 
     return NextResponse.json({
       success: true,
@@ -312,11 +228,12 @@ function escapeShellArg(arg: string): string {
 async function executeSSHCommand(
   host: string,
   user: string,
-  command: string
+  command: string,
+  port: number = 22
 ): Promise<{ success: boolean; output?: string; error?: string }> {
   return new Promise((resolve) => {
     const privateKey = getSSHPrivateKey();
-    
+
     if (!privateKey) {
       resolve({ success: false, error: "SSH key not found" });
       return;
@@ -326,7 +243,7 @@ async function executeSSHCommand(
     const timeout = setTimeout(() => {
       conn.end();
       resolve({ success: false, error: "Connection timeout" });
-    }, 60000);
+    }, 120000);
 
     conn.on("ready", () => {
       conn.exec(command, (err, stream) => {
@@ -372,7 +289,7 @@ async function executeSSHCommand(
     try {
       conn.connect({
         host,
-        port: 22,
+        port,
         username: user,
         privateKey: privateKey,
         readyTimeout: 30000,
@@ -391,46 +308,79 @@ async function queueInstallation(
   serverId: string
 ) {
   try {
-    await db.update(installationsTable)
+    await db.update(installations)
       .set({ status: "installing" })
-      .where(eq(installationsTable.id, installId as any));
+      .where(eq(installations.id, installId as any));
 
     const server = await getServerById(serverId);
     if (!server) {
       throw new Error(`Server not found: ${serverId}`);
     }
 
-    const envArgs = pkg.variables
-      ?.map(v => {
+    const envArgs = pkg.envVars
+      .map(v => {
         const value = config[v.name] || v.default || "";
+        if (!value) return "";
         return `-e ${escapeShellArg(v.name)}=${escapeShellArg(value)}`;
       })
-      .join(" ") || "";
+      .filter(Boolean)
+      .join(" ");
 
-    const portMapping = config.PORT ? `-p ${config.PORT}:${config.PORT}` : "";
-    const containerName = escapeShellArg(pkg.name);
-    const image = escapeShellArg(pkg.repository);
+    const portArgs = pkg.ports
+      .map(p => {
+        const hostPort = config[`PORT_${p.container}`] || config.PORT || p.host;
+        return `-p ${hostPort}:${p.container}${p.protocol === "udp" ? "/udp" : ""}`;
+      })
+      .join(" ");
 
-    const dockerCommand = `docker pull ${image} && (docker rm -f ${containerName} 2>/dev/null || true) && docker run -d --name ${containerName} --restart unless-stopped ${portMapping} ${envArgs} ${image}`;
+    const volumeArgs = pkg.volumes
+      .map(v => {
+        const hostPath = v.host || `/opt/${pkg.id}${v.container}`;
+        return `-v ${hostPath}:${v.container}`;
+      })
+      .join(" ");
+
+    const containerName = escapeShellArg(pkg.id);
+    const image = escapeShellArg(pkg.image);
+
+    const mkdirCommand = pkg.volumes
+      .filter(v => !v.host?.includes("docker.sock"))
+      .map(v => {
+        const hostPath = v.host || `/opt/${pkg.id}${v.container}`;
+        return `mkdir -p ${escapeShellArg(hostPath)}`;
+      })
+      .join(" && ");
+
+    const dockerCommand = [
+      mkdirCommand ? `${mkdirCommand} &&` : "",
+      `docker pull ${image}`,
+      `&& (docker rm -f ${containerName} 2>/dev/null || true)`,
+      `&& docker run -d --name ${containerName} --restart unless-stopped`,
+      portArgs,
+      envArgs,
+      volumeArgs,
+      image,
+    ].filter(Boolean).join(" ");
 
     console.log(`[Marketplace] Executing on ${server.name}:`, dockerCommand);
 
     const result = await executeSSHCommand(
       server.host,
       server.user,
-      dockerCommand
+      dockerCommand,
+      server.port || 22
     );
 
     if (result.success) {
       const containerId = result.output?.split("\n").pop()?.trim() || null;
-      
-      await db.update(installationsTable)
-        .set({ 
+
+      await db.update(installations)
+        .set({
           status: "running",
           containerIds: containerId ? [containerId] : null,
-          port: config.PORT ? parseInt(config.PORT) : null,
+          port: pkg.ports[0]?.host || null,
         })
-        .where(eq(installationsTable.id, installId as any));
+        .where(eq(installations.id, installId as any));
 
       console.log(`[Marketplace] ${pkg.displayName} installed successfully on ${server.name}`);
       console.log(`[Marketplace] Container ID: ${containerId}`);
@@ -445,12 +395,11 @@ async function queueInstallation(
   } catch (error: any) {
     const errorMessage = error.message || "Unknown installation error";
     console.error(`[Marketplace] Failed to install ${pkg.displayName}:`, errorMessage);
-    await db.update(installationsTable)
-      .set({ 
+    await db.update(installations)
+      .set({
         status: "error",
-        config: { ...(config || {}), errorMessage },
+        config: { ...(config || {}), packageId: pkg.id, errorMessage },
       })
-      .where(eq(installationsTable.id, installId as any));
+      .where(eq(installations.id, installId as any));
   }
 }
-

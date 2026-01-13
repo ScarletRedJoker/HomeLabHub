@@ -42,6 +42,14 @@ function getSettingsDirCached(): string {
 
 const SETTINGS_FILE = "user-settings.json";
 
+interface AISettings {
+  openaiKeyConfigured: boolean;
+  openaiKeyMasked: string;
+  ollamaUrl: string;
+  windowsVmIp: string;
+  stableDiffusionUrl: string;
+}
+
 interface UserSettings {
   profile: {
     displayName: string;
@@ -60,6 +68,28 @@ interface UserSettings {
     emailNotifications: boolean;
   };
   servers: ServerConfig[];
+  ai?: AISettings;
+}
+
+function maskApiKey(key: string | undefined): string {
+  if (!key) return "";
+  if (key.length <= 8) return "••••••••";
+  return `${key.substring(0, 7)}...${key.substring(key.length - 4)}`;
+}
+
+function getAISettings(): AISettings {
+  const integrationKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+  const directKey = process.env.OPENAI_API_KEY;
+  const apiKey = (integrationKey && integrationKey.startsWith('sk-')) ? integrationKey : directKey;
+  const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
+
+  return {
+    openaiKeyConfigured: !!(apiKey && apiKey.startsWith('sk-')),
+    openaiKeyMasked: apiKey ? maskApiKey(apiKey) : "",
+    ollamaUrl: process.env.OLLAMA_URL || `http://${WINDOWS_VM_IP}:11434`,
+    windowsVmIp: WINDOWS_VM_IP,
+    stableDiffusionUrl: process.env.STABLE_DIFFUSION_URL || `http://${WINDOWS_VM_IP}:7860`,
+  };
 }
 
 async function checkAuth() {
@@ -156,7 +186,12 @@ export async function GET(request: NextRequest) {
 
   try {
     const settings = await loadSettings();
-    return NextResponse.json(settings);
+    const aiSettings = getAISettings();
+    
+    return NextResponse.json({
+      ...settings,
+      ai: aiSettings,
+    });
   } catch (error: any) {
     console.error("[Settings API] GET error:", error);
     
@@ -199,10 +234,11 @@ export async function PUT(request: NextRequest) {
     await saveSettingsFile(updatedSettings);
     
     const finalServers = await getAllServers();
+    const aiSettings = getAISettings();
     
     return NextResponse.json({ 
       success: true, 
-      settings: { ...updatedSettings, servers: finalServers } 
+      settings: { ...updatedSettings, servers: finalServers, ai: aiSettings } 
     });
   } catch (error: any) {
     console.error("Settings PUT error:", error);

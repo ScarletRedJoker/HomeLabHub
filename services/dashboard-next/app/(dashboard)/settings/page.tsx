@@ -34,6 +34,11 @@ import {
   Plus,
   Pencil,
   Trash2,
+  Cpu,
+  Link2,
+  Zap,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 interface IntegrationStatus {
@@ -41,6 +46,8 @@ interface IntegrationStatus {
   desc: string;
   status: "active" | "configured" | "missing" | "local" | "needs_reconnect" | "unknown";
   statusText: string;
+  testable?: boolean;
+  serviceKey?: string;
 }
 
 interface ServerConfig {
@@ -52,6 +59,14 @@ interface ServerConfig {
   keyPath?: string;
   deployPath?: string;
   isDefault?: boolean;
+}
+
+interface AISettings {
+  openaiKeyConfigured: boolean;
+  openaiKeyMasked: string;
+  ollamaUrl: string;
+  windowsVmIp: string;
+  stableDiffusionUrl: string;
 }
 
 interface UserSettings {
@@ -72,6 +87,7 @@ interface UserSettings {
     emailNotifications: boolean;
   };
   servers: ServerConfig[];
+  ai?: AISettings;
 }
 
 interface ServerStatus {
@@ -87,6 +103,13 @@ interface ServerFormData {
   deployPath: string;
 }
 
+interface TestResult {
+  service: string;
+  status: "success" | "error" | "not_configured";
+  message: string;
+  latency?: number;
+}
+
 const emptyServerForm: ServerFormData = { name: "", host: "", user: "", keyPath: "", deployPath: "" };
 
 function SettingsPageContent() {
@@ -99,7 +122,7 @@ function SettingsPageContent() {
   const [error, setError] = useState<FriendlyError | null>(null);
   const { toast } = useToast();
   const searchParams = useSearchParams();
-  const defaultTab = searchParams.get("tab") || "servers";
+  const defaultTab = searchParams.get("tab") || "ai";
 
   const [serverDialogOpen, setServerDialogOpen] = useState(false);
   const [serverDialogMode, setServerDialogMode] = useState<"add" | "edit">("add");
@@ -112,6 +135,18 @@ function SettingsPageContent() {
   const [serverToDelete, setServerToDelete] = useState<ServerConfig | null>(null);
   const [deletingServer, setDeletingServer] = useState(false);
 
+  const [testingService, setTestingService] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, TestResult>>({});
+  const [showApiKey, setShowApiKey] = useState(false);
+
+  const [aiSettings, setAiSettings] = useState<AISettings>({
+    openaiKeyConfigured: false,
+    openaiKeyMasked: "",
+    ollamaUrl: "",
+    windowsVmIp: "",
+    stableDiffusionUrl: "",
+  });
+
   const fetchIntegrations = useCallback(async () => {
     try {
       const [aiRes, platformRes] = await Promise.all([
@@ -123,38 +158,70 @@ function SettingsPageContent() {
       
       if (aiRes?.ok) {
         const aiData = await aiRes.json();
+        const openaiProvider = aiData.providers?.text?.find((p: any) => p.name === "OpenAI");
+        const ollamaProvider = aiData.providers?.text?.find((p: any) => p.name === "Ollama");
+        const dalleProvider = aiData.providers?.image?.find((p: any) => p.name === "DALL-E 3");
+        const sdProvider = aiData.providers?.image?.find((p: any) => p.name === "Stable Diffusion");
+        
         newIntegrations.push({
           name: "OpenAI",
-          desc: "AI assistance",
-          status: aiData.available ? "active" : "missing",
-          statusText: aiData.available ? "Active" : "Not Configured",
+          desc: "GPT-4o & DALL-E",
+          status: openaiProvider?.status === "connected" ? "active" : "missing",
+          statusText: openaiProvider?.status === "connected" ? "Active" : "Not Configured",
+          testable: true,
+          serviceKey: "openai",
         });
-      } else {
+        
         newIntegrations.push({
-          name: "OpenAI",
-          desc: "AI assistance",
-          status: "missing",
-          statusText: "Not Configured",
+          name: "Ollama",
+          desc: "Local LLM",
+          status: ollamaProvider?.status === "connected" ? "active" : 
+                  ollamaProvider?.status === "error" ? "missing" : "local",
+          statusText: ollamaProvider?.status === "connected" ? 
+                      `${ollamaProvider?.model || "Active"}` : "Offline",
+          testable: true,
+          serviceKey: "ollama",
         });
+        
+        newIntegrations.push({
+          name: "Stable Diffusion",
+          desc: "Local image gen",
+          status: sdProvider?.status === "connected" ? "active" : "local",
+          statusText: sdProvider?.status === "connected" ? "Online" : "Offline",
+          testable: true,
+          serviceKey: "stable_diffusion",
+        });
+        
+        setAiSettings(prev => ({
+          ...prev,
+          openaiKeyConfigured: openaiProvider?.status === "connected",
+          openaiKeyMasked: openaiProvider?.status === "connected" ? "sk-...configured" : "",
+        }));
       }
       
       let discordStatus: IntegrationStatus = {
-        name: "Discord",
+        name: "Discord Bot",
         desc: "Bot notifications",
         status: "unknown",
         statusText: "Unknown",
+        testable: true,
+        serviceKey: "discord",
       };
       let twitchStatus: IntegrationStatus = {
         name: "Twitch",
         desc: "Stream status",
         status: "unknown",
         statusText: "Unknown",
+        testable: true,
+        serviceKey: "twitch",
       };
       let youtubeStatus: IntegrationStatus = {
         name: "YouTube",
         desc: "Video uploads",
         status: "unknown",
         statusText: "Unknown",
+        testable: true,
+        serviceKey: "youtube",
       };
       
       if (platformRes?.ok) {
@@ -181,11 +248,11 @@ function SettingsPageContent() {
           }
           
           if (platformName === "discord") {
-            discordStatus = { name: "Discord", desc: "Bot notifications", status: integrationStatus, statusText };
+            discordStatus = { ...discordStatus, status: integrationStatus, statusText };
           } else if (platformName === "twitch") {
-            twitchStatus = { name: "Twitch", desc: "Stream status", status: integrationStatus, statusText };
+            twitchStatus = { ...twitchStatus, status: integrationStatus, statusText };
           } else if (platformName === "youtube") {
-            youtubeStatus = { name: "YouTube", desc: "Video uploads", status: integrationStatus, statusText };
+            youtubeStatus = { ...youtubeStatus, status: integrationStatus, statusText };
           }
         }
       }
@@ -228,6 +295,10 @@ function SettingsPageContent() {
         statuses[s.id] = "unknown";
       });
       setServerStatuses(statuses);
+      
+      if (data.ai) {
+        setAiSettings(prev => ({ ...prev, ...data.ai }));
+      }
     } catch (err) {
       console.error("Failed to fetch settings:", err);
       const friendlyError = getErrorMessage(err);
@@ -242,29 +313,85 @@ function SettingsPageContent() {
     fetchIntegrations();
   }, [fetchSettings, fetchIntegrations]);
 
-  const testConnection = async (serverId: string) => {
-    setTestingServer(serverId);
+  const testService = async (serviceKey: string, options?: Record<string, any>) => {
+    setTestingService(serviceKey);
     try {
-      const res = await fetch("/api/servers");
+      const res = await fetch("/api/settings/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ service: serviceKey, options }),
+      });
+      
       if (!res.ok) {
-        const friendlyError = getErrorMessage(null, res);
-        setServerStatuses((prev) => ({ ...prev, [serverId]: "disconnected" }));
+        const error = await res.json();
+        setTestResults(prev => ({
+          ...prev,
+          [serviceKey]: { 
+            service: serviceKey, 
+            status: "error", 
+            message: error.error || "Test failed" 
+          }
+        }));
         toast({
-          title: friendlyError.title,
-          description: friendlyError.message,
+          title: "Test Failed",
+          description: error.error || "Connection test failed",
           variant: "destructive",
         });
         return;
       }
+      
       const data = await res.json();
-      const serverData = data.servers?.find((s: any) => s.id === serverId);
-      const newStatus = serverData?.status === "online" ? "connected" : "disconnected";
+      setTestResults(prev => ({ ...prev, [serviceKey]: data.result }));
+      
+      toast({
+        title: data.result.status === "success" ? "Test Successful" : "Test Failed",
+        description: data.result.message,
+        variant: data.result.status === "success" ? "default" : "destructive",
+      });
+    } catch (err) {
+      const friendlyError = getErrorMessage(err);
+      setTestResults(prev => ({
+        ...prev,
+        [serviceKey]: { service: serviceKey, status: "error", message: friendlyError.message }
+      }));
+      toast({ 
+        title: friendlyError.title, 
+        description: friendlyError.message, 
+        variant: "destructive" 
+      });
+    } finally {
+      setTestingService(null);
+    }
+  };
+
+  const testConnection = async (serverId: string) => {
+    setTestingServer(serverId);
+    try {
+      const res = await fetch("/api/settings/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ service: "ssh", options: { serverId } }),
+      });
+      
+      if (!res.ok) {
+        setServerStatuses((prev) => ({ ...prev, [serverId]: "disconnected" }));
+        toast({
+          title: "Connection Failed",
+          description: "Could not connect to server",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const data = await res.json();
+      const newStatus = data.result?.status === "success" ? "connected" : "disconnected";
       setServerStatuses((prev) => ({ ...prev, [serverId]: newStatus }));
+      
       toast({
         title: newStatus === "connected" ? "Connected" : "Connection Failed",
-        description: newStatus === "connected"
+        description: data.result?.message || (newStatus === "connected"
           ? `Successfully connected to ${serverId}`
-          : `Could not connect to ${serverId}. Please check your SSH configuration.`,
+          : `Could not connect to ${serverId}. Please check your SSH configuration.`),
         variant: newStatus === "connected" ? "default" : "destructive",
       });
     } catch (err) {
@@ -287,7 +414,7 @@ function SettingsPageContent() {
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
+        body: JSON.stringify({ ...settings, ai: aiSettings }),
       });
       if (!res.ok) {
         const friendlyError = getErrorMessage(null, res);
@@ -502,6 +629,36 @@ function SettingsPageContent() {
     }
   };
 
+  const getStatusIcon = (status: IntegrationStatus["status"]) => {
+    switch (status) {
+      case "active":
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case "local":
+        return <AlertCircle className="h-4 w-4 text-yellow-500" />;
+      case "needs_reconnect":
+        return <AlertCircle className="h-4 w-4 text-orange-500" />;
+      case "unknown":
+        return <AlertCircle className="h-4 w-4 text-gray-500" />;
+      default:
+        return <XCircle className="h-4 w-4 text-red-500" />;
+    }
+  };
+
+  const getStatusColor = (status: IntegrationStatus["status"]) => {
+    switch (status) {
+      case "active":
+        return "bg-green-500/10 text-green-500";
+      case "local":
+        return "bg-yellow-500/10 text-yellow-500";
+      case "needs_reconnect":
+        return "bg-orange-500/10 text-orange-500";
+      case "unknown":
+        return "bg-gray-500/10 text-gray-500";
+      default:
+        return "bg-red-500/10 text-red-500";
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -554,8 +711,14 @@ function SettingsPageContent() {
 
       <Tabs defaultValue={defaultTab} className="space-y-4">
         <TabsList className="w-full h-auto flex-wrap justify-start gap-1 p-1">
+          <TabsTrigger value="ai" className="flex items-center gap-1.5 sm:gap-2 shrink-0 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
+            <Cpu className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> <span className="hidden xs:inline">AI</span>
+          </TabsTrigger>
           <TabsTrigger value="servers" className="flex items-center gap-1.5 sm:gap-2 shrink-0 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
             <Server className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> <span className="hidden xs:inline">Servers</span>
+          </TabsTrigger>
+          <TabsTrigger value="integrations" className="flex items-center gap-1.5 sm:gap-2 shrink-0 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
+            <Link2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> <span className="hidden xs:inline">Integrations</span>
           </TabsTrigger>
           <TabsTrigger value="profile" className="flex items-center gap-1.5 sm:gap-2 shrink-0 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
             <User className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> <span className="hidden xs:inline">Profile</span>
@@ -567,6 +730,189 @@ function SettingsPageContent() {
             <Bell className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> <span className="hidden xs:inline">Alerts</span>
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="ai" className="space-y-4">
+          <Card>
+            <CardHeader className="p-3 sm:p-6">
+              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                <Zap className="h-5 w-5" />
+                AI Configuration
+              </CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
+                Configure AI providers and local inference endpoints
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0 space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    {aiSettings.openaiKeyConfigured ? (
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-red-500" />
+                    )}
+                    <div>
+                      <p className="font-medium text-sm">OpenAI API Key</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-muted-foreground font-mono">
+                          {showApiKey && aiSettings.openaiKeyMasked 
+                            ? aiSettings.openaiKeyMasked 
+                            : aiSettings.openaiKeyConfigured 
+                              ? "••••••••••••••••" 
+                              : "Not configured"}
+                        </p>
+                        {aiSettings.openaiKeyConfigured && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => setShowApiKey(!showApiKey)}
+                          >
+                            {showApiKey ? (
+                              <EyeOff className="h-3 w-3" />
+                            ) : (
+                              <Eye className="h-3 w-3" />
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => testService("openai")}
+                    disabled={testingService === "openai"}
+                  >
+                    {testingService === "openai" ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                    <span className="ml-2">Test</span>
+                  </Button>
+                </div>
+                {testResults["openai"] && (
+                  <div className={`p-3 rounded-lg text-sm ${
+                    testResults["openai"].status === "success" 
+                      ? "bg-green-500/10 text-green-700 dark:text-green-400" 
+                      : "bg-red-500/10 text-red-700 dark:text-red-400"
+                  }`}>
+                    {testResults["openai"].message}
+                    {testResults["openai"].latency && (
+                      <span className="ml-2 text-xs opacity-75">
+                        ({testResults["openai"].latency}ms)
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="windowsVmIp" className="text-sm font-medium">Windows VM IP (Tailscale)</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="windowsVmIp"
+                      value={aiSettings.windowsVmIp}
+                      onChange={(e) => setAiSettings({ ...aiSettings, windowsVmIp: e.target.value })}
+                      placeholder="100.118.44.102"
+                      className="flex-1"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    IP address of Windows VM running Ollama, Stable Diffusion, etc.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="ollamaUrl" className="text-sm font-medium">Ollama URL</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="ollamaUrl"
+                      value={aiSettings.ollamaUrl}
+                      onChange={(e) => setAiSettings({ ...aiSettings, ollamaUrl: e.target.value })}
+                      placeholder="http://100.118.44.102:11434"
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => testService("ollama", { url: aiSettings.ollamaUrl })}
+                      disabled={testingService === "ollama"}
+                    >
+                      {testingService === "ollama" ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                      <span className="ml-2">Test</span>
+                    </Button>
+                  </div>
+                </div>
+                {testResults["ollama"] && (
+                  <div className={`p-3 rounded-lg text-sm ${
+                    testResults["ollama"].status === "success" 
+                      ? "bg-green-500/10 text-green-700 dark:text-green-400" 
+                      : "bg-red-500/10 text-red-700 dark:text-red-400"
+                  }`}>
+                    {testResults["ollama"].message}
+                    {testResults["ollama"].latency && (
+                      <span className="ml-2 text-xs opacity-75">
+                        ({testResults["ollama"].latency}ms)
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="sdUrl" className="text-sm font-medium">Stable Diffusion URL</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="sdUrl"
+                      value={aiSettings.stableDiffusionUrl}
+                      onChange={(e) => setAiSettings({ ...aiSettings, stableDiffusionUrl: e.target.value })}
+                      placeholder="http://100.118.44.102:7860"
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => testService("stable_diffusion", { url: aiSettings.stableDiffusionUrl })}
+                      disabled={testingService === "stable_diffusion"}
+                    >
+                      {testingService === "stable_diffusion" ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                      <span className="ml-2">Test</span>
+                    </Button>
+                  </div>
+                </div>
+                {testResults["stable_diffusion"] && (
+                  <div className={`p-3 rounded-lg text-sm ${
+                    testResults["stable_diffusion"].status === "success" 
+                      ? "bg-green-500/10 text-green-700 dark:text-green-400" 
+                      : "bg-red-500/10 text-red-700 dark:text-red-400"
+                  }`}>
+                    {testResults["stable_diffusion"].message}
+                    {testResults["stable_diffusion"].latency && (
+                      <span className="ml-2 text-xs opacity-75">
+                        ({testResults["stable_diffusion"].latency}ms)
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-2 text-xs text-muted-foreground">
+                <p>Note: OpenAI API key is managed via environment variables (OPENAI_API_KEY).</p>
+                <p>Local AI endpoints require Tailscale connection to your homelab.</p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="servers" className="space-y-4">
           <Card>
@@ -659,48 +1005,57 @@ function SettingsPageContent() {
               </p>
             </CardContent>
           </Card>
+        </TabsContent>
 
+        <TabsContent value="integrations" className="space-y-4">
           <Card>
             <CardHeader className="p-3 sm:p-6">
-              <CardTitle className="text-base sm:text-lg">API Integrations</CardTitle>
-              <CardDescription className="text-xs sm:text-sm">Status of connected services</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base sm:text-lg">Platform Integrations</CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">Status of connected services and APIs</CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchIntegrations}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Refresh
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-              <div className="grid gap-2 sm:gap-4 grid-cols-1 sm:grid-cols-2">
+              <div className="space-y-3">
                 {integrations.map((service) => (
-                  <div key={service.name} className="flex items-center justify-between p-2.5 sm:p-3 border rounded-lg gap-2">
-                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                      {service.status === "active" ? (
-                        <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500 shrink-0" />
-                      ) : service.status === "local" ? (
-                        <AlertCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-yellow-500 shrink-0" />
-                      ) : service.status === "needs_reconnect" ? (
-                        <AlertCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-orange-500 shrink-0" />
-                      ) : service.status === "unknown" ? (
-                        <AlertCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-500 shrink-0" />
-                      ) : (
-                        <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-500 shrink-0" />
-                      )}
+                  <div key={service.name} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      {getStatusIcon(service.status)}
                       <div className="min-w-0">
-                        <p className="font-medium text-xs sm:text-sm truncate">{service.name}</p>
-                        <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{service.desc}</p>
+                        <p className="font-medium text-sm truncate">{service.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{service.desc}</p>
                       </div>
                     </div>
-                    <span
-                      className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full shrink-0 whitespace-nowrap ${
-                        service.status === "active"
-                          ? "bg-green-500/10 text-green-500"
-                          : service.status === "local"
-                          ? "bg-yellow-500/10 text-yellow-500"
-                          : service.status === "needs_reconnect"
-                          ? "bg-orange-500/10 text-orange-500"
-                          : service.status === "unknown"
-                          ? "bg-gray-500/10 text-gray-500"
-                          : "bg-red-500/10 text-red-500"
-                      }`}
-                    >
-                      {service.statusText}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs px-2 py-1 rounded-full whitespace-nowrap ${getStatusColor(service.status)}`}>
+                        {service.statusText}
+                      </span>
+                      {service.testable && service.serviceKey && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => testService(service.serviceKey!)}
+                          disabled={testingService === service.serviceKey}
+                          className="h-8 px-2"
+                        >
+                          {testingService === service.serviceKey ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
