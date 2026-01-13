@@ -289,6 +289,8 @@ class AIOrchestrator {
     const dimensions = sizeMap[request.size || "1024x1024"] || { width: 512, height: 512 };
     
     console.log(`[SD] Generating image at ${this.stableDiffusionUrl}/sdapi/v1/txt2img`);
+    console.log(`[SD] Prompt: "${request.prompt}" (${request.prompt?.length || 0} chars)`);
+    console.log(`[SD] Dimensions: ${dimensions.width}x${dimensions.height}`);
     
     let response: Response;
     try {
