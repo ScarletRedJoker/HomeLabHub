@@ -1,0 +1,18 @@
+[Unit]
+Description=Nebula Command AI Health Monitor
+Documentation=https://github.com/yourusername/HomeLabHub
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/homelab/HomeLabHub/deploy/local/scripts/create-local-ai-state.sh --quiet
+User=root
+Group=root
+Environment="WINDOWS_VM_IP=100.118.44.102"
+Environment="UBUNTU_SERVER_IP=100.66.61.51"
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

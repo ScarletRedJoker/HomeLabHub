@@ -55,12 +55,28 @@ Features a per-server customization system allowing server admins to configure t
 - **VM & Service Management:** An `/infrastructure` page provides remote control for VMs (via libvirt over SSH) and Windows services (Ollama, Stable Diffusion WebUI, ComfyUI) on homelab resources.
 
 ### Local AI Services (Windows VM)
-The Windows VM (Tailscale IP: 100.118.44.102) hosts GPU-accelerated AI services:
-- **Ollama:** Port 11434 - LLM inference (llama3.2, mistral, codellama)
+The Windows VM (Tailscale IP: 100.118.44.102) hosts GPU-accelerated AI services on RTX 3060 (12GB VRAM):
+- **Ollama:** Port 11434 - LLM inference (llama3.2, mistral, codellama, qwen2.5-coder)
 - **Stable Diffusion WebUI:** Port 7860 - AUTOMATIC1111 image generation
-- **ComfyUI:** Port 8188 - Node-based video/image workflows
+- **ComfyUI:** Port 8188 - Node-based video/image workflows (AnimateDiff, SVD)
 
-Setup guide: See `docs/WINDOWS_VM_AI_SETUP.md` for complete installation instructions.
+**Auto-Deployment System:**
+- **Windows AI Supervisor** (`deploy/local/scripts/windows-ai-supervisor.ps1`): PowerShell service manager that auto-starts Ollama/SD/ComfyUI on boot
+- **Health Daemon** (`deploy/local/scripts/vm-ai-health-daemon.ps1`): Reports status every 30s to dashboard webhook
+- **Ubuntu Health Monitor** (`deploy/local/scripts/create-local-ai-state.sh`): Polls all AI services, updates shared state file
+
+**Dashboard Integration APIs:**
+- `POST /api/ai/health-webhook` - Receives health reports from Windows VM
+- `GET/POST /api/ai/control` - Remote start/stop/restart of AI services
+- State file: `/opt/homelab/HomeLabHub/deploy/shared/state/local-ai.json`
+
+**Cluster-Ready Architecture:**
+- Node registry schema in `services/dashboard-next/lib/db/ai-cluster-schema.ts`
+- Supports adding multiple GPU nodes via Tailscale
+- Job queue for VRAM-aware scheduling (future)
+
+**Model Capability Matrix:** See `docs/LOCAL_AI_CAPABILITY_MATRIX.md` for complete model list with VRAM requirements.
+**Deployment Guide:** See `docs/LOCAL_AI_DEPLOYMENT_GUIDE.md` for setup instructions.
 
 ### Development vs Production
 - **Replit (Development):** SSH features limited (no key file), uses cloud AI only (OpenAI via AI_INTEGRATIONS)
