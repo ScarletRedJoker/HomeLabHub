@@ -167,7 +167,7 @@ function Start-AIService {
         }
         
         # Wait for service to become healthy
-        $timeout = $svc.StartupTimeout ?? 60
+        $timeout = if ($svc.StartupTimeout) { $svc.StartupTimeout } else { 60 }
         $waited = 0
         $checkInterval = 5
         
