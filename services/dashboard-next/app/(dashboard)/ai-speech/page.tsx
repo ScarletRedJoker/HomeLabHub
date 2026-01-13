@@ -29,7 +29,7 @@ import {
   FileAudio,
   Languages,
   Clock,
-  Waveform,
+  Activity,
 } from "lucide-react";
 
 interface TTSResult {
@@ -147,7 +147,7 @@ export default function AISpeechPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Waveform className="h-6 w-6 text-blue-500" />
+          <Activity className="h-6 w-6 text-blue-500" />
           Speech Testing
         </h1>
         <p className="text-muted-foreground">
@@ -290,7 +290,7 @@ export default function AISpeechPage() {
                             : "N/A"}
                         </div>
                         <div className="flex items-center gap-2 text-muted-foreground">
-                          <Waveform className="h-4 w-4" />
+                          <Activity className="h-4 w-4" />
                           {ttsResult.model || ttsResult.provider || "Unknown"}
                         </div>
                       </div>
@@ -437,7 +437,7 @@ export default function AISpeechPage() {
                             : "N/A"}
                         </div>
                         <div className="flex items-center gap-2 text-muted-foreground">
-                          <Waveform className="h-4 w-4" />
+                          <Activity className="h-4 w-4" />
                           {sttResult.model || sttResult.provider || "Unknown"}
                         </div>
                       </div>
