@@ -51,16 +51,19 @@ class SpeechToTextService {
   }
 
   private initOpenAI(): void {
-    const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+    const integrationKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+    const directKey = process.env.OPENAI_API_KEY;
+    // Skip dummy/placeholder keys
+    const apiKey = (integrationKey && integrationKey.startsWith('sk-')) ? integrationKey : directKey;
     const projectId = process.env.OPENAI_PROJECT_ID;
-    if (apiKey && apiKey.trim().startsWith("sk-")) {
+    if (apiKey && apiKey.startsWith("sk-")) {
       this.openaiClient = new OpenAI({
         apiKey: apiKey.trim(),
         ...(projectId && { project: projectId.trim() }),
       });
       console.log("[STT] OpenAI initialized as fallback provider");
     } else {
-      console.log("[STT] No OpenAI API key configured - cloud fallback unavailable");
+      console.log("[STT] No valid OpenAI API key configured - cloud fallback unavailable");
     }
   }
 

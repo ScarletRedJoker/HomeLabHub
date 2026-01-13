@@ -7,7 +7,15 @@ export const maxDuration = 60;
 let openai: OpenAI | null = null;
 function getOpenAI(): OpenAI {
   if (!openai) {
-    openai = new OpenAI();
+    const integrationKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+    const directKey = process.env.OPENAI_API_KEY;
+    const apiKey = (integrationKey && integrationKey.startsWith('sk-')) ? integrationKey : directKey;
+    const projectId = process.env.OPENAI_PROJECT_ID;
+    
+    openai = new OpenAI({
+      apiKey: apiKey?.trim(),
+      ...(projectId && { project: projectId.trim() }),
+    });
   }
   return openai;
 }

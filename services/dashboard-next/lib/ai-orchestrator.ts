@@ -156,26 +156,24 @@ class AIOrchestrator {
 
   private initOpenAI() {
     const baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
-    let apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+    const integrationKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+    const directKey = process.env.OPENAI_API_KEY;
+    // Skip dummy/placeholder keys
+    const apiKey = (integrationKey && integrationKey.startsWith('sk-')) ? integrationKey : directKey;
     const projectId = process.env.OPENAI_PROJECT_ID;
 
-    if (apiKey) {
-      apiKey = apiKey.trim();
+    if (apiKey && apiKey.startsWith('sk-')) {
+      const trimmedKey = apiKey.trim();
       
-      if (!apiKey.startsWith("sk-")) {
-        console.error("[AI Orchestrator] OpenAI API key has invalid format (should start with sk-)");
-        return;
-      }
-      
-      console.log(`[AI Orchestrator] OpenAI initialized with key: ${apiKey.substring(0, 10)}...${apiKey.substring(apiKey.length - 4)}${projectId ? ' (with project ID)' : ''}`);
+      console.log(`[AI Orchestrator] OpenAI initialized with key: ${trimmedKey.substring(0, 10)}...${trimmedKey.substring(trimmedKey.length - 4)}${projectId ? ' (with project ID)' : ''}`);
       
       this.openaiClient = new OpenAI({
         baseURL: baseURL || undefined,
-        apiKey,
+        apiKey: trimmedKey,
         ...(projectId && { project: projectId.trim() }),
       });
     } else {
-      console.log("[AI Orchestrator] No OpenAI API key configured");
+      console.log("[AI Orchestrator] No valid OpenAI API key configured");
     }
   }
 

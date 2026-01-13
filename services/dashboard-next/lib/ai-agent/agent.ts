@@ -92,10 +92,13 @@ export class AIAgent {
 
   private initOpenAI() {
     const baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
-    const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+    const integrationKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+    const directKey = process.env.OPENAI_API_KEY;
+    // Skip dummy/placeholder keys
+    const apiKey = (integrationKey && integrationKey.startsWith('sk-')) ? integrationKey : directKey;
     const projectId = process.env.OPENAI_PROJECT_ID;
 
-    if (apiKey) {
+    if (apiKey && apiKey.startsWith('sk-')) {
       this.openaiClient = new OpenAI({
         baseURL: baseURL || undefined,
         apiKey: apiKey.trim(),

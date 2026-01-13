@@ -10,7 +10,11 @@ let cachedClient: OpenAI | null = null;
 let cachedConfig: Omit<OpenAIClientConfig, 'client'> | null = null;
 
 export function getOpenAIApiKey(): string | undefined {
-  return process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+  const integrationKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+  const directKey = process.env.OPENAI_API_KEY;
+  // Skip dummy/placeholder keys
+  const apiKey = (integrationKey && integrationKey.startsWith('sk-')) ? integrationKey : directKey;
+  return apiKey;
 }
 
 export function getOpenAIProjectId(): string | undefined {
@@ -19,18 +23,19 @@ export function getOpenAIProjectId(): string | undefined {
 
 export function createOpenAIClient(): OpenAIClientConfig {
   const integrationKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-  const legacyKey = process.env.OPENAI_API_KEY;
-  const apiKey = integrationKey || legacyKey;
+  const directKey = process.env.OPENAI_API_KEY;
+  // Skip dummy/placeholder keys
+  const apiKey = (integrationKey && integrationKey.startsWith('sk-')) ? integrationKey : directKey;
   const projectId = getOpenAIProjectId();
   
-  const keySource = integrationKey 
+  const keySource = (integrationKey && integrationKey.startsWith('sk-'))
     ? 'AI_INTEGRATIONS_OPENAI_API_KEY' 
-    : legacyKey 
+    : directKey 
       ? 'OPENAI_API_KEY' 
       : 'none';
   
-  if (!apiKey) {
-    throw new Error('No OpenAI API key configured');
+  if (!apiKey || !apiKey.startsWith('sk-')) {
+    throw new Error('No valid OpenAI API key configured');
   }
   
   const client = new OpenAI({

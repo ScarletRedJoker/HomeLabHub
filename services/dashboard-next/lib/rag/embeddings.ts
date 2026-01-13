@@ -20,9 +20,11 @@ export class EmbeddingService {
     this.defaultModel = 'nomic-embed-text';
 
     // Initialize OpenAI client if API key is available
-    const apiKey = options?.openaiApiKey || process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+    const integrationKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+    const directKey = process.env.OPENAI_API_KEY;
+    const apiKey = options?.openaiApiKey || ((integrationKey && integrationKey.startsWith('sk-')) ? integrationKey : directKey);
     const projectId = process.env.OPENAI_PROJECT_ID;
-    if (apiKey?.trim()) {
+    if (apiKey && apiKey.startsWith('sk-')) {
       this.openaiClient = new OpenAI({
         apiKey: apiKey.trim(),
         baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || undefined,

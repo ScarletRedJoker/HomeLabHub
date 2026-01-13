@@ -20,11 +20,14 @@ interface AIProviderStatus {
 
 async function checkOpenAI(): Promise<AIProviderStatus> {
   const baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
-  const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+  const integrationKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+  const directKey = process.env.OPENAI_API_KEY;
+  // Skip dummy/placeholder keys
+  const apiKey = (integrationKey && integrationKey.startsWith('sk-')) ? integrationKey : directKey;
   const projectId = process.env.OPENAI_PROJECT_ID;
 
-  if (!apiKey) {
-    return { name: "OpenAI", status: "not_configured", error: "No API key configured" };
+  if (!apiKey || !apiKey.startsWith('sk-')) {
+    return { name: "OpenAI", status: "not_configured", error: "No valid API key configured" };
   }
 
   try {
@@ -94,11 +97,14 @@ async function checkOllama(): Promise<AIProviderStatus> {
 }
 
 async function checkImageGeneration(): Promise<AIProviderStatus> {
-  const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+  const integrationKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+  const directKey = process.env.OPENAI_API_KEY;
+  // Skip dummy/placeholder keys
+  const apiKey = (integrationKey && integrationKey.startsWith('sk-')) ? integrationKey : directKey;
   const projectId = process.env.OPENAI_PROJECT_ID;
 
-  if (!apiKey) {
-    return { name: "DALL-E 3", status: "not_configured", error: "No API key" };
+  if (!apiKey || !apiKey.startsWith('sk-')) {
+    return { name: "DALL-E 3", status: "not_configured", error: "No valid API key" };
   }
 
   try {
