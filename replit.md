@@ -66,9 +66,23 @@ The Windows VM (Tailscale IP: 100.118.44.102) hosts GPU-accelerated AI services 
 - **ComfyUI:** Port 8188 - Node-based video/image workflows (AnimateDiff, SVD)
 
 **Auto-Deployment System:**
-- **Windows AI Supervisor** (`deploy/local/scripts/windows-ai-supervisor.ps1`): PowerShell service manager that auto-starts Ollama/SD/ComfyUI on boot
-- **Health Daemon** (`deploy/local/scripts/vm-ai-health-daemon.ps1`): Reports status every 30s to dashboard webhook
+- **Unified Installer** (`deploy/windows/scripts/install-ai-node.ps1`): One-click setup script with preflight checks, dependency installation, AI service deployment, configuration, and verification
+- **Bootstrap Script** (`deploy/windows/bootstrap.ps1`): Remote deployment via `irm ... | iex` pattern with configurable repository URL
+- **Windows AI Supervisor** (`deploy/windows/scripts/windows-ai-supervisor.ps1`): PowerShell service manager that auto-starts Ollama/SD/ComfyUI on boot
+- **Health Daemon** (`deploy/windows/scripts/vm-ai-health-daemon.ps1`): Reports status every 30s to dashboard webhook
 - **Ubuntu Health Monitor** (`deploy/local/scripts/create-local-ai-state.sh`): Polls all AI services, updates shared state file
+
+**Windows Node Setup:**
+```powershell
+# One-line install (requires setting repo URL):
+$env:NEBULA_REPO_URL = "https://github.com/your-org/nebula-command.git"
+irm https://raw.githubusercontent.com/.../deploy/windows/bootstrap.ps1 | iex
+
+# Or manual:
+git clone <repo> C:\NebulaCommand
+cd C:\NebulaCommand\deploy\windows
+.\scripts\install-ai-node.ps1
+```
 
 **Dashboard Integration APIs:**
 - `POST /api/ai/health-webhook` - Receives health reports from Windows VM
