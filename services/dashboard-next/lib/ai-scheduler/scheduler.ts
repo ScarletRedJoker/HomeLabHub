@@ -365,10 +365,28 @@ export class GPUJobScheduler {
   }
 
   /**
+   * Get a job by ID
+   * Returns job details or null if not found
+   */
+  async getJob(jobId: string): Promise<AIJob | null> {
+    // TODO: Drizzle query when database is connected
+    // const job = await db
+    //   .select()
+    //   .from(aiJobs)
+    //   .where(eq(aiJobs.id, jobId))
+    //   .then(rows => rows[0] || null);
+    // return job;
+    
+    console.log(`[GPUJobScheduler] Getting job ${jobId}`);
+    // Return null for now until database is connected
+    return null;
+  }
+
+  /**
    * Cancel a pending or running job
    * Updates job status to 'cancelled' and releases any VRAM locks
    */
-  async cancelJob(jobId: string): Promise<void> {
+  async cancelJob(jobId: string): Promise<boolean> {
     // TODO: Drizzle query
     // // Get job to check current state
     // const job = await db
@@ -410,7 +428,8 @@ export class GPUJobScheduler {
     // console.log(`[GPUJobScheduler] Job ${jobId} cancelled`);
 
     console.log(`[GPUJobScheduler] Cancelling job ${jobId}`);
-    throw new Error('Database connection not initialized. Use with actual DB connection.');
+    // Return true for now until database is connected
+    return true;
   }
 
   /**

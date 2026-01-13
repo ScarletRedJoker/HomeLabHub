@@ -32,7 +32,7 @@ export async function GET(
         const data = JSON.stringify({
           type: event.eventType,
           payload: event.payload,
-          timestamp: event.timestamp,
+          timestamp: event.createdAt.toISOString(),
         });
         
         controller.enqueue(encoder.encode(`data: ${data}\n\n`));
