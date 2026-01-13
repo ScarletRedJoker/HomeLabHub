@@ -46,12 +46,18 @@ export async function POST(request: NextRequest) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
 
-    const response = await fetch(`${WINDOWS_AGENT_URL}/models/download`, {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+    };
+    const agentToken = process.env.NEBULA_AGENT_TOKEN;
+    if (agentToken) {
+      headers["Authorization"] = `Bearer ${agentToken}`;
+    }
+
+    const response = await fetch(`${WINDOWS_AGENT_URL}/api/models/download`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
+      headers,
       body: JSON.stringify({
         url: body.url,
         type: body.type,
@@ -109,11 +115,18 @@ export async function GET(request: NextRequest) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
 
-    const response = await fetch(`${WINDOWS_AGENT_URL}/models/downloads`, {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+    };
+    const agentToken = process.env.NEBULA_AGENT_TOKEN;
+    if (agentToken) {
+      headers["Authorization"] = `Bearer ${agentToken}`;
+    }
+
+    const response = await fetch(`${WINDOWS_AGENT_URL}/api/models/downloads`, {
       signal: controller.signal,
-      headers: {
-        "Accept": "application/json",
-      },
+      headers,
     });
     clearTimeout(timeout);
 

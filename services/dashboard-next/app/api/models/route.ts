@@ -60,15 +60,22 @@ export async function GET(request: NextRequest) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
 
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+    };
+    const agentToken = process.env.NEBULA_AGENT_TOKEN;
+    if (agentToken) {
+      headers["Authorization"] = `Bearer ${agentToken}`;
+    }
+
     const url = modelType 
-      ? `${WINDOWS_AGENT_URL}/models?type=${modelType}`
-      : `${WINDOWS_AGENT_URL}/models`;
+      ? `${WINDOWS_AGENT_URL}/api/models?type=${modelType}`
+      : `${WINDOWS_AGENT_URL}/api/models`;
 
     const response = await fetch(url, {
       signal: controller.signal,
-      headers: {
-        "Accept": "application/json",
-      },
+      headers,
     });
     clearTimeout(timeout);
 
