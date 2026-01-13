@@ -126,3 +126,7 @@ config/secrets/dev.yaml         # Unencrypted dev secrets
 config/secrets/prod.yaml        # Unencrypted prod secrets
 .github/workflows/deploy.yml
 scripts/node_modules
+
+# Generated AI content
+services/dashboard-next/public/generated-images/
+services/dashboard-next/public/generated-videos/

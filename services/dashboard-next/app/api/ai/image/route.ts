@@ -13,8 +13,8 @@ async function checkAuth() {
 }
 
 function getAssetsDir() {
-  const baseDir = process.env.REPL_ID ? "./data" : "/opt/homelab/HomeLabHub";
-  const assetsDir = join(baseDir, "generated-assets");
+  const baseDir = process.env.REPL_ID ? "./public" : "/opt/homelab/HomeLabHub/services/dashboard-next/public";
+  const assetsDir = join(baseDir, "generated-images");
   if (!existsSync(assetsDir)) {
     mkdirSync(assetsDir, { recursive: true });
   }
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { prompt, negativePrompt, size, style, provider, saveLocally } = body;
+    const { prompt, negativePrompt, size, style, provider } = body;
 
     if (!prompt) {
       return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
@@ -61,28 +61,71 @@ export async function POST(request: NextRequest) {
       provider: selectedProvider,
     });
 
-    if (saveLocally && (result.url || result.base64)) {
+    if (result.base64) {
       try {
+        console.log("[Image API] Saving base64 image to file...");
         const assetsDir = getAssetsDir();
         const filename = `image_${Date.now()}.png`;
         const filepath = join(assetsDir, filename);
 
-        if (result.base64) {
-          const buffer = Buffer.from(result.base64, "base64");
-          writeFileSync(filepath, buffer);
-        } else if (result.url) {
-          const response = await fetch(result.url);
-          const buffer = Buffer.from(await response.arrayBuffer());
-          writeFileSync(filepath, buffer);
+        const buffer = Buffer.from(result.base64, "base64");
+        if (buffer.length < 100) {
+          throw new Error(`Image data too small (${buffer.length} bytes)`);
         }
+        
+        writeFileSync(filepath, buffer);
+        console.log(`[Image API] Saved image to ${filepath} (${buffer.length} bytes)`);
 
+        const publicUrl = `/generated-images/${filename}`;
+        
         return NextResponse.json({
-          ...result,
+          url: publicUrl,
+          provider: result.provider,
           savedPath: filepath,
           filename,
         });
       } catch (saveError: any) {
-        console.error("Failed to save image locally:", saveError);
+        console.error("[Image API] Failed to save image:", saveError);
+        return NextResponse.json({
+          ...result,
+          warning: "Failed to save image locally: " + saveError.message
+        });
+      }
+    }
+
+    if (result.url) {
+      const isInternalUrl = result.url.includes("100.118.44.102") || 
+                            result.url.includes("100.66.61.51") ||
+                            result.url.includes("localhost") ||
+                            result.url.includes("127.0.0.1");
+
+      if (isInternalUrl) {
+        try {
+          console.log(`[Image API] Proxying image from internal URL: ${result.url}`);
+          const assetsDir = getAssetsDir();
+          const filename = `image_${Date.now()}.png`;
+          const filepath = join(assetsDir, filename);
+
+          const response = await fetch(result.url);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch: ${response.status}`);
+          }
+          
+          const buffer = Buffer.from(await response.arrayBuffer());
+          writeFileSync(filepath, buffer);
+          console.log(`[Image API] Saved proxied image to ${filepath}`);
+
+          const publicUrl = `/generated-images/${filename}`;
+          
+          return NextResponse.json({
+            url: publicUrl,
+            provider: result.provider,
+            savedPath: filepath,
+            filename,
+          });
+        } catch (proxyError: any) {
+          console.error("[Image API] Failed to proxy image:", proxyError);
+        }
       }
     }
 
