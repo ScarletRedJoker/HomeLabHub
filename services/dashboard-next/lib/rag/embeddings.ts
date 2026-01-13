@@ -21,10 +21,12 @@ export class EmbeddingService {
 
     // Initialize OpenAI client if API key is available
     const apiKey = options?.openaiApiKey || process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+    const projectId = process.env.OPENAI_PROJECT_ID;
     if (apiKey?.trim()) {
       this.openaiClient = new OpenAI({
         apiKey: apiKey.trim(),
         baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || undefined,
+        ...(projectId && { project: projectId.trim() }),
       });
     }
   }

@@ -96,15 +96,15 @@ function validateCustomEndpoint(endpoint: string): { valid: boolean; error?: str
 
 function getOpenAIClient() {
   const baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
-  const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+  const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+  const projectId = process.env.OPENAI_PROJECT_ID;
 
-  if (baseURL && apiKey) {
-    return new OpenAI({ baseURL, apiKey });
-  }
-
-  const directKey = process.env.OPENAI_API_KEY;
-  if (directKey) {
-    return new OpenAI({ apiKey: directKey });
+  if (apiKey) {
+    return new OpenAI({
+      baseURL: baseURL || undefined,
+      apiKey: apiKey.trim(),
+      ...(projectId && { project: projectId.trim() }),
+    });
   }
 
   return null;

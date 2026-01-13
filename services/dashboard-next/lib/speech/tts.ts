@@ -39,9 +39,11 @@ class TextToSpeechService {
 
   private initOpenAI(): void {
     const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+    const projectId = process.env.OPENAI_PROJECT_ID;
     if (apiKey && apiKey.trim().startsWith("sk-")) {
       this.openaiClient = new OpenAI({
         apiKey: apiKey.trim(),
+        ...(projectId && { project: projectId.trim() }),
       });
       console.log("[TTS] OpenAI initialized as fallback provider");
     } else {
