@@ -20,11 +20,34 @@ export interface IndexedChunk extends TextChunk {
   metadata?: Record<string, unknown>;
 }
 
+export interface SourceInfo {
+  id: string;
+  name: string;
+  type: 'document' | 'url' | 'text';
+  chunkCount: number;
+  status: 'indexed' | 'processing' | 'error';
+  createdAt: string;
+}
+
+let retrieverInstance: KnowledgeRetriever | null = null;
+
+export function getKnowledgeRetriever(options?: { ollamaUrl?: string; openaiApiKey?: string; embeddingOptions?: EmbeddingOptions }): KnowledgeRetriever {
+  if (!retrieverInstance) {
+    retrieverInstance = new KnowledgeRetriever(options);
+  }
+  return retrieverInstance;
+}
+
+export function resetKnowledgeRetriever(): void {
+  retrieverInstance = null;
+}
+
 export class KnowledgeRetriever {
   private embeddingService: EmbeddingService;
   private textChunker: TextChunker;
   private indexedChunks: IndexedChunk[] = [];
   private embeddingOptions?: EmbeddingOptions;
+  private sourceRegistry: Map<string, SourceInfo> = new Map();
 
   constructor(options?: { ollamaUrl?: string; openaiApiKey?: string; embeddingOptions?: EmbeddingOptions }) {
     this.embeddingService = new EmbeddingService({
@@ -45,26 +68,53 @@ export class KnowledgeRetriever {
     metadata?: Record<string, unknown>,
     chunkOptions?: ChunkOptions,
   ): Promise<void> {
-    // Chunk the text
-    const chunks = this.textChunker.chunkText(text, chunkOptions);
+    const sourceName = (metadata?.name as string) || sourceId;
+    const sourceType = (metadata?.type as 'document' | 'url' | 'text') || 'text';
+    
+    this.sourceRegistry.set(sourceId, {
+      id: sourceId,
+      name: sourceName,
+      type: sourceType,
+      chunkCount: 0,
+      status: 'processing',
+      createdAt: new Date().toISOString(),
+    });
 
-    if (chunks.length === 0) {
-      console.warn(`No chunks generated for document ${sourceId}`);
-      return;
-    }
+    try {
+      const chunks = this.textChunker.chunkText(text, chunkOptions);
 
-    // Generate embeddings for all chunks
-    const chunkTexts = chunks.map((c) => c.text);
-    const embeddings = await this.embeddingService.generateBatchEmbeddings(chunkTexts, this.embeddingOptions);
+      if (chunks.length === 0) {
+        console.warn(`No chunks generated for document ${sourceId}`);
+        this.sourceRegistry.set(sourceId, {
+          ...this.sourceRegistry.get(sourceId)!,
+          status: 'error',
+        });
+        return;
+      }
 
-    // Index the chunks
-    for (let i = 0; i < chunks.length; i++) {
-      this.indexedChunks.push({
-        ...chunks[i],
-        embedding: embeddings[i],
-        sourceId,
-        metadata,
+      const chunkTexts = chunks.map((c) => c.text);
+      const embeddings = await this.embeddingService.generateBatchEmbeddings(chunkTexts, this.embeddingOptions);
+
+      for (let i = 0; i < chunks.length; i++) {
+        this.indexedChunks.push({
+          ...chunks[i],
+          embedding: embeddings[i],
+          sourceId,
+          metadata,
+        });
+      }
+      
+      this.sourceRegistry.set(sourceId, {
+        ...this.sourceRegistry.get(sourceId)!,
+        chunkCount: chunks.length,
+        status: 'indexed',
       });
+    } catch (error) {
+      this.sourceRegistry.set(sourceId, {
+        ...this.sourceRegistry.get(sourceId)!,
+        status: 'error',
+      });
+      throw error;
     }
   }
 
@@ -142,7 +192,22 @@ export class KnowledgeRetriever {
   removeDocument(sourceId: string): number {
     const initialLength = this.indexedChunks.length;
     this.indexedChunks = this.indexedChunks.filter((chunk) => chunk.sourceId !== sourceId);
+    this.sourceRegistry.delete(sourceId);
     return initialLength - this.indexedChunks.length;
+  }
+
+  /**
+   * Get all registered sources
+   */
+  getSources(): SourceInfo[] {
+    return Array.from(this.sourceRegistry.values());
+  }
+
+  /**
+   * Get a single source by ID
+   */
+  getSource(sourceId: string): SourceInfo | undefined {
+    return this.sourceRegistry.get(sourceId);
   }
 
   /**
@@ -150,6 +215,7 @@ export class KnowledgeRetriever {
    */
   clear(): void {
     this.indexedChunks = [];
+    this.sourceRegistry.clear();
   }
 
   /**

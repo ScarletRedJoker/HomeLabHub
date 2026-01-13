@@ -106,6 +106,9 @@ export default function AIKnowledgePage() {
         if (data.stats) {
           setStats(data.stats);
         }
+        if (data.sources) {
+          setSources(data.sources);
+        }
         setLastUpdated(new Date().toISOString());
       }
     } catch (error) {
@@ -167,42 +170,30 @@ export default function AIKnowledgePage() {
         return;
       }
 
-      const chunkRes = await fetch("/api/ai/embeddings", {
+      const res = await fetch("/api/ai/embeddings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "chunk", text: content }),
+        body: JSON.stringify({
+          action: "add_source",
+          name: sourceName,
+          type: sourceType,
+          content,
+        }),
       });
 
-      if (chunkRes.ok) {
-        const chunkData = await chunkRes.json();
-
-        if (chunkData.chunks && chunkData.chunks.length > 0) {
-          const embedRes = await fetch("/api/ai/embeddings", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "embed",
-              text: chunkData.chunks.map((c: { text: string }) => c.text),
-            }),
-          });
-
-          if (embedRes.ok) {
-            const newSource: KnowledgeSource = {
-              id: Date.now().toString(),
-              name: sourceName,
-              type: sourceType,
-              chunkCount: chunkData.count,
-              status: "indexed",
-              createdAt: new Date().toISOString(),
-            };
-            setSources((prev) => [...prev, newSource]);
-            setStats((prev) => ({
-              ...prev,
-              totalChunks: prev.totalChunks + chunkData.count,
-              uniqueSources: prev.uniqueSources + 1,
-            }));
-          }
+      if (res.ok) {
+        const data = await res.json();
+        if (data.source) {
+          setSources((prev) => [...prev, data.source]);
+          setStats((prev) => ({
+            ...prev,
+            totalChunks: prev.totalChunks + (data.source.chunkCount || 0),
+            uniqueSources: prev.uniqueSources + 1,
+          }));
         }
+      } else {
+        const error = await res.json();
+        console.error("Failed to add source:", error);
       }
 
       setShowAddDialog(false);
@@ -217,15 +208,32 @@ export default function AIKnowledgePage() {
     }
   }
 
-  function removeSource(id: string) {
+  async function removeSource(id: string) {
     const source = sources.find((s) => s.id === id);
-    if (source) {
-      setSources((prev) => prev.filter((s) => s.id !== id));
-      setStats((prev) => ({
-        ...prev,
-        totalChunks: Math.max(0, prev.totalChunks - source.chunkCount),
-        uniqueSources: Math.max(0, prev.uniqueSources - 1),
-      }));
+    if (!source) return;
+
+    try {
+      const res = await fetch("/api/ai/embeddings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "delete_source",
+          sourceId: id,
+        }),
+      });
+
+      if (res.ok) {
+        setSources((prev) => prev.filter((s) => s.id !== id));
+        setStats((prev) => ({
+          ...prev,
+          totalChunks: Math.max(0, prev.totalChunks - source.chunkCount),
+          uniqueSources: Math.max(0, prev.uniqueSources - 1),
+        }));
+      } else {
+        console.error("Failed to delete source");
+      }
+    } catch (error) {
+      console.error("Failed to delete source:", error);
     }
   }
 

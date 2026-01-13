@@ -5,4 +5,4 @@
 
 export { EmbeddingService, type EmbeddingOptions } from './embeddings';
 export { TextChunker, type ChunkOptions, type TextChunk } from './chunker';
-export { KnowledgeRetriever, type RetrievalResult, type IndexedChunk } from './retriever';
+export { KnowledgeRetriever, getKnowledgeRetriever, resetKnowledgeRetriever, type RetrievalResult, type IndexedChunk, type SourceInfo } from './retriever';
