@@ -46,6 +46,17 @@ The dashboard automatically detects development (Replit) or production (Linode) 
 ### Local AI Services (Windows VM)
 A Windows VM hosts GPU-accelerated AI services: Ollama (LLM inference), Stable Diffusion WebUI (image generation), and ComfyUI (node-based video/image workflows). An Auto-Deployment System provides unified management, dependency handling, and a Windows AI Supervisor for service management.
 
+### AI Node Management System
+A comprehensive dashboard page (`/ai-nodes`) provides:
+- **Service Health Monitoring:** Real-time status for Ollama (11434), Stable Diffusion (7860), ComfyUI (8188), and Whisper (8765)
+- **GPU Statistics:** Memory usage, utilization, and temperature from nvidia-smi
+- **Issue Detection:** Automatic detection of known problems including NumPy 2.x incompatibility, torch.library custom_op errors, xformers mismatches, triton missing, protobuf conflicts, and comfy_kitchen issues
+- **Package Version Tracking:** Current vs target versions for numpy (1.26.4), torch (2.3.1), protobuf (5.28.3), xformers (0.0.28), transformers, diffusers
+- **One-Click Repair:** Dashboard buttons to restart services, update dependencies, fix specific issues, or repair all
+- **Health Daemon:** Windows PowerShell script (`deploy/windows/scripts/start-health-daemon.ps1`) runs continuously, scanning logs for error patterns and reporting package versions every 30 seconds (deep scans every 5 minutes)
+- **API Endpoint:** `/api/ai/node-manager` with GET for diagnostics and POST for repair actions
+- **Agent Communication:** Requires `KVM_AGENT_TOKEN` for secure communication with Windows VM agent via Tailscale (100.118.44.102)
+
 ### AI Services API Endpoints
 Provides APIs for Speech Services (TTS/STT), Job Scheduling (GPU jobs), Training (LoRA, QLoRA, etc.), and Embeddings/RAG (semantic search, chunking). Core AI libraries support GPU-aware scheduling, hybrid speech services, RAG, and model training.
 
