@@ -66,22 +66,25 @@ The Windows VM (Tailscale IP: 100.118.44.102) hosts GPU-accelerated AI services 
 - **ComfyUI:** Port 8188 - Node-based video/image workflows (AnimateDiff, SVD)
 
 **Auto-Deployment System:**
-- **Unified Installer** (`deploy/windows/scripts/install-ai-node.ps1`): One-click setup script with preflight checks, dependency installation, AI service deployment, configuration, and verification
-- **Bootstrap Script** (`deploy/windows/bootstrap.ps1`): Remote deployment via `irm ... | iex` pattern with configurable repository URL
+- **Unified AI Manager** (`deploy/windows/nebula-ai.ps1`): Single CLI for install/update/repair/status/models with automatic dependency conflict resolution
+- **Dependency Manifest** (`deploy/windows/ai-dependencies.json`): Pinned compatible versions (numpy==1.26.4, protobuf==5.28.3, open-clip-torch==3.2.0, transformers==4.44.2)
+- **Legacy Installer** (`deploy/windows/scripts/install-ai-node.ps1`): One-click setup script with preflight checks
+- **Bootstrap Script** (`deploy/windows/bootstrap.ps1`): Remote deployment via `irm ... | iex` pattern
 - **Windows AI Supervisor** (`deploy/windows/scripts/windows-ai-supervisor.ps1`): PowerShell service manager that auto-starts Ollama/SD/ComfyUI on boot
 - **Health Daemon** (`deploy/windows/scripts/vm-ai-health-daemon.ps1`): Reports status every 30s to dashboard webhook
-- **Ubuntu Health Monitor** (`deploy/local/scripts/create-local-ai-state.sh`): Polls all AI services, updates shared state file
 
 **Windows Node Setup:**
 ```powershell
-# One-line install (requires setting repo URL):
-$env:NEBULA_REPO_URL = "https://github.com/your-org/nebula-command.git"
-irm https://raw.githubusercontent.com/.../deploy/windows/bootstrap.ps1 | iex
+# One-line install:
+irm https://raw.githubusercontent.com/your-org/nebula-command/main/deploy/windows/bootstrap.ps1 | iex
 
-# Or manual:
+# Or manual with unified manager:
 git clone <repo> C:\NebulaCommand
 cd C:\NebulaCommand\deploy\windows
-.\scripts\install-ai-node.ps1
+.\nebula-ai.ps1 install     # Fresh install
+.\nebula-ai.ps1 repair      # Fix dependency issues (numpy/protobuf conflicts)
+.\nebula-ai.ps1 models      # Download AnimateDiff motion models
+.\nebula-ai.ps1 status      # Check all services health
 ```
 
 **Dashboard Integration APIs:**

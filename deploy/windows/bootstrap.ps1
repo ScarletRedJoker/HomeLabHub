@@ -155,27 +155,52 @@ Write-Host "[Bootstrap] Repository ready at $InstallPath" -ForegroundColor Green
 Write-Host "[Bootstrap] Starting full AI node installation..." -ForegroundColor Cyan
 Write-Host ""
 
-$installerPath = Join-Path $InstallPath "deploy\windows\scripts\install-ai-node.ps1"
+# Use the new unified nebula-ai.ps1 manager
+$unifiedManagerPath = Join-Path $InstallPath "deploy\windows\nebula-ai.ps1"
+$legacyInstallerPath = Join-Path $InstallPath "deploy\windows\scripts\install-ai-node.ps1"
 
-if (-not (Test-Path $installerPath)) {
-    Write-Host "[Bootstrap] ERROR: Installer script not found at $installerPath" -ForegroundColor Red
+# Prefer the unified manager, fall back to legacy installer
+if (Test-Path $unifiedManagerPath) {
+    Write-Host "[Bootstrap] Using unified AI manager: nebula-ai.ps1" -ForegroundColor Cyan
+    
+    $installerArgs = @("install")
+    
+    if ($Unattended) { $installerArgs += "-Unattended" }
+    if ($DashboardWebhook) { $installerArgs += "-DashboardWebhook"; $installerArgs += "`"$DashboardWebhook`"" }
+    if ($SkipOllama) { $installerArgs += "-SkipOllama" }
+    if ($SkipStableDiffusion) { $installerArgs += "-SkipStableDiffusion" }
+    if ($SkipComfyUI) { $installerArgs += "-SkipComfyUI" }
+    
+    $argsString = $installerArgs -join " "
+    Write-Host "[Bootstrap] Running: .\nebula-ai.ps1 $argsString" -ForegroundColor Gray
+    Write-Host ""
+    
+    & $unifiedManagerPath @installerArgs
+}
+elseif (Test-Path $legacyInstallerPath) {
+    Write-Host "[Bootstrap] Using legacy installer: install-ai-node.ps1" -ForegroundColor Yellow
+    
+    $installerArgs = @()
+    
+    if ($Unattended) { $installerArgs += "-Unattended" }
+    if ($DashboardWebhook) { $installerArgs += "-DashboardWebhook"; $installerArgs += "`"$DashboardWebhook`"" }
+    if ($SkipOllama) { $installerArgs += "-SkipOllama" }
+    if ($SkipStableDiffusion) { $installerArgs += "-SkipStableDiffusion" }
+    if ($SkipComfyUI) { $installerArgs += "-SkipComfyUI" }
+    if ($InstallTraining) { $installerArgs += "-InstallTraining" }
+    
+    $argsString = $installerArgs -join " "
+    Write-Host "[Bootstrap] Running: .\install-ai-node.ps1 $argsString" -ForegroundColor Gray
+    Write-Host ""
+    
+    & $legacyInstallerPath @installerArgs
+}
+else {
+    Write-Host "[Bootstrap] ERROR: No installer script found!" -ForegroundColor Red
+    Write-Host "[Bootstrap] Expected: $unifiedManagerPath" -ForegroundColor Red
+    Write-Host "[Bootstrap] Or: $legacyInstallerPath" -ForegroundColor Red
     exit 1
 }
-
-$installerArgs = @()
-
-if ($Unattended) { $installerArgs += "-Unattended" }
-if ($DashboardWebhook) { $installerArgs += "-DashboardWebhook"; $installerArgs += "`"$DashboardWebhook`"" }
-if ($SkipOllama) { $installerArgs += "-SkipOllama" }
-if ($SkipStableDiffusion) { $installerArgs += "-SkipStableDiffusion" }
-if ($SkipComfyUI) { $installerArgs += "-SkipComfyUI" }
-if ($InstallTraining) { $installerArgs += "-InstallTraining" }
-
-$argsString = $installerArgs -join " "
-Write-Host "[Bootstrap] Running: .\install-ai-node.ps1 $argsString" -ForegroundColor Gray
-Write-Host ""
-
-& $installerPath @installerArgs
 
 $exitCode = $LASTEXITCODE
 
@@ -187,13 +212,16 @@ if ($exitCode -eq 0) {
     Write-Host ""
     Write-Host "Your Windows AI node is now ready. Quick commands:" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "  Check status:    cd $InstallPath\deploy\windows" -ForegroundColor White
-    Write-Host "                   .\scripts\windows-ai-supervisor.ps1 -Action status" -ForegroundColor White
+    Write-Host "  cd $InstallPath\deploy\windows" -ForegroundColor White
     Write-Host ""
-    Write-Host "  Start services:  .\scripts\windows-ai-supervisor.ps1 -Action start" -ForegroundColor White
-    Write-Host "  Stop services:   .\scripts\windows-ai-supervisor.ps1 -Action stop" -ForegroundColor White
+    Write-Host "  .\nebula-ai.ps1 status       # Check all services" -ForegroundColor White
+    Write-Host "  .\nebula-ai.ps1 start        # Start all services" -ForegroundColor White
+    Write-Host "  .\nebula-ai.ps1 stop         # Stop all services" -ForegroundColor White
+    Write-Host "  .\nebula-ai.ps1 repair       # Fix dependency issues" -ForegroundColor White
+    Write-Host "  .\nebula-ai.ps1 models       # Download AI models" -ForegroundColor White
+    Write-Host "  .\nebula-ai.ps1 update       # Update to latest versions" -ForegroundColor White
     Write-Host ""
-    Write-Host "  View logs:       Get-Content C:\ProgramData\NebulaCommand\logs\install.log" -ForegroundColor White
+    Write-Host "  View logs:  Get-Content C:\ProgramData\NebulaCommand\logs\nebula-ai.log" -ForegroundColor White
     Write-Host ""
     Write-Host "Service URLs:" -ForegroundColor Cyan
     Write-Host "  Ollama:             http://localhost:11434" -ForegroundColor White

@@ -1,0 +1,269 @@
+{
+  "_comment": "Nebula Command AI Dependencies Manifest - Pinned versions for compatibility",
+  "_version": "1.0.0",
+  "_updated": "2026-01-14",
+  
+  "core": {
+    "_description": "Core AI dependencies with carefully pinned versions to avoid conflicts",
+    "packages": {
+      "numpy": {
+        "version": "1.26.4",
+        "reason": "PyTorch is compiled against NumPy 1.x ABI. NumPy 2.x breaks binary compatibility.",
+        "conflicts_with": ["numpy>=2.0.0"]
+      },
+      "protobuf": {
+        "version": "5.28.3",
+        "reason": "Latest stable with runtime_version support. Required by TensorFlow 2.15+.",
+        "conflicts_with": ["protobuf<4.0.0", "protobuf>=6.0.0"]
+      },
+      "torch": {
+        "version": "2.2.2",
+        "cuda_version": "cu121",
+        "reason": "Stable PyTorch with CUDA 12.1 support",
+        "install_command": "pip install torch==2.2.2+cu121 torchvision==0.17.2+cu121 torchaudio==2.2.2+cu121 --index-url https://download.pytorch.org/whl/cu121"
+      },
+      "torchvision": {
+        "version": "0.17.2",
+        "cuda_version": "cu121"
+      },
+      "torchaudio": {
+        "version": "2.2.2",
+        "cuda_version": "cu121"
+      }
+    }
+  },
+  
+  "transformers_stack": {
+    "_description": "Hugging Face ecosystem packages",
+    "packages": {
+      "transformers": {
+        "version": "4.44.2",
+        "reason": "Stable version before breaking API changes in 4.45+"
+      },
+      "accelerate": {
+        "version": "0.33.0",
+        "reason": "Compatible with transformers 4.44.x"
+      },
+      "safetensors": {
+        "version": "0.4.5",
+        "reason": "Stable safetensors format support"
+      },
+      "huggingface-hub": {
+        "version": "0.25.2",
+        "reason": "Latest compatible hub client"
+      },
+      "tokenizers": {
+        "version": "0.19.1",
+        "reason": "Required by transformers"
+      }
+    }
+  },
+  
+  "diffusion": {
+    "_description": "Stable Diffusion and image generation packages",
+    "packages": {
+      "diffusers": {
+        "version": "0.30.3",
+        "reason": "Latest stable diffusers with AnimateDiff support"
+      },
+      "open-clip-torch": {
+        "version": "3.2.0",
+        "reason": "Version with removed protobuf<4 constraint, works with protobuf 5.x"
+      },
+      "clip": {
+        "version": "1.0",
+        "source": "git+https://github.com/openai/CLIP.git",
+        "reason": "OpenAI CLIP for text-image understanding"
+      },
+      "xformers": {
+        "version": "0.0.25",
+        "reason": "Memory-efficient attention for diffusion models"
+      }
+    }
+  },
+  
+  "tensorflow": {
+    "_description": "TensorFlow stack for specific models",
+    "packages": {
+      "tensorflow": {
+        "version": "2.15.0",
+        "reason": "Compatible with protobuf 5.x, last version supporting many legacy models"
+      },
+      "tensorflow-hub": {
+        "version": "0.16.1"
+      },
+      "keras": {
+        "version": "2.15.0",
+        "reason": "Bundled with TensorFlow 2.15"
+      }
+    }
+  },
+  
+  "audio": {
+    "_description": "Audio processing and speech packages",
+    "packages": {
+      "openai-whisper": {
+        "version": "20231117",
+        "reason": "Stable Whisper release"
+      },
+      "faster-whisper": {
+        "version": "1.0.3",
+        "reason": "CTranslate2-based Whisper for faster inference"
+      },
+      "TTS": {
+        "version": "0.22.0",
+        "reason": "Coqui TTS for text-to-speech"
+      }
+    }
+  },
+  
+  "utilities": {
+    "_description": "Common utility packages",
+    "packages": {
+      "einops": {
+        "version": "0.8.0"
+      },
+      "opencv-python": {
+        "version": "4.10.0.84"
+      },
+      "Pillow": {
+        "version": "10.4.0"
+      },
+      "scipy": {
+        "version": "1.13.1"
+      },
+      "scikit-image": {
+        "version": "0.24.0"
+      },
+      "tqdm": {
+        "version": "4.66.5"
+      },
+      "pyyaml": {
+        "version": "6.0.2"
+      },
+      "requests": {
+        "version": "2.32.3"
+      },
+      "aiohttp": {
+        "version": "3.10.5"
+      }
+    }
+  },
+  
+  "comfyui_nodes": {
+    "_description": "Popular ComfyUI custom nodes and their dependencies",
+    "nodes": {
+      "ComfyUI-Manager": {
+        "repo": "https://github.com/ltdrdata/ComfyUI-Manager.git",
+        "required": true
+      },
+      "ComfyUI-AnimateDiff-Evolved": {
+        "repo": "https://github.com/Kosinkadink/ComfyUI-AnimateDiff-Evolved.git",
+        "required": true
+      },
+      "ComfyUI-VideoHelperSuite": {
+        "repo": "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git",
+        "required": true
+      },
+      "ComfyUI-Advanced-ControlNet": {
+        "repo": "https://github.com/Kosinkadink/ComfyUI-Advanced-ControlNet.git",
+        "required": false
+      },
+      "ComfyUI-Impact-Pack": {
+        "repo": "https://github.com/ltdrdata/ComfyUI-Impact-Pack.git",
+        "required": false
+      }
+    }
+  },
+  
+  "animatediff_models": {
+    "_description": "AnimateDiff motion models for video generation",
+    "models": {
+      "mm_sd_v15_v2": {
+        "name": "AnimateDiff v2 Motion Module",
+        "url": "https://huggingface.co/guoyww/animatediff/resolve/main/mm_sd_v15_v2.ckpt",
+        "destination": "custom_nodes/ComfyUI-AnimateDiff-Evolved/models",
+        "size_mb": 1800,
+        "required": true
+      },
+      "mm_sdxl_v10_beta": {
+        "name": "AnimateDiff SDXL Beta",
+        "url": "https://huggingface.co/guoyww/animatediff/resolve/main/mm_sdxl_v10_beta.ckpt",
+        "destination": "custom_nodes/ComfyUI-AnimateDiff-Evolved/models",
+        "size_mb": 1500,
+        "required": false
+      },
+      "v3_sd15_mm": {
+        "name": "AnimateDiff v3 Motion Module",
+        "url": "https://huggingface.co/guoyww/animatediff/resolve/main/v3_sd15_mm.ckpt",
+        "destination": "custom_nodes/ComfyUI-AnimateDiff-Evolved/models",
+        "size_mb": 1800,
+        "required": false
+      },
+      "v3_sd15_sparsectrl_rgb": {
+        "name": "SparseCtrl RGB Encoder",
+        "url": "https://huggingface.co/guoyww/animatediff/resolve/main/v3_sd15_sparsectrl_rgb.ckpt",
+        "destination": "custom_nodes/ComfyUI-AnimateDiff-Evolved/models",
+        "size_mb": 400,
+        "required": false
+      }
+    }
+  },
+  
+  "repair_checks": {
+    "_description": "Conditions that trigger automatic repair",
+    "numpy_2x_check": {
+      "condition": "numpy >= 2.0.0",
+      "action": "downgrade",
+      "target_version": "1.26.4",
+      "error_patterns": [
+        "numpy.core.multiarray failed to import",
+        "A]PI version mismatch detected for numpy",
+        "module compiled against API version 0x10 but this version of numpy is 0x12"
+      ]
+    },
+    "protobuf_conflict": {
+      "condition": "protobuf < 4.0.0 or protobuf >= 6.0.0",
+      "action": "install",
+      "target_version": "5.28.3",
+      "error_patterns": [
+        "TypeError: Descriptors cannot be created directly",
+        "cannot import name 'runtime_version'",
+        "protobuf version conflict"
+      ]
+    },
+    "torch_numpy_mismatch": {
+      "error_patterns": [
+        "RuntimeError: Numpy is not available",
+        "cannot import name 'np' from 'torch'"
+      ],
+      "action": "reinstall_torch"
+    }
+  },
+  
+  "install_order": {
+    "_description": "Order matters for dependency resolution",
+    "phases": [
+      {
+        "name": "core",
+        "packages": ["numpy==1.26.4", "protobuf==5.28.3"]
+      },
+      {
+        "name": "pytorch",
+        "command": "pip install torch==2.2.2+cu121 torchvision==0.17.2+cu121 torchaudio==2.2.2+cu121 --index-url https://download.pytorch.org/whl/cu121"
+      },
+      {
+        "name": "transformers",
+        "packages": ["transformers==4.44.2", "accelerate==0.33.0", "safetensors==0.4.5", "huggingface-hub==0.25.2"]
+      },
+      {
+        "name": "diffusion",
+        "packages": ["diffusers==0.30.3", "open-clip-torch==3.2.0", "xformers==0.0.25"]
+      },
+      {
+        "name": "utilities",
+        "packages": ["einops", "opencv-python", "Pillow", "scipy", "tqdm", "pyyaml", "requests", "aiohttp"]
+      }
+    ]
+  }
+}
