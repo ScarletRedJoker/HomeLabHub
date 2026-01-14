@@ -21,7 +21,7 @@ $Script:Config = @{
     # Python requirements
     RequiredPythonMajor = 3
     RequiredPythonMinor = 10  # 3.10 is the LTS for AI
-    MaxPythonMinor = 12       # 3.14 is too new, doesn't have CUDA wheels
+    MaxPythonMinor = 12       # 3.14 is too new - no CUDA wheels available
     
     # Paths
     Python310Path = "C:\Python310\python.exe"
@@ -137,11 +137,11 @@ function Test-PythonVersion {
     }
     
     if (-not $validPython) {
-        # Check what's wrong
+        # Check the issue
         $systemPython = Get-PythonInfo -PythonPath "python"
         if ($systemPython.IsValid -and $systemPython.Minor -gt $Script:Config.MaxPythonMinor) {
             Write-Log "PROBLEM: Python $($systemPython.Version) is TOO NEW!" "ERROR"
-            Write-Log "PyTorch doesn't have CUDA wheels for Python 3.13+" "ERROR"
+            Write-Log "PyTorch does not have CUDA wheels for Python 3.13+" "ERROR"
             Write-Log "" "INFO"
             Write-Log "SOLUTION: Install Python 3.10 (LTS version for AI):" "WARN"
             Write-Log "  1. Download from: https://www.python.org/downloads/release/python-31011/" "INFO"
@@ -167,26 +167,14 @@ function Test-TorchCuda {
     
     Write-Log "Checking PyTorch CUDA support..." "STEP"
     
-    $script = @"
-import sys
-try:
-    import torch
-    print(f"TORCH_VERSION={torch.__version__}")
-    print(f"CUDA_AVAILABLE={torch.cuda.is_available()}")
-    if torch.cuda.is_available():
-        print(f"CUDA_VERSION={torch.version.cuda}")
-        print(f"GPU_NAME={torch.cuda.get_device_name(0)}")
-    else:
-        # Check if it's CPU-only build
-        if '+cpu' in torch.__version__ or 'cpu' in str(torch.__config__.show()).lower():
-            print("CUDA_BUILD=false")
-        else:
-            print("CUDA_BUILD=true")
-except ImportError:
-    print("TORCH_INSTALLED=false")
-except Exception as e:
-    print(f"ERROR={e}")
-"@
+    $scriptLines = @(
+        "import torch"
+        "print('TORCH_VERSION=' + torch.__version__)"
+        "print('CUDA_AVAILABLE=' + str(torch.cuda.is_available()))"
+        "if torch.cuda.is_available(): print('CUDA_VERSION=' + str(torch.version.cuda)); print('GPU_NAME=' + torch.cuda.get_device_name(0))"
+        "else: print('CUDA_BUILD=false')"
+    )
+    $script = $scriptLines -join "; "
     
     try {
         $output = & $PythonPath -c $script 2>&1
@@ -216,7 +204,7 @@ except Exception as e:
         
         if ($result.CUDA_BUILD -eq "false") {
             Write-Log "PyTorch installed WITHOUT CUDA support (CPU-only build)" "ERROR"
-            Write-Log "This is the root cause of 'Torch not compiled with CUDA enabled'" "WARN"
+            Write-Log "This is the root cause of the Torch CUDA error" "WARN"
             return @{ NeedsRepair = $true; Reason = "cpu_only" }
         }
         
