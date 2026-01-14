@@ -450,7 +450,27 @@ class AIOrchestrator {
       }
       
       if (errorLower.includes("failed to recognize model type") || errorLower.includes("not a valid model")) {
-        throw new Error(`The loaded model "${sdStatus.currentModel}" is not a valid Stable Diffusion model. Try loading a different checkpoint.`);
+        const modelName = sdStatus.currentModel || "unknown";
+        const isMotionModule = modelName.toLowerCase().startsWith("mm_") || modelName.toLowerCase().startsWith("mm-") || modelName.includes("motion");
+        
+        // Filter out motion modules and other non-checkpoint files from suggestions
+        const validCheckpoints = (sdStatus.availableModels || []).filter(m => {
+          const lower = m.toLowerCase();
+          return !lower.startsWith("mm_") && 
+                 !lower.startsWith("mm-") && 
+                 !lower.includes("motion") &&
+                 !lower.includes("lora") &&
+                 !lower.includes("vae");
+        });
+        
+        const suggestion = validCheckpoints.length > 0 
+          ? ` Available checkpoints: ${validCheckpoints.slice(0, 5).join(", ")}`
+          : " Download a checkpoint model like Dreamshaper, RealisticVision, or SD 1.5/SDXL.";
+        
+        if (isMotionModule) {
+          throw new Error(`"${modelName}" is a motion/video module, not an image checkpoint. Load a standard SD model instead.${suggestion}`);
+        }
+        throw new Error(`The model "${modelName}" is not a valid Stable Diffusion checkpoint.${suggestion}`);
       }
       
       if (errorLower.includes("model") && errorLower.includes("not found")) {
