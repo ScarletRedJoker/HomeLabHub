@@ -81,6 +81,20 @@ A comprehensive settings interface provides configuration for AI, servers, integ
 ### Development vs Production
 Differences in SSH access, AI service utilization (cloud vs. local), and specific feature availability are managed by environment detection. Replit development uses modelfarm for OpenAI integration.
 
+### Replit Modelfarm Integration
+When running in Replit, the dashboard uses the Replit modelfarm for AI services:
+- **Detection:** `AI_INTEGRATIONS_OPENAI_BASE_URL` containing "modelfarm"
+- **Chat Models:** gpt-4o, gpt-4o-mini, gpt-4.1, gpt-4.1-mini, gpt-5, gpt-5-mini (NOT gpt-3.5-turbo or gpt-4-turbo)
+- **Image Model:** `gpt-image-1` (NOT dall-e-3, and no style/quality parameters)
+- **Status Detection:** Dashboard returns "connected" status immediately for modelfarm without API probe
+
+### SSH Key Format Requirements
+The ssh2 library (v1.17.0) only supports PEM format private keys, NOT OpenSSH format:
+- **Supported:** `-----BEGIN RSA PRIVATE KEY-----`, `-----BEGIN PRIVATE KEY-----`, `-----BEGIN EC PRIVATE KEY-----`
+- **Not Supported:** `-----BEGIN OPENSSH PRIVATE KEY-----` (modern OpenSSH default since v7.8)
+- **Conversion:** Dashboard attempts automatic conversion, or user can run: `ssh-keygen -p -m pem -f ~/.ssh/id_rsa`
+- **Alternative:** Generate new key in PEM format: `ssh-keygen -t rsa -m pem -f ~/.ssh/id_rsa_pem`
+
 ## External Dependencies
 *   **PostgreSQL:** Primary relational database.
 *   **Redis:** Caching and session management.
