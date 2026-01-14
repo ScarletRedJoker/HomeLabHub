@@ -17,17 +17,17 @@
         "conflicts_with": ["protobuf<4.0.0", "protobuf>=6.0.0"]
       },
       "torch": {
-        "version": "2.2.1",
+        "version": "2.3.1",
         "cuda_version": "cu121",
-        "reason": "PyTorch 2.2.1 with CUDA 12.1 - required by xformers 0.0.28",
-        "install_command": "pip install torch==2.2.1+cu121 torchvision==0.17.1+cu121 torchaudio==2.2.1+cu121 --index-url https://download.pytorch.org/whl/cu121"
+        "reason": "PyTorch 2.3.1 with CUDA 12.1 - required by xformers 0.0.28 (needs torch>=2.3)",
+        "install_command": "pip install torch==2.3.1+cu121 torchvision==0.18.1+cu121 torchaudio==2.3.1+cu121 --index-url https://download.pytorch.org/whl/cu121"
       },
       "torchvision": {
-        "version": "0.17.1",
+        "version": "0.18.1",
         "cuda_version": "cu121"
       },
       "torchaudio": {
-        "version": "2.2.1",
+        "version": "2.3.1",
         "cuda_version": "cu121"
       }
     }
@@ -250,7 +250,7 @@
       },
       {
         "name": "pytorch",
-        "command": "pip install torch==2.2.2+cu121 torchvision==0.17.2+cu121 torchaudio==2.2.2+cu121 --index-url https://download.pytorch.org/whl/cu121"
+        "command": "pip install torch==2.3.1+cu121 torchvision==0.18.1+cu121 torchaudio==2.3.1+cu121 --index-url https://download.pytorch.org/whl/cu121"
       },
       {
         "name": "transformers",
@@ -258,7 +258,7 @@
       },
       {
         "name": "diffusion",
-        "packages": ["diffusers==0.30.3", "open-clip-torch==3.2.0", "xformers==0.0.25"]
+        "packages": ["diffusers==0.30.3", "open-clip-torch==3.2.0", "xformers==0.0.28"]
       },
       {
         "name": "utilities",
