@@ -1,5 +1,5 @@
 # Nebula Model Agent - Windows Startup Script
-# Run this script to start the model agent service on port 8765
+# Run this script to start the model agent service on port 9765
 
 param(
     [Parameter(Position=0)]
@@ -11,7 +11,7 @@ $ErrorActionPreference = "Stop"
 
 $AgentDir = $PSScriptRoot
 $NodePath = "node"
-$Port = 8765
+$Port = 9765
 $ServiceName = "NebulaModelAgent"
 
 function Write-Log {

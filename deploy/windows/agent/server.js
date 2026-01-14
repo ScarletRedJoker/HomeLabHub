@@ -8,7 +8,7 @@ const { v4: uuidv4 } = require('uuid');
 const app = express();
 app.use(express.json());
 
-const PORT = process.env.AGENT_PORT || 8765;
+const PORT = process.env.AGENT_PORT || 9765;
 const AUTH_TOKEN = process.env.NEBULA_AGENT_TOKEN;
 
 const MODEL_PATHS = {
