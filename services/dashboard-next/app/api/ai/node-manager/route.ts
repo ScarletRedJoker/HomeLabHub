@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || '100.118.44.102';
 const AGENT_PORT = process.env.WINDOWS_AGENT_PORT || '8765';
-const AGENT_TOKEN = process.env.KVM_AGENT_TOKEN;
+const AGENT_TOKEN = process.env.NEBULA_AGENT_TOKEN || process.env.KVM_AGENT_TOKEN;
 
 interface ServiceHealth {
   name: string;

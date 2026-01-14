@@ -55,7 +55,7 @@ A comprehensive dashboard page (`/ai-nodes`) provides:
 - **One-Click Repair:** Dashboard buttons to restart services, update dependencies, fix specific issues, or repair all
 - **Health Daemon:** Windows PowerShell script (`deploy/windows/scripts/start-health-daemon.ps1`) runs continuously, scanning logs for error patterns and reporting package versions every 30 seconds (deep scans every 5 minutes)
 - **API Endpoint:** `/api/ai/node-manager` with GET for diagnostics and POST for repair actions
-- **Agent Communication:** Requires `KVM_AGENT_TOKEN` for secure communication with Windows VM agent via Tailscale (100.118.44.102)
+- **Agent Communication:** Requires `NEBULA_AGENT_TOKEN` secret for secure communication with Windows VM agent via Tailscale (100.118.44.102)
 
 ### AI Services API Endpoints
 Provides APIs for Speech Services (TTS/STT), Job Scheduling (GPU jobs), Training (LoRA, QLoRA, etc.), and Embeddings/RAG (semantic search, chunking). Core AI libraries support GPU-aware scheduling, hybrid speech services, RAG, and model training.
