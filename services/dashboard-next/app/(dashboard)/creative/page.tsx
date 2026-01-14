@@ -118,6 +118,23 @@ export default function CreativeStudioPage() {
         if (data.sdStatus) {
           setSdStatus(data.sdStatus);
         }
+        
+        // Auto-select best available provider
+        const providers = data.providers || [];
+        if (providers.length > 0) {
+          // Prefer SD if available, then OpenAI, then auto
+          const sdProvider = providers.find((p: any) => p.id === "stable-diffusion" && p.available);
+          const openaiProvider = providers.find((p: any) => p.id === "openai" && p.available);
+          const autoProvider = providers.find((p: any) => p.id === "auto");
+          
+          if (sdProvider) {
+            setImageProvider("stable-diffusion");
+          } else if (openaiProvider) {
+            setImageProvider("openai");
+          } else if (autoProvider) {
+            setImageProvider("auto");
+          }
+        }
       }
     } catch (error) {
       console.error("Failed to fetch image providers:", error);
@@ -513,33 +530,55 @@ export default function CreativeStudioPage() {
                   />
                   <Label htmlFor="save-locally">Save to server</Label>
                 </div>
-
-                <Select value={imageProvider} onValueChange={setImageProvider}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {imageProviders.length > 0 ? (
-                      imageProviders.map((p) => (
-                        <SelectItem 
-                          key={p.id} 
-                          value={p.id} 
-                          disabled={!p.available}
-                        >
-                          {p.name} {p.unrestricted && "(No Restrictions)"}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <>
-                        <SelectItem value="auto">Auto (Local First)</SelectItem>
-                        <SelectItem value="stable-diffusion" disabled={!sdAvailable}>
-                          Stable Diffusion {sdAvailable ? "(Available)" : "(Offline)"}
-                        </SelectItem>
-                        <SelectItem value="openai">DALL-E 3</SelectItem>
-                      </>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Image Provider</Label>
+                <div className="flex gap-2 items-start">
+                  <Select value={imageProvider} onValueChange={setImageProvider}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {imageProviders.length > 0 ? (
+                        imageProviders.map((p) => (
+                          <SelectItem 
+                            key={p.id} 
+                            value={p.id} 
+                            disabled={!p.available}
+                          >
+                            {p.name} {p.unrestricted && "(No Restrictions)"} {p.available ? "" : "(Not Available)"}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <>
+                          <SelectItem value="auto">Auto (Local First)</SelectItem>
+                          <SelectItem value="stable-diffusion" disabled={!sdAvailable}>
+                            Stable Diffusion {sdAvailable ? "(Available)" : "(Offline)"}
+                          </SelectItem>
+                          <SelectItem value="openai">DALL-E 3</SelectItem>
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex-1 pt-2">
+                    {imageProviders.length > 0 && imageProviders.find((p) => p.id === imageProvider) && (
+                      <div className="text-sm">
+                        {imageProviders.find((p) => p.id === imageProvider)?.available ? (
+                          <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                            <CheckCircle2 className="h-4 w-4" />
+                            {imageProviders.find((p) => p.id === imageProvider)?.description}
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
+                            <XCircle className="h-4 w-4" />
+                            Not Available
+                          </span>
+                        )}
+                      </div>
                     )}
-                  </SelectContent>
-                </Select>
+                  </div>
+                </div>
               </div>
 
               <Button

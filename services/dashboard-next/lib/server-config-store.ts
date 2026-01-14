@@ -15,6 +15,7 @@ export interface ServerConfig {
   supportsWol?: boolean;
   macAddress?: string;
   broadcastAddress?: string;
+  wolRelayServer?: string;
   ipmiHost?: string;
   ipmiUser?: string;
   ipmiPassword?: string;
@@ -23,6 +24,10 @@ export interface ServerConfig {
   vncPort?: number;
   noVncUrl?: string;
   isDefault?: boolean;
+  serverType?: "linux" | "windows";
+  tailscaleIp?: string;
+  agentPort?: number;
+  agentToken?: string;
 }
 
 const FALLBACK_SETTINGS_DIR = "/app/data";
@@ -80,6 +85,7 @@ const DEFAULT_SERVERS: ServerConfig[] = [
     keyPath: DEFAULT_SSH_KEY_PATH,
     deployPath: "/opt/homelab/HomeLabHub/deploy/linode",
     supportsWol: false,
+    serverType: "linux",
     isDefault: true,
   },
   {
@@ -100,6 +106,24 @@ const DEFAULT_SERVERS: ServerConfig[] = [
     vncHost: process.env.HOME_VNC_HOST || process.env.HOME_SSH_HOST,
     vncPort: parseInt(process.env.HOME_VNC_PORT || "5900", 10),
     noVncUrl: process.env.HOME_NOVNC_URL,
+    serverType: "linux",
+    isDefault: true,
+  },
+  {
+    id: "windows",
+    name: "Windows VM",
+    description: "AI workstation - Ollama, ComfyUI, Stable Diffusion",
+    host: process.env.WINDOWS_VM_HOST || "100.118.44.102",
+    tailscaleIp: process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102",
+    user: process.env.WINDOWS_VM_USER || "evin",
+    deployPath: "C:\\HomeLabHub",
+    supportsWol: true,
+    macAddress: process.env.WINDOWS_VM_MAC,
+    broadcastAddress: process.env.WINDOWS_VM_BROADCAST || "192.168.1.255",
+    wolRelayServer: "home",
+    agentPort: parseInt(process.env.WINDOWS_AGENT_PORT || "9765", 10),
+    agentToken: process.env.NEBULA_AGENT_TOKEN,
+    serverType: "windows",
     isDefault: true,
   },
 ];

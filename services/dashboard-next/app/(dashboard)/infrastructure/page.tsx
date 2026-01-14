@@ -17,6 +17,12 @@ import {
   Loader2,
   AlertCircle,
   Monitor,
+  Cloud,
+  Home,
+  Laptop,
+  Wifi,
+  WifiOff,
+  Rocket,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { LucideIcon } from "lucide-react";
@@ -62,13 +68,31 @@ const serviceIcons: Record<string, LucideIcon> = {
   comfyui: Video,
 };
 
+const serverIcons: Record<string, LucideIcon> = {
+  linode: Cloud,
+  home: Home,
+  windows: Laptop,
+};
+
+interface ManagedServer {
+  id: string;
+  name: string;
+  description?: string;
+  online: boolean;
+  serverType: "linux" | "windows";
+  supportsWol: boolean;
+  wolRelayServer?: string;
+}
+
 export default function InfrastructurePage() {
   const [vms, setVMs] = useState<VM[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [managedServers, setManagedServers] = useState<ManagedServer[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [vmActions, setVmActions] = useState<Record<string, boolean>>({});
   const [serviceActions, setServiceActions] = useState<Record<string, boolean>>({});
+  const [serverActions, setServerActions] = useState<Record<string, boolean>>({});
   const [forceStopConfirm, setForceStopConfirm] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(15);
 
@@ -76,9 +100,10 @@ export default function InfrastructurePage() {
     if (isManual) setRefreshing(true);
     
     try {
-      const [vmRes, servicesRes] = await Promise.all([
+      const [vmRes, servicesRes, serversRes] = await Promise.all([
         fetch("/api/vm", { cache: "no-store" }),
         fetch("/api/services", { cache: "no-store" }),
+        fetch("/api/servers/power", { cache: "no-store" }),
       ]);
 
       if (vmRes.ok) {
@@ -90,6 +115,11 @@ export default function InfrastructurePage() {
         const servicesData = await servicesRes.json();
         const transformedServices = (servicesData.services || []).map(transformService);
         setServices(transformedServices);
+      }
+
+      if (serversRes.ok) {
+        const serversData = await serversRes.json();
+        setManagedServers(serversData.servers || []);
       }
 
       setCountdown(15);
@@ -200,6 +230,61 @@ export default function InfrastructurePage() {
     }
   };
 
+  const handleServerAction = async (serverId: string, action: "wake" | "shutdown" | "restart") => {
+    setServerActions((prev) => ({ ...prev, [serverId]: true }));
+    try {
+      const res = await fetch("/api/servers/power", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ serverId, action }),
+      });
+
+      const data = await res.json();
+      
+      if (res.ok) {
+        toast.success(data.message || `Server ${action} command sent successfully`);
+        setTimeout(() => fetchData(), 3000);
+      } else {
+        toast.error(data.error || `Failed to ${action} server`);
+      }
+    } catch (error) {
+      toast.error(`Failed to ${action} server`);
+    } finally {
+      setServerActions((prev) => ({ ...prev, [serverId]: false }));
+    }
+  };
+
+  const handleDeployToServer = async (serverId: string) => {
+    setServerActions((prev) => ({ ...prev, [`deploy-${serverId}`]: true }));
+    try {
+      let endpoint = "/api/deploy/execute";
+      let body: any = { serverId };
+      
+      if (serverId === "windows") {
+        endpoint = "/api/deploy/windows";
+        body = { action: "git-pull" };
+      }
+      
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+      
+      if (res.ok) {
+        toast.success(`Deployment to ${serverId} initiated`);
+      } else {
+        toast.error(data.error || "Deployment failed");
+      }
+    } catch (error) {
+      toast.error("Failed to deploy");
+    } finally {
+      setServerActions((prev) => ({ ...prev, [`deploy-${serverId}`]: false }));
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "running":
@@ -263,6 +348,120 @@ export default function InfrastructurePage() {
       </div>
 
       <div className="space-y-6">
+        <div>
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <Server className="h-5 w-5" />
+            All Servers
+          </h2>
+          {managedServers.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No Servers Found</h3>
+                <p className="text-muted-foreground">
+                  No managed servers are configured.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {managedServers.map((server) => {
+                const Icon = serverIcons[server.id] || Server;
+                return (
+                  <Card key={server.id} className={server.online ? "border-green-500/30" : "border-red-500/30"}>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Icon className="h-5 w-5" />
+                          <CardTitle className="text-base">{server.name}</CardTitle>
+                        </div>
+                        <Badge variant={server.online ? "success" : "destructive"} className="flex items-center gap-1">
+                          {server.online ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+                          {server.online ? "Online" : "Offline"}
+                        </Badge>
+                      </div>
+                      {server.description && (
+                        <CardDescription>{server.description}</CardDescription>
+                      )}
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Type</span>
+                        <Badge variant="outline">
+                          {server.serverType === "windows" ? "Windows" : "Linux"}
+                        </Badge>
+                      </div>
+                      {server.supportsWol && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Wake-on-LAN</span>
+                          <Badge variant="outline" className="text-green-500">
+                            {server.wolRelayServer ? `Via ${server.wolRelayServer}` : "Direct"}
+                          </Badge>
+                        </div>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        {!server.online && server.supportsWol && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleServerAction(server.id, "wake")}
+                            disabled={serverActions[server.id]}
+                          >
+                            {serverActions[server.id] ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Power className="h-4 w-4 mr-2" />
+                            )}
+                            Wake
+                          </Button>
+                        )}
+                        {server.online && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleServerAction(server.id, "restart")}
+                              disabled={serverActions[server.id]}
+                            >
+                              {serverActions[server.id] ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <RefreshCw className="h-4 w-4 mr-2" />
+                              )}
+                              Restart
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleServerAction(server.id, "shutdown")}
+                              disabled={serverActions[server.id]}
+                            >
+                              <Power className="h-4 w-4 mr-2" />
+                              Shutdown
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => handleDeployToServer(server.id)}
+                              disabled={serverActions[`deploy-${server.id}`]}
+                            >
+                              {serverActions[`deploy-${server.id}`] ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <Rocket className="h-4 w-4 mr-2" />
+                              )}
+                              Deploy
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         <div>
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
             <Monitor className="h-5 w-5" />

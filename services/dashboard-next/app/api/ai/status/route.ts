@@ -128,7 +128,7 @@ async function checkImageGeneration(): Promise<AIProviderStatus> {
   const apiKey = integrationKey || directKey;
 
   if (!apiKey && !isReplitIntegration) {
-    return { name: "DALL-E 3", status: "not_configured", error: "No valid API key" };
+    return { name: "DALL-E 3", status: "not_configured", error: "No valid API key configured" };
   }
   
   // For non-Replit integrations, require sk- prefix
@@ -151,6 +151,7 @@ async function checkImageGeneration(): Promise<AIProviderStatus> {
       baseURL: baseURL || undefined,
       apiKey: apiKey?.trim() || '',
       ...(projectId && { project: projectId.trim() }),
+      timeout: 10000,
     });
     
     const models = await openai.models.list();
@@ -166,7 +167,13 @@ async function checkImageGeneration(): Promise<AIProviderStatus> {
       model: "dall-e-3",
     };
   } catch (error: any) {
-    return { name: "DALL-E 3", status: "error", error: error.message || "Validation failed" };
+    const errorMsg = error.message || "Validation failed";
+    const isTimeoutError = error.name === "AbortError" || errorMsg.includes("timeout") || errorMsg.includes("ETIMEDOUT");
+    return {
+      name: "DALL-E 3",
+      status: "error",
+      error: isTimeoutError ? `Connection timeout (${errorMsg})` : errorMsg,
+    };
   }
 }
 

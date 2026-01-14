@@ -33,7 +33,39 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Image API] Received prompt: "${prompt.substring(0, 50)}..." (${prompt.length} chars)`);
 
-    const selectedProvider = provider || "auto";
+    let selectedProvider = provider || "auto";
+    
+    // If a specific provider was requested, validate it's available and fallback if needed
+    if (selectedProvider !== "auto") {
+      const sdStatus = await aiOrchestrator.getSDStatus();
+      const sdAvailable = sdStatus.available && sdStatus.modelLoaded;
+      const hasOpenAI = aiOrchestrator.hasOpenAI();
+      
+      if (selectedProvider === "openai" && !hasOpenAI) {
+        console.log(`[Image API] OpenAI requested but not configured. Checking for fallback...`);
+        if (sdAvailable) {
+          console.log(`[Image API] Falling back to Stable Diffusion`);
+          selectedProvider = "stable-diffusion";
+        } else {
+          return NextResponse.json(
+            { error: "OpenAI not configured", details: "OpenAI API key is not configured and Stable Diffusion is not available. Please configure OpenAI or start Stable Diffusion." },
+            { status: 503 }
+          );
+        }
+      } else if (selectedProvider === "stable-diffusion" && !sdAvailable) {
+        console.log(`[Image API] Stable Diffusion requested but not available. Checking for fallback...`);
+        if (hasOpenAI) {
+          console.log(`[Image API] Falling back to OpenAI`);
+          selectedProvider = "openai";
+        } else {
+          return NextResponse.json(
+            { error: "Stable Diffusion not available", details: "Stable Diffusion is not running and OpenAI is not configured. Please start Stable Diffusion or configure OpenAI." },
+            { status: 503 }
+          );
+        }
+      }
+    }
+    
     console.log(`[Image API] Generating with provider: ${selectedProvider}, size: ${size || "1024x1024"}`);
     
     const result = await aiOrchestrator.generateImage({
