@@ -84,15 +84,83 @@ const ALLOWED_SERVICES = new Set([
   "redis",
   "caddy",
   "authelia",
-  // Windows AI services
+  // Ubuntu host services (KVM hypervisor)
+  "libvirt",
+  "libvirtd",
+  "windows-vm",
+  "plex",
+  "transmission",
+  "vnc",
+  "vnc-server",
+  "xrdp",
+  "docker",
+  "nas-mounts",
+  // Windows AI services (VM guest)
   "ollama",
   "comfyui",
   "stable-diffusion",
   "agent",
   "nebula-agent",
+  "sunshine",
   // General
   "all",
 ]);
+
+// Remote access protocols
+export interface RemoteAccessConfig {
+  type: "vnc" | "rdp" | "sunshine" | "ssh";
+  host: string;
+  port: number;
+  url: string;
+  description?: string;
+}
+
+export function getRemoteAccessConfigs(): Record<string, RemoteAccessConfig[]> {
+  const UBUNTU_IP = process.env.UBUNTU_TAILSCALE_IP || "100.66.61.51";
+  const WINDOWS_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
+  
+  return {
+    ubuntu: [
+      {
+        type: "vnc",
+        host: UBUNTU_IP,
+        port: 5901,
+        url: `vnc://${UBUNTU_IP}:5901`,
+        description: "TigerVNC - Full desktop access",
+      },
+      {
+        type: "rdp",
+        host: UBUNTU_IP,
+        port: 3389,
+        url: `rdp://${UBUNTU_IP}:3389`,
+        description: "xrdp - Windows Remote Desktop compatible",
+      },
+      {
+        type: "ssh",
+        host: UBUNTU_IP,
+        port: 22,
+        url: `ssh://${UBUNTU_IP}:22`,
+        description: "SSH terminal access",
+      },
+    ],
+    windows: [
+      {
+        type: "rdp",
+        host: WINDOWS_IP,
+        port: 3389,
+        url: `rdp://${WINDOWS_IP}:3389`,
+        description: "Windows Remote Desktop",
+      },
+      {
+        type: "sunshine",
+        host: WINDOWS_IP,
+        port: 47989,
+        url: `https://${WINDOWS_IP}:47989`,
+        description: "Sunshine - GPU-accelerated streaming (use Moonlight client)",
+      },
+    ],
+  };
+}
 
 // Sanitize service name - only allow alphanumeric and dash
 function sanitizeServiceName(service: string): string {

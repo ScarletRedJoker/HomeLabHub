@@ -1,0 +1,215 @@
+nodes:
+  ubuntu-host:
+    description: "KVM hypervisor, NAS gateway, media server, and infrastructure services"
+    tailscale_ip: "${UBUNTU_TAILSCALE_IP}"
+    local_ip: "192.168.1.10"
+    access:
+      ssh: 22
+      vnc: 5901
+      rdp: 3389  # xrdp
+    services:
+      libvirt:
+        description: "KVM/QEMU hypervisor for Windows VM"
+        autostart: true
+        commands:
+          start: "sudo systemctl start libvirtd"
+          stop: "sudo systemctl stop libvirtd"
+          status: "sudo systemctl is-active libvirtd"
+      
+      windows-vm:
+        description: "Windows 11 KVM guest with GPU passthrough"
+        depends_on: [libvirt]
+        commands:
+          start: "sudo virsh start windows11"
+          stop: "sudo virsh shutdown windows11"
+          status: "sudo virsh domstate windows11"
+          force_stop: "sudo virsh destroy windows11"
+      
+      plex:
+        description: "Media server"
+        port: 32400
+        docker: true
+        commands:
+          start: "docker compose -f /opt/nebula/docker/plex/docker-compose.yml up -d"
+          stop: "docker compose -f /opt/nebula/docker/plex/docker-compose.yml down"
+          status: "docker ps --filter name=plex --format '{{.Status}}'"
+      
+      transmission:
+        description: "Torrent client with VPN"
+        port: 9091
+        docker: true
+        commands:
+          start: "docker compose -f /opt/nebula/docker/transmission/docker-compose.yml up -d"
+          stop: "docker compose -f /opt/nebula/docker/transmission/docker-compose.yml down"
+          status: "docker ps --filter name=transmission --format '{{.Status}}'"
+      
+      nas-mounts:
+        description: "NAS SMB/NFS mounts"
+        commands:
+          start: "sudo mount -a"
+          status: "mount | grep -E '(nas|nfs|cifs)'"
+      
+      vnc-server:
+        description: "TigerVNC for remote desktop"
+        port: 5901
+        commands:
+          start: "vncserver :1 -geometry 1920x1080 -depth 24"
+          stop: "vncserver -kill :1"
+          status: "vncserver -list"
+      
+      xrdp:
+        description: "RDP server for Windows-style remote access"
+        port: 3389
+        commands:
+          start: "sudo systemctl start xrdp"
+          stop: "sudo systemctl stop xrdp"
+          status: "sudo systemctl is-active xrdp"
+      
+      wol-relay:
+        description: "Wake-on-LAN relay for Windows VM"
+        commands:
+          wake_windows: "wakeonlan -i ${WINDOWS_VM_BROADCAST} ${WINDOWS_VM_MAC}"
+
+  windows-vm:
+    description: "GPU-accelerated AI services and development environment"
+    tailscale_ip: "${WINDOWS_VM_TAILSCALE_IP}"
+    local_ip: "192.168.1.20"
+    access:
+      rdp: 3389
+      sunshine: 47989  # GPU-accelerated remote desktop
+      agent: 9765
+    services:
+      ollama:
+        description: "Local LLM inference with GPU"
+        port: 11434
+        gpu_required: true
+        commands:
+          start: "Start-Process ollama -ArgumentList 'serve' -WindowStyle Hidden"
+          stop: "Stop-Process -Name ollama -Force"
+          status: "Get-Process ollama -ErrorAction SilentlyContinue"
+      
+      stable-diffusion:
+        description: "Image generation with GPU"
+        port: 7860
+        gpu_required: true
+        path: "C:\\AI\\stable-diffusion-webui"
+        commands:
+          start: ".\\webui-user.bat --api --listen"
+          stop: "Stop-Process -Name python -Force"
+      
+      comfyui:
+        description: "Node-based image/video generation"
+        port: 8188
+        gpu_required: true
+        path: "C:\\AI\\ComfyUI"
+        commands:
+          start: "python main.py --listen 0.0.0.0"
+          stop: "Stop-Process -Name python -Force"
+      
+      nebula-agent:
+        description: "Remote management agent for dashboard"
+        port: 9765
+        commands:
+          start: "node C:\\nebula\\agent\\server.js"
+          stop: "Stop-Process -Name node -Force"
+      
+      sunshine:
+        description: "GPU-accelerated remote desktop streaming"
+        port: 47989
+        commands:
+          start: "Start-Process 'C:\\Program Files\\Sunshine\\sunshine.exe'"
+          stop: "Stop-Process -Name sunshine -Force"
+
+  linode:
+    description: "Cloud-hosted dashboard and public services"
+    tailscale_ip: "${LINODE_TAILSCALE_IP}"
+    public_domain: "${DASHBOARD_DOMAIN}"
+    access:
+      https: 443
+      ssh: 22
+    services:
+      dashboard-next:
+        description: "Nebula Command web interface"
+        port: 5000
+        commands:
+          start: "cd /opt/nebula/services/dashboard-next && npm run start"
+          stop: "pm2 stop dashboard-next"
+          status: "pm2 show dashboard-next"
+      
+      discord-bot:
+        description: "Discord community bot"
+        commands:
+          start: "cd /opt/nebula/services/discord-bot && npm run start"
+          stop: "pm2 stop discord-bot"
+          status: "pm2 show discord-bot"
+      
+      stream-bot:
+        description: "Multi-platform streaming bot"
+        port: 3000
+        commands:
+          start: "cd /opt/nebula/services/stream-bot && npm run start"
+          stop: "pm2 stop stream-bot"
+          status: "pm2 show stream-bot"
+      
+      postgres:
+        description: "PostgreSQL database"
+        port: 5432
+        docker: true
+        commands:
+          start: "docker compose -f /opt/nebula/docker/postgres/docker-compose.yml up -d"
+          stop: "docker compose -f /opt/nebula/docker/postgres/docker-compose.yml down"
+      
+      redis:
+        description: "Redis cache"
+        port: 6379
+        docker: true
+        commands:
+          start: "docker compose -f /opt/nebula/docker/redis/docker-compose.yml up -d"
+          stop: "docker compose -f /opt/nebula/docker/redis/docker-compose.yml down"
+      
+      caddy:
+        description: "Reverse proxy with automatic HTTPS"
+        port: 443
+        commands:
+          start: "sudo systemctl start caddy"
+          stop: "sudo systemctl stop caddy"
+          status: "sudo systemctl is-active caddy"
+
+remote_access:
+  vnc:
+    ubuntu:
+      port: 5901
+      protocol: "vnc"
+      client: "any VNC client"
+      url: "vnc://${UBUNTU_TAILSCALE_IP}:5901"
+  
+  rdp:
+    ubuntu:
+      port: 3389
+      protocol: "rdp"
+      client: "Windows Remote Desktop, Remmina"
+      url: "rdp://${UBUNTU_TAILSCALE_IP}:3389"
+    
+    windows:
+      port: 3389
+      protocol: "rdp"
+      client: "Windows Remote Desktop, Remmina"
+      url: "rdp://${WINDOWS_VM_TAILSCALE_IP}:3389"
+  
+  sunshine:
+    windows:
+      port: 47989
+      protocol: "sunshine/moonlight"
+      client: "Moonlight Game Streaming"
+      url: "https://${WINDOWS_VM_TAILSCALE_IP}:47989"
+      note: "GPU-accelerated, best for gaming/AI work"
+
+tailscale:
+  acls:
+    linode_to_home:
+      - "linode:* -> ubuntu-host:22,5901,3389,32400,9091"
+      - "linode:* -> windows-vm:3389,9765,11434,7860,8188,47989"
+    
+    home_internal:
+      - "ubuntu-host:* -> windows-vm:*"
+      - "windows-vm:* -> ubuntu-host:*"

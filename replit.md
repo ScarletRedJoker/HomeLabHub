@@ -17,7 +17,11 @@ The platform is built around three distributed core services:
 *   **Stream Bot (Node.js/React/Vite):** Manages multi-platform content posting and interaction across Twitch, YouTube, and Kick.
 
 ### Cross-Service Integration and Deployment
-Services share a PostgreSQL database and Redis for caching, communicating via webhooks and APIs. The system uses a distributed deployment model across cloud (Linode), Ubuntu Homelab, and Windows AI Node, secured by Tailscale. The database schema organizes data into distinct databases for each core service.
+Services share a PostgreSQL database and Redis for caching, communicating via webhooks and APIs. The system uses a three-tier distributed deployment model:
+*   **Ubuntu Host (Home):** KVM/libvirt hypervisor running Windows 11 VM with GPU passthrough. Provides NAS connections, Plex media server, remote torrenting (Transmission), VNC/RDP access (TigerVNC, xrdp), and local networking.
+*   **Windows 11 VM (KVM Guest):** GPU-accelerated AI services (Ollama, Stable Diffusion, ComfyUI) accessed from dashboard via Tailscale. Uses Sunshine for low-latency GPU streaming.
+*   **Linode (Cloud):** Hosts the Nebula Command dashboard, Discord bot, and stream bot. Public-facing services with Caddy reverse proxy.
+Tailscale provides secure mesh networking across all nodes. The database schema organizes data into distinct databases for each core service.
 
 ### Platform Architecture
 The system features a three-layer design (Experience, Control Plane, Execution Plane) with an event-driven spine, including a Marketplace API for Docker packages, an Agent Orchestrator API for AI agents with function calling, and Service Discovery via `service-map.yml`. A Creative Studio offers AI-powered content creation. The platform includes a Quick Start Wizard, Universal Builder, App Factory (AI-powered code generation), AI Code Assistant, Deploy Pipelines, Template Marketplace, and Project Manager.
