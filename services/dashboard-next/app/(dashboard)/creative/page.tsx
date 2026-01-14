@@ -76,6 +76,16 @@ export default function CreativeStudioPage() {
   const [imageProvider, setImageProvider] = useState("auto");
   const [imageProviders, setImageProviders] = useState<any[]>([]);
   const [sdAvailable, setSdAvailable] = useState(false);
+  const [sdStatus, setSdStatus] = useState<{
+    available: boolean;
+    modelLoaded: boolean;
+    currentModel: string | null;
+    modelLoading: boolean;
+    availableModels: string[];
+    error: string | null;
+    vram?: { total: number; used: number; free: number };
+    url?: string;
+  } | null>(null);
   const [saveLocally, setSaveLocally] = useState(true);
   const [generatingImage, setGeneratingImage] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<GeneratedImage | null>(null);
@@ -105,6 +115,9 @@ export default function CreativeStudioPage() {
         const data = await res.json();
         setImageProviders(data.providers || []);
         setSdAvailable(data.sdAvailable || false);
+        if (data.sdStatus) {
+          setSdStatus(data.sdStatus);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch image providers:", error);
@@ -350,6 +363,75 @@ export default function CreativeStudioPage() {
           </div>
         ))}
       </div>
+
+      {/* SD Status Card */}
+      {sdStatus && (
+        <div className="p-4 rounded-lg border bg-card">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Cpu className="h-5 w-5 text-purple-500" />
+              <h3 className="font-medium">Stable Diffusion Status</h3>
+            </div>
+            <Button variant="ghost" size="sm" onClick={fetchImageProviders}>
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div>
+              <p className="text-muted-foreground">Status</p>
+              <p className={`font-medium ${sdStatus.available && sdStatus.modelLoaded ? "text-green-500" : sdStatus.modelLoading ? "text-yellow-500" : "text-red-500"}`}>
+                {sdStatus.modelLoading ? (
+                  <span className="flex items-center gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Loading Model...
+                  </span>
+                ) : sdStatus.available && sdStatus.modelLoaded ? (
+                  <span className="flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Ready
+                  </span>
+                ) : sdStatus.available ? (
+                  <span className="flex items-center gap-1">
+                    <XCircle className="h-3 w-3" />
+                    No Model
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1">
+                    <XCircle className="h-3 w-3" />
+                    Offline
+                  </span>
+                )}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Current Model</p>
+              <p className="font-medium truncate" title={sdStatus.currentModel || undefined}>
+                {sdStatus.currentModel || "None"}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Available Models</p>
+              <p className="font-medium">{sdStatus.availableModels.length}</p>
+            </div>
+            {sdStatus.vram && (
+              <div>
+                <p className="text-muted-foreground">VRAM Free</p>
+                <p className="font-medium">{Math.round(sdStatus.vram.free / 1024 / 1024)} MB</p>
+              </div>
+            )}
+          </div>
+          {sdStatus.error && (
+            <div className="mt-3 p-2 rounded bg-red-500/10 text-red-500 text-sm">
+              {sdStatus.error}
+            </div>
+          )}
+          {sdStatus.availableModels.length > 0 && !sdStatus.modelLoaded && (
+            <div className="mt-3 p-2 rounded bg-yellow-500/10 text-yellow-600 text-sm">
+              Load a model in SD WebUI to start generating. Available: {sdStatus.availableModels.slice(0, 3).join(", ")}{sdStatus.availableModels.length > 3 ? "..." : ""}
+            </div>
+          )}
+        </div>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid grid-cols-4 w-full max-w-md">

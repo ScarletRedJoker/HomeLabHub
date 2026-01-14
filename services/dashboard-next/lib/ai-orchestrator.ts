@@ -65,6 +65,25 @@ export interface ImageResponse {
   revisedPrompt?: string;
 }
 
+export interface SDStatus {
+  available: boolean;
+  url: string;
+  modelLoaded: boolean;
+  currentModel: string | null;
+  modelLoading: boolean;
+  availableModels: string[];
+  error: string | null;
+  vram?: { total: number; used: number; free: number };
+}
+
+export interface SDModel {
+  title: string;
+  model_name: string;
+  hash?: string;
+  sha256?: string;
+  filename?: string;
+}
+
 export interface VideoRequest {
   prompt: string;
   inputImage?: string;
@@ -354,6 +373,24 @@ class AIOrchestrator {
   }
 
   private async generateWithSD(request: ImageRequest): Promise<ImageResponse> {
+    // Pre-flight check: verify SD status before attempting generation
+    const sdStatus = await this.getSDStatus(1);
+    
+    if (!sdStatus.available) {
+      throw new Error(`Stable Diffusion is not reachable at ${this.stableDiffusionUrl}. ${sdStatus.error || "Check that SD WebUI is running."}`);
+    }
+    
+    if (sdStatus.modelLoading) {
+      throw new Error("Stable Diffusion is currently loading a model. Please wait a few moments and try again.");
+    }
+    
+    if (!sdStatus.modelLoaded) {
+      const availableHint = sdStatus.availableModels.length > 0 
+        ? ` Available models: ${sdStatus.availableModels.slice(0, 3).join(", ")}${sdStatus.availableModels.length > 3 ? "..." : ""}`
+        : " No models found in SD WebUI. Add .safetensors or .ckpt files to models/Stable-diffusion/ folder.";
+      throw new Error(`No model loaded in Stable Diffusion.${availableHint}`);
+    }
+
     const sizeMap: Record<string, { width: number; height: number }> = {
       "512x512": { width: 512, height: 512 },
       "768x768": { width: 768, height: 768 },
@@ -365,11 +402,15 @@ class AIOrchestrator {
     const dimensions = sizeMap[request.size || "1024x1024"] || { width: 512, height: 512 };
     
     console.log(`[SD] Generating image at ${this.stableDiffusionUrl}/sdapi/v1/txt2img`);
+    console.log(`[SD] Using model: ${sdStatus.currentModel}`);
     console.log(`[SD] Prompt: "${request.prompt}" (${request.prompt?.length || 0} chars)`);
     console.log(`[SD] Dimensions: ${dimensions.width}x${dimensions.height}`);
     
     let response: Response;
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 120000); // 2 minute timeout for generation
+      
       response = await fetch(`${this.stableDiffusionUrl}/sdapi/v1/txt2img`, {
         method: "POST",
         headers: { 
@@ -386,8 +427,13 @@ class AIOrchestrator {
           cfg_scale: 7,
           sampler_name: "DPM++ 2M Karras",
         }),
+        signal: controller.signal,
       });
-    } catch (fetchError) {
+      clearTimeout(timeout);
+    } catch (fetchError: any) {
+      if (fetchError.name === "AbortError") {
+        throw new Error("Image generation timed out after 2 minutes. Try a simpler prompt or smaller image size.");
+      }
       throw new Error(`Cannot connect to Stable Diffusion at ${this.stableDiffusionUrl}. Ensure SD WebUI is running with --api flag and Tailscale is connected.`);
     }
 
@@ -395,6 +441,26 @@ class AIOrchestrator {
     
     if (!response.ok) {
       console.error(`[SD] Error response: ${responseText.substring(0, 500)}`);
+      
+      // Parse common SD errors
+      const errorLower = responseText.toLowerCase();
+      
+      if (errorLower.includes("cuda out of memory") || errorLower.includes("out of memory")) {
+        throw new Error(`CUDA out of memory. Try a smaller image size (512x512) or close other GPU applications. VRAM: ${sdStatus.vram ? `${Math.round(sdStatus.vram.free / 1024 / 1024)}MB free` : "unknown"}`);
+      }
+      
+      if (errorLower.includes("failed to recognize model type") || errorLower.includes("not a valid model")) {
+        throw new Error(`The loaded model "${sdStatus.currentModel}" is not a valid Stable Diffusion model. Try loading a different checkpoint.`);
+      }
+      
+      if (errorLower.includes("model") && errorLower.includes("not found")) {
+        throw new Error(`Model not found. Current model: ${sdStatus.currentModel || "none"}. Available: ${sdStatus.availableModels.join(", ") || "none"}`);
+      }
+      
+      if (errorLower.includes("oom") || errorLower.includes("killed")) {
+        throw new Error("Generation was killed due to insufficient memory. Try smaller dimensions or fewer steps.");
+      }
+      
       throw new Error(`Stable Diffusion error (${response.status}): ${responseText.substring(0, 200)}`);
     }
 
@@ -413,11 +479,11 @@ class AIOrchestrator {
 
     const base64Data = data.images[0];
     const estimatedBytes = Math.ceil(base64Data.length * 0.75);
-    console.log(`[SD] Successfully generated image - base64 length: ${base64Data.length}, estimated bytes: ${estimatedBytes}`);
+    console.log(`[SD] Successfully generated image with model "${sdStatus.currentModel}" - base64 length: ${base64Data.length}, estimated bytes: ${estimatedBytes}`);
     
     if (base64Data.length < 1000) {
       console.error(`[SD] Image data too small - likely empty or error: ${base64Data.substring(0, 100)}`);
-      throw new Error("Stable Diffusion returned empty/corrupt image. Check SD WebUI model is loaded.");
+      throw new Error("Stable Diffusion returned empty/corrupt image. The model may have failed to generate. Check SD WebUI console.");
     }
     
     return {
@@ -523,31 +589,170 @@ class AIOrchestrator {
   }
 
   async checkStableDiffusion(): Promise<boolean> {
+    const status = await this.getSDStatus();
+    return status.available && status.modelLoaded;
+  }
+
+  async getSDStatus(retries = 2): Promise<SDStatus> {
+    const defaultStatus: SDStatus = {
+      available: false,
+      url: this.stableDiffusionUrl,
+      modelLoaded: false,
+      currentModel: null,
+      modelLoading: false,
+      availableModels: [],
+      error: null,
+    };
+
     if (isReplitEnv()) {
-      return false;
+      defaultStatus.error = "Local SD not available in Replit environment";
+      return defaultStatus;
     }
 
-    // Try multiple endpoints - API may vary by SD WebUI version
-    const endpoints = [
-      `${this.stableDiffusionUrl}/sdapi/v1/sd-models`,
-      `${this.stableDiffusionUrl}/internal/ping`,
-      `${this.stableDiffusionUrl}/`,
-    ];
-
-    for (const endpoint of endpoints) {
+    for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
-        const response = await fetch(endpoint, {
-          signal: controller.signal,
+        // Check if SD is reachable first
+        const pingController = new AbortController();
+        const pingTimeout = setTimeout(() => pingController.abort(), 5000);
+        
+        const pingResponse = await fetch(`${this.stableDiffusionUrl}/sdapi/v1/options`, {
+          signal: pingController.signal,
         });
-        clearTimeout(timeoutId);
-        if (response.ok) return true;
-      } catch {
-        // Try next endpoint
+        clearTimeout(pingTimeout);
+
+        if (!pingResponse.ok) {
+          if (attempt < retries) continue;
+          defaultStatus.error = `SD WebUI returned ${pingResponse.status}`;
+          return defaultStatus;
+        }
+
+        const options = await pingResponse.json();
+        defaultStatus.available = true;
+        
+        // Get current model from options
+        const currentModel = options.sd_model_checkpoint || null;
+        defaultStatus.currentModel = currentModel;
+        defaultStatus.modelLoaded = !!currentModel && currentModel.length > 0;
+
+        // Check for model loading state (progress endpoint)
+        try {
+          const progressController = new AbortController();
+          const progressTimeout = setTimeout(() => progressController.abort(), 3000);
+          const progressResponse = await fetch(`${this.stableDiffusionUrl}/sdapi/v1/progress`, {
+            signal: progressController.signal,
+          });
+          clearTimeout(progressTimeout);
+          
+          if (progressResponse.ok) {
+            const progress = await progressResponse.json();
+            // If job is running and no current_image, it might be loading a model
+            defaultStatus.modelLoading = progress.state?.job === "load model" || 
+              (progress.progress > 0 && progress.progress < 1 && !progress.current_image);
+          }
+        } catch {
+          // Progress check is optional
+        }
+
+        // Get available models
+        try {
+          const modelsController = new AbortController();
+          const modelsTimeout = setTimeout(() => modelsController.abort(), 5000);
+          const modelsResponse = await fetch(`${this.stableDiffusionUrl}/sdapi/v1/sd-models`, {
+            signal: modelsController.signal,
+          });
+          clearTimeout(modelsTimeout);
+          
+          if (modelsResponse.ok) {
+            const models: SDModel[] = await modelsResponse.json();
+            defaultStatus.availableModels = models.map(m => m.title || m.model_name);
+          }
+        } catch {
+          // Model list is optional
+        }
+
+        // Get VRAM info if available
+        try {
+          const memController = new AbortController();
+          const memTimeout = setTimeout(() => memController.abort(), 3000);
+          const memResponse = await fetch(`${this.stableDiffusionUrl}/sdapi/v1/memory`, {
+            signal: memController.signal,
+          });
+          clearTimeout(memTimeout);
+          
+          if (memResponse.ok) {
+            const mem = await memResponse.json();
+            if (mem.cuda?.system) {
+              defaultStatus.vram = {
+                total: mem.cuda.system.total || 0,
+                used: mem.cuda.system.used || 0,
+                free: mem.cuda.system.free || 0,
+              };
+            }
+          }
+        } catch {
+          // Memory info is optional
+        }
+
+        return defaultStatus;
+
+      } catch (error: any) {
+        if (attempt < retries) {
+          await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+          continue;
+        }
+        
+        if (error.name === "AbortError") {
+          defaultStatus.error = `Connection timeout to ${this.stableDiffusionUrl}`;
+        } else {
+          defaultStatus.error = `Cannot connect to SD: ${error.message}`;
+        }
+        return defaultStatus;
       }
     }
-    return false;
+
+    return defaultStatus;
+  }
+
+  async getSDModels(): Promise<SDModel[]> {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      const response = await fetch(`${this.stableDiffusionUrl}/sdapi/v1/sd-models`, {
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      
+      if (!response.ok) {
+        console.error(`[SD] Failed to get models: ${response.status}`);
+        return [];
+      }
+      
+      return await response.json();
+    } catch (error: any) {
+      console.error(`[SD] Error fetching models: ${error.message}`);
+      return [];
+    }
+  }
+
+  async loadSDModel(modelName: string): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.stableDiffusionUrl}/sdapi/v1/options`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sd_model_checkpoint: modelName }),
+      });
+      
+      if (!response.ok) {
+        console.error(`[SD] Failed to load model: ${response.status}`);
+        return false;
+      }
+      
+      console.log(`[SD] Model load request sent for: ${modelName}`);
+      return true;
+    } catch (error: any) {
+      console.error(`[SD] Error loading model: ${error.message}`);
+      return false;
+    }
   }
 
   private async uploadImageToComfyUI(imageUrl: string): Promise<string> {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifySession } from "@/lib/session";
 import { cookies } from "next/headers";
 import { localAIRuntime } from "@/lib/local-ai-runtime";
+import { modelRegistry } from "@/lib/model-registry";
 
 const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
 const OLLAMA_URL = process.env.OLLAMA_URL || `http://${WINDOWS_VM_IP}:11434`;
@@ -37,8 +38,17 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const provider = searchParams.get("provider");
+  const includeInventory = searchParams.get("inventory") === "true";
 
   try {
+    if (includeInventory) {
+      const inventory = await modelRegistry.getLocalModels();
+      return NextResponse.json({
+        inventory,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
     if (provider === "all" || !provider) {
       const models = await localAIRuntime.getAllModels();
       return NextResponse.json({
@@ -231,13 +241,28 @@ export async function DELETE(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { model } = body;
+    const { model, modelId } = body;
 
-    if (!model) {
-      return NextResponse.json({ error: "Model name is required" }, { status: 400 });
+    const targetModel = modelId || model;
+    if (!targetModel) {
+      return NextResponse.json({ error: "Model name or modelId is required" }, { status: 400 });
     }
 
-    const result = await localAIRuntime.deleteOllamaModel(model);
+    if (modelId && modelId.includes(":")) {
+      const result = await modelRegistry.deleteLocalModel(modelId);
+      if (!result.success) {
+        return NextResponse.json(
+          { error: "Failed to delete model", details: result.message },
+          { status: 500 }
+        );
+      }
+      return NextResponse.json({
+        success: true,
+        message: result.message,
+      });
+    }
+
+    const result = await localAIRuntime.deleteOllamaModel(targetModel);
     if (!result.success) {
       return NextResponse.json(
         { error: "Failed to delete model", details: result.message },

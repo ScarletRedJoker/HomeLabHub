@@ -112,14 +112,26 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  const sdAvailable = await aiOrchestrator.checkStableDiffusion();
+  const sdStatus = await aiOrchestrator.getSDStatus();
+  const sdAvailable = sdStatus.available && sdStatus.modelLoaded;
+
+  let sdDescription = "";
+  if (!sdStatus.available) {
+    sdDescription = sdStatus.error || "Not reachable - start Stable Diffusion WebUI on Windows VM";
+  } else if (sdStatus.modelLoading) {
+    sdDescription = "Model is currently loading... Please wait.";
+  } else if (!sdStatus.modelLoaded) {
+    sdDescription = `No model loaded. Available: ${sdStatus.availableModels.slice(0, 3).join(", ") || "none"}`;
+  } else {
+    sdDescription = `Using ${sdStatus.currentModel} on RTX 3060 - No content restrictions`;
+  }
 
   const providers = [
     {
       id: "auto",
       name: "Auto (Local First)",
       description: sdAvailable 
-        ? "Using local Stable Diffusion on Windows VM GPU"
+        ? `Using local SD: ${sdStatus.currentModel}`
         : "Local SD unavailable - will use DALL-E 3",
       sizes: ["512x512", "768x768", "1024x1024"],
       styles: ["vivid", "natural"],
@@ -129,13 +141,13 @@ export async function GET() {
     {
       id: "stable-diffusion",
       name: "Stable Diffusion (Local GPU)",
-      description: sdAvailable 
-        ? "Self-hosted on RTX 3060 - No content restrictions"
-        : "Not reachable - start Stable Diffusion WebUI on Windows VM",
+      description: sdDescription,
       sizes: ["512x512", "768x768", "1024x1024"],
       styles: [],
       available: sdAvailable,
       unrestricted: true,
+      currentModel: sdStatus.currentModel,
+      modelLoading: sdStatus.modelLoading,
     },
     {
       id: "openai",
@@ -147,5 +159,18 @@ export async function GET() {
     },
   ];
 
-  return NextResponse.json({ providers, sdAvailable });
+  return NextResponse.json({ 
+    providers, 
+    sdAvailable,
+    sdStatus: {
+      available: sdStatus.available,
+      modelLoaded: sdStatus.modelLoaded,
+      currentModel: sdStatus.currentModel,
+      modelLoading: sdStatus.modelLoading,
+      availableModels: sdStatus.availableModels,
+      error: sdStatus.error,
+      vram: sdStatus.vram,
+      url: sdStatus.url,
+    }
+  });
 }
