@@ -289,34 +289,54 @@ npm install
 
 **Important:** Use the same `NEBULA_AGENT_TOKEN` value in your dashboard's environment variables.
 
-### Step 5: Start AI Services
+### Step 5: Start All Services (Unified Startup)
 
-Create batch files or run manually:
+Use the unified startup script that validates dependencies and starts everything:
 
 ```powershell
-# Terminal 1: Ollama
-ollama serve
-
-# Terminal 2: Stable Diffusion WebUI
-cd C:\AI\stable-diffusion-webui
-.\webui-user.bat --listen --api --port 7860
-
-# Terminal 3: ComfyUI
-cd C:\AI\ComfyUI
-python main.py --listen 0.0.0.0 --port 8188
-
-# Terminal 4: Nebula Agent (as Administrator)
-cd C:\NebulaCommand\deploy\windows\agent
-.\start.ps1
+# Run as Administrator - validates Python, repairs PyTorch/CUDA, starts all services
+cd C:\NebulaCommand\deploy\windows\scripts
+.\Start-NebulaAiStack.ps1 start
 ```
 
-### Step 6: Start Health Daemon (Optional)
+The script will:
+1. **Validate Python version** (requires 3.10-3.12, rejects 3.14+)
+2. **Check PyTorch CUDA** and repair if needed (installs correct CUDA build)
+3. **Start all services** in order: Ollama → Stable Diffusion → ComfyUI → Agent
 
-Reports service health to dashboard automatically:
+Other commands:
+```powershell
+.\Start-NebulaAiStack.ps1 status    # Check all service status
+.\Start-NebulaAiStack.ps1 stop      # Stop all services
+.\Start-NebulaAiStack.ps1 repair    # Fix dependencies without starting
+.\Start-NebulaAiStack.ps1 install   # Install as auto-start on boot
+```
+
+### Step 6: Troubleshoot Common Errors
+
+**"Torch not compiled with CUDA enabled"**
+
+This means PyTorch was installed without GPU support. The unified script fixes this automatically, but you can also run:
+```powershell
+# Must use Python 3.10-3.12 (NOT 3.14)
+pip uninstall torch torchvision torchaudio -y
+pip install torch==2.3.1+cu121 torchvision==0.18.1+cu121 torchaudio==2.3.1+cu121 --index-url https://download.pytorch.org/whl/cu121
+```
+
+**Python 3.14 Issues**
+
+PyTorch doesn't have CUDA wheels for Python 3.14 yet. Install Python 3.10:
+- Download from: https://www.python.org/downloads/release/python-31011/
+- Install to `C:\Python310`
+- Use `C:\Python310\python.exe` for AI apps
+
+### Step 7: Auto-Start on Boot (Optional)
+
+Install as a scheduled task to start automatically:
 
 ```powershell
-cd C:\NebulaCommand\deploy\windows
-.\scripts\start-health-daemon.ps1 -WebhookUrl "https://yourdomain.com/api/ai/health-webhook"
+cd C:\NebulaCommand\deploy\windows\scripts
+.\Start-NebulaAiStack.ps1 install
 ```
 
 ---

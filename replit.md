@@ -57,6 +57,15 @@ A comprehensive dashboard page (`/ai-nodes`) provides (Agent Port: 9765 via Tail
 - **API Endpoint:** `/api/ai/node-manager` with GET for diagnostics and POST for repair actions
 - **Agent Communication:** Requires `NEBULA_AGENT_TOKEN` secret for secure communication with Windows VM agent via Tailscale (100.118.44.102)
 
+### Unified Windows AI Stack Startup
+The `deploy/windows/scripts/Start-NebulaAiStack.ps1` script provides one-command startup for all Windows AI services:
+- **Python Validation:** Requires Python 3.10-3.12 (rejects 3.14+ as PyTorch lacks CUDA wheels)
+- **PyTorch CUDA Repair:** Automatically detects CPU-only PyTorch and reinstalls with CUDA 12.1
+- **Ordered Service Start:** Ollama → Stable Diffusion → ComfyUI → Nebula Agent
+- **Auto-Start on Boot:** `.\Start-NebulaAiStack.ps1 install` registers as Windows scheduled task
+- **Commands:** `start`, `stop`, `status`, `repair`, `validate`, `install`
+- **Known Issue Fix:** "Torch not compiled with CUDA enabled" error caused by wrong PyTorch build or Python 3.14
+
 ### AI Services API Endpoints
 Provides APIs for Speech Services (TTS/STT), Job Scheduling (GPU jobs), Training (LoRA, QLoRA, etc.), and Embeddings/RAG (semantic search, chunking). Core AI libraries support GPU-aware scheduling, hybrid speech services, RAG, and model training.
 
