@@ -157,14 +157,26 @@ function Start-ComfyUI {
         return
     }
     $comfy = $Script:Config.ComfyUIPath
-    if (Test-Path $comfy) {
-        Push-Location $comfy
-        Start-Process -FilePath $PythonPath -ArgumentList "main.py", "--listen", "0.0.0.0", "--port", "8188" -WindowStyle Hidden
-        Pop-Location
-        Write-Log "ComfyUI starting..." "OK"
-    } else {
-        Write-Log "ComfyUI not found" "WARN"
+    if (-not (Test-Path $comfy)) {
+        Write-Log "ComfyUI not found at $comfy" "WARN"
+        return
     }
+    
+    # Check for ComfyUI's own venv first
+    $comfyVenv = Join-Path $comfy "venv\Scripts\python.exe"
+    $pyToUse = if (Test-Path $comfyVenv) { 
+        Write-Log "Using ComfyUI venv" "INFO"
+        $comfyVenv 
+    } else { 
+        Write-Log "ComfyUI has no venv - using provided Python" "WARN"
+        Write-Log "Run: cd C:\AI\ComfyUI && python -m venv venv" "WARN"
+        $PythonPath 
+    }
+    
+    Push-Location $comfy
+    Start-Process -FilePath $pyToUse -ArgumentList "main.py", "--listen", "0.0.0.0", "--port", "8188" -WindowStyle Hidden
+    Pop-Location
+    Write-Log "ComfyUI starting..." "OK"
 }
 
 function Start-NebulaAgent {
@@ -188,10 +200,38 @@ function Start-NebulaAgent {
 
 function Stop-AllServices {
     Write-Log "Stopping all AI services..." "STEP"
+    
+    # Kill Ollama
     Get-Process -Name "ollama*" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-    Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*webui*" -or $_.CommandLine -like "*ComfyUI*" -or $_.CommandLine -like "*server.js*" } | ForEach-Object {
+    
+    # Kill Python processes related to AI
+    Get-CimInstance Win32_Process | Where-Object { 
+        $_.Name -eq "python.exe" -and (
+            $_.CommandLine -like "*webui*" -or 
+            $_.CommandLine -like "*ComfyUI*" -or 
+            $_.CommandLine -like "*stable-diffusion*"
+        )
+    } | ForEach-Object {
+        Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+        Write-Log "Killed Python process $($_.ProcessId)" "INFO"
+    }
+    
+    # Kill cmd.exe running webui
+    Get-CimInstance Win32_Process | Where-Object { 
+        $_.Name -eq "cmd.exe" -and $_.CommandLine -like "*webui*"
+    } | ForEach-Object {
         Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
     }
+    
+    # Kill node agent
+    Get-CimInstance Win32_Process | Where-Object { 
+        $_.Name -eq "node.exe" -and $_.CommandLine -like "*server.js*"
+    } | ForEach-Object {
+        Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+        Write-Log "Killed Node process $($_.ProcessId)" "INFO"
+    }
+    
+    Start-Sleep -Seconds 2
     Write-Log "Services stopped" "OK"
 }
 
@@ -215,19 +255,25 @@ function Main {
     
     switch ($Action) {
         "start" {
+            # First clean up any zombie processes
+            Write-Log "Cleaning up zombie processes..." "STEP"
+            Stop-AllServices
+            
             $py = Test-PythonVersion
             if (-not $py -and -not $SkipValidation) { exit 1 }
             $pyPath = if ($py) { $py.Path } else { "python" }
             
             Start-Ollama
-            Start-Sleep -Seconds 2
+            Start-Sleep -Seconds 3
             Start-StableDiffusion
-            Start-Sleep -Seconds 2
+            Start-Sleep -Seconds 3
             Start-ComfyUI -PythonPath $pyPath
-            Start-Sleep -Seconds 2
+            Start-Sleep -Seconds 3
             Start-NebulaAgent
             
             Write-Log "Startup complete!" "OK"
+            Write-Log "Note: SD and ComfyUI take 2-3 min to fully load" "INFO"
+            Start-Sleep -Seconds 5
             Get-StackStatus
         }
         "stop" { Stop-AllServices }
