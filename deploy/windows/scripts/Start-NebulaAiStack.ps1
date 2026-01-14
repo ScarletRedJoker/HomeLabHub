@@ -72,11 +72,24 @@ function Get-PythonInfo {
 
 function Test-PythonVersion {
     Write-Log "Checking Python version..." "STEP"
-    $paths = @("python", "C:\Python310\python.exe", "C:\Python311\python.exe")
+    $paths = @(
+        "python",
+        "python3",
+        "C:\Python310\python.exe",
+        "C:\Python311\python.exe",
+        "C:\Python312\python.exe",
+        "C:\AI\stable-diffusion-webui-forge\venv\Scripts\python.exe",
+        "C:\AI\stable-diffusion-webui\venv\Scripts\python.exe",
+        "C:\AI\ComfyUI\venv\Scripts\python.exe",
+        "$env:LOCALAPPDATA\Programs\Python\Python310\python.exe",
+        "$env:LOCALAPPDATA\Programs\Python\Python311\python.exe",
+        "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe"
+    )
     foreach ($p in $paths) {
+        if (-not (Test-Path $p -ErrorAction SilentlyContinue)) { continue }
         $info = Get-PythonInfo -PythonPath $p
         if ($info.IsValid -and $info.Minor -ge 10 -and $info.Minor -le 12) {
-            Write-Log "Using Python $($info.Version)" "OK"
+            Write-Log "Using Python $($info.Version) at $p" "OK"
             return $info
         }
     }
