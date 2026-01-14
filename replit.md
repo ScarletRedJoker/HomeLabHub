@@ -107,6 +107,28 @@ The Notification Service (`lib/notification-service.ts`) provides actionable ale
 - **Actionable Buttons:** View, auto-fix, acknowledge, dismiss
 - **Auto-Cleanup:** 24-hour expiry, max 100 stored notifications
 
+### Server Power Management & WoL Relay
+The WoL Relay system (`lib/wol-relay.ts`) enables remote server power control from the cloud:
+- **Wake-on-LAN Relay:** Uses Ubuntu homelab server to send WoL packets to Windows VM
+- **Cross-Network Wake:** Wake Windows VM from Replit/cloud via relay through home server
+- **Unified Power Controls:** `/infrastructure` page shows all servers with wake/restart/shutdown buttons
+- **Wait for Online:** Polls target server after WoL until it responds
+- **Server Config:** All servers (Linode, Home, Windows) configured in `lib/server-config-store.ts`
+- **Environment Variables:** `WINDOWS_VM_MAC`, `WINDOWS_VM_BROADCAST`, `WINDOWS_VM_TAILSCALE_IP`
+
+### Windows Deployment API
+The Windows Deployment API (`/api/deploy/windows`) enables deployment to Windows VM:
+- **Actions:** wake, status, git-pull, restart-service, restart-all, execute, models, ollama-pull
+- **Agent Communication:** Communicates with Nebula agent on port 9765 via Tailscale
+- **Authentication:** Requires `NEBULA_AGENT_TOKEN` secret
+- **Service Management:** Restart ollama, comfyui, stable-diffusion, sunshine services
+
+### AI Provider Fallback
+The image generation system automatically falls back to available providers:
+- **Provider Priority:** Stable Diffusion (if connected) > OpenAI (if configured) > Error
+- **Auto-Detection:** Creative Studio auto-selects the best available provider
+- **Graceful Degradation:** No errors when OpenAI is not configured if SD is available
+
 ### Docker Marketplace
 A marketplace offers 24+ pre-built Docker packages across 9 categories for one-click deployment to SSH-connected servers.
 
