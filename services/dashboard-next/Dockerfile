@@ -26,7 +26,7 @@ ENV NODE_ENV=production
 RUN npm run build
 
 # Prune dev dependencies after build for smaller production image
-RUN npm prune --production
+RUN npm prune --omit=dev
 
 # Production image
 FROM base AS runner
