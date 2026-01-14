@@ -344,10 +344,15 @@ function Invoke-Repair {
     Write-Log "Removing incompatible packages before repair..." "INFO"
     
     # Remove comfy_kitchen - uses torch.library.custom_op which requires PyTorch 2.4+
+    # Try both naming conventions (underscores and hyphens)
     $comfyKitchenVersion = Get-InstalledPackageVersion -PackageName "comfy-kitchen"
+    if (-not $comfyKitchenVersion) {
+        $comfyKitchenVersion = Get-InstalledPackageVersion -PackageName "comfy_kitchen"
+    }
     if ($comfyKitchenVersion) {
-        Write-Log "Uninstalling comfy-kitchen $comfyKitchenVersion (incompatible with PyTorch < 2.4)..." "INFO"
+        Write-Log "Uninstalling comfy-kitchen/comfy_kitchen $comfyKitchenVersion (incompatible with PyTorch < 2.4)..." "INFO"
         & python -m pip uninstall comfy-kitchen -y 2>&1 | Out-Null
+        & python -m pip uninstall comfy_kitchen -y 2>&1 | Out-Null
     }
     
     $xformersVersion = Get-InstalledPackageVersion -PackageName "xformers"
@@ -390,10 +395,15 @@ function Invoke-Repair {
         if ($phase.command) {
             Write-Log "Running: $($phase.command)" "DEBUG"
             Invoke-Expression $phase.command
-        } elseif ($phase.packages) {
+        }
+        if ($phase.packages) {
             foreach ($pkg in $phase.packages) {
                 & python -m pip install $pkg --upgrade 2>&1 | Out-Null
             }
+        }
+        if ($phase.post_command) {
+            Write-Log "Running post-command: $($phase.post_command)" "DEBUG"
+            Invoke-Expression $phase.post_command
         }
     }
     
