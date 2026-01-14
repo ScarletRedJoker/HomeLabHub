@@ -335,10 +335,27 @@ function Invoke-Repair {
     & python -m pip cache purge 2>&1 | Out-Null
     
     Write-Log "Removing incompatible packages before repair..." "INFO"
+    
+    # Remove comfy_kitchen - uses torch.library.custom_op which requires PyTorch 2.4+
+    $comfyKitchenVersion = Get-InstalledPackageVersion -PackageName "comfy-kitchen"
+    if ($comfyKitchenVersion) {
+        Write-Log "Uninstalling comfy-kitchen $comfyKitchenVersion (incompatible with PyTorch < 2.4)..." "INFO"
+        & python -m pip uninstall comfy-kitchen -y 2>&1 | Out-Null
+    }
+    
     $xformersVersion = Get-InstalledPackageVersion -PackageName "xformers"
     if ($xformersVersion) {
         Write-Log "Uninstalling xformers $xformersVersion (will reinstall compatible version)..." "INFO"
         & python -m pip uninstall xformers -y 2>&1 | Out-Null
+    }
+    
+    # Force numpy downgrade first before other packages
+    $numpyVersion = Get-InstalledPackageVersion -PackageName "numpy"
+    if ($numpyVersion -and $numpyVersion -match "^2\.") {
+        Write-Log "Force downgrading NumPy from $numpyVersion to 1.26.4..." "INFO"
+        & python -m pip uninstall numpy -y 2>&1 | Out-Null
+        & python -m pip install numpy==1.26.4 2>&1 | Out-Null
+        Write-Log "NumPy downgraded to 1.26.4" "OK"
     }
     
     foreach ($action in $repairActions) {
