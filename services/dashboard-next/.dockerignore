@@ -1,0 +1,32 @@
+# Dependencies
+node_modules
+
+# Build output (must rebuild fresh in container)
+.next
+out
+dist
+
+# Development
+*.log
+npm-debug.log*
+.env*.local
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage
+.nyc_output
+
+# Misc
+*.md
+!README.md
+.git
+.gitignore
