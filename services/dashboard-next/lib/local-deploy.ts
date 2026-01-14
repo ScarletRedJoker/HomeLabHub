@@ -75,19 +75,23 @@ interface DeploymentHistory {
 
 // Whitelist of allowed service names to prevent command injection
 const ALLOWED_SERVICES = new Set([
+  // Dashboard services (Linode)
   "dashboard-next",
   "discord-bot", 
   "stream-bot",
   "terminal-server",
-  "ollama",
-  "comfyui",
-  "stable-diffusion",
-  "agent",
-  "all",
   "postgres",
   "redis",
   "caddy",
   "authelia",
+  // Windows AI services
+  "ollama",
+  "comfyui",
+  "stable-diffusion",
+  "agent",
+  "nebula-agent",
+  // General
+  "all",
 ]);
 
 // Sanitize service name - only allow alphanumeric and dash

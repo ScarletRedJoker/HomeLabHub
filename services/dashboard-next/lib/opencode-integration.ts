@@ -68,12 +68,11 @@ class OpenCodeIntegration {
   private ollamaEndpoints: string[];
 
   constructor() {
+    // Windows VM is the primary AI host - connects from Linode dashboard via Tailscale
     const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
-    const UBUNTU_IP = process.env.UBUNTU_TAILSCALE_IP || "100.66.61.51";
 
     this.ollamaEndpoints = [
       process.env.OLLAMA_URL || `http://${WINDOWS_VM_IP}:11434`,
-      process.env.OLLAMA_FALLBACK_URL || `http://${UBUNTU_IP}:11434`,
     ];
 
     this.defaultConfig = {
