@@ -38,6 +38,30 @@ APIs are provided for Speech Services (TTS/STT), Job Scheduling, Training, and E
 ### Jarvis AI Orchestrator and Autonomous Development
 The Jarvis Orchestrator (`lib/jarvis-orchestrator.ts`) provides multi-agent AI capabilities with a job queue, subagent management, local-first resource selection, and progress tracking. It includes tools for image/video generation, Docker actions, deployment, code management, and AI service checks. The OpenCode Integration (`lib/opencode-integration.ts`) enables autonomous code development using local AI, prioritizing models like qwen2.5-coder and deepseek-coder for feature development, bug fixing, code review, and refactoring.
 
+### Multi-Node Cluster Management (NEW - January 2026)
+Jarvis now includes full multi-node orchestration capabilities:
+*   **Node Registration**: Auto-discovers Linode, Ubuntu Home, and Windows VM from server-config-store
+*   **Capability Tracking**: 150+ capabilities mapped across nodes (AI, Docker, VM management, etc.)
+*   **Unified Execution**: `executeOnNode()` uses SSH for Linux servers, HTTP Agent API for Windows VM
+*   **Job Routing**: Automatically routes tasks to the best node based on capability requirements
+*   **Cluster Tools**: 6 new Jarvis tools - `get_cluster_status`, `execute_on_node`, `wake_node`, `route_ai_task`, `get_node_capabilities`, `manage_vm`
+
+### Nebula Agent (Windows VM Remote Control)
+A Node.js/Express agent (`services/nebula-agent`) runs on the Windows VM to receive commands from the dashboard:
+*   **Port**: 9765 (Tailscale accessible)
+*   **Auth**: Bearer token (NEBULA_AGENT_TOKEN)
+*   **Endpoints**: `/api/health`, `/api/execute`, `/api/models`, `/api/services`, `/api/git`
+*   **SD Model Management**: `/api/sd/status`, `/api/sd/models`, `/api/sd/switch-model`
+*   **PM2 Managed**: Auto-starts on boot via PM2
+
+### Autonomous Code Generation Pipeline (NEW - January 2026)
+The system can now generate code autonomously using local Ollama models:
+*   **API Endpoint**: `/api/ai/code` with actions: generate, review, apply, reject, rollback
+*   **Job Types**: feature-request, bug-fix, code-review, refactor
+*   **4-Step Workflow**: analyze → plan → implement → validate
+*   **Safety Features**: Code staging system, automatic backups, diff preview before apply
+*   **UI**: Jarvis page includes code generation panel with job type selector and workflow tracking
+
 ### Local Deployment Pipeline and Health Monitoring
 The Local Deploy Manager (`lib/local-deploy.ts`) provides secure multi-target deployment to Ubuntu homelab and Windows VM, including Git operations, service restarts, rollbacks, and health checks. The Health Monitor (`lib/health-monitor.ts`) tracks system health across all deployment targets (Windows VM, Linode, Ubuntu, Replit) for services like Ollama, PostgreSQL, and Docker, detecting issues and offering auto-fix options.
 
