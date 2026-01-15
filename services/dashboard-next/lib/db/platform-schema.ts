@@ -572,6 +572,21 @@ export const botConfigs = pgTable("bot_configs", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const serviceRegistry = pgTable("service_registry", {
+  id: serial("id").primaryKey(),
+  serviceName: varchar("service_name", { length: 64 }).notNull(),
+  environment: varchar("environment", { length: 32 }).notNull(),
+  endpoint: varchar("endpoint", { length: 255 }).notNull(),
+  capabilities: text("capabilities").array().default([]),
+  lastHeartbeat: timestamp("last_heartbeat").defaultNow(),
+  metadata: jsonb("metadata"),
+}, (table) => ({
+  uniqueServiceEnv: sql`UNIQUE(service_name, environment)`,
+}));
+
+export type ServiceRegistry = typeof serviceRegistry.$inferSelect;
+export type NewServiceRegistry = typeof serviceRegistry.$inferInsert;
+
 export type DeploymentPipeline = typeof deploymentPipelines.$inferSelect;
 export type NewDeploymentPipeline = typeof deploymentPipelines.$inferInsert;
 export type PipelineRun = typeof pipelineRuns.$inferSelect;

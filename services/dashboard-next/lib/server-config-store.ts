@@ -2,6 +2,7 @@ import fs from "fs/promises";
 import { readFileSync, existsSync } from "fs";
 import path from "path";
 import { convertSSHKeyToPEM, detectSSHKeyFormat } from "./ssh-key-converter";
+import { getEnvironmentConfig, detectEnvironment, type Environment, type EnvironmentConfig } from "./env-bootstrap";
 
 export interface ServerConfig {
   id: string;
@@ -343,4 +344,107 @@ export function hasSSHKey(): boolean {
 
 export function getDefaultServers(): ServerConfig[] {
   return DEFAULT_SERVERS;
+}
+
+let cachedEnvConfig: EnvironmentConfig | null = null;
+
+export function getCurrentEnvironmentConfig(): EnvironmentConfig {
+  if (!cachedEnvConfig) {
+    cachedEnvConfig = getEnvironmentConfig();
+    console.log(`[Server Config] Environment: ${cachedEnvConfig.environment}, Role: ${cachedEnvConfig.role}`);
+  }
+  return cachedEnvConfig;
+}
+
+export function getEnvironmentAwareSshKeyPath(): string {
+  const config = getCurrentEnvironmentConfig();
+  
+  if (process.env.SSH_KEY_PATH) {
+    return process.env.SSH_KEY_PATH;
+  }
+  
+  if (config.sshKeyPath) {
+    return config.sshKeyPath;
+  }
+  
+  return DEFAULT_SSH_KEY_PATH;
+}
+
+export function getCurrentEnvironment(): Environment {
+  return detectEnvironment();
+}
+
+export function isProductionEnvironment(): boolean {
+  return getCurrentEnvironmentConfig().isProduction;
+}
+
+export async function getServersWithRegistryDiscovery(): Promise<ServerConfig[]> {
+  const servers = await getAllServers();
+  
+  try {
+    const { getHealthyPeers } = await import("./service-registry");
+    const registeredPeers = await getHealthyPeers();
+    
+    for (const peer of registeredPeers) {
+      const existingServer = servers.find(
+        s => s.id === peer.name || 
+             s.tailscaleIp === peer.endpoint.replace(/^https?:\/\//, "").split(":")[0]
+      );
+      
+      if (!existingServer && peer.capabilities.includes("agent")) {
+        const endpoint = peer.endpoint.replace(/^https?:\/\//, "");
+        const [host, portStr] = endpoint.split(":");
+        const port = portStr ? parseInt(portStr, 10) : 9765;
+        
+        const serverType = peer.environment === "windows-vm" ? "windows" : "linux";
+        
+        servers.push({
+          id: `registry-${peer.name}`,
+          name: `${peer.name} (discovered)`,
+          description: `Auto-discovered via service registry from ${peer.environment}`,
+          host: host,
+          user: serverType === "windows" ? "evin" : "root",
+          tailscaleIp: host,
+          agentPort: port,
+          serverType: serverType,
+          isDefault: false,
+        });
+        
+        console.log(`[Server Config] Discovered agent: ${peer.name} at ${host}:${port}`);
+      }
+    }
+  } catch (error) {
+    // Service registry not available, use static config only
+  }
+  
+  return servers;
+}
+
+export async function discoverWindowsAgent(): Promise<ServerConfig | null> {
+  try {
+    const { findAIService } = await import("./service-registry");
+    const aiService = await findAIService();
+    
+    if (aiService && aiService.environment === "windows-vm") {
+      const endpoint = aiService.endpoint.replace(/^https?:\/\//, "");
+      const [host, portStr] = endpoint.split(":");
+      const port = portStr ? parseInt(portStr, 10) : 9765;
+      
+      return {
+        id: "windows-discovered",
+        name: "Windows VM (discovered)",
+        description: "Auto-discovered Windows AI agent",
+        host: host,
+        user: "evin",
+        tailscaleIp: host,
+        agentPort: port,
+        serverType: "windows",
+        isDefault: false,
+      };
+    }
+  } catch {
+    // Fallback to default Windows config
+  }
+  
+  return DEFAULT_SERVERS.find(s => s.id === "windows") || null;
 }

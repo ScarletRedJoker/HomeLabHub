@@ -3,6 +3,7 @@ import { verifySession } from "@/lib/session";
 import { cookies } from "next/headers";
 import { getServerById } from "@/lib/server-config-store";
 import { checkServerOnline, wakeAndWaitForOnline } from "@/lib/wol-relay";
+import { peerDiscovery } from "@/lib/peer-discovery";
 
 async function checkAuth() {
   const cookieStore = await cookies();
@@ -79,6 +80,28 @@ async function callWindowsAgent(
   }
 }
 
+async function discoverWindowsAgent(): Promise<{ host: string; port: number; source: string } | null> {
+  try {
+    const endpoint = await peerDiscovery.getWindowsAgentEndpoint();
+    if (endpoint) {
+      return { ...endpoint, source: "discovery" };
+    }
+  } catch (error) {
+    console.warn("[Windows Deploy] Service discovery failed:", error);
+  }
+  
+  const server = await getServerById("windows");
+  if (server) {
+    return {
+      host: server.tailscaleIp || server.host,
+      port: server.agentPort || 9765,
+      source: "config",
+    };
+  }
+  
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   if (!(await checkAuth())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -92,20 +115,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing action" }, { status: 400 });
     }
 
+    const discovered = await discoverWindowsAgent();
     const server = await getServerById("windows");
-    if (!server) {
+    
+    if (!discovered && !server) {
       return NextResponse.json(
-        { error: "Windows server not configured" },
+        { error: "Windows server not configured and not discoverable" },
         { status: 404 }
       );
     }
 
-    const agentHost = server.tailscaleIp || server.host;
-    const agentPort = server.agentPort || 9765;
-    const agentToken = server.agentToken || process.env.NEBULA_AGENT_TOKEN;
+    const agentHost = discovered?.host || server?.tailscaleIp || server?.host || "100.118.44.102";
+    const agentPort = discovered?.port || server?.agentPort || 9765;
+    const agentToken = server?.agentToken || process.env.NEBULA_AGENT_TOKEN;
+    const discoverySource = discovered?.source || "fallback";
 
     if (action === "wake") {
-      if (!server.supportsWol || !server.macAddress) {
+      if (!server?.supportsWol || !server?.macAddress) {
         return NextResponse.json(
           { error: "WoL not configured for Windows VM" },
           { status: 400 }
@@ -119,6 +145,7 @@ export async function POST(request: NextRequest) {
         targetHost: agentHost,
         checkPort: agentPort,
         waitTimeoutMs: waitForOnline ? 180000 : 0,
+        useServiceDiscovery: true,
       });
 
       return NextResponse.json({
@@ -126,6 +153,7 @@ export async function POST(request: NextRequest) {
         message: result.message,
         online: result.online,
         method: result.method,
+        discoverySource,
       });
     }
 
@@ -175,7 +203,7 @@ export async function POST(request: NextRequest) {
           "/api/execute",
           "POST",
           {
-            command: `cd ${server.deployPath || "C:\\HomeLabHub"} && git pull`,
+            command: `cd ${server?.deployPath || "C:\\HomeLabHub"} && git pull`,
           },
           agentToken
         );
@@ -337,32 +365,41 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const discovered = await discoverWindowsAgent();
     const server = await getServerById("windows");
-    if (!server) {
+    
+    if (!discovered && !server) {
       return NextResponse.json(
-        { error: "Windows server not configured" },
+        { error: "Windows server not configured and not discoverable" },
         { status: 404 }
       );
     }
 
-    const agentHost = server.tailscaleIp || server.host;
-    const agentPort = server.agentPort || 9765;
-    const agentToken = server.agentToken || process.env.NEBULA_AGENT_TOKEN;
+    const agentHost = discovered?.host || server?.tailscaleIp || server?.host || "100.118.44.102";
+    const agentPort = discovered?.port || server?.agentPort || 9765;
+    const agentToken = server?.agentToken || process.env.NEBULA_AGENT_TOKEN;
+    const discoverySource = discovered?.source || "fallback";
 
     const online = await checkServerOnline(agentHost, agentPort);
 
     if (!online) {
+      if (discoverySource === "discovery") {
+        peerDiscovery.clearCache();
+        console.log("[Windows Deploy] Agent offline, cleared discovery cache for refresh");
+      }
+      
       return NextResponse.json({
         success: true,
         online: false,
+        discoverySource,
         server: {
-          id: server.id,
-          name: server.name,
-          description: server.description,
+          id: server?.id || "windows-discovered",
+          name: server?.name || "Windows VM (discovered)",
+          description: server?.description,
           host: agentHost,
           port: agentPort,
-          supportsWol: server.supportsWol,
-          wolRelayServer: server.wolRelayServer,
+          supportsWol: server?.supportsWol,
+          wolRelayServer: server?.wolRelayServer,
         },
       });
     }
@@ -379,14 +416,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       online: true,
+      discoverySource,
       server: {
-        id: server.id,
-        name: server.name,
-        description: server.description,
+        id: server?.id || "windows-discovered",
+        name: server?.name || "Windows VM (discovered)",
+        description: server?.description,
         host: agentHost,
         port: agentPort,
-        supportsWol: server.supportsWol,
-        wolRelayServer: server.wolRelayServer,
+        supportsWol: server?.supportsWol,
+        wolRelayServer: server?.wolRelayServer,
       },
       models: modelsResponse.success ? modelsResponse : null,
     });

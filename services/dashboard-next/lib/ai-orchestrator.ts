@@ -1,10 +1,12 @@
 /**
  * AI Orchestrator - Unified interface for multiple AI providers
  * Supports OpenAI, Ollama (local), Replicate (video), and future providers
+ * Uses service discovery for automatic endpoint resolution with fallbacks
  */
 import OpenAI from "openai";
 import Replicate from "replicate";
 import { readFileSync, existsSync } from "fs";
+import { peerDiscovery, type PeerService } from "./peer-discovery";
 
 interface LocalAIState {
   windows_vm?: {
@@ -118,7 +120,10 @@ class AIOrchestrator {
   private stableDiffusionUrl: string;
   private localAIState: LocalAIState | null = null;
   private stateLastRead: number = 0;
+  private discoveredServices: PeerService[] = [];
+  private lastDiscoveryTime: number = 0;
   private static readonly STATE_CACHE_TTL = 30000;
+  private static readonly DISCOVERY_CACHE_TTL = 60000;
   private static readonly STATE_FILE_PATH = process.env.LOCAL_AI_STATE_FILE || "/opt/homelab/HomeLabHub/deploy/shared/state/local-ai.json";
 
   constructor() {
@@ -129,6 +134,70 @@ class AIOrchestrator {
     this.initOpenAI();
     this.initReplicate();
     this.loadLocalAIState();
+    this.initServiceDiscovery();
+  }
+
+  private async initServiceDiscovery(): Promise<void> {
+    try {
+      await this.discoverAIServices();
+    } catch (error) {
+      console.warn("[AI Orchestrator] Service discovery initialization skipped:", error);
+    }
+  }
+
+  async discoverAIServices(): Promise<PeerService[]> {
+    if (Date.now() - this.lastDiscoveryTime < AIOrchestrator.DISCOVERY_CACHE_TTL) {
+      return this.discoveredServices;
+    }
+
+    try {
+      const services = await peerDiscovery.discoverAIServices();
+      
+      if (services.length > 0) {
+        this.discoveredServices = services;
+        this.lastDiscoveryTime = Date.now();
+        
+        for (const svc of services) {
+          if (svc.capabilities.includes("ollama") && svc.healthy) {
+            const endpoint = svc.endpoint.replace(/^https?:\/\//, "");
+            const [host, portStr] = endpoint.split(":");
+            const port = portStr ? parseInt(portStr, 10) : 11434;
+            this.ollamaUrl = `http://${host}:${port}`;
+            console.log(`[AI Orchestrator] Discovered Ollama at ${this.ollamaUrl}`);
+          }
+          
+          if (svc.capabilities.includes("stable-diffusion") && svc.healthy) {
+            const endpoint = svc.endpoint.replace(/^https?:\/\//, "");
+            const [host, portStr] = endpoint.split(":");
+            const port = portStr ? parseInt(portStr, 10) : 7860;
+            this.stableDiffusionUrl = `http://${host}:${port}`;
+            console.log(`[AI Orchestrator] Discovered Stable Diffusion at ${this.stableDiffusionUrl}`);
+          }
+          
+          if (svc.capabilities.includes("comfyui") && svc.healthy) {
+            const endpoint = svc.endpoint.replace(/^https?:\/\//, "");
+            const [host, portStr] = endpoint.split(":");
+            const port = portStr ? parseInt(portStr, 10) : 8188;
+            this.comfyuiUrl = `http://${host}:${port}`;
+            console.log(`[AI Orchestrator] Discovered ComfyUI at ${this.comfyuiUrl}`);
+          }
+        }
+      }
+      
+      return this.discoveredServices;
+    } catch (error) {
+      console.warn("[AI Orchestrator] Service discovery failed, using configured endpoints:", error);
+      return this.discoveredServices;
+    }
+  }
+
+  async refreshEndpoints(): Promise<void> {
+    this.lastDiscoveryTime = 0;
+    await this.discoverAIServices();
+  }
+
+  getDiscoveredServices(): PeerService[] {
+    return this.discoveredServices;
   }
 
   private loadLocalAIState(): void {

@@ -379,4 +379,75 @@ app.get('/success/:action', (req, res) => {
 
   process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
   process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+  // Register with service registry
+  registerStreamBotService(port);
 })();
+
+async function registerStreamBotService(port: number): Promise<void> {
+  const registryUrl = process.env.DASHBOARD_REGISTRY_URL || "https://dashboard.evindrake.net/api/registry";
+  const serviceName = "stream-bot";
+  const capabilities = ["stream-bot", "twitch", "youtube", "spotify", "overlay"];
+  const heartbeatInterval = 30000;
+  
+  let heartbeatTimer: NodeJS.Timeout | null = null;
+  
+  async function doRegister(): Promise<boolean> {
+    try {
+      const host = process.env.APP_URL || `http://localhost:${port}`;
+      const endpoint = host.startsWith("http") ? host : `https://${host}`;
+      
+      const response = await fetch(registryUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "register",
+          name: serviceName,
+          capabilities,
+          endpoint,
+          metadata: {
+            environment: process.env.NODE_ENV === "production" ? "linode" : "replit",
+            version: "1.0.0",
+            startedAt: new Date().toISOString(),
+          },
+        }),
+      });
+      
+      if (response.ok) {
+        log("Registered with service registry");
+        return true;
+      }
+      return false;
+    } catch (error) {
+      log(`Service registry unavailable: ${error}`);
+      return false;
+    }
+  }
+  
+  async function sendHeartbeat(): Promise<void> {
+    try {
+      const response = await fetch(registryUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "heartbeat", name: serviceName }),
+      });
+      
+      if (!response.ok) {
+        await doRegister();
+      }
+    } catch {
+      // Silent fail for heartbeats
+    }
+  }
+  
+  const registered = await doRegister();
+  if (registered) {
+    heartbeatTimer = setInterval(sendHeartbeat, heartbeatInterval);
+  } else {
+    setTimeout(async () => {
+      if (await doRegister()) {
+        heartbeatTimer = setInterval(sendHeartbeat, heartbeatInterval);
+      }
+    }, 30000);
+  }
+}

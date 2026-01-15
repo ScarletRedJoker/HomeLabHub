@@ -298,6 +298,118 @@ const SD_WEBUI_URL = "http://127.0.0.1:7860";
 const SD_MODELS_PATH = "C:\\AI\\stable-diffusion-webui\\models\\Stable-diffusion";
 const SD_LORA_PATH = "C:\\AI\\stable-diffusion-webui\\models\\Lora";
 
+const REGISTRY_URL = process.env.DASHBOARD_REGISTRY_URL || "https://dashboard.evindrake.net/api/registry";
+const SERVICE_NAME = "nebula-agent";
+const SERVICE_CAPABILITIES = ["ai", "ollama", "stable-diffusion", "comfyui", "gpu"];
+const HEARTBEAT_INTERVAL = 30000;
+
+let heartbeatTimer: NodeJS.Timeout | null = null;
+let isShuttingDown = false;
+
+async function getServiceEndpoint(): Promise<string> {
+  const tailscaleIp = process.env.TAILSCALE_IP || "100.118.44.102";
+  return `http://${tailscaleIp}:${PORT}`;
+}
+
+async function registerWithRegistry(): Promise<boolean> {
+  try {
+    const endpoint = await getServiceEndpoint();
+    const response = await fetch(REGISTRY_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(AUTH_TOKEN ? { "Authorization": `Bearer ${AUTH_TOKEN}` } : {}),
+      },
+      body: JSON.stringify({
+        action: "register",
+        name: SERVICE_NAME,
+        capabilities: SERVICE_CAPABILITIES,
+        endpoint,
+        metadata: {
+          environment: "windows-vm",
+          hostname: os.hostname(),
+          platform: os.platform(),
+          startedAt: new Date().toISOString(),
+          version: "1.0.0",
+        },
+      }),
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      console.log(`[Registry] Registered as ${SERVICE_NAME}: ${result.message || "success"}`);
+      return true;
+    } else {
+      console.warn(`[Registry] Registration failed: ${response.status}`);
+      return false;
+    }
+  } catch (error: any) {
+    console.warn(`[Registry] Registration error: ${error.message}`);
+    return false;
+  }
+}
+
+async function sendHeartbeatToRegistry(): Promise<void> {
+  if (isShuttingDown) return;
+  
+  try {
+    const response = await fetch(REGISTRY_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(AUTH_TOKEN ? { "Authorization": `Bearer ${AUTH_TOKEN}` } : {}),
+      },
+      body: JSON.stringify({
+        action: "heartbeat",
+        name: SERVICE_NAME,
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn(`[Registry] Heartbeat failed: ${response.status}, re-registering...`);
+      await registerWithRegistry();
+    }
+  } catch (error: any) {
+    console.warn(`[Registry] Heartbeat error: ${error.message}`);
+  }
+}
+
+async function unregisterFromRegistry(): Promise<void> {
+  try {
+    await fetch(REGISTRY_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(AUTH_TOKEN ? { "Authorization": `Bearer ${AUTH_TOKEN}` } : {}),
+      },
+      body: JSON.stringify({
+        action: "unregister",
+        name: SERVICE_NAME,
+      }),
+    });
+    console.log("[Registry] Unregistered from service registry");
+  } catch (error: any) {
+    console.warn(`[Registry] Unregistration error: ${error.message}`);
+  }
+}
+
+function startHeartbeat(): void {
+  if (heartbeatTimer) return;
+  
+  heartbeatTimer = setInterval(() => {
+    sendHeartbeatToRegistry();
+  }, HEARTBEAT_INTERVAL);
+  
+  console.log(`[Registry] Heartbeat started (every ${HEARTBEAT_INTERVAL / 1000}s)`);
+}
+
+function stopHeartbeat(): void {
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
+}
+
 function detectModelType(filename: string, folder: string): "checkpoint" | "motion" | "lora" {
   const lower = filename.toLowerCase();
   
@@ -575,7 +687,7 @@ app.get("/", (req, res) => {
   });
 });
 
-app.listen(PORT, "0.0.0.0", () => {
+const server = app.listen(PORT, "0.0.0.0", async () => {
   console.log(`
 ╔════════════════════════════════════════════════╗
 ║           Nebula Agent v1.0.0                  ║
@@ -585,4 +697,38 @@ app.listen(PORT, "0.0.0.0", () => {
 ║   Auth: ${AUTH_TOKEN ? "Enabled" : "Disabled (set NEBULA_AGENT_TOKEN)"}                 ║
 ╚════════════════════════════════════════════════╝
   `);
+
+  const registered = await registerWithRegistry();
+  if (registered) {
+    startHeartbeat();
+  } else {
+    console.warn("[Registry] Running without service registry registration");
+    setTimeout(async () => {
+      const retried = await registerWithRegistry();
+      if (retried) startHeartbeat();
+    }, 30000);
+  }
 });
+
+async function gracefulShutdown(signal: string): Promise<void> {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  
+  console.log(`\n[Shutdown] ${signal} received, cleaning up...`);
+  
+  stopHeartbeat();
+  await unregisterFromRegistry();
+  
+  server.close(() => {
+    console.log("[Shutdown] Server closed");
+    process.exit(0);
+  });
+  
+  setTimeout(() => {
+    console.log("[Shutdown] Force exit after timeout");
+    process.exit(1);
+  }, 5000);
+}
+
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));

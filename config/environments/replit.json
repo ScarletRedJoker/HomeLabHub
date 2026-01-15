@@ -1,0 +1,69 @@
+{
+  "environment": "replit",
+  "description": "Development environment - Limited capabilities, remote AI access",
+  "isProduction": false,
+  "services": ["dashboard", "discord-bot", "stream-bot"],
+  "ports": {
+    "dashboard": 5000,
+    "discord-bot": 4000,
+    "stream-bot": 3000
+  },
+  "paths": {
+    "deploy": "${HOME}/NebulaCommand",
+    "data": "./data",
+    "logs": "./logs",
+    "secrets": null,
+    "sshKey": "${HOME}/.ssh/homelab"
+  },
+  "secrets": {
+    "source": "env",
+    "envFile": null,
+    "required": [
+      "DATABASE_URL"
+    ],
+    "optional": [
+      "DISCORD_TOKEN",
+      "OPENAI_API_KEY",
+      "SSH_PRIVATE_KEY"
+    ]
+  },
+  "networking": {
+    "tailscale": false,
+    "publicDomain": "${REPLIT_DEV_DOMAIN}"
+  },
+  "peers": {
+    "windows-vm": {
+      "discovery": "static",
+      "endpoint": "${WINDOWS_VM_TAILSCALE_IP}:9765",
+      "capabilities": ["ai", "gpu", "ollama"],
+      "requiresVpn": true
+    },
+    "linode": {
+      "discovery": "static",
+      "endpoint": "linode.evindrake.net:443",
+      "capabilities": ["registry"]
+    }
+  },
+  "capabilities": [
+    "dashboard",
+    "api",
+    "development"
+  ],
+  "limitations": [
+    "no-tailscale",
+    "no-ssh-direct",
+    "no-local-ai",
+    "remote-ai-only"
+  ],
+  "aiProvider": {
+    "primary": "modelfarm",
+    "fallback": "remote-ollama",
+    "models": ["gpt-4o", "gpt-4o-mini"]
+  },
+  "healthChecks": {
+    "interval": 60000,
+    "endpoints": [
+      { "name": "dashboard", "url": "http://localhost:5000/api/health" }
+    ]
+  }
+}

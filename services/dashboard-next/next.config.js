@@ -4,6 +4,7 @@ const nextConfig = {
   output: 'standalone',
   experimental: {
     serverComponentsExternalPackages: ['simple-git', 'ssh2', 'node-ssh', 'cpu-features', 'ssh2-sftp-client'],
+    instrumentationHook: true,
   },
   webpack: (config, { isServer }) => {
     if (isServer) {

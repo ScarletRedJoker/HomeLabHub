@@ -1,0 +1,89 @@
+{
+  "environment": "windows-vm",
+  "description": "Windows 11 VM - AI workstation with GPU passthrough",
+  "isProduction": true,
+  "services": ["nebula-agent", "ollama", "comfyui", "stable-diffusion"],
+  "ports": {
+    "agent": 9765,
+    "ollama": 11434,
+    "comfyui": 8188,
+    "stableDiffusion": 7860,
+    "sunshine": 47990
+  },
+  "paths": {
+    "deploy": "C:\\NebulaCommand",
+    "data": "C:\\NebulaData",
+    "logs": "C:\\NebulaCommand\\logs",
+    "secrets": "C:\\NebulaCommand\\secrets",
+    "sshKey": "C:\\Users\\evin\\.ssh\\homelab",
+    "models": {
+      "ollama": "C:\\Users\\evin\\.ollama\\models",
+      "comfyui": "C:\\AI\\ComfyUI\\models",
+      "stableDiffusion": "C:\\AI\\StableDiffusion\\models"
+    }
+  },
+  "secrets": {
+    "source": "env",
+    "envFile": "C:\\NebulaCommand\\.env",
+    "required": [
+      "NEBULA_AGENT_TOKEN"
+    ]
+  },
+  "networking": {
+    "tailscale": true,
+    "tailscaleIp": "${WINDOWS_VM_TAILSCALE_IP}"
+  },
+  "peers": {
+    "linode": {
+      "discovery": "tailscale",
+      "endpoint": "linode.evindrake.net:443",
+      "capabilities": ["dashboard", "registry", "api"]
+    },
+    "ubuntu-home": {
+      "discovery": "tailscale",
+      "endpoint": "host.evindrake.net:22",
+      "capabilities": ["wol", "ssh"]
+    }
+  },
+  "capabilities": [
+    "ai",
+    "gpu",
+    "ollama",
+    "comfyui",
+    "stable-diffusion",
+    "whisper",
+    "tts",
+    "image-generation",
+    "video-generation",
+    "model-download",
+    "training"
+  ],
+  "gpu": {
+    "type": "nvidia",
+    "model": "RTX 4090",
+    "vram": 24576,
+    "cudaVersion": "12.1"
+  },
+  "aiServices": {
+    "ollama": {
+      "models": ["qwen2.5-coder:7b", "llama3.1:8b", "deepseek-coder:6.7b"],
+      "port": 11434
+    },
+    "comfyui": {
+      "workflows": "C:\\AI\\ComfyUI\\workflows",
+      "port": 8188
+    },
+    "stableDiffusion": {
+      "checkpoints": "C:\\AI\\StableDiffusion\\models\\Stable-diffusion",
+      "port": 7860
+    }
+  },
+  "healthChecks": {
+    "interval": 30000,
+    "endpoints": [
+      { "name": "agent", "url": "http://localhost:9765/api/health" },
+      { "name": "ollama", "url": "http://localhost:11434/api/tags" },
+      { "name": "comfyui", "url": "http://localhost:8188/system_stats" }
+    ]
+  }
+}

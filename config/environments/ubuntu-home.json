@@ -1,0 +1,77 @@
+{
+  "environment": "ubuntu-home",
+  "description": "Home server - KVM hypervisor, WoL relay, Plex, NAS",
+  "isProduction": true,
+  "services": ["relay", "kvm-manager", "plex"],
+  "ports": {
+    "ssh": 22,
+    "vnc": 5901,
+    "rdp": 3389,
+    "plex": 32400,
+    "transmission": 9091
+  },
+  "paths": {
+    "deploy": "/opt/nebula",
+    "data": "/opt/nebula/data",
+    "logs": "/var/log/nebula",
+    "secrets": "/opt/nebula/secrets",
+    "sshKey": "/home/evin/.ssh/homelab",
+    "nas": "/mnt/nas",
+    "media": "/mnt/media"
+  },
+  "secrets": {
+    "source": "file",
+    "envFile": "/opt/nebula/.env",
+    "required": [
+      "PLEX_TOKEN",
+      "TRANSMISSION_PASSWORD"
+    ]
+  },
+  "networking": {
+    "tailscale": true,
+    "localNetwork": "192.168.1.0/24",
+    "broadcastAddress": "192.168.1.255"
+  },
+  "peers": {
+    "windows-vm": {
+      "discovery": "libvirt",
+      "vmName": "windows11",
+      "macAddress": "${WINDOWS_VM_MAC}",
+      "capabilities": ["ai", "gpu", "ollama", "comfyui", "stable-diffusion"]
+    },
+    "linode": {
+      "discovery": "tailscale",
+      "endpoint": "linode.evindrake.net:443",
+      "capabilities": ["dashboard", "registry", "api"]
+    }
+  },
+  "capabilities": [
+    "wol",
+    "wol-relay",
+    "ssh-gateway",
+    "kvm",
+    "plex",
+    "nas",
+    "transmission",
+    "vnc",
+    "rdp"
+  ],
+  "kvm": {
+    "vms": {
+      "windows11": {
+        "gpuPassthrough": true,
+        "autoStart": true,
+        "memory": "32G",
+        "cpus": 8
+      }
+    }
+  },
+  "healthChecks": {
+    "interval": 60000,
+    "services": [
+      { "name": "libvirtd", "type": "systemd" },
+      { "name": "plex", "type": "http", "url": "http://localhost:32400/identity" },
+      { "name": "tailscale", "type": "command", "command": "tailscale status" }
+    ]
+  }
+}

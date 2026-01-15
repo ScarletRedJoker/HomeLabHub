@@ -1,12 +1,14 @@
 import { Client } from "ssh2";
 import { getSSHPrivateKey, getServerById, ServerConfig } from "./server-config-store";
 import wol from "wake_on_lan";
+import { peerDiscovery } from "./peer-discovery";
 
 export interface WolRelayResult {
   success: boolean;
   method: "relay" | "direct";
   message?: string;
   error?: string;
+  discoverySource?: "registry" | "config" | "fallback";
 }
 
 export interface WolRelayOptions {
@@ -15,6 +17,7 @@ export interface WolRelayOptions {
   relayServerId?: string;
   waitForOnline?: boolean;
   waitTimeoutMs?: number;
+  useServiceDiscovery?: boolean;
 }
 
 async function executeSSHCommand(
@@ -110,7 +113,7 @@ async function sendDirectWol(
 export async function sendWolViaRelay(
   options: WolRelayOptions
 ): Promise<WolRelayResult> {
-  const { macAddress, broadcastAddress = "255.255.255.255", relayServerId } = options;
+  const { macAddress, broadcastAddress = "255.255.255.255", relayServerId, useServiceDiscovery = true } = options;
 
   if (!relayServerId) {
     console.log("[WoL Relay] No relay server specified, sending direct WoL packet");
@@ -123,7 +126,39 @@ export async function sendWolViaRelay(
     };
   }
 
-  const relayServer = await getServerById(relayServerId);
+  let relayServer: ServerConfig | null = null;
+  let discoverySource: "registry" | "config" | "fallback" = "config";
+
+  if (useServiceDiscovery) {
+    try {
+      const wolRelay = await peerDiscovery.discoverWoLRelayServer();
+      if (wolRelay && wolRelay.healthy) {
+        const endpoint = wolRelay.endpoint.replace(/^(ssh|https?):\/\//, "");
+        const [host, portStr] = endpoint.split(":");
+        const port = portStr ? parseInt(portStr, 10) : 22;
+        
+        relayServer = {
+          id: wolRelay.name,
+          name: wolRelay.name,
+          host: host,
+          user: "evin",
+          port: port,
+        };
+        discoverySource = "registry";
+        console.log(`[WoL Relay] Discovered relay server via service registry: ${wolRelay.name} at ${host}:${port}`);
+      }
+    } catch (error) {
+      console.warn("[WoL Relay] Service discovery failed, falling back to config:", error);
+    }
+  }
+
+  if (!relayServer) {
+    relayServer = await getServerById(relayServerId) || null;
+    if (relayServer) {
+      discoverySource = "config";
+    }
+  }
+
   if (!relayServer) {
     console.error(`[WoL Relay] Relay server '${relayServerId}' not found`);
     return {
@@ -133,7 +168,7 @@ export async function sendWolViaRelay(
     };
   }
 
-  console.log(`[WoL Relay] Using relay server: ${relayServer.name} (${relayServer.host})`);
+  console.log(`[WoL Relay] Using relay server: ${relayServer.name} (${relayServer.host}) [source: ${discoverySource}]`);
 
   const wolCommands = [
     `wakeonlan ${macAddress}`,
@@ -158,6 +193,7 @@ export async function sendWolViaRelay(
         success: true,
         method: "relay",
         message: `WoL packet sent via ${relayServer.name} using ${command.split(" ")[0]}`,
+        discoverySource,
       };
     }
 

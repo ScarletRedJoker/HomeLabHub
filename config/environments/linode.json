@@ -1,0 +1,63 @@
+{
+  "environment": "linode",
+  "description": "Public cloud server - Dashboard, Discord Bot, Stream Bot",
+  "isProduction": true,
+  "services": ["dashboard", "discord-bot", "stream-bot"],
+  "ports": {
+    "dashboard": 5000,
+    "discord-bot": 4000,
+    "stream-bot": 3000,
+    "terminal-server": 3001
+  },
+  "paths": {
+    "deploy": "/opt/homelab/NebulaCommand",
+    "data": "/opt/homelab/data",
+    "logs": "/var/log/nebula",
+    "secrets": "/opt/homelab/secrets",
+    "sshKey": "/root/.ssh/homelab"
+  },
+  "secrets": {
+    "source": "file",
+    "envFile": "/opt/homelab/.env",
+    "required": [
+      "DATABASE_URL",
+      "DISCORD_TOKEN",
+      "TWITCH_CLIENT_ID",
+      "TWITCH_CLIENT_SECRET",
+      "OPENAI_API_KEY"
+    ]
+  },
+  "networking": {
+    "tailscale": true,
+    "caddy": true,
+    "publicDomain": "linode.evindrake.net"
+  },
+  "peers": {
+    "windows-vm": {
+      "discovery": "tailscale",
+      "endpoint": "100.118.44.102:9765",
+      "capabilities": ["ai", "gpu", "ollama", "comfyui", "stable-diffusion"]
+    },
+    "ubuntu-home": {
+      "discovery": "tailscale",
+      "endpoint": "host.evindrake.net:22",
+      "capabilities": ["wol", "ssh", "plex", "kvm", "nas"]
+    }
+  },
+  "capabilities": [
+    "dashboard",
+    "discord-bot",
+    "stream-bot",
+    "registry",
+    "api",
+    "deploy"
+  ],
+  "healthChecks": {
+    "interval": 30000,
+    "endpoints": [
+      { "name": "dashboard", "url": "http://localhost:5000/api/health" },
+      { "name": "discord-bot", "url": "http://localhost:4000/api/health" },
+      { "name": "stream-bot", "url": "http://localhost:3000/api/health" }
+    ]
+  }
+}
