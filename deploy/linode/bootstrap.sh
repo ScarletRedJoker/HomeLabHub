@@ -232,6 +232,9 @@ load_secrets() {
             if [[ -f "$secret_file" ]]; then
                 local key=$(basename "$secret_file")
                 local value=$(cat "$secret_file")
+                # Convert hyphens to underscores for valid bash variable names
+                key="${key//-/_}"
+                key="${key^^}"  # uppercase
                 export "$key"="$value"
             fi
         done

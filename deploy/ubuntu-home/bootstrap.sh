@@ -43,18 +43,38 @@ log() {
         *)     color=$NC ;;
     esac
     
-    mkdir -p "$LOG_DIR" 2>/dev/null || true
+    # Create log dir with sudo if needed
+    if [[ ! -d "$LOG_DIR" ]]; then
+        if [[ $EUID -ne 0 ]]; then
+            sudo mkdir -p "$LOG_DIR" 2>/dev/null && sudo chown "$USER:$USER" "$LOG_DIR" 2>/dev/null || mkdir -p "$HOME/.nebula/logs" 2>/dev/null
+            LOG_DIR="${LOG_DIR:-$HOME/.nebula/logs}"
+        else
+            mkdir -p "$LOG_DIR" 2>/dev/null || true
+        fi
+    fi
     echo -e "${color}[$timestamp] [$level] $msg${NC}" | tee -a "$LOG_FILE" 2>/dev/null || echo "[$timestamp] [$level] $msg"
 }
 
 create_directories() {
     log INFO "Creating required directories..."
     
-    mkdir -p /opt/nebula
-    mkdir -p /opt/nebula/data
-    mkdir -p /opt/nebula/secrets
-    mkdir -p /opt/nebula/docker
-    mkdir -p "$LOG_DIR"
+    # Use sudo if not running as root
+    local SUDO=""
+    if [[ $EUID -ne 0 ]]; then
+        SUDO="sudo"
+    fi
+    
+    $SUDO mkdir -p /opt/nebula
+    $SUDO mkdir -p /opt/nebula/data
+    $SUDO mkdir -p /opt/nebula/secrets
+    $SUDO mkdir -p /opt/nebula/docker
+    $SUDO mkdir -p "$LOG_DIR"
+    
+    # Make current user the owner if using sudo
+    if [[ -n "$SUDO" ]]; then
+        $SUDO chown -R "$USER:$USER" /opt/nebula
+        $SUDO chown -R "$USER:$USER" "$LOG_DIR" 2>/dev/null || true
+    fi
     
     chmod 700 /opt/nebula/secrets 2>/dev/null || true
     
@@ -154,6 +174,9 @@ load_secrets() {
             if [[ -f "$secret_file" ]]; then
                 local key=$(basename "$secret_file")
                 local value=$(cat "$secret_file" 2>/dev/null)
+                # Convert hyphens to underscores for valid bash variable names
+                key="${key//-/_}"
+                key="${key^^}"  # uppercase
                 export "$key"="$value" 2>/dev/null || true
             fi
         done
