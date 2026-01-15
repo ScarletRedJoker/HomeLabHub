@@ -141,7 +141,7 @@ generate_secrets() {
 # Nebula Command - Ubuntu Home Environment Configuration
 
 # Windows VM settings
-WINDOWS_VM_NAME=windows11
+WINDOWS_VM_NAME=RDPWindows
 WINDOWS_VM_MAC=
 
 # Plex settings

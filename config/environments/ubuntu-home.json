@@ -36,7 +36,7 @@
   "peers": {
     "windows-vm": {
       "discovery": "libvirt",
-      "vmName": "windows11",
+      "vmName": "RDPWindows",
       "macAddress": "${WINDOWS_VM_MAC}",
       "capabilities": ["ai", "gpu", "ollama", "comfyui", "stable-diffusion"]
     },
@@ -59,7 +59,7 @@
   ],
   "kvm": {
     "vms": {
-      "windows11": {
+      "RDPWindows": {
         "gpuPassthrough": true,
         "autoStart": true,
         "memory": "32G",
