@@ -84,6 +84,20 @@ The system can now generate code autonomously using local Ollama models:
 *   **Safety Features**: Code staging system, automatic backups, diff preview before apply
 *   **UI**: Jarvis page includes code generation panel with job type selector and workflow tracking
 
+### Nebula Deployer CLI (January 2026)
+A comprehensive CLI tool (`deploy/nebula-deployer/`) for automated deployment with self-healing:
+*   **5 Commands**: `nebula deploy`, `nebula setup`, `nebula verify`, `nebula secrets`, `nebula status`
+*   **Environment Detection**: Auto-detects Linode, Ubuntu Home, Windows VM, or Replit
+*   **13 Verification Probes**: Dashboard, Discord Bot, Stream Bot, Terminal Server, Nebula Agent, PostgreSQL, Redis, Docker, PM2, Tailscale, Ollama, ComfyUI, Stable Diffusion
+*   **Self-Healing Remediation**: Automatic restart of services, dependency installation, configuration generation, network fixes
+*   **Secret Synchronization**: AES-256-GCM encrypted cross-server secret sync via SSH
+*   **Interactive Setup Wizard**: Schema-driven prompts for 104+ environment variables with validation
+*   **Environment-Specific Deployers**:
+    - LinodeDeployer: PM2, Caddy, Git operations, npm builds
+    - UbuntuHomeDeployer: libvirt/KVM, WoL relay, systemd services
+    - WindowsVMDeployer: Nebula Agent, AI services (Ollama, ComfyUI, SD)
+*   **Usage**: `npx ts-node deploy/nebula-deployer/src/index.ts <command>`
+
 ### Local Deployment Pipeline and Health Monitoring
 The Local Deploy Manager (`lib/local-deploy.ts`) provides secure multi-target deployment to Ubuntu homelab and Windows VM, including Git operations, service restarts, rollbacks, and health checks. The Health Monitor (`lib/health-monitor.ts`) tracks system health across all deployment targets (Windows VM, Linode, Ubuntu, Replit) for services like Ollama, PostgreSQL, and Docker, detecting issues and offering auto-fix options.
 
