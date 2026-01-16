@@ -1,0 +1,40 @@
+[Unit]
+Description=Nebula Agent - AI Services Controller
+Documentation=https://github.com/your-org/nebula-agent
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nebula
+Group=nebula
+WorkingDirectory=/opt/nebula-agent
+ExecStart=/usr/bin/node dist/index.js
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=10
+TimeoutStopSec=30
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nebula-agent
+
+Environment=NODE_ENV=production
+Environment=AGENT_PORT=9765
+
+ProtectSystem=full
+ProtectHome=read-only
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+
+LimitNOFILE=65535
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target
