@@ -19,6 +19,32 @@ import {
   formatServiceStatus,
   LogLevel 
 } from './lib/logger';
+import { 
+  runAllProbes, 
+  getProbesByCategory, 
+  getProbeByName,
+  allProbes,
+  type Probe,
+  type ProbeResult,
+  type ProbeSummary
+} from './probes';
+import { 
+  suggestManualSteps 
+} from './remediation';
+import { 
+  createDeployer, 
+  runDeployment,
+  type SSHConfig,
+  type DeployOptions
+} from './deployers';
+import { 
+  syncSecretsToRemote, 
+  syncSecretsFromRemote,
+  syncAllEnvironments, 
+  getDefaultEnvironmentConfigs,
+  type SyncOptions
+} from './lib/secrets-sync';
+import { runSetupWizard } from './wizards/env-setup-wizard';
 
 const program = new Command();
 
@@ -39,6 +65,8 @@ program
   .option('-f, --force', 'Force deployment without confirmation')
   .option('-s, --service <service>', 'Deploy specific service only')
   .option('--dry-run', 'Show what would be deployed without executing')
+  .option('--skip-verify', 'Skip post-deployment verification')
+  .option('--rollback-on-fail', 'Automatically rollback on failure')
   .action(async (environment: string, options) => {
     const validEnvs = ['linode', 'ubuntu-home', 'windows-vm'];
     
@@ -73,141 +101,113 @@ program
       }
     }
 
-    const spinner = ora(`Connecting to ${environment}...`).start();
+    const { sshHost, sshUser, sshKeyPath } = await inquirer.prompt([
+      {
+        type: 'input',
+        name: 'sshHost',
+        message: 'SSH host:',
+        default: process.env[`${environment.toUpperCase().replace('-', '_')}_SSH_HOST`] || 
+                 (environment === 'linode' ? 'linode.evindrake.net' : 
+                  environment === 'ubuntu-home' ? 'host.evindrake.net' : 
+                  process.env.WINDOWS_VM_TAILSCALE_IP || '100.118.44.102'),
+      },
+      {
+        type: 'input',
+        name: 'sshUser',
+        message: 'SSH username:',
+        default: process.env[`${environment.toUpperCase().replace('-', '_')}_SSH_USER`] || 
+                 (environment === 'linode' ? 'root' : 'evin'),
+      },
+      {
+        type: 'input',
+        name: 'sshKeyPath',
+        message: 'SSH key path:',
+        default: process.env.SSH_KEY_PATH || '~/.ssh/id_rsa',
+      },
+    ]);
+
+    const sshConfig: SSHConfig = {
+      host: sshHost,
+      username: sshUser,
+      privateKeyPath: sshKeyPath.replace('~', process.env.HOME || ''),
+    };
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      spinner.succeed(`Connected to ${environment}`);
+      const deployer = createDeployer(environment, sshConfig);
 
-      const steps = [
-        'Validating configuration',
-        'Checking target health',
-        'Syncing files',
-        'Running migrations',
-        'Restarting services',
-        'Verifying deployment',
-      ];
+      const deployOptions: DeployOptions = {
+        dryRun: options.dryRun,
+        force: options.force,
+        services: options.service ? [options.service] : undefined,
+        skipVerify: options.skipVerify,
+        rollbackOnFail: options.rollbackOnFail,
+        verbose: program.opts().verbose,
+      };
 
-      for (let i = 0; i < steps.length; i++) {
-        const stepSpinner = ora(`[${i + 1}/${steps.length}] ${steps[i]}...`).start();
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        if (options.dryRun) {
-          stepSpinner.info(`[DRY RUN] ${steps[i]}`);
-        } else {
-          stepSpinner.succeed(`${steps[i]}`);
-        }
-      }
+      const result = await runDeployment(deployer, deployOptions);
 
       logger.blank();
-      logger.success(`Deployment to ${environment} completed successfully!`);
+      if (result.success) {
+        logger.success(`Deployment to ${environment} completed successfully!`);
+      } else {
+        logger.error(`Deployment to ${environment} failed`);
+        result.errors.forEach(err => logger.error(`  - ${err}`));
+        
+        if (result.rollbackAvailable && deployer.rollback) {
+          const { shouldRollback } = await inquirer.prompt([
+            {
+              type: 'confirm',
+              name: 'shouldRollback',
+              message: 'Would you like to rollback to the previous version?',
+              default: true,
+            },
+          ]);
+
+          if (shouldRollback) {
+            const spinner = ora('Rolling back...').start();
+            const rollbackSuccess = await deployer.rollback();
+            if (rollbackSuccess) {
+              spinner.succeed('Rollback completed');
+            } else {
+              spinner.fail('Rollback failed');
+            }
+          }
+        }
+        process.exit(1);
+      }
       
     } catch (error) {
-      spinner.fail(`Deployment failed`);
       logger.error(error instanceof Error ? error.message : 'Unknown error');
       process.exit(1);
     }
   });
 
-interface SetupAnswers {
-  correctEnv: boolean;
-  environment?: string;
-  services: string[];
-  configureSsh: boolean;
-  sshKeyPath?: string;
-  configureSecrets: boolean;
-}
-
 program
   .command('setup')
   .description('Interactive setup wizard for Nebula Command')
-  .action(async () => {
-    logger.header('Nebula Command Setup Wizard');
-    
-    const currentEnv = await getEnvironmentInfo();
-    logger.info(`Detected environment: ${formatEnvironment(currentEnv.environment)}`);
-    logger.info(`Hostname: ${currentEnv.hostname}`);
-    logger.info(`Platform: ${currentEnv.platform}`);
-    
-    if (currentEnv.tailscaleIP) {
-      logger.info(`Tailscale IP: ${currentEnv.tailscaleIP}`);
-    }
-
-    logger.blank();
-
-    const answers = await inquirer.prompt<SetupAnswers>([
-      {
-        type: 'confirm',
-        name: 'correctEnv',
-        message: `Is ${currentEnv.environment} the correct environment?`,
-        default: true,
-      },
-      {
-        type: 'list',
-        name: 'environment',
-        message: 'Select the correct environment:',
-        choices: ['linode', 'ubuntu-home', 'windows-vm', 'replit'],
-        when: (ans: { correctEnv: boolean }) => !ans.correctEnv,
-      },
-      {
-        type: 'checkbox',
-        name: 'services',
-        message: 'Which services should run on this environment?',
-        choices: [
-          { name: 'Dashboard (Next.js)', value: 'dashboard', checked: true },
-          { name: 'Discord Bot', value: 'discord-bot' },
-          { name: 'Stream Bot', value: 'stream-bot' },
-          { name: 'AI Agent', value: 'nebula-agent' },
-        ],
-      },
-      {
-        type: 'confirm',
-        name: 'configureSsh',
-        message: 'Configure SSH keys for remote deployment?',
-        default: true,
-      },
-      {
-        type: 'input',
-        name: 'sshKeyPath',
-        message: 'Path to SSH private key:',
-        default: '~/.ssh/homelab',
-        when: (ans: { configureSsh: boolean }) => ans.configureSsh,
-      },
-      {
-        type: 'confirm',
-        name: 'configureSecrets',
-        message: 'Set up secrets management?',
-        default: true,
-      },
-    ]);
-
-    logger.blank();
-    logger.subheader('Configuration Summary');
-    logger.table({
-      'Environment': answers.correctEnv ? currentEnv.environment : answers.environment,
-      'Services': answers.services.join(', '),
-      'SSH Configured': answers.configureSsh ? 'Yes' : 'No',
-      'Secrets': answers.configureSecrets ? 'Enabled' : 'Disabled',
-    });
-
-    const { proceed } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'proceed',
-        message: 'Save this configuration?',
-        default: true,
-      },
-    ]);
-
-    if (proceed) {
-      const spinner = ora('Saving configuration...').start();
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      spinner.succeed('Configuration saved!');
-      
-      logger.blank();
-      logger.success('Setup complete! Run `nebula status` to verify.');
-    } else {
-      logger.info('Setup cancelled');
+  .option('-e, --environment <env>', 'Specify environment (linode, ubuntu-home, windows-vm, replit)')
+  .option('-s, --schema <path>', 'Path to schema file')
+  .option('-o, --output <path>', 'Output path for .env file')
+  .option('--non-interactive', 'Run in non-interactive mode')
+  .option('--skip-existing', 'Skip variables that already have values')
+  .option('--force', 'Overwrite all existing values')
+  .action(async (options) => {
+    try {
+      await runSetupWizard({
+        environment: options.environment,
+        schemaPath: options.schema,
+        outputPath: options.output,
+        interactive: !options.nonInteractive,
+        skipExisting: options.skipExisting,
+        force: options.force,
+      });
+    } catch (error) {
+      if ((error as Error).message?.includes('cancelled')) {
+        logger.info('Setup cancelled');
+      } else {
+        logger.error(`Setup failed: ${(error as Error).message}`);
+        process.exit(1);
+      }
     }
   });
 
@@ -215,117 +215,251 @@ program
   .command('verify')
   .description('Verify all endpoints and services are accessible')
   .option('-e, --environment <env>', 'Verify specific environment only')
+  .option('-c, --category <category>', 'Probe category: service, infrastructure, or ai')
+  .option('--remediate', 'Attempt to fix failed probes')
+  .option('--parallel', 'Run probes in parallel (default: true)')
   .action(async (options) => {
     logger.header('Verifying Endpoints & Services');
 
-    const endpoints = getEnvironmentEndpoints();
-    const toVerify = options.environment 
-      ? endpoints.filter(e => e.environment === options.environment)
-      : endpoints;
+    let probesToRun: Probe[] = allProbes;
 
-    if (toVerify.length === 0) {
-      logger.error(`No endpoints found for environment: ${options.environment}`);
-      process.exit(1);
+    if (options.category) {
+      const validCategories = ['service', 'infrastructure', 'ai'];
+      if (!validCategories.includes(options.category)) {
+        logger.error(`Invalid category: ${options.category}`);
+        logger.info(`Valid categories: ${validCategories.join(', ')}`);
+        process.exit(1);
+      }
+      probesToRun = getProbesByCategory(options.category as 'service' | 'infrastructure' | 'ai');
+      logger.info(`Running ${options.category} probes (${probesToRun.length} probes)`);
+    } else {
+      logger.info(`Running all probes (${probesToRun.length} probes)`);
     }
 
-    const results: { env: string; status: string; latency: string; error?: string }[] = [];
+    logger.blank();
 
-    for (const endpoint of toVerify) {
-      const spinner = ora(`Checking ${endpoint.name}...`).start();
+    const summary = await runAllProbes(probesToRun, {
+      parallel: options.parallel !== false,
+    });
+
+    logger.blank();
+    logger.subheader('Probe Results');
+
+    const failedProbes: Array<{ probe: string; result: ProbeResult }> = [];
+
+    for (const { probe, result } of summary.results) {
+      const statusIcon = result.success ? chalk.green('✓') : chalk.red('✗');
+      console.log(`  ${statusIcon} ${probe}: ${result.message}`);
       
-      const health = await checkEnvironmentHealth(endpoint.environment);
-      
-      if (health.healthy) {
-        spinner.succeed(`${endpoint.name} - ${chalk.green('healthy')} (${health.latencyMs}ms)`);
-        results.push({ 
-          env: endpoint.environment, 
-          status: 'healthy', 
-          latency: `${health.latencyMs}ms` 
-        });
-      } else {
-        spinner.fail(`${endpoint.name} - ${chalk.red('unhealthy')}`);
-        results.push({ 
-          env: endpoint.environment, 
-          status: 'unhealthy', 
-          latency: '-',
-          error: health.error || 'Unknown error'
-        });
+      if (!result.success) {
+        failedProbes.push({ probe, result });
       }
     }
 
     logger.blank();
-    logger.subheader('Verification Summary');
-    
-    const healthyCount = results.filter(r => r.status === 'healthy').length;
-    const totalCount = results.length;
-    
-    if (healthyCount === totalCount) {
-      logger.success(`All ${totalCount} endpoints are healthy!`);
-    } else {
-      logger.warn(`${healthyCount}/${totalCount} endpoints are healthy`);
-      
-      const unhealthy = results.filter(r => r.status === 'unhealthy');
-      if (unhealthy.length > 0) {
-        logger.blank();
-        logger.subheader('Failed Endpoints');
-        unhealthy.forEach(r => {
-          logger.error(`  ${r.env}: ${r.error}`);
-        });
+    logger.subheader('Summary');
+    logger.table({
+      'Total': String(summary.total),
+      'Passed': chalk.green(String(summary.passed)),
+      'Failed': summary.failed > 0 ? chalk.red(String(summary.failed)) : String(summary.failed),
+      'Skipped': String(summary.skipped),
+      'Duration': `${summary.duration}ms`,
+    });
+
+    if (failedProbes.length > 0 && options.remediate) {
+      logger.blank();
+      logger.subheader('Attempting Remediation');
+
+      for (const { probe: probeName, result } of failedProbes) {
+        const probeObj = getProbeByName(probeName);
+        
+        if (result.canRemediate && probeObj?.remediate) {
+          const spinner = ora(`Remediating ${probeName}...`).start();
+          try {
+            const success = await probeObj.remediate();
+            if (success) {
+              spinner.succeed(`${probeName}: Remediation successful`);
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              const recheckResult = await probeObj.check();
+              if (recheckResult.success) {
+                console.log(chalk.green(`    ✓ Service now healthy`));
+              } else {
+                console.log(chalk.yellow(`    ⚠ Service still unhealthy after remediation`));
+              }
+            } else {
+              spinner.fail(`${probeName}: Remediation failed`);
+              const manualSteps = suggestManualSteps(result.message);
+              console.log(chalk.gray(`    ${manualSteps.title}`));
+            }
+          } catch (error) {
+            spinner.fail(`${probeName}: Remediation error - ${(error as Error).message}`);
+          }
+        } else {
+          const manualSteps = suggestManualSteps(result.message);
+          console.log(chalk.yellow(`  ⚠ ${probeName} requires manual intervention:`));
+          console.log(chalk.gray(`    ${manualSteps.title}`));
+          manualSteps.steps.forEach((step, i) => {
+            console.log(chalk.gray(`      ${i + 1}. ${step}`));
+          });
+        }
       }
+    } else if (failedProbes.length > 0) {
+      logger.blank();
+      logger.info('Run with --remediate to attempt automatic fixes');
+    }
+
+    if (summary.failed > 0) {
+      process.exit(1);
     }
   });
 
 program
   .command('secrets')
   .description('Manage secrets across environments')
-  .command('sync')
-  .description('Synchronize secrets across all environments')
-  .option('-e, --environment <env>', 'Sync to specific environment only')
-  .option('--dry-run', 'Show what would be synced without executing')
-  .action(async (options) => {
-    logger.header('Secrets Synchronization');
+  .addCommand(
+    new Command('sync')
+      .description('Synchronize secrets to remote environments')
+      .option('-e, --environment <env>', 'Sync to specific environment only')
+      .option('--dry-run', 'Show what would be synced without executing')
+      .option('--backup', 'Create backup before syncing')
+      .option('--source <path>', 'Source .env file path', '.env')
+      .action(async (options) => {
+        logger.header('Secrets Synchronization');
 
-    if (options.dryRun) {
-      logger.warn('DRY RUN - No changes will be made');
-    }
+        if (options.dryRun) {
+          logger.warn('DRY RUN - No changes will be made');
+        }
 
-    const secrets = [
-      { name: 'DATABASE_URL', environments: ['linode', 'replit'] },
-      { name: 'DISCORD_TOKEN', environments: ['linode', 'replit'] },
-      { name: 'OPENAI_API_KEY', environments: ['linode', 'windows-vm', 'replit'] },
-      { name: 'TWITCH_CLIENT_ID', environments: ['linode', 'replit'] },
-      { name: 'TWITCH_CLIENT_SECRET', environments: ['linode', 'replit'] },
-    ];
+        const syncOptions: SyncOptions = {
+          dryRun: options.dryRun,
+          backup: options.backup ?? true,
+        };
 
-    const targetEnv = options.environment;
+        const envConfigs = getDefaultEnvironmentConfigs();
+        const enabledConfigs = envConfigs.filter(c => c.enabled);
 
-    for (const secret of secrets) {
-      const envs = targetEnv 
-        ? secret.environments.filter(e => e === targetEnv)
-        : secret.environments;
+        if (options.environment) {
+          const targetConfig = envConfigs.find(c => c.environment === options.environment);
+          if (!targetConfig) {
+            logger.error(`Environment not found: ${options.environment}`);
+            logger.info(`Available environments: ${envConfigs.map(c => c.environment).join(', ')}`);
+            process.exit(1);
+          }
 
-      if (envs.length === 0) continue;
+          const spinner = ora(`Syncing to ${targetConfig.name}...`).start();
+          try {
+            const result = await syncSecretsToRemote(
+              options.source,
+              targetConfig.host,
+              targetConfig.envPath,
+              targetConfig.sshConfig,
+              syncOptions
+            );
 
-      const spinner = ora(`Syncing ${secret.name} to ${envs.join(', ')}...`).start();
-      
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      if (options.dryRun) {
-        spinner.info(`[DRY RUN] Would sync ${secret.name}`);
-      } else {
-        spinner.succeed(`${secret.name} synced to ${envs.length} environment(s)`);
-      }
-    }
+            if (result.success) {
+              spinner.succeed(`${targetConfig.name}: ${result.secretsTransferred} secrets synced`);
+            } else {
+              spinner.fail(`${targetConfig.name}: ${result.error}`);
+              process.exit(1);
+            }
+          } catch (error) {
+            spinner.fail(`${targetConfig.name}: ${(error as Error).message}`);
+            process.exit(1);
+          }
+        } else {
+          const results = await syncAllEnvironments({
+            sourceEnvPath: options.source,
+            environments: enabledConfigs,
+          }, syncOptions);
 
-    logger.blank();
-    logger.success('Secrets synchronization complete!');
-  });
+          logger.blank();
+          logger.subheader('Sync Results');
+
+          const successCount = results.filter(r => r.success).length;
+          const failCount = results.filter(r => !r.success).length;
+
+          for (const result of results) {
+            const icon = result.success ? chalk.green('✓') : chalk.red('✗');
+            const message = result.success 
+              ? `${result.secretsTransferred} secrets` 
+              : result.error;
+            console.log(`  ${icon} ${result.environment}: ${message}`);
+          }
+
+          logger.blank();
+          if (failCount > 0) {
+            logger.warn(`${successCount}/${results.length} environments synced successfully`);
+            process.exit(1);
+          } else {
+            logger.success(`All ${successCount} environments synced successfully!`);
+          }
+        }
+      })
+  )
+  .addCommand(
+    new Command('pull')
+      .description('Pull secrets from a remote environment')
+      .argument('<environment>', 'Environment to pull from')
+      .option('--dry-run', 'Show what would be synced without executing')
+      .option('--output <path>', 'Output .env file path', '.env')
+      .option('--backup', 'Create backup before overwriting')
+      .action(async (environment: string, options) => {
+        logger.header(`Pulling Secrets from ${environment}`);
+
+        if (options.dryRun) {
+          logger.warn('DRY RUN - No changes will be made');
+        }
+
+        const envConfigs = getDefaultEnvironmentConfigs();
+        const targetConfig = envConfigs.find(c => c.environment === environment);
+        
+        if (!targetConfig) {
+          logger.error(`Environment not found: ${environment}`);
+          logger.info(`Available environments: ${envConfigs.map(c => c.environment).join(', ')}`);
+          process.exit(1);
+        }
+
+        const spinner = ora(`Pulling from ${targetConfig.name}...`).start();
+        try {
+          const result = await syncSecretsFromRemote(
+            targetConfig.host,
+            targetConfig.envPath,
+            options.output,
+            targetConfig.sshConfig,
+            {
+              dryRun: options.dryRun,
+              backup: options.backup ?? true,
+            }
+          );
+
+          if (result.success) {
+            spinner.succeed(`Pulled ${result.secretsTransferred} secrets from ${targetConfig.name}`);
+            if (result.diff) {
+              logger.blank();
+              logger.table({
+                'Added': String(result.diff.added.length),
+                'Changed': String(result.diff.changed.length),
+                'Removed': String(result.diff.removed.length),
+                'Unchanged': String(result.diff.unchanged.length),
+              });
+            }
+          } else {
+            spinner.fail(`Failed: ${result.error}`);
+            process.exit(1);
+          }
+        } catch (error) {
+          spinner.fail(`Failed: ${(error as Error).message}`);
+          process.exit(1);
+        }
+      })
+  );
 
 program
   .command('status')
   .description('Show status of all environments and services')
   .option('-w, --watch', 'Watch mode - continuously update status')
   .option('-j, --json', 'Output as JSON')
+  .option('-c, --category <category>', 'Probe category: service, infrastructure, or ai')
   .action(async (options) => {
     const showStatus = async () => {
       if (!options.json) {
@@ -333,22 +467,20 @@ program
       }
 
       const currentEnv = await getEnvironmentInfo();
-      const endpoints = getEnvironmentEndpoints();
+
+      let probesToRun: Probe[] = allProbes;
+      if (options.category) {
+        probesToRun = getProbesByCategory(options.category as 'service' | 'infrastructure' | 'ai');
+      }
+
+      const probeSummary = await runAllProbes(probesToRun, { parallel: true });
 
       if (options.json) {
         const statusData = {
           current: currentEnv,
-          environments: [] as any[],
+          probes: probeSummary,
+          timestamp: new Date().toISOString(),
         };
-
-        for (const endpoint of endpoints) {
-          const health = await checkEnvironmentHealth(endpoint.environment);
-          statusData.environments.push({
-            ...endpoint,
-            health,
-          });
-        }
-
         console.log(JSON.stringify(statusData, null, 2));
         return;
       }
@@ -363,29 +495,24 @@ program
       });
 
       logger.blank();
-      logger.subheader('Environment Status');
+      logger.subheader('Service Status');
 
-      for (const endpoint of endpoints) {
-        const isCurrent = endpoint.environment === currentEnv.environment;
-        const marker = isCurrent ? chalk.cyan(' ← current') : '';
+      for (const { probe, result } of probeSummary.results) {
+        const statusIcon = result.success ? chalk.green('●') : chalk.red('○');
+        const latency = result.details?.latencyMs ? chalk.gray(`(${result.details.latencyMs}ms)`) : '';
+        console.log(`  ${statusIcon} ${probe} ${latency}`);
         
-        const spinner = ora({ 
-          text: `Checking ${endpoint.name}...`, 
-          prefixText: '  ' 
-        }).start();
-        
-        const health = await checkEnvironmentHealth(endpoint.environment);
-        
-        const statusIcon = health.healthy ? chalk.green('●') : chalk.red('○');
-        const latency = health.latencyMs ? chalk.gray(`(${health.latencyMs}ms)`) : '';
-        
-        spinner.stop();
-        console.log(`  ${statusIcon} ${endpoint.name} ${latency}${marker}`);
-        
-        if (!health.healthy && health.error) {
-          console.log(chalk.gray(`      └─ ${health.error}`));
+        if (!result.success && result.message) {
+          console.log(chalk.gray(`      └─ ${result.message}`));
         }
       }
+
+      logger.blank();
+      logger.subheader('Summary');
+      const healthPercent = Math.round((probeSummary.passed / probeSummary.total) * 100);
+      const healthColor = healthPercent >= 80 ? chalk.green : healthPercent >= 50 ? chalk.yellow : chalk.red;
+      console.log(`  Health: ${healthColor(`${healthPercent}%`)} (${probeSummary.passed}/${probeSummary.total} services healthy)`);
+      console.log(`  Check duration: ${probeSummary.duration}ms`);
 
       logger.blank();
       logger.subheader('Capabilities');
