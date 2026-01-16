@@ -1,0 +1,11 @@
+# Nebula Command - Deployment Pipelines
+# Most users only need the default - customize if needed
+
+pipelines:
+  - id: deploy
+    name: Deploy All
+    # Default steps: pull → install → build → restart → verify
+    
+  - id: quick
+    name: Quick Sync
+    steps: [pull, restart]  # Skip build for fast updates

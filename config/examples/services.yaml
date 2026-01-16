@@ -1,0 +1,14 @@
+# Nebula Command - Service Configuration
+# Services are auto-detected from package.json and docker-compose.yml
+# Only add entries here to override defaults
+
+services:
+  # Example: Override the default start command
+  - id: dashboard
+    command: npm run start  # Production command
+    
+  # Example: Add a custom service
+  - id: my-api
+    type: pm2
+    path: ./services/my-api
+    command: npm start

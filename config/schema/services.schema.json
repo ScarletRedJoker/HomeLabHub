@@ -1,0 +1,352 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nebulacommand.io/schema/services.json",
+  "title": "Nebula Command Services Schema",
+  "description": "Schema for defining services managed by Nebula Command",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version",
+      "default": "1.0"
+    },
+    "services": {
+      "type": "array",
+      "description": "List of service definitions",
+      "items": {
+        "$ref": "#/definitions/service"
+      }
+    }
+  },
+  "required": ["services"],
+  "definitions": {
+    "service": {
+      "type": "object",
+      "description": "A service managed by Nebula Command",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for this service",
+          "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable name for this service"
+        },
+        "type": {
+          "type": "string",
+          "description": "Service manager type",
+          "enum": ["docker", "pm2", "systemd", "windows-service"]
+        },
+        "environment": {
+          "type": "string",
+          "description": "Environment ID where this service runs"
+        },
+        "commands": {
+          "$ref": "#/definitions/commands"
+        },
+        "health_check": {
+          "$ref": "#/definitions/health_check"
+        },
+        "dependencies": {
+          "type": "array",
+          "description": "List of service IDs this service depends on",
+          "items": {
+            "type": "string"
+          }
+        },
+        "resources": {
+          "$ref": "#/definitions/resources"
+        },
+        "ports": {
+          "type": "array",
+          "description": "Ports exposed by this service",
+          "items": {
+            "$ref": "#/definitions/port"
+          }
+        },
+        "environment_variables": {
+          "type": "object",
+          "description": "Environment variables for the service",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "working_dir": {
+          "type": "string",
+          "description": "Working directory for the service"
+        },
+        "user": {
+          "type": "string",
+          "description": "User to run the service as"
+        },
+        "auto_restart": {
+          "type": "boolean",
+          "description": "Whether to auto-restart on failure",
+          "default": true
+        },
+        "max_restarts": {
+          "type": "integer",
+          "description": "Maximum restart attempts",
+          "default": 10
+        },
+        "tags": {
+          "type": "array",
+          "description": "Tags for organizing services",
+          "items": {
+            "type": "string"
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Additional metadata",
+          "additionalProperties": true
+        }
+      },
+      "required": ["id", "name", "type", "environment"]
+    },
+    "commands": {
+      "type": "object",
+      "description": "Commands to manage the service",
+      "properties": {
+        "start": {
+          "type": "string",
+          "description": "Command to start the service"
+        },
+        "stop": {
+          "type": "string",
+          "description": "Command to stop the service"
+        },
+        "restart": {
+          "type": "string",
+          "description": "Command to restart the service"
+        },
+        "status": {
+          "type": "string",
+          "description": "Command to check service status"
+        },
+        "logs": {
+          "type": "string",
+          "description": "Command to view service logs"
+        }
+      }
+    },
+    "health_check": {
+      "type": "object",
+      "description": "Health check configuration for the service",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Health check type",
+          "enum": ["http", "tcp", "command"]
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether health checks are enabled",
+          "default": true
+        },
+        "interval": {
+          "type": "integer",
+          "description": "Check interval in seconds",
+          "default": 30,
+          "minimum": 5
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Check timeout in seconds",
+          "default": 10,
+          "minimum": 1
+        },
+        "retries": {
+          "type": "integer",
+          "description": "Retries before marking unhealthy",
+          "default": 3,
+          "minimum": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "type": { "const": "http" } }
+          },
+          "then": {
+            "properties": {
+              "endpoint": {
+                "type": "string",
+                "description": "HTTP endpoint to check"
+              },
+              "method": {
+                "type": "string",
+                "description": "HTTP method",
+                "enum": ["GET", "POST", "HEAD"],
+                "default": "GET"
+              },
+              "expected_status": {
+                "type": "array",
+                "description": "Expected HTTP status codes",
+                "items": {
+                  "type": "integer"
+                },
+                "default": [200]
+              },
+              "expected_body": {
+                "type": "string",
+                "description": "Expected substring in response body"
+              },
+              "headers": {
+                "type": "object",
+                "description": "HTTP headers to send",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": ["endpoint"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "tcp" } }
+          },
+          "then": {
+            "properties": {
+              "host": {
+                "type": "string",
+                "description": "Host to connect to",
+                "default": "localhost"
+              },
+              "port": {
+                "type": "integer",
+                "description": "Port to connect to",
+                "minimum": 1,
+                "maximum": 65535
+              }
+            },
+            "required": ["port"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "command" } }
+          },
+          "then": {
+            "properties": {
+              "command": {
+                "type": "string",
+                "description": "Command to execute"
+              },
+              "expected_exit_code": {
+                "type": "integer",
+                "description": "Expected exit code",
+                "default": 0
+              }
+            },
+            "required": ["command"]
+          }
+        }
+      ]
+    },
+    "resources": {
+      "type": "object",
+      "description": "Resource requirements and limits",
+      "properties": {
+        "cpu": {
+          "type": "object",
+          "description": "CPU requirements",
+          "properties": {
+            "request": {
+              "type": "string",
+              "description": "Requested CPU (e.g., '0.5', '1', '2')"
+            },
+            "limit": {
+              "type": "string",
+              "description": "CPU limit"
+            }
+          }
+        },
+        "memory": {
+          "type": "object",
+          "description": "Memory requirements",
+          "properties": {
+            "request": {
+              "type": "string",
+              "description": "Requested memory (e.g., '256Mi', '1Gi')"
+            },
+            "limit": {
+              "type": "string",
+              "description": "Memory limit"
+            }
+          }
+        },
+        "gpu": {
+          "type": "object",
+          "description": "GPU requirements",
+          "properties": {
+            "required": {
+              "type": "boolean",
+              "description": "Whether GPU is required"
+            },
+            "count": {
+              "type": "integer",
+              "description": "Number of GPUs required",
+              "default": 1
+            },
+            "type": {
+              "type": "string",
+              "description": "GPU type (e.g., 'nvidia', 'amd')"
+            },
+            "vram": {
+              "type": "string",
+              "description": "Minimum VRAM required (e.g., '8Gi')"
+            }
+          }
+        },
+        "storage": {
+          "type": "object",
+          "description": "Storage requirements",
+          "properties": {
+            "size": {
+              "type": "string",
+              "description": "Storage size (e.g., '10Gi')"
+            },
+            "type": {
+              "type": "string",
+              "description": "Storage type",
+              "enum": ["ssd", "hdd", "nvme"]
+            }
+          }
+        }
+      }
+    },
+    "port": {
+      "type": "object",
+      "description": "Port configuration",
+      "properties": {
+        "container": {
+          "type": "integer",
+          "description": "Container/internal port",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "host": {
+          "type": "integer",
+          "description": "Host port",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "protocol": {
+          "type": "string",
+          "description": "Protocol",
+          "enum": ["tcp", "udp"],
+          "default": "tcp"
+        },
+        "public": {
+          "type": "boolean",
+          "description": "Whether port is publicly accessible",
+          "default": false
+        }
+      },
+      "required": ["container"]
+    }
+  }
+}

@@ -1,0 +1,14 @@
+# Nebula Command Configuration
+# Edit this file to match your setup
+
+project:
+  name: My Project
+  repo: https://github.com/you/your-repo
+
+# Where to deploy (configure at least one)
+environments:
+  cloud:
+    host: your-server.com
+    user: root
+
+# That's it! Run `nebula setup` to complete configuration

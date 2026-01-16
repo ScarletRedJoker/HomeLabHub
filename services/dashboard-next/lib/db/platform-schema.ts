@@ -607,3 +607,59 @@ export type AiMemory = typeof aiMemories.$inferSelect;
 export type NewAiMemory = typeof aiMemories.$inferInsert;
 export type AiLearning = typeof aiLearnings.$inferSelect;
 export type NewAiLearning = typeof aiLearnings.$inferInsert;
+
+export const remoteDeployments = pgTable("remote_deployments", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  environment: varchar("environment", { length: 50 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull(),
+  gitCommit: varchar("git_commit", { length: 40 }),
+  gitBranch: varchar("git_branch", { length: 100 }),
+  previousCommit: varchar("previous_commit", { length: 40 }),
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  durationMs: integer("duration_ms"),
+  triggeredBy: varchar("triggered_by", { length: 100 }),
+  steps: jsonb("steps"),
+  logs: text("logs").array(),
+  error: text("error"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const deploymentVerifications = pgTable("deployment_verifications", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  deploymentId: uuid("deployment_id").references(() => remoteDeployments.id),
+  environment: varchar("environment", { length: 50 }),
+  probeResults: jsonb("probe_results").notNull(),
+  passed: integer("passed").notNull(),
+  failed: integer("failed").notNull(),
+  total: integer("total").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const environmentStatus = pgTable("environment_status", {
+  environment: varchar("environment", { length: 50 }).primaryKey(),
+  online: boolean("online").default(false),
+  lastDeploymentId: uuid("last_deployment_id").references(() => remoteDeployments.id),
+  gitCommit: varchar("git_commit", { length: 40 }),
+  gitBranch: varchar("git_branch", { length: 100 }),
+  services: jsonb("services"),
+  capabilities: text("capabilities").array(),
+  lastChecked: timestamp("last_checked"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const configSnapshots = pgTable("config_snapshots", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  configType: varchar("config_type", { length: 50 }).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type RemoteDeployment = typeof remoteDeployments.$inferSelect;
+export type NewRemoteDeployment = typeof remoteDeployments.$inferInsert;
+export type DeploymentVerification = typeof deploymentVerifications.$inferSelect;
+export type NewDeploymentVerification = typeof deploymentVerifications.$inferInsert;
+export type EnvironmentStatus = typeof environmentStatus.$inferSelect;
+export type NewEnvironmentStatus = typeof environmentStatus.$inferInsert;
+export type ConfigSnapshot = typeof configSnapshots.$inferSelect;
+export type NewConfigSnapshot = typeof configSnapshots.$inferInsert;

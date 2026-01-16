@@ -1,0 +1,25 @@
+# Nebula Command - Environment Configuration
+# Only configure the servers you have. Delete sections you don't use.
+
+environments:
+  # Cloud server (VPS like Linode, DigitalOcean, etc)
+  - id: cloud
+    name: My Cloud Server
+    type: ssh
+    host: your-server-ip  # REQUIRED: Your server IP or hostname
+    user: root            # Usually root or ubuntu
+    # key: ~/.ssh/id_rsa  # Optional: defaults to ~/.ssh/id_rsa
+
+  # Home server (optional - delete if not using)
+  - id: home
+    name: Home Server
+    type: ssh
+    host: 192.168.1.100
+    user: your-username
+
+  # GPU server for AI (optional - delete if not using)  
+  - id: gpu
+    name: GPU Server
+    type: agent
+    url: http://gpu-server:9765
+    # token_env: NEBULA_AGENT_TOKEN

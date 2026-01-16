@@ -1,0 +1,158 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nebulacommand.io/schema/pipelines.json",
+  "title": "Nebula Command Pipelines Schema",
+  "description": "Schema for defining deployment pipelines in Nebula Command",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version",
+      "default": "1.0"
+    },
+    "pipelines": {
+      "type": "array",
+      "description": "List of pipeline definitions",
+      "items": {
+        "$ref": "#/definitions/pipeline"
+      }
+    }
+  },
+  "required": ["pipelines"],
+  "definitions": {
+    "pipeline": {
+      "type": "object",
+      "description": "A deployment pipeline",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for this pipeline",
+          "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable name for this pipeline"
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional description of what this pipeline does"
+        },
+        "steps": {
+          "type": "array",
+          "description": "Pipeline steps to execute. Defaults to: [pull, install, build, restart, verify]",
+          "items": {
+            "oneOf": [
+              { "type": "string" },
+              { "$ref": "#/definitions/step" }
+            ]
+          },
+          "default": ["pull", "install", "build", "restart", "verify"]
+        },
+        "environments": {
+          "type": "array",
+          "description": "Environment IDs to run this pipeline on. Defaults to all.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "services": {
+          "type": "array",
+          "description": "Service IDs to include. Defaults to all.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "on_failure": {
+          "type": "string",
+          "description": "What to do on failure",
+          "enum": ["stop", "continue", "rollback"],
+          "default": "stop"
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Pipeline timeout in seconds",
+          "default": 600,
+          "minimum": 30
+        },
+        "notify": {
+          "type": "boolean",
+          "description": "Send notifications on completion",
+          "default": true
+        }
+      },
+      "required": ["id", "name"]
+    },
+    "step": {
+      "type": "object",
+      "description": "A custom pipeline step",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Step identifier"
+        },
+        "name": {
+          "type": "string",
+          "description": "Step display name"
+        },
+        "type": {
+          "type": "string",
+          "description": "Step type",
+          "enum": ["pull", "install", "build", "restart", "verify", "command", "script"],
+          "default": "command"
+        },
+        "command": {
+          "type": "string",
+          "description": "Command to execute (for command/script types)"
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Step timeout in seconds",
+          "default": 120
+        },
+        "continue_on_error": {
+          "type": "boolean",
+          "description": "Continue pipeline if this step fails",
+          "default": false
+        },
+        "condition": {
+          "type": "string",
+          "description": "Condition to evaluate before running (e.g., 'file_exists:package.json')"
+        },
+        "retry": {
+          "type": "integer",
+          "description": "Number of retry attempts",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 5
+        }
+      },
+      "required": ["id"]
+    },
+    "built_in_steps": {
+      "description": "Built-in step types with smart defaults",
+      "enum": ["pull", "install", "build", "restart", "verify"],
+      "definitions": {
+        "pull": {
+          "description": "Git pull latest changes",
+          "default_command": "git pull origin main"
+        },
+        "install": {
+          "description": "Install dependencies (auto-detects npm/pip/cargo)",
+          "default_command": "auto-detect from package.json, requirements.txt, Cargo.toml"
+        },
+        "build": {
+          "description": "Build project (auto-detects build command)",
+          "default_command": "auto-detect from package.json scripts.build"
+        },
+        "restart": {
+          "description": "Restart services",
+          "default_command": "pm2 restart all / docker-compose restart / systemctl restart"
+        },
+        "verify": {
+          "description": "Verify deployment succeeded",
+          "default_command": "health check on configured endpoints"
+        }
+      }
+    }
+  }
+}

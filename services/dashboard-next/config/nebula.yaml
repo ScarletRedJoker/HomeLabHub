@@ -1,0 +1,10 @@
+# Nebula Command Configuration
+# Generated: 2026-01-16T13:45:54.983Z
+
+project:
+  name: "my-homelab"
+  deployment: "single"
+
+services:
+  dashboard: true
+  registry: true
