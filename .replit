@@ -119,5 +119,6 @@ KICK_REDIRECT_URI = "https://3acc42cf-91e9-40f1-90e8-761e2c391cdf-00-17v3bbf5unh
 NEXT_PUBLIC_DEV_MODE = "true"
 
 [deployment]
-deploymentTarget = "vm"
-run = ["bash", "-c", "cd services/dashboard && python main.py"]
+deploymentTarget = "autoscale"
+run = ["bash", "-c", "cd services/dashboard-next && npm start"]
+build = ["bash", "-c", "cd services/dashboard-next && npm run build"]
