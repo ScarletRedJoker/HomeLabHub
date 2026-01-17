@@ -82,6 +82,8 @@ out/
 .upm
 replit.nix
 .breakpoints
+*.bundle
+replit-commits.bundle
 
 # Attached Assets (generated files, user uploads, embed images)
 attached_assets/
