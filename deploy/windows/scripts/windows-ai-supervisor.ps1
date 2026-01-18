@@ -38,10 +38,11 @@ $Script:Config = @{
             Name = "ComfyUI"
             Port = 8188
             StartDir = "C:\AI\ComfyUI"
-            StartCommand = "python main.py --listen 0.0.0.0 --port 8188"
+            StartCommand = ".\venv\Scripts\python.exe main.py --listen 0.0.0.0 --port 8188"
             HealthEndpoint = "/system_stats"
             StartupTimeout = 120
             Priority = 3
+            UseVenv = $true
         }
     }
 }
