@@ -1,0 +1,14 @@
+{
+  "name": "discord-media-presence",
+  "version": "1.0.0",
+  "description": "Show Plex/Jellyfin now playing on your Discord profile",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "discord-rpc": "^4.0.1",
+    "dotenv": "^16.3.1"
+  }
+}
