@@ -29,6 +29,26 @@ export interface PlexNowPlaying {
   timestamp: number;
 }
 
+export interface PlexMediaItem {
+  ratingKey: string;
+  key: string;
+  title: string;
+  type: 'movie' | 'show' | 'season' | 'episode' | 'artist' | 'album' | 'track';
+  grandparentTitle?: string;
+  parentTitle?: string;
+  year?: number;
+  duration?: number;
+  thumb?: string;
+  addedAt?: number;
+  artist?: string;
+  album?: string;
+}
+
+export interface PlexSearchResult {
+  items: PlexMediaItem[];
+  query: string;
+}
+
 const HACKER_PREFIXES = {
   movie: [
     'Decrypting',
@@ -365,6 +385,150 @@ export class PlexService {
       healthy: this.consecutiveFailures === 0,
       activeSessions: this.lastData?.sessions.length || 0,
       consecutiveFailures: this.consecutiveFailures
+    };
+  }
+
+  async search(query: string, type?: 'movie' | 'show' | 'artist' | 'album' | 'track'): Promise<PlexSearchResult> {
+    if (!this.isConfigured()) {
+      return { items: [], query };
+    }
+
+    try {
+      const typeFilter = type ? `&type=${this.getSearchType(type)}` : '';
+      const response = await fetch(
+        `${this.plexUrl}/search?query=${encodeURIComponent(query)}${typeFilter}`,
+        {
+          headers: {
+            'X-Plex-Token': this.plexToken,
+            'Accept': 'application/xml'
+          },
+          signal: AbortSignal.timeout(15000)
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const xmlText = await response.text();
+      const items = this.parseSearchResultsXml(xmlText);
+
+      return { items, query };
+    } catch (error: any) {
+      console.error('[Plex Service] Search error:', error.message);
+      return { items: [], query };
+    }
+  }
+
+  async getRecentlyAdded(limit: number = 10): Promise<PlexMediaItem[]> {
+    if (!this.isConfigured()) {
+      return [];
+    }
+
+    try {
+      const response = await fetch(
+        `${this.plexUrl}/library/recentlyAdded?X-Plex-Container-Start=0&X-Plex-Container-Size=${limit}`,
+        {
+          headers: {
+            'X-Plex-Token': this.plexToken,
+            'Accept': 'application/xml'
+          },
+          signal: AbortSignal.timeout(15000)
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const xmlText = await response.text();
+      return this.parseSearchResultsXml(xmlText);
+    } catch (error: any) {
+      console.error('[Plex Service] Recently added error:', error.message);
+      return [];
+    }
+  }
+
+  getStreamUrl(ratingKey: string): string | null {
+    if (!this.isConfigured()) {
+      return null;
+    }
+    return `${this.plexUrl}/library/metadata/${ratingKey}/file?X-Plex-Token=${this.plexToken}`;
+  }
+
+  getTranscodeUrl(ratingKey: string): string | null {
+    if (!this.isConfigured()) {
+      return null;
+    }
+    return `${this.plexUrl}/audio/:/transcode/universal/start.mp3?path=/library/metadata/${ratingKey}&mediaIndex=0&partIndex=0&protocol=http&X-Plex-Token=${this.plexToken}`;
+  }
+
+  private getSearchType(type: 'movie' | 'show' | 'artist' | 'album' | 'track'): number {
+    const typeMap: Record<string, number> = {
+      movie: 1,
+      show: 2,
+      artist: 8,
+      album: 9,
+      track: 10
+    };
+    return typeMap[type] || 0;
+  }
+
+  private parseSearchResultsXml(xmlText: string): PlexMediaItem[] {
+    const items: PlexMediaItem[] = [];
+    
+    const mediaPatterns = [
+      { regex: /<Video([^>]*)(?:\/>|>[\s\S]*?<\/Video>)/g, defaultType: 'movie' as const },
+      { regex: /<Directory([^>]*type="show"[^>]*)(?:\/>|>[\s\S]*?<\/Directory>)/g, defaultType: 'show' as const },
+      { regex: /<Directory([^>]*type="artist"[^>]*)(?:\/>|>[\s\S]*?<\/Directory>)/g, defaultType: 'artist' as const },
+      { regex: /<Directory([^>]*type="album"[^>]*)(?:\/>|>[\s\S]*?<\/Directory>)/g, defaultType: 'album' as const },
+      { regex: /<Track([^>]*)(?:\/>|>[\s\S]*?<\/Track>)/g, defaultType: 'track' as const }
+    ];
+
+    for (const { regex, defaultType } of mediaPatterns) {
+      const matches = xmlText.matchAll(regex);
+      for (const match of matches) {
+        const item = this.parseMediaItemElement(match[0], defaultType);
+        if (item) items.push(item);
+      }
+    }
+
+    return items;
+  }
+
+  private parseMediaItemElement(element: string, defaultType: PlexMediaItem['type']): PlexMediaItem | null {
+    const getAttribute = (name: string): string | undefined => {
+      const match = element.match(new RegExp(`${name}="([^"]*)"`));
+      return match ? this.decodeXmlEntities(match[1]) : undefined;
+    };
+
+    const ratingKey = getAttribute('ratingKey');
+    const title = getAttribute('title');
+    if (!ratingKey || !title) return null;
+
+    const typeAttr = getAttribute('type');
+    let type: PlexMediaItem['type'] = defaultType;
+    if (typeAttr === 'movie') type = 'movie';
+    else if (typeAttr === 'show') type = 'show';
+    else if (typeAttr === 'season') type = 'season';
+    else if (typeAttr === 'episode') type = 'episode';
+    else if (typeAttr === 'artist') type = 'artist';
+    else if (typeAttr === 'album') type = 'album';
+    else if (typeAttr === 'track') type = 'track';
+
+    return {
+      ratingKey,
+      key: getAttribute('key') || '',
+      title,
+      type,
+      grandparentTitle: getAttribute('grandparentTitle'),
+      parentTitle: getAttribute('parentTitle'),
+      year: parseInt(getAttribute('year') || '0') || undefined,
+      duration: parseInt(getAttribute('duration') || '0') || undefined,
+      thumb: getAttribute('thumb'),
+      addedAt: parseInt(getAttribute('addedAt') || '0') || undefined,
+      artist: getAttribute('grandparentTitle'),
+      album: getAttribute('parentTitle')
     };
   }
 }
