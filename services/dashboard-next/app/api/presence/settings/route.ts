@@ -47,8 +47,6 @@ function generateApiKey(): string {
   return key;
 }
 
-export { loadSettings, saveSettings, generateApiKey, getDataDir };
-
 async function loadSettings(): Promise<PresenceSettings> {
   const dir = getDataDir();
   const filePath = path.join(dir, SETTINGS_FILE);
