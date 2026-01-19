@@ -363,8 +363,41 @@ app.post("/api/git/pull", async (req, res) => {
 });
 
 const SD_WEBUI_URL = "http://127.0.0.1:7860";
-const SD_MODELS_PATH = "C:\\AI\\stable-diffusion-webui\\models\\Stable-diffusion";
-const SD_LORA_PATH = "C:\\AI\\stable-diffusion-webui\\models\\Lora";
+const SD_BASE_PATH = "C:\\AI\\stable-diffusion-webui-forge";
+const SD_MODELS_PATH = `${SD_BASE_PATH}\\models\\Stable-diffusion`;
+const SD_LORA_PATH = `${SD_BASE_PATH}\\models\\Lora`;
+const SD_VAE_PATH = `${SD_BASE_PATH}\\models\\VAE`;
+const SD_EMBEDDINGS_PATH = `${SD_BASE_PATH}\\embeddings`;
+
+// Active downloads tracking
+const activeDownloads: Map<string, {
+  url: string;
+  filename: string;
+  destination: string;
+  progress: number;
+  bytesDownloaded: number;
+  totalBytes: number;
+  status: "downloading" | "completed" | "failed" | "cancelled";
+  error?: string;
+  startedAt: string;
+  completedAt?: string;
+}> = new Map();
+
+// Clean up completed/failed downloads after 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  const expiryMs = 5 * 60 * 1000;
+  
+  for (const [id, download] of activeDownloads.entries()) {
+    if (download.status !== "downloading" && download.completedAt) {
+      const completedTime = new Date(download.completedAt).getTime();
+      if (now - completedTime > expiryMs) {
+        activeDownloads.delete(id);
+        console.log(`[Download] Cleaned up stale entry: ${id}`);
+      }
+    }
+  }
+}, 60000);
 
 const REGISTRY_URL = process.env.DASHBOARD_REGISTRY_URL || "https://dashboard.evindrake.net/api/registry";
 const SERVICE_NAME = "nebula-agent";
@@ -746,10 +779,416 @@ app.get("/api/token-info", (req, res) => {
   });
 });
 
+// VAE Management
+app.get("/api/sd/vae", async (req, res) => {
+  try {
+    const vaes: { name: string; filename: string; path: string }[] = [];
+    
+    // Ensure VAE directory exists
+    if (!fs.existsSync(SD_VAE_PATH)) {
+      fs.mkdirSync(SD_VAE_PATH, { recursive: true });
+    }
+    
+    const files = fs.readdirSync(SD_VAE_PATH);
+    for (const file of files) {
+      if (file.endsWith(".safetensors") || file.endsWith(".ckpt") || file.endsWith(".pt")) {
+        vaes.push({
+          name: file.replace(/\.(safetensors|ckpt|pt)$/, ""),
+          filename: file,
+          path: path.join(SD_VAE_PATH, file),
+        });
+      }
+    }
+    
+    // Get current VAE from SD WebUI
+    let currentVae = null;
+    try {
+      const optRes = await fetch(`${SD_WEBUI_URL}/sdapi/v1/options`);
+      if (optRes.ok) {
+        const options = await optRes.json();
+        currentVae = options.sd_vae || null;
+      }
+    } catch {}
+    
+    res.json({ success: true, vaes, currentVae });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/api/sd/vae/switch", async (req, res) => {
+  const { vae } = req.body;
+  
+  try {
+    const switchRes = await fetch(`${SD_WEBUI_URL}/sdapi/v1/options`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sd_vae: vae || "Automatic" }),
+    });
+    
+    if (!switchRes.ok) {
+      return res.status(500).json({ success: false, error: "Failed to switch VAE" });
+    }
+    
+    res.json({ success: true, message: `VAE switched to ${vae || "Automatic"}` });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// SD Settings Management
+app.get("/api/sd/settings", async (req, res) => {
+  try {
+    const optRes = await fetch(`${SD_WEBUI_URL}/sdapi/v1/options`);
+    if (!optRes.ok) {
+      return res.status(503).json({ success: false, error: "SD WebUI not available" });
+    }
+    
+    const options = await optRes.json();
+    
+    // Get available samplers
+    let samplers: string[] = [];
+    try {
+      const samplerRes = await fetch(`${SD_WEBUI_URL}/sdapi/v1/samplers`);
+      if (samplerRes.ok) {
+        const samplerData = await samplerRes.json();
+        samplers = samplerData.map((s: any) => s.name);
+      }
+    } catch {}
+    
+    res.json({
+      success: true,
+      settings: {
+        sampler: options.sampler_name || "Euler a",
+        steps: options.steps || 20,
+        cfgScale: options.cfg_scale || 7,
+        clipSkip: options.CLIP_stop_at_last_layers || 1,
+        width: options.width || 512,
+        height: options.height || 512,
+        currentModel: options.sd_model_checkpoint,
+        currentVae: options.sd_vae,
+      },
+      availableSamplers: samplers,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/api/sd/settings", async (req, res) => {
+  const { sampler, steps, cfgScale, clipSkip, width, height } = req.body;
+  
+  try {
+    const payload: Record<string, any> = {};
+    if (sampler) payload.sampler_name = sampler;
+    if (steps) payload.steps = steps;
+    if (cfgScale) payload.cfg_scale = cfgScale;
+    if (clipSkip) payload.CLIP_stop_at_last_layers = clipSkip;
+    if (width) payload.width = width;
+    if (height) payload.height = height;
+    
+    const switchRes = await fetch(`${SD_WEBUI_URL}/sdapi/v1/options`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    
+    if (!switchRes.ok) {
+      return res.status(500).json({ success: false, error: "Failed to update settings" });
+    }
+    
+    res.json({ success: true, message: "Settings updated" });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Refresh models in SD WebUI
+app.post("/api/sd/refresh", async (req, res) => {
+  try {
+    const refreshRes = await fetch(`${SD_WEBUI_URL}/sdapi/v1/refresh-checkpoints`, {
+      method: "POST",
+    });
+    
+    if (!refreshRes.ok) {
+      return res.status(500).json({ success: false, error: "Failed to refresh checkpoints" });
+    }
+    
+    // Also refresh LoRAs
+    try {
+      await fetch(`${SD_WEBUI_URL}/sdapi/v1/refresh-loras`, { method: "POST" });
+    } catch {}
+    
+    res.json({ success: true, message: "Models refreshed" });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Model Download
+app.post("/api/sd/download", async (req, res) => {
+  const { url, filename, type = "checkpoint" } = req.body;
+  
+  if (!url) {
+    return res.status(400).json({ success: false, error: "URL is required" });
+  }
+  
+  // Determine destination based on type
+  let destPath: string;
+  switch (type) {
+    case "lora":
+      destPath = SD_LORA_PATH;
+      break;
+    case "vae":
+      destPath = SD_VAE_PATH;
+      break;
+    case "embedding":
+      destPath = SD_EMBEDDINGS_PATH;
+      break;
+    default:
+      destPath = SD_MODELS_PATH;
+  }
+  
+  // Ensure directory exists
+  if (!fs.existsSync(destPath)) {
+    fs.mkdirSync(destPath, { recursive: true });
+  }
+  
+  // Extract filename from URL if not provided
+  const finalFilename = filename || url.split("/").pop()?.split("?")[0] || `model_${Date.now()}.safetensors`;
+  const fullPath = path.join(destPath, finalFilename);
+  const downloadId = crypto.randomBytes(8).toString("hex");
+  
+  console.log(`[Download] Starting: ${finalFilename} to ${destPath}`);
+  
+  // Track download
+  activeDownloads.set(downloadId, {
+    url,
+    filename: finalFilename,
+    destination: fullPath,
+    progress: 0,
+    bytesDownloaded: 0,
+    totalBytes: 0,
+    status: "downloading",
+    startedAt: new Date().toISOString(),
+  });
+  
+  // Start download in background using PowerShell BITS or curl
+  (async () => {
+    try {
+      // Use PowerShell with progress tracking
+      const psScript = `
+        $url = "${url.replace(/"/g, '`"')}"
+        $output = "${fullPath.replace(/\\/g, "\\\\")}"
+        $ProgressPreference = 'SilentlyContinue'
+        try {
+          Invoke-WebRequest -Uri $url -OutFile $output -UseBasicParsing
+          Write-Output "SUCCESS"
+        } catch {
+          Write-Output "ERROR: $_"
+        }
+      `;
+      
+      const { stdout, stderr } = await execAsync(`powershell -Command "${psScript}"`, {
+        timeout: 30 * 60 * 1000, // 30 min timeout for large files
+        maxBuffer: 50 * 1024 * 1024,
+      });
+      
+      if (stdout.includes("SUCCESS") && fs.existsSync(fullPath)) {
+        const stats = fs.statSync(fullPath);
+        const download = activeDownloads.get(downloadId);
+        if (download) {
+          download.status = "completed";
+          download.progress = 100;
+          download.bytesDownloaded = stats.size;
+          download.totalBytes = stats.size;
+          download.completedAt = new Date().toISOString();
+        }
+        console.log(`[Download] Completed: ${finalFilename} (${(stats.size / 1024 / 1024).toFixed(1)} MB)`);
+        
+        // Refresh SD models
+        try {
+          await fetch(`${SD_WEBUI_URL}/sdapi/v1/refresh-checkpoints`, { method: "POST" });
+        } catch {}
+      } else {
+        const download = activeDownloads.get(downloadId);
+        if (download) {
+          download.status = "failed";
+          download.error = stderr || stdout || "Unknown error";
+          download.completedAt = new Date().toISOString();
+        }
+        console.error(`[Download] Failed: ${finalFilename}`, stderr || stdout);
+      }
+    } catch (error: any) {
+      const download = activeDownloads.get(downloadId);
+      if (download) {
+        download.status = "failed";
+        download.error = error.message;
+        download.completedAt = new Date().toISOString();
+      }
+      console.error(`[Download] Error: ${finalFilename}`, error.message);
+    }
+  })();
+  
+  res.json({
+    success: true,
+    downloadId,
+    message: `Download started: ${finalFilename}`,
+    destination: fullPath,
+  });
+});
+
+// Check download status
+app.get("/api/sd/downloads", (req, res) => {
+  const downloads = Array.from(activeDownloads.entries()).map(([id, info]) => ({
+    id,
+    ...info,
+  }));
+  
+  res.json({ success: true, downloads });
+});
+
+app.get("/api/sd/downloads/:id", (req, res) => {
+  const download = activeDownloads.get(req.params.id);
+  if (!download) {
+    return res.status(404).json({ success: false, error: "Download not found" });
+  }
+  res.json({ success: true, download });
+});
+
+// Cancel download
+app.delete("/api/sd/downloads/:id", async (req, res) => {
+  const download = activeDownloads.get(req.params.id);
+  if (!download) {
+    return res.status(404).json({ success: false, error: "Download not found" });
+  }
+  
+  download.status = "cancelled";
+  
+  // Try to delete partial file
+  try {
+    if (fs.existsSync(download.destination)) {
+      fs.unlinkSync(download.destination);
+    }
+  } catch {}
+  
+  res.json({ success: true, message: "Download cancelled" });
+});
+
+// Delete a model file
+app.delete("/api/sd/models/:type/:filename", async (req, res) => {
+  const { type, filename } = req.params;
+  
+  // Sanitize filename - only allow safe characters
+  const sanitizedFilename = path.basename(filename).replace(/[^a-zA-Z0-9_\-\.]/g, "_");
+  
+  // Validate file extension
+  const validExtensions = [".safetensors", ".ckpt", ".pt", ".bin"];
+  const ext = path.extname(sanitizedFilename).toLowerCase();
+  if (!validExtensions.includes(ext)) {
+    return res.status(400).json({ success: false, error: "Invalid file extension" });
+  }
+  
+  let basePath: string;
+  switch (type) {
+    case "lora":
+      basePath = SD_LORA_PATH;
+      break;
+    case "vae":
+      basePath = SD_VAE_PATH;
+      break;
+    case "embedding":
+      basePath = SD_EMBEDDINGS_PATH;
+      break;
+    case "checkpoint":
+      basePath = SD_MODELS_PATH;
+      break;
+    default:
+      return res.status(400).json({ success: false, error: "Invalid model type" });
+  }
+  
+  const fullPath = path.join(basePath, sanitizedFilename);
+  const resolvedPath = path.resolve(fullPath);
+  const resolvedBase = path.resolve(basePath);
+  
+  // Security check - ensure resolved path is within expected directory
+  if (!resolvedPath.startsWith(resolvedBase)) {
+    return res.status(403).json({ success: false, error: "Invalid path" });
+  }
+  
+  try {
+    if (!fs.existsSync(fullPath)) {
+      return res.status(404).json({ success: false, error: "File not found" });
+    }
+    
+    fs.unlinkSync(fullPath);
+    console.log(`[Models] Deleted: ${fullPath}`);
+    
+    // Refresh SD models
+    try {
+      await fetch(`${SD_WEBUI_URL}/sdapi/v1/refresh-checkpoints`, { method: "POST" });
+    } catch {}
+    
+    res.json({ success: true, message: `Deleted ${filename}` });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Disk space info
+app.get("/api/sd/disk", async (req, res) => {
+  try {
+    const { stdout } = await execAsync('wmic logicaldisk get size,freespace,caption', {
+      shell: "cmd.exe",
+    });
+    
+    const lines = stdout.trim().split("\n").slice(1);
+    const disks: { drive: string; free: number; total: number }[] = [];
+    
+    for (const line of lines) {
+      const parts = line.trim().split(/\s+/);
+      if (parts.length >= 3) {
+        disks.push({
+          drive: parts[0],
+          free: Math.round(parseInt(parts[1]) / 1024 / 1024 / 1024),
+          total: Math.round(parseInt(parts[2]) / 1024 / 1024 / 1024),
+        });
+      }
+    }
+    
+    // Get size of model directories
+    const getDirSize = (dir: string): number => {
+      if (!fs.existsSync(dir)) return 0;
+      let size = 0;
+      try {
+        const files = fs.readdirSync(dir);
+        for (const file of files) {
+          const stats = fs.statSync(path.join(dir, file));
+          size += stats.size;
+        }
+      } catch {}
+      return size;
+    };
+    
+    res.json({
+      success: true,
+      disks,
+      modelSizes: {
+        checkpoints: Math.round(getDirSize(SD_MODELS_PATH) / 1024 / 1024),
+        loras: Math.round(getDirSize(SD_LORA_PATH) / 1024 / 1024),
+        vaes: Math.round(getDirSize(SD_VAE_PATH) / 1024 / 1024),
+        embeddings: Math.round(getDirSize(SD_EMBEDDINGS_PATH) / 1024 / 1024),
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.get("/", (req, res) => {
   res.json({
     name: "Nebula Agent",
-    version: "1.0.0",
+    version: "1.1.0",
     status: "running",
     nodeId: tokenInfo.nodeId,
     endpoints: [
@@ -763,6 +1202,17 @@ app.get("/", (req, res) => {
       "GET  /api/sd/status",
       "GET  /api/sd/models",
       "POST /api/sd/switch-model",
+      "GET  /api/sd/vae",
+      "POST /api/sd/vae/switch",
+      "GET  /api/sd/settings",
+      "POST /api/sd/settings",
+      "POST /api/sd/refresh",
+      "POST /api/sd/download",
+      "GET  /api/sd/downloads",
+      "GET  /api/sd/downloads/:id",
+      "DELETE /api/sd/downloads/:id",
+      "DELETE /api/sd/models/:type/:filename",
+      "GET  /api/sd/disk",
     ],
   });
 });

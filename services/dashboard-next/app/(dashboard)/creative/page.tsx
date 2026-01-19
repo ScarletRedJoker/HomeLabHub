@@ -29,7 +29,9 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
+  Box,
 } from "lucide-react";
+import { ModelManager } from "@/components/ai/model-manager";
 
 interface AIStatus {
   status: string;
@@ -578,7 +580,7 @@ export default function CreativeStudioPage() {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-4 w-full max-w-md">
+        <TabsList className="grid grid-cols-5 w-full max-w-xl">
           <TabsTrigger value="image" className="flex items-center gap-2">
             <ImageIcon className="h-4 w-4" />
             Images
@@ -594,6 +596,10 @@ export default function CreativeStudioPage() {
           <TabsTrigger value="content" className="flex items-center gap-2">
             <Wand2 className="h-4 w-4" />
             Content
+          </TabsTrigger>
+          <TabsTrigger value="models" className="flex items-center gap-2">
+            <Box className="h-4 w-4" />
+            Models
           </TabsTrigger>
         </TabsList>
 
@@ -1032,6 +1038,10 @@ export default function CreativeStudioPage() {
               <a href="/ai">Go to Jarvis AI</a>
             </Button>
           </div>
+        </TabsContent>
+
+        <TabsContent value="models" className="mt-6">
+          <ModelManager />
         </TabsContent>
       </Tabs>
     </div>
