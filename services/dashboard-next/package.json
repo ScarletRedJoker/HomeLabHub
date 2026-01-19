@@ -3,11 +3,13 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 5000 -H 0.0.0.0",
+    "dev": "concurrently \"npm run terminal-server\" \"tsx server/custom-server.ts\"",
+    "dev:next": "next dev -p 5000 -H 0.0.0.0",
     "dev:all": "npm run terminal-server & npm run dev",
     "terminal-server": "tsx server/terminal-server.ts",
     "build": "next build",
-    "start": "next start -p 5000 -H 0.0.0.0",
+    "start": "concurrently \"npm run terminal-server\" \"NODE_ENV=production tsx server/custom-server.ts\"",
+    "start:next": "next start -p 5000 -H 0.0.0.0",
     "lint": "next lint",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"

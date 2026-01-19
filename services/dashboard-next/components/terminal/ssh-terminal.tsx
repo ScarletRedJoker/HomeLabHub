@@ -79,7 +79,8 @@ export function SSHTerminal({ serverId, onStatusChange, onDisconnect }: SSHTermi
       }
       const { token } = await tokenRes.json();
       
-      const wsUrl = `${protocol}//${window.location.hostname}:3001/terminal?server=${serverId}&token=${encodeURIComponent(token)}`;
+      const wsHost = window.location.host;
+      const wsUrl = `${protocol}//${wsHost}/terminal-ws/terminal?server=${serverId}&token=${encodeURIComponent(token)}`;
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
