@@ -36,6 +36,7 @@ import { registerModerationCommands, registerAutomodConfigCommands, initializeAu
 import { registerConfigCommands, handleConfigAutocomplete } from './features/config';
 import { registerPresenceCommands, initPresenceFeature } from './features/presence';
 import { registerMusicCommands, initMusicPlayer } from './features/music';
+import { registerMediaPresenceCommands, initMediaPresence, loadMediaPresenceSettings, processMediaSessions, getConfiguredServerIds } from './features/media-presence';
 import { commandEngine } from '../services/commandEngine';
 import { guildIdentityService } from '../services/guildIdentityService';
 import { welcomeCardRenderer } from '../services/welcomeCardRenderer';
@@ -82,6 +83,7 @@ registerAutomodConfigCommands(commands);
 registerConfigCommands(commands);
 registerPresenceCommands(commands as any);
 registerMusicCommands(commands as any);
+registerMediaPresenceCommands(commands as any);
 console.log('[Discord] Total commands after all registrations:', Array.from(commands.keys()).join(', '));
 
 export async function startBot(storage: IStorage, broadcast: (data: any) => void): Promise<void> {
@@ -3030,6 +3032,23 @@ export async function startBot(storage: IStorage, broadcast: (data: any) => void
         console.log('[Bot] ✅ Presence feature initialized successfully');
       } catch (presenceFeatureError) {
         console.error('[Bot] Failed to initialize presence feature:', presenceFeatureError);
+      }
+      
+      // Initialize media presence auto-posting feature
+      console.log('[Bot] Initializing media presence feature...');
+      try {
+        initMediaPresence(client!);
+        await loadMediaPresenceSettings();
+        // Start media presence polling loop (every 45 seconds)
+        setInterval(async () => {
+          const configuredServers = getConfiguredServerIds();
+          if (configuredServers.length > 0) {
+            await processMediaSessions(configuredServers);
+          }
+        }, 45000);
+        console.log('[Bot] ✅ Media presence feature initialized successfully');
+      } catch (mediaPresenceError) {
+        console.error('[Bot] Failed to initialize media presence feature:', mediaPresenceError);
       }
       
       // Initialize music player

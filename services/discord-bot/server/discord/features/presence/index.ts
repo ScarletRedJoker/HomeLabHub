@@ -25,6 +25,7 @@ import {
 } from 'discord.js';
 import { getLanyardService, initLanyardService, FormattedPresence } from '../../../services/lanyard-service';
 import { getPlexService, PlexSession } from '../../../services/plex-service';
+import { getJellyfinService, JellyfinSession } from '../../../services/jellyfin-service';
 import { IStorage } from '../../../storage';
 import { db } from '../../../db';
 import { discordUsers } from '@shared/schema';
@@ -311,67 +312,64 @@ function createNowPlayingEmbed(user: User, presence: FormattedPresence): EmbedBu
     })
     .setTimestamp();
 
-  const plexService = getPlexService();
-  const plexData = plexService?.getNowPlaying();
-  const hasPlexActivity = plexData && plexData.sessions.length > 0;
+  const media = getMediaSources(presence);
+  const hasSpotify = media.spotify !== null;
+  const hasPlexActivity = media.plex.length > 0;
+  const hasJellyfinActivity = media.jellyfin.length > 0;
+  const hasMediaActivity = hasSpotify || hasPlexActivity || hasJellyfinActivity;
 
-  if (presence.spotify?.isListening) {
-    embed.setTitle('🎵 NOW PLAYING');
-    embed.setDescription(
-      '```\n' +
-      `${presence.spotify.song}\n` +
-      `by ${presence.spotify.artist}\n` +
-      `on ${presence.spotify.album}\n` +
-      '```'
-    );
-    if (presence.spotify.albumArtUrl) {
-      embed.setThumbnail(presence.spotify.albumArtUrl);
-    }
-    embed.addFields({
-      name: 'Progress',
-      value: '`' + createProgressBar(presence.spotify.progress || 0) + '`',
-      inline: false,
-    });
-  } else if (hasPlexActivity) {
-    const session = plexData.sessions[0];
-    const progress = session.duration > 0 ? Math.round((session.viewOffset / session.duration) * 100) : 0;
-    const playerName = session.player || 'Unknown Player';
+  if (hasMediaActivity) {
+    embed.setTitle('📡 NOW STREAMING');
     
-    embed.setTitle('🎬 NOW WATCHING');
-    if (session.type === 'episode') {
-      embed.setDescription(
-        '```\n' +
-        `${session.grandparentTitle || session.title}\n` +
-        `Season ${session.parentTitle?.replace(/Season\s*/i, '') || '?'} • ${session.title}\n` +
+    const mediaLines: string[] = [];
+    
+    if (hasSpotify && media.spotify) {
+      mediaLines.push(
+        '```ansi',
+        `\x1b[32m[SPOTIFY]\x1b[0m`,
+        `${media.spotify.song}`,
+        `by ${media.spotify.artist}`,
+        `on ${media.spotify.album}`,
         '```'
       );
-    } else if (session.type === 'movie') {
-      embed.setDescription(
-        '```\n' +
-        `${session.title}${session.year ? ` (${session.year})` : ''}\n` +
-        '```'
-      );
-    } else if (session.type === 'track') {
-      embed.setTitle('🎵 NOW PLAYING');
-      embed.setDescription(
-        '```\n' +
-        `${session.title}\n` +
-        `by ${session.grandparentTitle || 'Unknown Artist'}\n` +
-        '```'
-      );
-    } else {
-      embed.setDescription('```\n' + session.title + '\n```');
+      if (media.spotify.albumArtUrl) {
+        embed.setThumbnail(media.spotify.albumArtUrl);
+      }
     }
-    embed.addFields({
-      name: 'Progress',
-      value: '`' + createProgressBar(progress) + '`',
-      inline: true,
-    });
-    embed.addFields({
-      name: 'Player',
-      value: '`' + playerName + '`',
-      inline: true,
-    });
+    
+    embed.setDescription(mediaLines.length > 0 ? mediaLines.join('\n') : null);
+    
+    if (hasSpotify && media.spotify) {
+      embed.addFields({
+        name: '🎧 Spotify Progress',
+        value: '`' + createProgressBar(media.spotify.progress || 0) + '`',
+        inline: false,
+      });
+    }
+    
+    if (hasPlexActivity) {
+      const plexContent = media.plex.slice(0, 2).map(session => {
+        return formatPlexSession(session);
+      }).join('\n\n');
+      
+      embed.addFields({
+        name: '🎬 Plex',
+        value: plexContent || 'Nothing playing',
+        inline: false,
+      });
+    }
+    
+    if (hasJellyfinActivity) {
+      const jellyfinContent = media.jellyfin.slice(0, 2).map(session => {
+        return formatJellyfinSession(session);
+      }).join('\n\n');
+      
+      embed.addFields({
+        name: '🟣 Jellyfin',
+        value: jellyfinContent || 'Nothing playing',
+        inline: false,
+      });
+    }
   } else if (presence.activities.length > 0) {
     const mainActivity = presence.activities[0];
     embed.setTitle(getActivityEmoji(mainActivity.type) + ' ' + mainActivity.type.toUpperCase());
@@ -393,6 +391,7 @@ function createNowPlayingEmbed(user: User, presence: FormattedPresence): EmbedBu
   if (presence.platforms.web) platforms.push('🌐 Web');
   if (presence.platforms.mobile) platforms.push('📱 Mobile');
   if (hasPlexActivity) platforms.push('📺 Plex');
+  if (hasJellyfinActivity) platforms.push('🟣 Jellyfin');
 
   if (platforms.length > 0) {
     embed.setFooter({ text: platforms.join(' • ') });
@@ -419,40 +418,36 @@ function createProfileEmbed(user: User, presence: FormattedPresence): EmbedBuild
     '```';
   embed.setDescription(statusArt);
 
-  if (presence.spotify?.isListening) {
+  const media = getMediaSources(presence);
+
+  if (media.spotify) {
     const spotifyArt = 
       '```\n' +
-      `🎵 ${presence.spotify.song}\n` +
-      `   ${presence.spotify.artist}\n` +
-      `   ${createProgressBar(presence.spotify.progress || 0)}\n` +
+      `🎵 ${media.spotify.song}\n` +
+      `   ${media.spotify.artist}\n` +
+      `   ${createProgressBar(media.spotify.progress || 0)}\n` +
       '```';
     embed.addFields({
-      name: '🎧 LISTENING TO',
+      name: '🎧 SPOTIFY',
       value: spotifyArt,
       inline: false,
     });
   }
 
-  const plexService = getPlexService();
-  const plexData = plexService?.getNowPlaying();
-  if (plexData && plexData.sessions.length > 0) {
-    const plexSessions = plexData.sessions.slice(0, 2).map(session => {
-      const stateIcon = session.state === 'playing' ? '▶️' : session.state === 'paused' ? '⏸️' : '⏳';
-      const progress = session.duration > 0 ? Math.round((session.viewOffset / session.duration) * 100) : 0;
-      
-      if (session.type === 'episode') {
-        return `${stateIcon} **${session.grandparentTitle || session.title}**\n   └─ S${session.parentTitle?.replace(/Season\s*/i, '') || '?'} · ${session.title}\n   └─ \`${createProgressBar(progress)}\``;
-      } else if (session.type === 'movie') {
-        return `${stateIcon} **${session.title}**${session.year ? ` (${session.year})` : ''}\n   └─ \`${createProgressBar(progress)}\``;
-      } else if (session.type === 'track') {
-        return `${stateIcon} **${session.title}**\n   └─ ${session.grandparentTitle || 'Unknown Artist'}\n   └─ \`${createProgressBar(progress)}\``;
-      }
-      return `${stateIcon} **${session.title}**`;
-    }).join('\n\n');
-
+  if (media.plex.length > 0) {
+    const plexSessions = media.plex.slice(0, 2).map(session => formatPlexSession(session)).join('\n\n');
     embed.addFields({
-      name: '🎬 PLEX NOW PLAYING',
+      name: '🎬 PLEX',
       value: plexSessions || 'Nothing playing',
+      inline: false,
+    });
+  }
+
+  if (media.jellyfin.length > 0) {
+    const jellyfinSessions = media.jellyfin.slice(0, 2).map(session => formatJellyfinSession(session)).join('\n\n');
+    embed.addFields({
+      name: '🟣 JELLYFIN',
+      value: jellyfinSessions || 'Nothing playing',
       inline: false,
     });
   }
@@ -474,6 +469,8 @@ function createProfileEmbed(user: User, presence: FormattedPresence): EmbedBuild
   if (presence.platforms.desktop) platformBadges.push('`🖥️ DESKTOP`');
   if (presence.platforms.web) platformBadges.push('`🌐 WEB`');
   if (presence.platforms.mobile) platformBadges.push('`📱 MOBILE`');
+  if (media.plex.length > 0) platformBadges.push('`📺 PLEX`');
+  if (media.jellyfin.length > 0) platformBadges.push('`🟣 JELLYFIN`');
 
   if (platformBadges.length > 0) {
     embed.addFields({
@@ -484,9 +481,8 @@ function createProfileEmbed(user: User, presence: FormattedPresence): EmbedBuild
   }
 
   const footerParts = [`ID: ${user.id}`, 'Powered by Lanyard'];
-  if (plexData && plexData.sessions.length > 0) {
-    footerParts.push('Plex');
-  }
+  if (media.plex.length > 0) footerParts.push('Plex');
+  if (media.jellyfin.length > 0) footerParts.push('Jellyfin');
 
   embed.setFooter({
     text: footerParts.join(' • '),
@@ -529,6 +525,92 @@ function createProgressBar(progress: number): string {
   const filled = Math.round(progress / 5);
   const empty = 20 - filled;
   return `[${'\u2588'.repeat(filled)}${'\u2591'.repeat(empty)}] ${progress}%`;
+}
+
+function createMediaProgressBar(current: number, total: number): string {
+  if (total <= 0) return '[░░░░░░░░░░░░░░░░░░░░] 0%';
+  const progress = Math.min(100, Math.round((current / total) * 100));
+  const filled = Math.round(progress / 5);
+  const empty = 20 - filled;
+  const currentTime = formatDuration(current);
+  const totalTime = formatDuration(total);
+  return `[${'\u2588'.repeat(filled)}${'\u2591'.repeat(empty)}] ${currentTime}/${totalTime}`;
+}
+
+function formatDuration(seconds: number): string {
+  if (seconds <= 0) return '0:00';
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  if (hrs > 0) {
+    return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+function formatPlexSession(session: PlexSession): string {
+  const stateIcon = session.state === 'playing' ? '▶️' : session.state === 'paused' ? '⏸️' : '⏳';
+  const progress = session.duration > 0 ? Math.round((session.viewOffset / session.duration) * 100) : 0;
+  const progressBar = createMediaProgressBar(Math.floor(session.viewOffset / 1000), Math.floor(session.duration / 1000));
+  
+  if (session.type === 'episode') {
+    const showName = session.grandparentTitle || session.title;
+    const season = session.parentTitle?.replace(/Season\s*/i, '') || '?';
+    return `${stateIcon} **${showName}**\n└─ S${season} · ${session.title}\n└─ \`${progressBar}\``;
+  } else if (session.type === 'movie') {
+    const yearStr = session.year ? ` (${session.year})` : '';
+    return `${stateIcon} **${session.title}**${yearStr}\n└─ \`${progressBar}\``;
+  } else if (session.type === 'track') {
+    const artist = session.grandparentTitle || 'Unknown Artist';
+    return `${stateIcon} **${session.title}**\n└─ ${artist}\n└─ \`${progressBar}\``;
+  }
+  return `${stateIcon} **${session.title}**`;
+}
+
+function formatJellyfinSession(session: JellyfinSession): string {
+  const stateIcon = session.state === 'playing' ? '▶️' : '⏸️';
+  const progressBar = createMediaProgressBar(session.position, session.duration);
+  
+  if (session.type === 'Episode') {
+    const showName = session.seriesName || session.title;
+    const season = session.seasonName?.replace(/Season\s*/i, '') || '?';
+    return `${stateIcon} **${showName}**\n└─ S${season} · ${session.title}\n└─ \`${progressBar}\``;
+  } else if (session.type === 'Movie') {
+    const yearStr = session.year ? ` (${session.year})` : '';
+    return `${stateIcon} **${session.title}**${yearStr}\n└─ \`${progressBar}\``;
+  } else if (session.type === 'Audio') {
+    const artist = session.artistName || 'Unknown Artist';
+    return `${stateIcon} **${session.title}**\n└─ ${artist}\n└─ \`${progressBar}\``;
+  }
+  return `${stateIcon} **${session.title}**`;
+}
+
+interface MediaSources {
+  spotify: FormattedPresence['spotify'] | null;
+  plex: PlexSession[];
+  jellyfin: JellyfinSession[];
+  otherActivities: Array<{ name: string; type: string; details?: string; state?: string }>;
+}
+
+function getMediaSources(presence: FormattedPresence): MediaSources {
+  const plexService = getPlexService();
+  const jellyfinService = getJellyfinService();
+  
+  const plexData = plexService?.getNowPlaying();
+  const jellyfinData = jellyfinService?.getNowPlaying();
+  
+  const musicActivities = ['YouTube Music', 'SoundCloud', 'Apple Music', 'Tidal', 'Deezer', 'Amazon Music'];
+  const otherActivities = presence.activities.filter(a => 
+    a.type.toLowerCase() !== 'listening to' || 
+    (a.type.toLowerCase() === 'listening to' && musicActivities.some(m => a.name.includes(m)))
+  );
+
+  return {
+    spotify: presence.spotify?.isListening ? presence.spotify : null,
+    plex: plexData?.sessions || [],
+    jellyfin: jellyfinData?.sessions || [],
+    otherActivities
+  };
 }
 
 function getStatusColor(status: string): number {

@@ -2804,3 +2804,60 @@ export interface InvitesConfig {
   blockAllInvites: boolean;
   whitelistedServers: string[];
 }
+
+// Media Presence Settings - tracks channel auto-posting for Plex/Jellyfin now playing
+export const mediaPresenceSettings = pgTable("media_presence_settings", {
+  id: serial("id").primaryKey(),
+  serverId: text("server_id").notNull().unique(),
+  channelId: text("channel_id"), // Discord channel to post updates
+  isEnabled: boolean("is_enabled").default(true),
+  postTypes: text("post_types").default("all"), // "movies", "shows", "music", "all"
+  cooldownMinutes: integer("cooldown_minutes").default(30), // Prevent spam for same title
+  showUser: boolean("show_user").default(true), // Show who's watching
+  showProgress: boolean("show_progress").default(true), // Show progress on end
+  showPoster: boolean("show_poster").default(true), // Show movie/album art
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Media Presence Log - tracks posted updates for cooldown and message editing
+export const mediaPresenceLog = pgTable("media_presence_log", {
+  id: serial("id").primaryKey(),
+  serverId: text("server_id").notNull(),
+  sessionKey: text("session_key").notNull(), // Unique key: source_itemId_user
+  messageId: text("message_id"), // Discord message ID for editing
+  channelId: text("channel_id").notNull(),
+  source: text("source").notNull(), // "plex" or "jellyfin"
+  title: text("title").notNull(),
+  mediaType: text("media_type").notNull(), // "movie", "episode", "track"
+  user: text("user").notNull(), // Who's watching
+  state: text("state").notNull().default("playing"), // "playing", "paused", "ended"
+  postedAt: timestamp("posted_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Media Presence Settings validation schemas
+export const insertMediaPresenceSettingsSchema = createInsertSchema(mediaPresenceSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+export type InsertMediaPresenceSettings = z.infer<typeof insertMediaPresenceSettingsSchema>;
+export type MediaPresenceSettings = typeof mediaPresenceSettings.$inferSelect;
+
+export const updateMediaPresenceSettingsSchema = createInsertSchema(mediaPresenceSettings).omit({
+  id: true,
+  serverId: true,
+  createdAt: true,
+  updatedAt: true
+}).partial();
+export type UpdateMediaPresenceSettings = z.infer<typeof updateMediaPresenceSettingsSchema>;
+
+// Media Presence Log validation schemas
+export const insertMediaPresenceLogSchema = createInsertSchema(mediaPresenceLog).omit({
+  id: true,
+  postedAt: true,
+  updatedAt: true
+});
+export type InsertMediaPresenceLog = z.infer<typeof insertMediaPresenceLogSchema>;
+export type MediaPresenceLog = typeof mediaPresenceLog.$inferSelect;
