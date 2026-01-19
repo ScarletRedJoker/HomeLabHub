@@ -10,10 +10,21 @@ source "$SHARED_DIR/lib.sh"
 cd "$SCRIPT_DIR"
 
 # Load .env at startup so all steps have access to environment variables
+# Use safe parsing to avoid bash interpreting special characters like < > 
 if [ -f ".env" ]; then
-    set -a
-    source ".env"
-    set +a
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        # Skip comments and empty lines
+        [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+        # Only export valid VAR=value lines (skip lines with unquoted < > characters)
+        if [[ "$line" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; then
+            # Extract variable name and value
+            varname="${line%%=*}"
+            varvalue="${line#*=}"
+            # Skip placeholder values with angle brackets
+            [[ "$varvalue" =~ ^\<.*\>$ ]] && continue
+            export "$varname=$varvalue"
+        fi
+    done < ".env"
 fi
 
 VERBOSE=false
