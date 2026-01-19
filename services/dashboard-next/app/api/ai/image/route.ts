@@ -252,18 +252,8 @@ export async function GET() {
     sdDescription = `Using ${sdStatus.currentModel} on RTX 3060 - No content restrictions`;
   }
 
+  // LOCAL ONLY - No cloud providers (OpenAI/DALL-E removed per user requirement)
   const providers = [
-    {
-      id: "auto",
-      name: "Auto (Local First)",
-      description: sdAvailable 
-        ? `Using local SD: ${sdStatus.currentModel}`
-        : "Local SD unavailable - will use DALL-E 3",
-      sizes: ["512x512", "768x768", "1024x1024"],
-      styles: ["vivid", "natural"],
-      available: true,
-      recommended: false,
-    },
     {
       id: "force-local",
       name: "Force Local (Unrestricted)",
@@ -293,14 +283,6 @@ export async function GET() {
       unrestricted: true,
       currentModel: sdStatus.currentModel,
       modelLoading: sdStatus.modelLoading,
-    },
-    {
-      id: "openai",
-      name: "DALL-E 3 (Cloud)",
-      description: "OpenAI's image generation - Has content moderation",
-      sizes: ["1024x1024", "1792x1024", "1024x1792"],
-      styles: ["vivid", "natural"],
-      available: aiOrchestrator.hasOpenAI(),
     },
   ];
 
