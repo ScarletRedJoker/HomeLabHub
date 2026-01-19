@@ -284,5 +284,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-export { projectHealthCache };
