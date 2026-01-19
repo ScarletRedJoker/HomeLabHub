@@ -74,6 +74,64 @@ A unified AI video generation and streaming control interface (`/ai-studio`) orc
 ### Docker Marketplace and Settings
 A Docker marketplace offers over 24 pre-built packages. A comprehensive settings interface manages configurations for AI, servers, and integrations.
 
+### Project Inventory and Remote Management (NEW)
+The `/api/inventory` endpoint provides real-time visibility across all deployment nodes:
+- Docker container listing with status, ports, and images
+- PM2 process status with CPU/memory metrics
+- Git repository status (branch, commits, changes)
+- System metrics (CPU, memory, disk, uptime)
+
+The `/api/inventory/execute` endpoint enables bulk remote operations:
+- git-pull, docker-restart, npm-install, pm2-reload
+- Custom command execution with safety sanitization
+- Parallel execution across multiple nodes
+
+### Content Hub (NEW)
+Unified `/content-hub` page consolidating:
+- Docker marketplace apps
+- AI models (Ollama/SD)
+- Project templates
+- Custom repository sources (Civitai, HuggingFace, GitHub, Docker Hub)
+
+## Feature Status (Investor Demo Readiness)
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Dashboard UI | Working | Next.js 14, all pages functional |
+| Discord Bot | Working | Jellyfin integration fixed |
+| Stream Bot | Working | Multi-platform support |
+| Jarvis AI Chat | Working | OpenAI via Replit integration |
+| Ollama/Local AI | Requires Windows VM | Needs VM online + Python 3.10 |
+| SD/ComfyUI | Requires Windows VM | GPU services need VM |
+| AI Video Pipeline | Framework only | No active backends |
+| Project Inventory | Working | New API endpoints |
+
+## Future Architecture Notes
+These improvements are documented for future development after the current demo:
+
+### GPU Cluster Migration (Post-Gaming VM)
+Current: Windows 11 VM on Ubuntu KVM host with GPU passthrough
+- Works well when not gaming
+- PyTorch requires Python 3.10 (not 3.14)
+- Manual service startup via PowerShell
+
+Future: Dedicated Linux GPU cluster
+- Kubernetes on bare metal with GPU operator
+- Centralized model storage (NFS/Ceph)
+- Auto-scaling based on inference demand
+- Remove Windows dependency entirely
+
+### Infrastructure Improvements
+1. **Agent on all nodes** - Deploy nebula-agent to Linode/Ubuntu (currently Windows-only)
+2. **Service mesh** - Replace direct SSH with proper agent-based communication
+3. **Centralized secrets** - HashiCorp Vault or similar instead of per-node .env files
+4. **Log aggregation** - Loki/Grafana stack for cross-node logging
+5. **Metrics pipeline** - Prometheus/Grafana for monitoring
+
+### Production Blockers (Must Fix)
+- SSL cert renewal on stream.rig-city.com
+- Google OAuth redirect URI for dash.evindrake.net
+- Twitch token refresh validation
+
 ## External Dependencies
 *   **PostgreSQL:** Primary relational database.
 *   **Redis:** Caching and session management.
