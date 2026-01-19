@@ -288,7 +288,7 @@ export default function MarketingPage() {
                 </Select>
               </div>
             </div>
-            <Button onClick={generateQrCode} disabled={generatingQr} className="w-full">
+            <Button onClick={() => generateQrCode()} disabled={generatingQr} className="w-full">
               {generatingQr ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
