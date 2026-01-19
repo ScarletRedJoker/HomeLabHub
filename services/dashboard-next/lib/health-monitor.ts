@@ -207,9 +207,17 @@ class HealthMonitor {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 5000);
 
+      const agentToken = process.env.NEBULA_AGENT_TOKEN;
+      if (target === "windows-vm" && !agentToken) {
+        console.warn(`[HealthMonitor] NEBULA_AGENT_TOKEN missing for Windows VM ${service} health check`);
+      }
+
       const response = await fetch(url, {
         signal: controller.signal,
-        headers: { Accept: "application/json" },
+        headers: {
+          Accept: "application/json",
+          ...(target === "windows-vm" && agentToken ? { Authorization: `Bearer ${agentToken}` } : {}),
+        },
       });
       clearTimeout(timeout);
 
@@ -474,7 +482,17 @@ class HealthMonitor {
     
     try {
       const agentUrl = `http://${config.host}:${config.port}/health`;
-      const response = await fetch(agentUrl, { signal: AbortSignal.timeout(5000) });
+      const agentToken = process.env.NEBULA_AGENT_TOKEN;
+      if (!agentToken) {
+        console.warn("[HealthMonitor] NEBULA_AGENT_TOKEN missing for Windows agent health check");
+      }
+
+      const response = await fetch(agentUrl, {
+        signal: AbortSignal.timeout(5000),
+        headers: {
+          ...(agentToken ? { Authorization: `Bearer ${agentToken}` } : {}),
+        },
+      });
       if (response.ok) {
         agentReachable = true;
         const data = await response.json();
