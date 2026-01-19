@@ -309,31 +309,40 @@ export function getSSHPrivateKey(): Buffer | null {
         try {
           keyBuffer = readFileSync(keyPath);
         } catch (err: any) {
-          console.error(`Failed to read SSH key from file: ${err.message}`);
+          console.error(`[SSH] Failed to read SSH key from file: ${err.message}`);
           return null;
         }
       }
     }
     
     if (!keyBuffer) {
+      console.warn("[SSH] SSH private key not found");
       return null;
     }
     
     // Detect key format and convert to PEM if needed
     // The converter handles all logging internally
     const format = detectSSHKeyFormat(keyBuffer);
-    if (format === 'OpenSSH' || (format !== 'Raw/Binary format' && format.includes('PEM') === false)) {
-      const convertedKey = convertSSHKeyToPEM(keyBuffer);
-      if (convertedKey) {
-        return convertedKey;
-      }
-      // Conversion failed - return null (converter already logged guidance)
-      return null;
+    
+    // Supported formats that ssh2 can use directly
+    const supportedFormats = ['RSA', 'EC', 'ED25519', 'PKCS8'];
+    
+    if (supportedFormats.includes(format)) {
+      // Key is already in a supported format
+      return keyBuffer;
     }
     
-    return keyBuffer;
+    // Try to convert unsupported formats (OpenSSH, Unknown, etc.) to PEM
+    const convertedKey = convertSSHKeyToPEM(keyBuffer);
+    if (convertedKey) {
+      return convertedKey;
+    }
+    
+    // Conversion failed - return null (converter already logged guidance)
+    console.error(`[SSH] Failed to process SSH key in format: ${format}`);
+    return null;
   } catch (err: any) {
-    console.error(`[SSH Key Converter] Error processing SSH key: ${err.message}`);
+    console.error(`[SSH] Error processing SSH key: ${err.message}`);
     return null;
   }
 }

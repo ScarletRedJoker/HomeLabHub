@@ -4,6 +4,7 @@ import { createServer, IncomingMessage } from "http";
 import { parse } from "url";
 import { readFileSync, existsSync } from "fs";
 import { jwtVerify } from "jose";
+import { convertSSHKeyToPEM, detectSSHKeyFormat } from "../lib/ssh-key-converter";
 
 interface ServerConfig {
   id: string;
@@ -16,22 +17,91 @@ interface ServerConfig {
 const DEFAULT_SSH_KEY_PATH = process.env.SSH_KEY_PATH || 
   (process.env.REPL_ID ? `${process.env.HOME}/.ssh/homelab` : "/root/.ssh/homelab");
 
-function getSSHPrivateKey(): Buffer | null {
+function getSSHPrivateKey(): { key: Buffer | null; format: string; error?: string } {
+  let rawKey: Buffer | null = null;
+  let source = "unknown";
+
+  // Try to get key from environment variable first
   if (process.env.SSH_PRIVATE_KEY) {
-    return Buffer.from(process.env.SSH_PRIVATE_KEY);
-  }
-  
-  const keyPath = DEFAULT_SSH_KEY_PATH;
-  if (existsSync(keyPath)) {
-    try {
-      return readFileSync(keyPath);
-    } catch (err: any) {
-      console.error(`Failed to read SSH key from file: ${err.message}`);
-      return null;
+    rawKey = Buffer.from(process.env.SSH_PRIVATE_KEY);
+    source = "SSH_PRIVATE_KEY env var";
+  } else {
+    // Try to read from file
+    const keyPath = DEFAULT_SSH_KEY_PATH;
+    if (existsSync(keyPath)) {
+      try {
+        rawKey = readFileSync(keyPath);
+        source = `file (${keyPath})`;
+      } catch (err: any) {
+        console.error(`[SSH] Failed to read SSH key from file: ${err.message}`);
+        return {
+          key: null,
+          format: "error",
+          error: `Failed to read SSH key from ${keyPath}: ${err.message}`,
+        };
+      }
+    } else {
+      console.warn("[SSH] SSH private key not found");
+      console.warn("[SSH] Expected key in SSH_PRIVATE_KEY secret or at " + keyPath);
+      return {
+        key: null,
+        format: "error",
+        error: "SSH private key not configured. Please set SSH_PRIVATE_KEY secret or place key at " + keyPath,
+      };
     }
   }
-  
-  return null;
+
+  if (!rawKey) {
+    return {
+      key: null,
+      format: "error",
+      error: "SSH private key is empty",
+    };
+  }
+
+  // Detect the key format
+  const format = detectSSHKeyFormat(rawKey);
+  console.log(`[SSH] Detected SSH key format: ${format} (from ${source})`);
+
+  // Try to convert if necessary
+  const convertedKey = convertSSHKeyToPEM(rawKey);
+
+  if (convertedKey) {
+    return {
+      key: convertedKey,
+      format: format,
+    };
+  }
+
+  // Conversion failed or key is not in OpenSSH format but also not in a supported PEM format
+  if (format === "OpenSSH") {
+    console.error("[SSH] OpenSSH format key detected but automatic conversion failed");
+    console.error("[SSH] Please convert your SSH key to PEM format manually:");
+    console.error("[SSH] Run: ssh-keygen -p -m pem -f /path/to/your/key");
+    console.error("[SSH] Or generate a new key in PEM format:");
+    console.error("[SSH] Run: ssh-keygen -t rsa -m pem -f ~/.ssh/id_rsa_pem -N \"\"");
+    return {
+      key: null,
+      format: format,
+      error: "SSH key is in OpenSSH format which is not supported. Please convert to PEM format using: ssh-keygen -p -m pem -f /path/to/key",
+    };
+  }
+
+  if (format === "Unknown PEM format" || format === "Raw/Binary format") {
+    console.error(`[SSH] SSH key format is not supported: ${format}`);
+    return {
+      key: null,
+      format: format,
+      error: `SSH key format "${format}" is not supported. ssh2 requires PEM format keys (RSA, EC, or PKCS8).`,
+    };
+  }
+
+  // Key exists but conversion returned null for unknown reason
+  return {
+    key: null,
+    format: format,
+    error: `Failed to process SSH key in ${format} format`,
+  };
 }
 
 const servers: Record<string, ServerConfig> = {
@@ -118,11 +188,15 @@ class TerminalServer {
     const conn = new Client();
     let stream: ClientChannel | null = null;
 
-    const privateKey = getSSHPrivateKey();
+    const keyResult = getSSHPrivateKey();
+    const privateKey = keyResult.key;
+    
     if (!privateKey) {
+      const errorMessage = keyResult.error || "SSH key not configured. Please add SSH_PRIVATE_KEY secret.";
+      console.error(`[SSH] SSH connection failed: ${errorMessage}`);
       ws.send(JSON.stringify({ 
         type: "error", 
-        message: "SSH key not configured. Please add SSH_PRIVATE_KEY secret." 
+        message: errorMessage
       }));
       ws.close();
       return;

@@ -408,25 +408,75 @@ class HealthMonitor {
     }
   }
 
+  private async checkWindowsRegistryHeartbeat(): Promise<{ 
+    hasFreshHeartbeat: boolean; 
+    lastSeen: Date | null;
+    services: string[];
+    ageSeconds: number | null;
+  }> {
+    try {
+      const { getAllServices } = await import("./service-registry");
+      const allServices = await getAllServices();
+      
+      const windowsServices = allServices.filter(s => 
+        s.environment === "windows-vm" || 
+        s.name.includes("windows") || 
+        s.name.includes("agent") ||
+        s.capabilities.some(c => ["ai", "ollama", "comfyui", "stable-diffusion"].includes(c))
+      );
+      
+      if (windowsServices.length === 0) {
+        return { hasFreshHeartbeat: false, lastSeen: null, services: [], ageSeconds: null };
+      }
+      
+      const mostRecent = windowsServices.reduce((latest, svc) => {
+        const svcTime = new Date(svc.lastSeen).getTime();
+        return svcTime > latest.time ? { time: svcTime, date: svc.lastSeen, name: svc.name } : latest;
+      }, { time: 0, date: new Date(0), name: "" });
+      
+      const ageMs = Date.now() - mostRecent.time;
+      const ageSeconds = Math.round(ageMs / 1000);
+      const HEARTBEAT_TIMEOUT = 90000;
+      
+      return {
+        hasFreshHeartbeat: ageMs < HEARTBEAT_TIMEOUT,
+        lastSeen: mostRecent.date,
+        services: windowsServices.map(s => s.name),
+        ageSeconds,
+      };
+    } catch (error) {
+      console.warn("[HealthMonitor] Failed to check registry heartbeat:", error);
+      return { hasFreshHeartbeat: false, lastSeen: null, services: [], ageSeconds: null };
+    }
+  }
+
   async checkWindowsVmHealth(): Promise<DeploymentHealth> {
     const target: DeploymentTarget = "windows-vm";
     const config = DEPLOYMENT_CONFIGS[target];
     const services: ServiceHealth[] = [];
+    let diagnostics: string[] = [];
 
-    const [ollama, stableDiffusion, comfyui, whisper] = await Promise.all([
-      this.checkServiceHealth("ollama", target),
-      this.checkServiceHealth("stable-diffusion", target),
-      this.checkServiceHealth("comfyui", target),
-      this.checkServiceHealth("whisper", target),
+    const [probeResults, registryStatus] = await Promise.all([
+      Promise.all([
+        this.checkServiceHealth("ollama", target),
+        this.checkServiceHealth("stable-diffusion", target),
+        this.checkServiceHealth("comfyui", target),
+        this.checkServiceHealth("whisper", target),
+      ]),
+      this.checkWindowsRegistryHeartbeat(),
     ]);
 
+    const [ollama, stableDiffusion, comfyui, whisper] = probeResults;
     services.push(ollama, stableDiffusion, comfyui, whisper);
 
     let systemMetrics: DeploymentHealth["systemMetrics"];
+    let agentReachable = false;
+    
     try {
       const agentUrl = `http://${config.host}:${config.port}/health`;
       const response = await fetch(agentUrl, { signal: AbortSignal.timeout(5000) });
       if (response.ok) {
+        agentReachable = true;
         const data = await response.json();
         if (data.gpu) {
           const gpu = data.gpu;
@@ -438,24 +488,71 @@ class HealthMonitor {
           });
         }
       }
-    } catch {}
+    } catch (agentError: any) {
+      diagnostics.push(`Agent probe failed: ${agentError.message || "connection refused"}`);
+    }
 
     const healthyCount = services.filter(s => s.status === "healthy").length;
-    const status = healthyCount === services.length 
-      ? "online" 
-      : healthyCount > 0 
-        ? "degraded" 
-        : "offline";
+    const allProbesFailed = healthyCount === 0;
+    
+    let status: "online" | "offline" | "degraded";
+    let reachable: boolean;
+    
+    if (healthyCount === services.length) {
+      status = "online";
+      reachable = true;
+      diagnostics.push("All services responding via direct probe");
+    } else if (healthyCount > 0) {
+      status = "degraded";
+      reachable = true;
+      const downServices = services.filter(s => s.status !== "healthy").map(s => s.name);
+      diagnostics.push(`Some services down: ${downServices.join(", ")}`);
+    } else if (allProbesFailed && registryStatus.hasFreshHeartbeat) {
+      status = "degraded";
+      reachable = false;
+      diagnostics.push(`Direct probes FAILED but registry heartbeat is fresh (${registryStatus.ageSeconds}s ago)`);
+      diagnostics.push(`Services registered in DB: ${registryStatus.services.join(", ")}`);
+      diagnostics.push("VM is alive (heartbeat) but unreachable from dashboard - check Tailscale/firewall");
+      
+      services.forEach(s => {
+        if (s.status === "unhealthy") {
+          s.details = `Probe failed - but service registered ${registryStatus.ageSeconds}s ago`;
+        }
+      });
+    } else {
+      status = "offline";
+      reachable = false;
+      if (registryStatus.ageSeconds !== null) {
+        diagnostics.push(`Last registry heartbeat: ${registryStatus.ageSeconds}s ago (stale)`);
+      } else {
+        diagnostics.push("No registry heartbeats found for Windows services");
+      }
+      diagnostics.push("Check: Windows VM powered on, Tailscale connected, Nebula Agent running");
+    }
 
-    return {
+    const healthWithDiagnostics = {
       target,
       name: config.name,
       status,
-      reachable: healthyCount > 0,
+      reachable,
       lastChecked: new Date(),
       services,
       systemMetrics,
-    };
+      metadata: {
+        diagnostics,
+        agentReachable,
+        registryStatus: {
+          hasFreshHeartbeat: registryStatus.hasFreshHeartbeat,
+          lastSeen: registryStatus.lastSeen,
+          services: registryStatus.services,
+          ageSeconds: registryStatus.ageSeconds,
+        },
+        probeHost: config.host,
+        probePort: config.port,
+      },
+    } as DeploymentHealth & { metadata: unknown };
+
+    return healthWithDiagnostics;
   }
 
   private detectIssues(deployments: DeploymentHealth[]): HealthIssue[] {
