@@ -57,6 +57,20 @@ DISCORD_CLIENT_ID=your_discord_app_id
 3. Copy the "Application ID" - this is your `DISCORD_CLIENT_ID`
 4. (Optional) Upload an icon for your app - this shows on your profile
 
+## Optional: Custom Image Assets
+
+For richer presence with custom images:
+
+1. In your Discord application, go to **Rich Presence > Art Assets**
+2. Upload the following images (exact names required):
+   - `plex_logo` - Your Plex logo (512x512 or larger)
+   - `jellyfin_logo` - Your Jellyfin logo  
+   - `playing` - Play icon (small overlay)
+   - `paused` - Pause icon (small overlay)
+3. Set `USE_CUSTOM_ASSETS=true` in your `.env` file
+
+Without custom assets, the presence works but without logos.
+
 ## Features
 
 - Shows what you're watching on Plex or Jellyfin
@@ -78,6 +92,21 @@ $shortcut.TargetPath = "powershell"
 $shortcut.Arguments = "-WindowStyle Hidden -File `"$script`""
 $shortcut.Save()
 ```
+
+## Security Warning
+
+**Your Plex/Jellyfin tokens grant full access to your media servers.** Keep them safe:
+
+- Never commit `.env` files to public repositories
+- Never share your tokens with anyone
+- Add `.env` to your `.gitignore` file
+- Use environment variables instead of hardcoding tokens
+- Consider regenerating tokens if you suspect they've been exposed
+
+If you accidentally expose these tokens, immediately:
+1. Regenerate your Plex token at https://plex.tv/claim
+2. Regenerate your Jellyfin API key in Settings > API Keys
+3. Update your `.env` file with the new tokens
 
 ## Why Can't the Bot Do This?
 

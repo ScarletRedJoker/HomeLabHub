@@ -137,12 +137,18 @@ async function updatePresence() {
   const activity = {
     details: details.substring(0, 128),
     state: state.substring(0, 128),
-    largeImageKey: session.source === 'plex' ? 'plex_logo' : 'jellyfin_logo',
-    largeImageText: session.source === 'plex' ? 'Plex' : 'Jellyfin',
-    smallImageKey: session.state === 'paused' ? 'paused' : 'playing',
-    smallImageText: session.state === 'paused' ? 'Paused' : 'Playing',
     instance: false
   };
+  
+  // Only add image assets if configured (Discord rejects unknown asset keys)
+  // Users can upload assets named 'plex_logo', 'jellyfin_logo', 'playing', 'paused'
+  // in their Discord Developer Portal > Rich Presence > Art Assets
+  if (process.env.USE_CUSTOM_ASSETS === 'true') {
+    activity.largeImageKey = session.source === 'plex' ? 'plex_logo' : 'jellyfin_logo';
+    activity.largeImageText = session.source === 'plex' ? 'Plex' : 'Jellyfin';
+    activity.smallImageKey = session.state === 'paused' ? 'paused' : 'playing';
+    activity.smallImageText = session.state === 'paused' ? 'Paused' : 'Playing';
+  }
   
   if (session.progress && session.duration) {
     if (session.state !== 'paused') {

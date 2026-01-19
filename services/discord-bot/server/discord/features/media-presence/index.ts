@@ -66,13 +66,13 @@ const activeSessions = new Map<string, TrackedSession>();
 const settingsCache = new Map<string, { channelId: string; isEnabled: boolean; postTypes: string; cooldownMinutes: number; showUser: boolean; showProgress: boolean; showPoster: boolean }>();
 let discordClient: Client | null = null;
 
-function generateSessionKey(source: 'plex' | 'jellyfin', session: PlexSession | JellyfinSession): string {
+function generateSessionKey(serverId: string, source: 'plex' | 'jellyfin', session: PlexSession | JellyfinSession): string {
   if (source === 'plex') {
     const plexSession = session as PlexSession;
-    return `plex_${plexSession.title}_${plexSession.user}`;
+    return `${serverId}_plex_${plexSession.title}_${plexSession.user}`;
   } else {
     const jellyfinSession = session as JellyfinSession;
-    return `jellyfin_${jellyfinSession.title}_${jellyfinSession.user}`;
+    return `${serverId}_jellyfin_${jellyfinSession.title}_${jellyfinSession.user}`;
   }
 }
 
@@ -341,7 +341,7 @@ export async function processMediaSessions(serverIds: string[]): Promise<void> {
 
     if (plexData?.sessions) {
       for (const session of plexData.sessions) {
-        const sessionKey = generateSessionKey('plex', session);
+        const sessionKey = generateSessionKey(serverId, 'plex', session);
         currentSessionKeys.add(sessionKey);
         
         const mediaType = getMediaType('plex', session);
@@ -385,7 +385,7 @@ export async function processMediaSessions(serverIds: string[]): Promise<void> {
 
     if (jellyfinData?.sessions) {
       for (const session of jellyfinData.sessions) {
-        const sessionKey = generateSessionKey('jellyfin', session);
+        const sessionKey = generateSessionKey(serverId, 'jellyfin', session);
         currentSessionKeys.add(sessionKey);
         
         const mediaType = getMediaType('jellyfin', session);
