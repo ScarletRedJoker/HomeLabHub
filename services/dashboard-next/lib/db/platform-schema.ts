@@ -691,3 +691,16 @@ export type ShortUrl = typeof shortUrls.$inferSelect;
 export type NewShortUrl = typeof shortUrls.$inferInsert;
 export type UrlClick = typeof urlClicks.$inferSelect;
 export type NewUrlClick = typeof urlClicks.$inferInsert;
+
+export const discordPresenceSettings = pgTable("discord_presence_settings", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 255 }).notNull().unique(),
+  discordAppId: varchar("discord_app_id", { length: 100 }),
+  presenceLastSeen: timestamp("presence_last_seen"),
+  enabled: boolean("enabled").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type DiscordPresenceSettings = typeof discordPresenceSettings.$inferSelect;
+export type NewDiscordPresenceSettings = typeof discordPresenceSettings.$inferInsert;
