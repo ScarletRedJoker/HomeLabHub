@@ -9,6 +9,13 @@ source "$SHARED_DIR/lib.sh"
 
 cd "$SCRIPT_DIR"
 
+# Load .env at startup so all steps have access to environment variables
+if [ -f ".env" ]; then
+    set -a
+    source ".env"
+    set +a
+fi
+
 VERBOSE=false
 SKIP_PREFLIGHT=false
 WITH_TORRENTS=false
