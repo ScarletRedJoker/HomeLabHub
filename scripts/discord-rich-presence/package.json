@@ -1,11 +1,12 @@
 {
-  "name": "discord-media-presence",
-  "version": "1.0.0",
-  "description": "Show Plex/Jellyfin now playing on your Discord profile",
-  "main": "index.js",
+  "name": "nebula-discord-presence",
+  "version": "2.0.0",
+  "description": "Show Plex/Jellyfin now playing on your Discord profile via Nebula Command",
+  "main": "nebula-presence.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "node --watch index.js"
+    "start": "node nebula-presence.js",
+    "standalone": "node index.js",
+    "dev": "node --watch nebula-presence.js"
   },
   "dependencies": {
     "discord-rpc": "^4.0.1",

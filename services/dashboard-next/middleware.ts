@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import * as jose from "jose";
 
-const publicPaths = ["/login", "/api/auth/login", "/api/auth/dev-login", "/api/health", "/api/ai/status", "/api/ai/health-webhook", "/api/setup", "/setup"];
+const publicPaths = ["/login", "/api/auth/login", "/api/auth/dev-login", "/api/health", "/api/ai/status", "/api/ai/health-webhook", "/api/setup", "/setup", "/api/presence/current"];
 
 function getSessionSecret(): Uint8Array | null {
   const secret = process.env.SESSION_SECRET;

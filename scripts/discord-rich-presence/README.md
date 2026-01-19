@@ -1,6 +1,19 @@
-# Discord Rich Presence for Plex/Jellyfin
+# Nebula Command - Discord Rich Presence
 
 Show your Plex and Jellyfin "Now Playing" status directly on your Discord profile - just like Spotify!
+
+## Two Modes
+
+### Mode 1: Dashboard API (Recommended)
+Polls your Nebula Command dashboard for media status. Best for:
+- Centralized control - dashboard knows what's playing
+- Works even if Plex/Jellyfin aren't on your local network
+- One config, works everywhere
+
+### Mode 2: Standalone
+Polls Plex/Jellyfin directly from your computer. Best for:
+- No dashboard needed
+- Direct local network access to media servers
 
 ## How It Works
 
@@ -11,26 +24,35 @@ This solution provides:
 2. **Node.js Daemon** - Cross-platform solution with auto-start
 3. **Integration with Plex/Jellyfin** - Polls your media servers and updates Discord
 
-## Quick Start (Windows)
+## Quick Start (Windows) - One-Click Install
 
 ```powershell
-# Run in PowerShell as Administrator
+# Run in PowerShell (as your normal user)
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
-.\Start-DiscordRichPresence.ps1
+.\install-windows.ps1
 ```
 
-## Quick Start (Cross-Platform)
+This will:
+1. Install the presence daemon to your AppData folder
+2. Set it to auto-start when you log in
+3. Prompt for your Discord Application ID and dashboard URL
+4. Start immediately!
+
+## Quick Start (Manual/Cross-Platform)
 
 ```bash
 # Install dependencies
 npm install
 
-# Configure (create .env file)
+# Configure
 cp .env.example .env
-# Edit .env with your Plex/Jellyfin credentials
+# Edit .env with your settings
 
-# Run
+# Run with Dashboard API
 npm start
+
+# Or run standalone (direct Plex/Jellyfin)
+npm run standalone
 ```
 
 ## Configuration
