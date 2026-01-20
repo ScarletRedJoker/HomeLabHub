@@ -1057,3 +1057,58 @@ export type VideoJob = typeof videoJobs.$inferSelect;
 export type NewVideoJob = typeof videoJobs.$inferInsert;
 export type VideoPreset = typeof videoPresets.$inferSelect;
 export type NewVideoPreset = typeof videoPresets.$inferInsert;
+
+// ============================================
+// AI Model Marketplace System
+// ============================================
+
+export const aiModels = pgTable("ai_models", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  type: varchar("type", { length: 50 }).notNull(), // checkpoint, lora, embedding, controlnet, vae
+  source: varchar("source", { length: 50 }).notNull(), // civitai, huggingface, local
+  sourceUrl: text("source_url"),
+  sourceId: varchar("source_id", { length: 255 }),
+  version: varchar("version", { length: 100 }),
+  description: text("description"),
+  thumbnailUrl: text("thumbnail_url"),
+  fileSize: decimal("file_size", { precision: 20, scale: 0 }),
+  downloadedAt: timestamp("downloaded_at"),
+  installedPath: text("installed_path"),
+  nodeId: varchar("node_id", { length: 255 }),
+  status: varchar("status", { length: 50 }).notNull().default("available"), // available, downloading, installed, error
+  downloadProgress: integer("download_progress").default(0),
+  lastUsed: timestamp("last_used"),
+  useCount: integer("use_count").default(0),
+  tags: text("tags").array().default([]),
+  creator: varchar("creator", { length: 255 }),
+  license: varchar("license", { length: 100 }),
+  nsfw: boolean("nsfw").default(false),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const modelDownloads = pgTable("model_downloads", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  modelId: uuid("model_id").references(() => aiModels.id),
+  status: varchar("status", { length: 50 }).notNull().default("queued"), // queued, downloading, extracting, installing, completed, failed
+  progress: integer("progress").default(0),
+  downloadUrl: text("download_url").notNull(),
+  destinationPath: text("destination_path"),
+  bytesDownloaded: decimal("bytes_downloaded", { precision: 20, scale: 0 }).default("0"),
+  totalBytes: decimal("total_bytes", { precision: 20, scale: 0 }),
+  speed: decimal("speed", { precision: 15, scale: 0 }), // bytes per second
+  eta: integer("eta"), // seconds remaining
+  error: text("error"),
+  checksum: varchar("checksum", { length: 255 }),
+  checksumVerified: boolean("checksum_verified"),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type AiModel = typeof aiModels.$inferSelect;
+export type NewAiModel = typeof aiModels.$inferInsert;
+export type ModelDownload = typeof modelDownloads.$inferSelect;
+export type NewModelDownload = typeof modelDownloads.$inferInsert;
