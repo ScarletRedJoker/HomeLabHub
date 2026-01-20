@@ -148,7 +148,7 @@ const SAMPLERS = [
   "DPM++ 2S a Karras",
 ];
 
-type GenerationMode = "text-to-image" | "image-to-image" | "inpainting" | "controlnet" | "upscale" | "face-swap";
+type GenerationMode = "text-to-image" | "image-to-image" | "inpainting" | "controlnet" | "upscale" | "face-swap" | "sd-webui" | "comfyui";
 
 export default function CreativeStudioPage() {
   const [loading, setLoading] = useState(true);
@@ -452,10 +452,13 @@ export default function CreativeStudioPage() {
       case "controlnet": return <Layers className="h-4 w-4" />;
       case "upscale": return <Maximize2 className="h-4 w-4" />;
       case "face-swap": return <User className="h-4 w-4" />;
+      case "sd-webui": return <ImageIcon className="h-4 w-4" />;
+      case "comfyui": return <Sparkles className="h-4 w-4" />;
     }
   };
 
   const isModeAvailable = (modeType: GenerationMode) => {
+    if (modeType === "sd-webui" || modeType === "comfyui") return true;
     if (!capabilities) return false;
     switch (modeType) {
       case "text-to-image": return capabilities.features.textToImage.available;
@@ -464,6 +467,7 @@ export default function CreativeStudioPage() {
       case "controlnet": return capabilities.features.controlnet.available;
       case "upscale": return capabilities.features.upscaling.available;
       case "face-swap": return capabilities.features.faceSwap.available;
+      default: return false;
     }
   };
 
@@ -608,7 +612,7 @@ export default function CreativeStudioPage() {
         )}
 
         <Tabs value={mode} onValueChange={(v) => setMode(v as GenerationMode)}>
-          <TabsList className="grid grid-cols-3 lg:grid-cols-6 h-auto">
+          <TabsList className="grid grid-cols-4 lg:grid-cols-8 h-auto">
             {([
               { id: "text-to-image", label: "Text to Image" },
               { id: "image-to-image", label: "Image to Image" },
@@ -616,11 +620,13 @@ export default function CreativeStudioPage() {
               { id: "controlnet", label: "ControlNet" },
               { id: "upscale", label: "Upscale" },
               { id: "face-swap", label: "Face Swap" },
+              { id: "sd-webui", label: "SD WebUI" },
+              { id: "comfyui", label: "ComfyUI" },
             ] as const).map(({ id, label }) => (
               <TabsTrigger
                 key={id}
                 value={id}
-                disabled={!isModeAvailable(id)}
+                disabled={id !== "sd-webui" && id !== "comfyui" && !isModeAvailable(id)}
                 className="flex items-center gap-1 text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
               >
                 {getModeIcon(id)}
@@ -629,6 +635,59 @@ export default function CreativeStudioPage() {
             ))}
           </TabsList>
 
+          {mode === "sd-webui" && (
+            <div className="mt-6">
+              <Card className="overflow-hidden">
+                <CardHeader className="py-3 bg-muted/50">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <ImageIcon className="h-5 w-5 text-orange-500" />
+                    Stable Diffusion WebUI
+                    <Badge variant="outline" className="ml-2">Full Interface</Badge>
+                  </CardTitle>
+                  <CardDescription>
+                    Complete SD WebUI with all features - training, extensions, settings, and more
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <iframe
+                    src={`http://${capabilities?.stableDiffusion?.url?.replace(/^https?:\/\//, '').replace(/\/$/, '') || process.env.NEXT_PUBLIC_WINDOWS_VM_IP || '100.118.44.102'}:7860`}
+                    className="w-full border-0"
+                    style={{ height: 'calc(100vh - 280px)', minHeight: '600px' }}
+                    title="Stable Diffusion WebUI"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {mode === "comfyui" && (
+            <div className="mt-6">
+              <Card className="overflow-hidden">
+                <CardHeader className="py-3 bg-muted/50">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-purple-500" />
+                    ComfyUI
+                    <Badge variant="outline" className="ml-2">Node-Based Workflow</Badge>
+                  </CardTitle>
+                  <CardDescription>
+                    Advanced node-based workflow editor for complex generation pipelines and video
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <iframe
+                    src={`http://${process.env.NEXT_PUBLIC_WINDOWS_VM_IP || '100.118.44.102'}:8188`}
+                    className="w-full border-0"
+                    style={{ height: 'calc(100vh - 280px)', minHeight: '600px' }}
+                    title="ComfyUI"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {mode !== "sd-webui" && mode !== "comfyui" && (
           <div className="grid lg:grid-cols-2 gap-6 mt-6">
             <div className="space-y-4">
               <Card>
@@ -1125,6 +1184,7 @@ export default function CreativeStudioPage() {
               </CardContent>
             </Card>
           </div>
+          )}
         </Tabs>
       </div>
 
