@@ -151,11 +151,19 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
+    id: "streaming",
+    label: "Streaming",
+    icon: Radio,
+    items: [
+      { href: "/stream-config", label: "Stream Bot", icon: Bot },
+      { href: "/discord-presence", label: "Discord Presence", icon: Radio },
+    ],
+  },
+  {
     id: "system",
     label: "System",
     icon: Cog,
     items: [
-      { href: "/discord-presence", label: "Discord Presence", icon: Radio },
       { href: "/self", label: "Self", icon: Wrench },
       { href: "/settings", label: "Settings", icon: Settings },
     ],
