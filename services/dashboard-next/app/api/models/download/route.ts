@@ -4,14 +4,28 @@ import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { aiModels, modelDownloads } from "@/lib/db/platform-schema";
 import { eq, desc, and } from "drizzle-orm";
+import crypto from "crypto";
 
 const WINDOWS_AGENT_URL = process.env.WINDOWS_AGENT_URL || "http://100.118.44.102:9765";
+
+// Windows model directory mapping
+const WINDOWS_MODEL_DIRS: Record<string, string> = {
+  checkpoint: "C:\\AI\\stable-diffusion-webui-forge\\models\\Stable-diffusion\\",
+  lora: "C:\\AI\\stable-diffusion-webui-forge\\models\\Lora\\",
+  vae: "C:\\AI\\stable-diffusion-webui-forge\\models\\VAE\\",
+  embedding: "C:\\AI\\stable-diffusion-webui-forge\\embeddings\\",
+  controlnet: "C:\\AI\\stable-diffusion-webui-forge\\models\\ControlNet\\",
+};
 
 async function checkAuth() {
   const cookieStore = await cookies();
   const session = cookieStore.get("session");
   if (!session?.value) return null;
   return await verifySession(session.value);
+}
+
+function getDownloadDirectory(modelType: string): string {
+  return WINDOWS_MODEL_DIRS[modelType] || WINDOWS_MODEL_DIRS.checkpoint;
 }
 
 export interface DownloadRequest {
@@ -152,11 +166,13 @@ export async function POST(request: NextRequest) {
       headers["Authorization"] = `Bearer ${agentToken}`;
     }
 
+    const downloadDirectory = getDownloadDirectory(modelType);
     const downloadPayload: any = {
       url: body.url,
       type: modelType,
       filename: body.filename,
       subfolder: body.subfolder,
+      directory: downloadDirectory,
       resume: shouldResume,
       source,
     };

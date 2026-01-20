@@ -160,23 +160,25 @@ if (-not $SkipFFmpeg) {
 if (-not $SkipComfyUI) {
     Write-Host ""
     Write-Host "═══════════════════════════════════════" -ForegroundColor Magenta
-    Write-Host " PHASE 2: ComfyUI Dependencies" -ForegroundColor Magenta
+    Write-Host " PHASE 2: ComfyUI Complete Fix" -ForegroundColor Magenta
     Write-Host "═══════════════════════════════════════" -ForegroundColor Magenta
-    Write-Log "Starting ComfyUI fixes phase"
+    Write-Log "Starting ComfyUI complete fix phase"
     
     if (-not (Test-Path $ComfyUIPath)) {
         Write-Log "ComfyUI not found at $ComfyUIPath - skipping" "WARN"
         $results.ComfyUI.Status = "NOT_FOUND"
     } else {
-        $comfyScript = Join-Path $ScriptDir "Fix-ComfyUI-Dependencies.ps1"
+        $comfyScript = Join-Path $ScriptDir "Fix-ComfyUI-Complete.ps1"
         if (Test-Path $comfyScript) {
-            $comfyArgs = @("-ComfyUIPath", $ComfyUIPath)
+            $comfyArgs = @("-ComfyUIPath", $ComfyUIPath, "-FFmpegPath", $FFmpegPath)
             if ($Force) { $comfyArgs += "-Force" }
             
             try {
+                Write-Log "Executing: $comfyScript with params: $comfyArgs"
                 & $comfyScript @comfyArgs
                 $results.ComfyUI.ExitCode = $LASTEXITCODE
                 $results.ComfyUI.Status = if ($LASTEXITCODE -eq 0) { "SUCCESS" } else { "PARTIAL" }
+                Write-Log "ComfyUI fix completed with exit code: $($LASTEXITCODE)"
             } catch {
                 Write-Log "ComfyUI script error: $_" "ERROR"
                 $results.ComfyUI.Status = "ERROR"
@@ -194,23 +196,25 @@ if (-not $SkipComfyUI) {
 if (-not $SkipStableDiffusion) {
     Write-Host ""
     Write-Host "═══════════════════════════════════════" -ForegroundColor Magenta
-    Write-Host " PHASE 3: Stable Diffusion Dependencies" -ForegroundColor Magenta
+    Write-Host " PHASE 3: Stable Diffusion Complete Fix" -ForegroundColor Magenta
     Write-Host "═══════════════════════════════════════" -ForegroundColor Magenta
-    Write-Log "Starting Stable Diffusion fixes phase"
+    Write-Log "Starting Stable Diffusion complete fix phase"
     
     if (-not (Test-Path $SDPath)) {
         Write-Log "Stable Diffusion not found at $SDPath - skipping" "WARN"
         $results.StableDiffusion.Status = "NOT_FOUND"
     } else {
-        $sdScript = Join-Path $ScriptDir "Fix-StableDiffusion-Dependencies.ps1"
+        $sdScript = Join-Path $ScriptDir "Fix-StableDiffusion-Complete.ps1"
         if (Test-Path $sdScript) {
-            $sdArgs = @("-SDPath", $SDPath, "-CudaVersion", $CudaVersion)
+            $sdArgs = @("-SDPath", $SDPath)
             if ($Force) { $sdArgs += "-Force" }
             
             try {
+                Write-Log "Executing: $sdScript with params: $sdArgs"
                 & $sdScript @sdArgs
                 $results.StableDiffusion.ExitCode = $LASTEXITCODE
                 $results.StableDiffusion.Status = if ($LASTEXITCODE -eq 0) { "SUCCESS" } else { "PARTIAL" }
+                Write-Log "Stable Diffusion fix completed with exit code: $($LASTEXITCODE)"
             } catch {
                 Write-Log "Stable Diffusion script error: $_" "ERROR"
                 $results.StableDiffusion.Status = "ERROR"

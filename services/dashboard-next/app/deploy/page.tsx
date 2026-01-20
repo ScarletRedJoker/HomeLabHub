@@ -143,6 +143,8 @@ export default function DeploymentCenterPage() {
   const [expandedEnvironments, setExpandedEnvironments] = useState<Set<Environment>>(new Set<Environment>(["linode", "ubuntu-home", "windows-vm"]));
 
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
+  const [endpoints, setEndpoints] = useState<any[]>([]);
+  const [endpointLoading, setEndpointLoading] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -218,12 +220,29 @@ export default function DeploymentCenterPage() {
     }
   }, []);
 
+  const fetchEndpoints = useCallback(async () => {
+    setEndpointLoading(true);
+    try {
+      const res = await fetch("/api/deploy/endpoints");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.hosts) {
+          setEndpoints(data.hosts);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch endpoints:", error);
+    } finally {
+      setEndpointLoading(false);
+    }
+  }, []);
+
   const fetchAll = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([fetchStatus(), fetchHistory()]);
+    await Promise.all([fetchStatus(), fetchHistory(), fetchEndpoints()]);
     setRefreshing(false);
     setLoading(false);
-  }, [fetchStatus, fetchHistory]);
+  }, [fetchStatus, fetchHistory, fetchEndpoints]);
 
   useEffect(() => {
     fetchAll();
@@ -375,6 +394,40 @@ export default function DeploymentCenterPage() {
       toast.error(error.message || "Request failed");
     } finally {
       setActionLoading(prev => ({ ...prev, verifyAll: false }));
+    }
+  };
+
+  const handleRemoteCommand = async (
+    serverId: string,
+    action: string,
+    options: Record<string, string> = {},
+    loadingKey: string,
+    successMessage: string
+  ) => {
+    setActionLoading(prev => ({ ...prev, [loadingKey]: true }));
+    try {
+      const res = await fetch("/api/deploy/remote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          serverId,
+          action,
+          ...options,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        toast.success(successMessage);
+        setTimeout(() => fetchEndpoints(), 2000);
+      } else {
+        toast.error(data.error || "Command failed");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Request failed");
+    } finally {
+      setActionLoading(prev => ({ ...prev, [loadingKey]: false }));
     }
   };
 
@@ -535,10 +588,14 @@ export default function DeploymentCenterPage() {
       </Dialog>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-4 lg:w-[500px]">
+        <TabsList className="grid grid-cols-5 lg:w-[600px]">
           <TabsTrigger value="environments" className="flex items-center gap-1">
             <Server className="h-4 w-4" />
             <span className="hidden sm:inline">Environments</span>
+          </TabsTrigger>
+          <TabsTrigger value="endpoints" className="flex items-center gap-1">
+            <Wifi className="h-4 w-4" />
+            <span className="hidden sm:inline">Endpoints</span>
           </TabsTrigger>
           <TabsTrigger value="verification" className="flex items-center gap-1">
             <Shield className="h-4 w-4" />
@@ -685,6 +742,189 @@ export default function DeploymentCenterPage() {
               );
             })}
           </div>
+        </TabsContent>
+
+        <TabsContent value="endpoints" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wifi className="h-5 w-5 text-blue-500" />
+                    Detected Endpoints
+                  </CardTitle>
+                  <CardDescription>Services and ports detected on remote hosts</CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchEndpoints}
+                  disabled={endpointLoading}
+                >
+                  {endpointLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {endpoints.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Wifi className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No endpoints detected. Click refresh to scan.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {endpoints.map((host: any) => (
+                    <Card key={host.serverId} className="border-secondary">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {host.online ? (
+                              <Wifi className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <WifiOff className="h-4 w-4 text-red-500" />
+                            )}
+                            <div>
+                              <p className="font-medium">{host.serverName}</p>
+                              <p className="text-xs text-muted-foreground">{host.serverHost}</p>
+                            </div>
+                          </div>
+                          <Badge
+                            variant={host.online ? "default" : "secondary"}
+                            className={host.online ? "bg-green-500/20 text-green-400" : ""}
+                          >
+                            {host.online ? "Online" : "Offline"}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+
+                      {host.endpoints && host.endpoints.length > 0 && (
+                        <CardContent className="space-y-3">
+                          <div className="space-y-2">
+                            {host.endpoints.map((endpoint: any, idx: number) => (
+                              <div
+                                key={idx}
+                                className="flex items-center justify-between p-2 rounded-lg bg-secondary/50 hover:bg-secondary transition"
+                              >
+                                <div className="flex items-center gap-3 flex-1">
+                                  <div className="flex-shrink-0">
+                                    {endpoint.status === "running" ? (
+                                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                    ) : (
+                                      <XCircle className="h-4 w-4 text-gray-500" />
+                                    )}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-sm font-medium truncate">
+                                      {endpoint.name}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {endpoint.protocol}
+                                      {endpoint.port > 0 ? ` on port ${endpoint.port}` : ""}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  <Badge
+                                    variant={endpoint.status === "running" ? "default" : "outline"}
+                                    className={endpoint.status === "running" ? "bg-green-500/20 text-green-400" : ""}
+                                  >
+                                    {endpoint.status}
+                                  </Badge>
+
+                                  {endpoint.status === "running" && endpoint.port > 0 && (
+                                    <>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => {
+                                          const proto = endpoint.protocol === "HTTP" ? "http" : "https";
+                                          window.open(
+                                            `${proto}://${host.serverHost}:${endpoint.port}`,
+                                            "_blank"
+                                          );
+                                        }}
+                                      >
+                                        <ExternalLink className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() =>
+                                          handleRemoteCommand(
+                                            host.serverId,
+                                            "restart-service",
+                                            { service: `docker:${endpoint.name.replace("Docker: ", "")}` },
+                                            `restart_${endpoint.name}`,
+                                            `Restarting ${endpoint.name}`
+                                          )
+                                        }
+                                        disabled={actionLoading[`restart_${endpoint.name}`]}
+                                      >
+                                        {actionLoading[`restart_${endpoint.name}`] ? (
+                                          <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                          <RotateCcw className="h-4 w-4" />
+                                        )}
+                                      </Button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {host.dockerContainers && host.dockerContainers.length > 0 && (
+                            <div className="border-t pt-3">
+                              <h4 className="text-xs font-medium text-muted-foreground uppercase mb-2 flex items-center gap-1">
+                                <Cpu className="h-3 w-3" />
+                                Docker Containers
+                              </h4>
+                              <div className="space-y-1">
+                                {host.dockerContainers.map((container: any, idx: number) => (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center justify-between p-2 rounded bg-secondary/30 text-xs"
+                                  >
+                                    <span>{container.name}</span>
+                                    <Badge
+                                      variant="outline"
+                                      className={container.status === "running" ? "bg-green-500/10 text-green-400" : ""}
+                                    >
+                                      {container.status}
+                                    </Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </CardContent>
+                      )}
+
+                      {host.error && (
+                        <CardContent>
+                          <div className="flex items-center gap-2 text-sm text-red-500">
+                            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                            <span>{host.error}</span>
+                          </div>
+                        </CardContent>
+                      )}
+
+                      {!host.error && (!host.endpoints || host.endpoints.length === 0) && (
+                        <CardContent>
+                          <p className="text-sm text-muted-foreground">No endpoints detected on this host</p>
+                        </CardContent>
+                      )}
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="verification" className="space-y-4 mt-4">

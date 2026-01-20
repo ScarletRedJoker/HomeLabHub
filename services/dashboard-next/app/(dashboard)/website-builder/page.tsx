@@ -91,7 +91,6 @@ import {
   CircleDot,
   Mail,
   Navigation,
-  Footer,
   PanelLeft,
   PanelRight,
   PanelLeftClose,
@@ -374,7 +373,7 @@ const COMPONENT_LIBRARY: ComponentDefinition[] = [
     name: "Simple Footer",
     category: "footers",
     type: "footer",
-    icon: <Footer className="h-4 w-4" />,
+    icon: <Settings2 className="h-4 w-4" />,
     defaultHtml: `<footer class="footer-simple">
   <p>&copy; 2025 Your Company. All rights reserved.</p>
 </footer>`,
@@ -386,7 +385,7 @@ const COMPONENT_LIBRARY: ComponentDefinition[] = [
     name: "Detailed Footer",
     category: "footers",
     type: "footer-detailed",
-    icon: <Footer className="h-4 w-4" />,
+    icon: <Settings2 className="h-4 w-4" />,
     defaultHtml: `<footer class="footer-detailed">
   <div class="footer-grid">
     <div class="footer-col">
@@ -851,6 +850,7 @@ export default function WebsiteBuilderPage() {
   const [projectSearch, setProjectSearch] = useState("");
   const [componentSearch, setComponentSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [leftPanelTab, setLeftPanelTab] = useState<"projects" | "discovered">("projects");
   
   const [showNewProjectDialog, setShowNewProjectDialog] = useState(false);
   const [showNewPageDialog, setShowNewPageDialog] = useState(false);
@@ -988,6 +988,87 @@ export default function WebsiteBuilderPage() {
       setImporting(false);
     }
   };
+
+  const loadDiscoveredSitePage = useCallback(async (site: DiscoveredSite) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/websites/load?siteId=${site.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.pages && data.pages.length > 0) {
+          const page = data.pages[0];
+          setSelectedPage({
+            id: `temp-${site.id}`,
+            projectId: site.id,
+            name: page.title || site.name,
+            slug: page.slug || "/",
+            title: page.title,
+            description: page.description,
+            isHomepage: true,
+            components: page.components || [],
+            pageCss: page.css,
+            pageJs: page.js,
+            sortOrder: 0,
+          });
+          setPages([{
+            id: `temp-${site.id}`,
+            projectId: site.id,
+            name: page.title || site.name,
+            slug: page.slug || "/",
+            title: page.title,
+            description: page.description,
+            isHomepage: true,
+            components: page.components || [],
+            pageCss: page.css,
+            pageJs: page.js,
+            sortOrder: 0,
+          }]);
+          pushToHistory(page.components || []);
+          toast.success(`Loaded ${site.name} for editing`);
+        }
+      } else {
+        const error = await res.json();
+        toast.error(error.error || "Failed to load site");
+      }
+    } catch (error) {
+      toast.error("Failed to load discovered site");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const saveDiscoveredSiteChanges = useCallback(async (site: DiscoveredSite) => {
+    if (!selectedPage) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/websites/save-source", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          siteId: site.id,
+          page: selectedPage.slug,
+          html: selectedPage.components
+            .map(c => c.html)
+            .join("\n\n") || selectedPage.pageCss,
+          css: selectedPage.pageCss,
+          js: selectedPage.pageJs,
+          components: selectedPage.components,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        toast.success(`${site.name} updated successfully!`);
+      } else {
+        const error = await res.json();
+        toast.error(error.error || "Failed to save changes");
+      }
+    } catch (error) {
+      toast.error("Failed to save discovered site changes");
+    } finally {
+      setSaving(false);
+    }
+  }, [selectedPage]);
 
   const handleDeploy = async () => {
     if (!selectedProject) return;
@@ -1836,10 +1917,40 @@ ${componentsHtml}
                 className="border-r bg-background overflow-hidden"
               >
                 <div className="p-3 border-b">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-sm">Projects</h3>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex gap-1 border-b border-muted">
+                      <button
+                        className={cn(
+                          "px-3 py-1.5 text-sm font-medium border-b-2 transition-colors",
+                          leftPanelTab === "projects"
+                            ? "border-primary text-primary"
+                            : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                        onClick={() => setLeftPanelTab("projects")}
+                      >
+                        Projects
+                      </button>
+                      <button
+                        className={cn(
+                          "px-3 py-1.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-1",
+                          leftPanelTab === "discovered"
+                            ? "border-primary text-primary"
+                            : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                        onClick={() => {
+                          setLeftPanelTab("discovered");
+                          if (discoveredSites.length === 0) {
+                            discoverSites();
+                          }
+                        }}
+                      >
+                        <Globe className="h-3 w-3" />
+                        Discover
+                      </button>
+                    </div>
                     <div className="flex gap-1">
-                      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+                      {leftPanelTab === "projects" && (
+                        <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
                         <DialogTrigger asChild>
                           <Button size="sm" variant="outline" className="h-7" onClick={() => discoverSites()}>
                             <Upload className="h-3 w-3 mr-1" />
@@ -1957,6 +2068,7 @@ ${componentsHtml}
                           </DialogFooter>
                         </DialogContent>
                       </Dialog>
+                      )}
                       <Dialog open={showNewProjectDialog} onOpenChange={setShowNewProjectDialog}>
                         <DialogTrigger asChild>
                           <Button size="sm" variant="outline" className="h-7">
@@ -2034,45 +2146,111 @@ ${componentsHtml}
                       </SelectContent>
                     </Select>
                   </div>
+                  </div>
                 </div>
                 <ScrollArea className="h-[calc(100vh-12rem)]">
                   <div className="p-2 space-y-1">
-                    {filteredProjects.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground text-sm">
-                        No projects found
-                      </div>
-                    ) : (
-                      filteredProjects.map((project) => (
-                        <div
-                          key={project.id}
-                          className={cn(
-                            "p-3 rounded-lg cursor-pointer transition-colors",
-                            selectedProject?.id === project.id
-                              ? "bg-primary/10 border border-primary/20"
-                              : "hover:bg-muted"
-                          )}
-                          onClick={() => fetchProjectDetails(project.id)}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="w-12 h-12 rounded bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                              <Globe className="h-5 w-5 text-primary" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm truncate">{project.name}</p>
-                              <p className="text-xs text-muted-foreground capitalize">{project.type}</p>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {new Date(project.updatedAt).toLocaleDateString()}
-                              </p>
-                            </div>
-                            <Badge
-                              variant={project.status === "published" ? "default" : "secondary"}
-                              className="text-xs"
-                            >
-                              {project.status}
-                            </Badge>
+                    {leftPanelTab === "projects" ? (
+                      <>
+                        {filteredProjects.length === 0 ? (
+                          <div className="text-center py-8 text-muted-foreground text-sm">
+                            No projects found
                           </div>
-                        </div>
-                      ))
+                        ) : (
+                          filteredProjects.map((project) => (
+                            <div
+                              key={project.id}
+                              className={cn(
+                                "p-3 rounded-lg cursor-pointer transition-colors",
+                                selectedProject?.id === project.id
+                                  ? "bg-primary/10 border border-primary/20"
+                                  : "hover:bg-muted"
+                              )}
+                              onClick={() => fetchProjectDetails(project.id)}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className="w-12 h-12 rounded bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                                  <Globe className="h-5 w-5 text-primary" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm truncate">{project.name}</p>
+                                  <p className="text-xs text-muted-foreground capitalize">{project.type}</p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {new Date(project.updatedAt).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                <Badge
+                                  variant={project.status === "published" ? "default" : "secondary"}
+                                  className="text-xs"
+                                >
+                                  {project.status}
+                                </Badge>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {discoveringInProgress ? (
+                          <div className="flex items-center justify-center h-full py-8">
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                          </div>
+                        ) : discoveredSites.length === 0 ? (
+                          <div className="text-center py-8 text-muted-foreground text-sm">
+                            <Globe className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                            <p>No sites discovered</p>
+                            <p className="text-xs mt-1">Check your deployments</p>
+                          </div>
+                        ) : (
+                          discoveredSites.map((site) => (
+                            <div
+                              key={site.id}
+                              className="p-3 rounded-lg border cursor-pointer hover:bg-muted transition-colors group"
+                              onClick={() => loadDiscoveredSitePage(site)}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className={cn(
+                                  "w-2 h-2 rounded-full mt-1.5",
+                                  site.status === "online" ? "bg-green-500" :
+                                  site.status === "offline" ? "bg-red-500" : "bg-yellow-500"
+                                )} />
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm truncate">{site.name}</p>
+                                  <p className="text-xs text-muted-foreground truncate">{site.domain}</p>
+                                </div>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100">
+                                      <MoreVertical className="h-3 w-3" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => loadDiscoveredSitePage(site)}>
+                                      <Eye className="h-3 w-3 mr-2" />
+                                      Edit Page
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => {
+                                      setSelectedSiteToImport(site);
+                                      setShowImportDialog(true);
+                                    }}>
+                                      <Upload className="h-3 w-3 mr-2" />
+                                      Import Project
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem asChild>
+                                      <a href={`https://${site.domain}`} target="_blank" rel="noopener noreferrer">
+                                        <ExternalLink className="h-3 w-3 mr-2" />
+                                        Visit Site
+                                      </a>
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </>
                     )}
                   </div>
                 </ScrollArea>

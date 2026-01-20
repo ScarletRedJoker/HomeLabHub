@@ -39,6 +39,8 @@ import {
   Megaphone,
   Link2,
   Radio,
+  Music,
+  Download,
   type LucideIcon,
 } from "lucide-react";
 import { useState } from "react";
@@ -139,6 +141,14 @@ const navGroups: NavGroup[] = [
       { href: "/code-assist", label: "Code Assist", icon: Wand2 },
       { href: "/projects", label: "Projects", icon: Layers },
       { href: "/editor", label: "Code Editor", icon: Code2 },
+    ],
+  },
+  {
+    id: "media",
+    label: "Media",
+    icon: Download,
+    items: [
+      { href: "/media-library", label: "Media Library", icon: Music },
     ],
   },
   {
