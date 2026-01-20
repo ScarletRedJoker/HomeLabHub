@@ -1,17 +1,26 @@
 /**
  * Creative Capabilities API
  * GET /api/creative/capabilities - Get available creative features and SD status
+ * GET /api/creative/capabilities?refresh=true - Force refresh SD status (bypass cache)
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { aiOrchestrator } from "@/lib/ai-orchestrator";
 
-export async function GET() {
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+export async function GET(request: NextRequest) {
   try {
+    const refresh = request.nextUrl.searchParams.get("refresh") === "true";
     const localAIOnly = process.env.LOCAL_AI_ONLY !== "false";
 
+    if (refresh) {
+      await aiOrchestrator.refreshEndpoints();
+    }
+
     const [sdStatus, advancedCapabilities] = await Promise.all([
-      aiOrchestrator.getSDStatus(),
+      aiOrchestrator.getSDStatus(refresh ? 3 : 2),
       aiOrchestrator.getAdvancedCapabilities(),
     ]);
 
