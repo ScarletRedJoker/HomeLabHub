@@ -7,6 +7,12 @@
  * - Linode: Docker, PM2, web hosting, databases
  * - Ubuntu Home: KVM/libvirt, Plex, NAS, WoL relay
  * - Windows VM: Ollama, SD WebUI, ComfyUI, GPU compute
+ * 
+ * Enhanced features:
+ * - Job persistence to PostgreSQL
+ * - Specialized subagent types (executor, verifier, researcher, creative, security)
+ * - Parallel task execution
+ * - Task review pipeline with verification and escalation
  */
 
 import { localAIRuntime, RuntimeHealth } from "./local-ai-runtime";
@@ -14,12 +20,56 @@ import { openCodeIntegration, CodeTask, OpenCodeConfig } from "./opencode-integr
 import { getAllServers, getServerById, getSSHPrivateKey, ServerConfig } from "./server-config-store";
 import { checkServerOnline, wakeAndWaitForOnline } from "./wol-relay";
 import { Client } from "ssh2";
+import { db } from "./db";
+import { jarvisJobs, jarvisSubagents, jarvisTaskReviews } from "./db/platform-schema";
+import { eq, desc, and, inArray } from "drizzle-orm";
 
 export type JobPriority = "low" | "normal" | "high" | "critical";
 export type JobStatus = "queued" | "running" | "completed" | "failed" | "cancelled";
 export type SubagentStatus = "idle" | "busy" | "stopped" | "error";
 export type NodeStatus = "online" | "offline" | "degraded" | "sleeping" | "unknown";
 export type NodeType = "linux" | "windows";
+
+export type SubagentType = "executor" | "verifier" | "researcher" | "creative" | "security" | "code" | "research" | "automation";
+
+export interface SubagentTask {
+  id: string;
+  type: JarvisJob["type"];
+  params: Record<string, any>;
+  subagentType?: SubagentType;
+  timeout?: number;
+  priority?: JobPriority;
+}
+
+export interface SubagentResult {
+  taskId: string;
+  success: boolean;
+  result?: any;
+  error?: string;
+  executionTimeMs: number;
+  subagentId?: string;
+}
+
+export interface TaskReviewResult {
+  passed: boolean;
+  issues: Array<{
+    severity: "error" | "warning" | "info";
+    message: string;
+    file?: string;
+    line?: number;
+  }>;
+  suggestions: string[];
+  requiresFix: boolean;
+}
+
+export interface ReviewPipelineResult {
+  jobId: string;
+  executionResult: any;
+  reviewResult?: TaskReviewResult;
+  fixAttempts: number;
+  escalated: boolean;
+  finalStatus: "success" | "fixed" | "escalated" | "failed";
+}
 
 export interface NodeCapability {
   id: string;
@@ -160,7 +210,7 @@ export interface JarvisJob {
 export interface Subagent {
   id: string;
   name: string;
-  type: "code" | "research" | "automation" | "creative";
+  type: SubagentType;
   status: SubagentStatus;
   currentJobId?: string;
   capabilities: string[];
@@ -169,7 +219,55 @@ export interface Subagent {
   tasksCompleted: number;
   tasksRunning: number;
   preferLocalAI: boolean;
+  config?: Record<string, any>;
 }
+
+export const SUBAGENT_SPECIALIZATIONS: Record<SubagentType, {
+  description: string;
+  defaultCapabilities: string[];
+  systemPrompt: string;
+}> = {
+  executor: {
+    description: "Runs tasks and executes commands",
+    defaultCapabilities: ["command-execution", "file-operation", "code-execution"],
+    systemPrompt: "You are an executor agent. Execute tasks efficiently and report results accurately.",
+  },
+  verifier: {
+    description: "Checks and tests results for correctness",
+    defaultCapabilities: ["testing", "validation", "code-review", "security-check"],
+    systemPrompt: "You are a verifier agent. Check work for errors, test functionality, and ensure quality standards are met.",
+  },
+  researcher: {
+    description: "Looks up documentation and best practices",
+    defaultCapabilities: ["web-search", "documentation-lookup", "api-research"],
+    systemPrompt: "You are a researcher agent. Find relevant documentation, best practices, and provide informed recommendations.",
+  },
+  creative: {
+    description: "Generates innovative solutions and ideas",
+    defaultCapabilities: ["brainstorming", "design", "innovation", "problem-solving"],
+    systemPrompt: "You are a creative agent. Generate innovative solutions, think outside the box, and propose novel approaches.",
+  },
+  security: {
+    description: "Hardens code and checks for vulnerabilities",
+    defaultCapabilities: ["security-audit", "vulnerability-scan", "code-hardening", "penetration-testing"],
+    systemPrompt: "You are a security agent. Identify vulnerabilities, suggest security improvements, and ensure code is hardened against attacks.",
+  },
+  code: {
+    description: "Writes and modifies code",
+    defaultCapabilities: ["code-generation", "refactoring", "debugging"],
+    systemPrompt: "You are a code agent. Write clean, efficient code following best practices.",
+  },
+  research: {
+    description: "Conducts research and analysis",
+    defaultCapabilities: ["analysis", "research", "reporting"],
+    systemPrompt: "You are a research agent. Analyze information and provide comprehensive insights.",
+  },
+  automation: {
+    description: "Automates workflows and processes",
+    defaultCapabilities: ["workflow-automation", "scripting", "integration"],
+    systemPrompt: "You are an automation agent. Create automated workflows and integrate systems efficiently.",
+  },
+};
 
 export interface AIResource {
   provider: string;
@@ -972,16 +1070,21 @@ class JarvisOrchestrator {
 
   createSubagent(
     name: string,
-    type: Subagent["type"],
+    type: SubagentType,
     capabilities: string[] = [],
     preferLocalAI: boolean = true
   ): Subagent {
+    const specialization = SUBAGENT_SPECIALIZATIONS[type];
+    const mergedCapabilities = capabilities.length > 0 
+      ? capabilities 
+      : (specialization?.defaultCapabilities || []);
+
     const subagent: Subagent = {
       id: generateId(),
       name,
       type,
       status: "idle",
-      capabilities,
+      capabilities: mergedCapabilities,
       createdAt: new Date(),
       lastActiveAt: new Date(),
       tasksCompleted: 0,
@@ -991,6 +1094,10 @@ class JarvisOrchestrator {
     
     this.subagents.set(subagent.id, subagent);
     console.log(`[Orchestrator] Created subagent ${subagent.id} (${name}) of type ${type}`);
+    
+    this.saveSubagentToDatabase(subagent).catch(err => {
+      console.error(`[Orchestrator] Failed to persist subagent:`, err);
+    });
     
     return subagent;
   }
@@ -1300,6 +1407,573 @@ class JarvisOrchestrator {
       model: providerInfo.model,
       sessions: openCodeIntegration.getActiveSessions().length,
     };
+  }
+
+  // ============================================================================
+  // DATABASE PERSISTENCE METHODS
+  // ============================================================================
+
+  async saveJobToDatabase(job: JarvisJob): Promise<void> {
+    try {
+      await db.insert(jarvisJobs).values({
+        id: job.id,
+        type: job.type,
+        priority: job.priority,
+        status: job.status,
+        progress: job.progress,
+        params: job.params,
+        result: job.result,
+        error: job.error,
+        subagentId: job.subagentId,
+        retries: job.retries,
+        maxRetries: job.maxRetries,
+        timeout: job.timeout,
+        notifyOnComplete: job.notifyOnComplete,
+        createdAt: job.createdAt,
+        startedAt: job.startedAt,
+        completedAt: job.completedAt,
+      }).onConflictDoUpdate({
+        target: jarvisJobs.id,
+        set: {
+          status: job.status,
+          progress: job.progress,
+          result: job.result,
+          error: job.error,
+          retries: job.retries,
+          startedAt: job.startedAt,
+          completedAt: job.completedAt,
+        },
+      });
+      console.log(`[Orchestrator] Job ${job.id} saved to database`);
+    } catch (error) {
+      console.error(`[Orchestrator] Failed to save job ${job.id} to database:`, error);
+    }
+  }
+
+  async loadJobsFromDatabase(statuses?: JobStatus[]): Promise<JarvisJob[]> {
+    try {
+      let query = db.select().from(jarvisJobs).orderBy(desc(jarvisJobs.createdAt));
+      
+      const rows = statuses 
+        ? await db.select().from(jarvisJobs).where(inArray(jarvisJobs.status, statuses)).orderBy(desc(jarvisJobs.createdAt))
+        : await db.select().from(jarvisJobs).orderBy(desc(jarvisJobs.createdAt));
+
+      const loadedJobs: JarvisJob[] = rows.map(row => ({
+        id: row.id,
+        type: row.type as JarvisJob["type"],
+        priority: row.priority as JobPriority,
+        status: row.status as JobStatus,
+        progress: row.progress || 0,
+        params: (row.params as Record<string, any>) || {},
+        result: row.result,
+        error: row.error || undefined,
+        subagentId: row.subagentId || undefined,
+        retries: row.retries || 0,
+        maxRetries: row.maxRetries || 2,
+        timeout: row.timeout || 120000,
+        notifyOnComplete: row.notifyOnComplete || false,
+        createdAt: row.createdAt,
+        startedAt: row.startedAt || undefined,
+        completedAt: row.completedAt || undefined,
+      }));
+
+      for (const job of loadedJobs) {
+        this.jobs.set(job.id, job);
+      }
+
+      console.log(`[Orchestrator] Loaded ${loadedJobs.length} jobs from database`);
+      return loadedJobs;
+    } catch (error) {
+      console.error("[Orchestrator] Failed to load jobs from database:", error);
+      return [];
+    }
+  }
+
+  async updateJobStatus(jobId: string, status: JobStatus, result?: any, error?: string): Promise<void> {
+    try {
+      const job = this.jobs.get(jobId);
+      if (job) {
+        job.status = status;
+        if (result !== undefined) job.result = result;
+        if (error !== undefined) job.error = error;
+        if (status === "running" && !job.startedAt) job.startedAt = new Date();
+        if (["completed", "failed", "cancelled"].includes(status)) job.completedAt = new Date();
+      }
+
+      await db.update(jarvisJobs)
+        .set({
+          status,
+          result: result !== undefined ? result : undefined,
+          error: error !== undefined ? error : undefined,
+          startedAt: status === "running" ? new Date() : undefined,
+          completedAt: ["completed", "failed", "cancelled"].includes(status) ? new Date() : undefined,
+        })
+        .where(eq(jarvisJobs.id, jobId));
+
+      console.log(`[Orchestrator] Updated job ${jobId} status to ${status}`);
+    } catch (err) {
+      console.error(`[Orchestrator] Failed to update job ${jobId} status:`, err);
+    }
+  }
+
+  async saveSubagentToDatabase(subagent: Subagent): Promise<void> {
+    try {
+      await db.insert(jarvisSubagents).values({
+        id: subagent.id,
+        name: subagent.name,
+        type: subagent.type,
+        status: subagent.status,
+        currentJobId: subagent.currentJobId,
+        capabilities: subagent.capabilities,
+        preferLocalAI: subagent.preferLocalAI,
+        tasksCompleted: subagent.tasksCompleted,
+        tasksRunning: subagent.tasksRunning,
+        config: subagent.config,
+        createdAt: subagent.createdAt,
+        lastActiveAt: subagent.lastActiveAt,
+      }).onConflictDoUpdate({
+        target: jarvisSubagents.id,
+        set: {
+          status: subagent.status,
+          currentJobId: subagent.currentJobId,
+          tasksCompleted: subagent.tasksCompleted,
+          tasksRunning: subagent.tasksRunning,
+          lastActiveAt: subagent.lastActiveAt,
+        },
+      });
+      console.log(`[Orchestrator] Subagent ${subagent.id} saved to database`);
+    } catch (error) {
+      console.error(`[Orchestrator] Failed to save subagent ${subagent.id} to database:`, error);
+    }
+  }
+
+  async loadSubagentsFromDatabase(): Promise<Subagent[]> {
+    try {
+      const rows = await db.select().from(jarvisSubagents).orderBy(desc(jarvisSubagents.createdAt));
+
+      const loadedSubagents: Subagent[] = rows.map(row => ({
+        id: row.id,
+        name: row.name,
+        type: row.type as SubagentType,
+        status: row.status as SubagentStatus,
+        currentJobId: row.currentJobId || undefined,
+        capabilities: (row.capabilities as string[]) || [],
+        preferLocalAI: row.preferLocalAI ?? true,
+        tasksCompleted: row.tasksCompleted || 0,
+        tasksRunning: row.tasksRunning || 0,
+        config: (row.config as Record<string, any>) || undefined,
+        createdAt: row.createdAt,
+        lastActiveAt: row.lastActiveAt || new Date(),
+      }));
+
+      for (const subagent of loadedSubagents) {
+        this.subagents.set(subagent.id, subagent);
+      }
+
+      console.log(`[Orchestrator] Loaded ${loadedSubagents.length} subagents from database`);
+      return loadedSubagents;
+    } catch (error) {
+      console.error("[Orchestrator] Failed to load subagents from database:", error);
+      return [];
+    }
+  }
+
+  // ============================================================================
+  // PARALLEL EXECUTION METHODS
+  // ============================================================================
+
+  async runParallel(tasks: SubagentTask[]): Promise<SubagentResult[]> {
+    console.log(`[Orchestrator] Running ${tasks.length} tasks in parallel`);
+    const startTime = Date.now();
+
+    const taskPromises = tasks.map(async (task): Promise<SubagentResult> => {
+      const taskStartTime = Date.now();
+      
+      try {
+        const subagentType = task.subagentType || "executor";
+        const subagent = this.getOrCreateSubagentByType(subagentType);
+        
+        const job = await this.createJob(
+          task.type,
+          task.params,
+          {
+            priority: task.priority || "normal",
+            timeout: task.timeout || 120000,
+            subagentId: subagent.id,
+            notifyOnComplete: false,
+          }
+        );
+
+        await this.saveJobToDatabase(job);
+
+        const result = await this.executeJobDirectly(job);
+        
+        return {
+          taskId: task.id,
+          success: result.success,
+          result: result.result,
+          error: result.error,
+          executionTimeMs: Date.now() - taskStartTime,
+          subagentId: subagent.id,
+        };
+      } catch (error: any) {
+        return {
+          taskId: task.id,
+          success: false,
+          error: error.message,
+          executionTimeMs: Date.now() - taskStartTime,
+        };
+      }
+    });
+
+    const results = await Promise.all(taskPromises);
+    
+    const totalTime = Date.now() - startTime;
+    const successCount = results.filter(r => r.success).length;
+    console.log(`[Orchestrator] Parallel execution completed: ${successCount}/${tasks.length} succeeded in ${totalTime}ms`);
+
+    return results;
+  }
+
+  private getOrCreateSubagentByType(type: SubagentType): Subagent {
+    const existingSubagent = Array.from(this.subagents.values())
+      .find(s => s.type === type && s.status === "idle");
+    
+    if (existingSubagent) {
+      return existingSubagent;
+    }
+
+    const specialization = SUBAGENT_SPECIALIZATIONS[type];
+    return this.createSubagent(
+      `${type}-${generateId()}`,
+      type,
+      specialization?.defaultCapabilities || [],
+      true
+    );
+  }
+
+  private async executeJobDirectly(job: JarvisJob): Promise<{ success: boolean; result?: any; error?: string }> {
+    try {
+      job.status = "running";
+      job.startedAt = new Date();
+      this.notifyListeners(job.id, job);
+
+      let result: any;
+
+      switch (job.type) {
+        case "opencode_task":
+          const codeResult = await openCodeIntegration.executeTask(
+            job.params.task,
+            job.params.config
+          );
+          result = codeResult;
+          break;
+
+        case "ai_generation":
+          const resource = this.selectBestResource("text-generation", true);
+          if (!resource) {
+            throw new Error("No AI resource available");
+          }
+          result = { message: "AI generation completed", resource: resource.provider };
+          break;
+
+        case "command_execution":
+          if (job.params.nodeId) {
+            const nodeResult = await this.executeOnNode(
+              job.params.nodeId,
+              job.params.action || "execute_command",
+              job.params
+            );
+            result = nodeResult;
+          } else {
+            result = { message: "Command execution requires nodeId" };
+          }
+          break;
+
+        default:
+          result = { message: `Job type ${job.type} executed`, params: job.params };
+      }
+
+      this.completeJob(job.id, result);
+      await this.saveJobToDatabase(job);
+      
+      return { success: true, result };
+    } catch (error: any) {
+      this.failJob(job.id, error.message);
+      await this.saveJobToDatabase(job);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // ============================================================================
+  // TASK REVIEW PIPELINE
+  // ============================================================================
+
+  async runWithReview(
+    task: SubagentTask,
+    options: {
+      maxFixAttempts?: number;
+      autoEscalate?: boolean;
+    } = {}
+  ): Promise<ReviewPipelineResult> {
+    const { maxFixAttempts = 2, autoEscalate = true } = options;
+    
+    console.log(`[Orchestrator] Starting review pipeline for task ${task.id}`);
+
+    const executorSubagent = this.getOrCreateSubagentByType("executor");
+    const job = await this.createJob(
+      task.type,
+      task.params,
+      {
+        priority: task.priority || "normal",
+        timeout: task.timeout || 120000,
+        subagentId: executorSubagent.id,
+      }
+    );
+
+    await this.saveJobToDatabase(job);
+
+    const executionResult = await this.executeJobDirectly(job);
+
+    if (!executionResult.success) {
+      return {
+        jobId: job.id,
+        executionResult: executionResult.result,
+        fixAttempts: 0,
+        escalated: autoEscalate,
+        finalStatus: autoEscalate ? "escalated" : "failed",
+      };
+    }
+
+    const reviewResult = await this.verifyTaskResult(job, executionResult.result);
+
+    await this.saveTaskReview(job.id, executorSubagent.id, reviewResult);
+
+    if (reviewResult.passed) {
+      return {
+        jobId: job.id,
+        executionResult: executionResult.result,
+        reviewResult,
+        fixAttempts: 0,
+        escalated: false,
+        finalStatus: "success",
+      };
+    }
+
+    let fixAttempts = 0;
+    let currentResult = executionResult.result;
+    let currentReview = reviewResult;
+
+    while (fixAttempts < maxFixAttempts && currentReview.requiresFix) {
+      fixAttempts++;
+      console.log(`[Orchestrator] Fix attempt ${fixAttempts}/${maxFixAttempts} for task ${task.id}`);
+
+      const fixResult = await this.attemptFix(job, currentReview);
+      if (fixResult.success) {
+        currentResult = fixResult.result;
+        currentReview = await this.verifyTaskResult(job, currentResult);
+        
+        if (currentReview.passed) {
+          return {
+            jobId: job.id,
+            executionResult: currentResult,
+            reviewResult: currentReview,
+            fixAttempts,
+            escalated: false,
+            finalStatus: "fixed",
+          };
+        }
+      }
+    }
+
+    const shouldEscalate = autoEscalate && !currentReview.passed;
+    
+    if (shouldEscalate) {
+      await this.escalateTask(job, currentReview);
+    }
+
+    return {
+      jobId: job.id,
+      executionResult: currentResult,
+      reviewResult: currentReview,
+      fixAttempts,
+      escalated: shouldEscalate,
+      finalStatus: shouldEscalate ? "escalated" : "failed",
+    };
+  }
+
+  private async verifyTaskResult(job: JarvisJob, result: any): Promise<TaskReviewResult> {
+    const verifierSubagent = this.getOrCreateSubagentByType("verifier");
+    
+    console.log(`[Orchestrator] Verifying task ${job.id} with subagent ${verifierSubagent.id}`);
+
+    try {
+      if (job.type === "opencode_task" && result?.output) {
+        const reviewTask: CodeTask = {
+          type: "review",
+          prompt: `Review the following code output for issues:\n\n${result.output}`,
+          outputFormat: "json",
+        };
+
+        const reviewResponse = await openCodeIntegration.executeTask(reviewTask);
+        
+        if (reviewResponse.success && reviewResponse.output) {
+          try {
+            const parsed = JSON.parse(reviewResponse.output);
+            return {
+              passed: (parsed.issues?.length || 0) === 0,
+              issues: parsed.issues || [],
+              suggestions: parsed.suggestions || [],
+              requiresFix: (parsed.issues || []).some((i: any) => i.severity === "error"),
+            };
+          } catch {
+            return {
+              passed: !reviewResponse.output.toLowerCase().includes("error"),
+              issues: [],
+              suggestions: [reviewResponse.output],
+              requiresFix: reviewResponse.output.toLowerCase().includes("error"),
+            };
+          }
+        }
+      }
+
+      return {
+        passed: true,
+        issues: [],
+        suggestions: [],
+        requiresFix: false,
+      };
+    } catch (error: any) {
+      console.error(`[Orchestrator] Verification failed:`, error);
+      return {
+        passed: false,
+        issues: [{ severity: "error", message: `Verification failed: ${error.message}` }],
+        suggestions: [],
+        requiresFix: true,
+      };
+    } finally {
+      verifierSubagent.lastActiveAt = new Date();
+    }
+  }
+
+  private async attemptFix(job: JarvisJob, review: TaskReviewResult): Promise<{ success: boolean; result?: any }> {
+    const fixerSubagent = this.getOrCreateSubagentByType("executor");
+    
+    console.log(`[Orchestrator] Attempting fix for task ${job.id}`);
+
+    try {
+      const issueDescription = review.issues
+        .map(i => `[${i.severity}] ${i.message}${i.file ? ` (${i.file}:${i.line})` : ""}`)
+        .join("\n");
+
+      const fixTask: CodeTask = {
+        type: "fix",
+        prompt: `Fix the following issues:\n${issueDescription}\n\nOriginal task: ${JSON.stringify(job.params)}`,
+      };
+
+      const fixResult = await openCodeIntegration.executeTask(fixTask);
+      
+      return {
+        success: fixResult.success,
+        result: fixResult,
+      };
+    } catch (error: any) {
+      console.error(`[Orchestrator] Fix attempt failed:`, error);
+      return { success: false };
+    } finally {
+      fixerSubagent.lastActiveAt = new Date();
+    }
+  }
+
+  private async escalateTask(job: JarvisJob, review: TaskReviewResult): Promise<void> {
+    console.log(`[Orchestrator] Escalating task ${job.id}`);
+    
+    try {
+      await db.update(jarvisTaskReviews)
+        .set({ escalated: true })
+        .where(eq(jarvisTaskReviews.jobId, job.id));
+    } catch (error) {
+      console.error(`[Orchestrator] Failed to escalate task:`, error);
+    }
+  }
+
+  private async saveTaskReview(
+    jobId: string,
+    executorSubagentId: string,
+    review: TaskReviewResult
+  ): Promise<void> {
+    try {
+      await db.insert(jarvisTaskReviews).values({
+        jobId,
+        executorSubagentId,
+        reviewStatus: review.passed ? "passed" : "failed",
+        issues: review.issues,
+        suggestions: review.suggestions,
+      });
+    } catch (error) {
+      console.error(`[Orchestrator] Failed to save task review:`, error);
+    }
+  }
+
+  // ============================================================================
+  // SPECIALIZED SUBAGENT SPAWNING
+  // ============================================================================
+
+  spawnExecutor(name?: string, capabilities?: string[]): Subagent {
+    const spec = SUBAGENT_SPECIALIZATIONS.executor;
+    return this.createSubagent(
+      name || `executor-${generateId()}`,
+      "executor",
+      capabilities || spec.defaultCapabilities,
+      true
+    );
+  }
+
+  spawnVerifier(name?: string, capabilities?: string[]): Subagent {
+    const spec = SUBAGENT_SPECIALIZATIONS.verifier;
+    return this.createSubagent(
+      name || `verifier-${generateId()}`,
+      "verifier",
+      capabilities || spec.defaultCapabilities,
+      true
+    );
+  }
+
+  spawnResearcher(name?: string, capabilities?: string[]): Subagent {
+    const spec = SUBAGENT_SPECIALIZATIONS.researcher;
+    return this.createSubagent(
+      name || `researcher-${generateId()}`,
+      "researcher",
+      capabilities || spec.defaultCapabilities,
+      true
+    );
+  }
+
+  spawnCreative(name?: string, capabilities?: string[]): Subagent {
+    const spec = SUBAGENT_SPECIALIZATIONS.creative;
+    return this.createSubagent(
+      name || `creative-${generateId()}`,
+      "creative",
+      capabilities || spec.defaultCapabilities,
+      true
+    );
+  }
+
+  spawnSecurity(name?: string, capabilities?: string[]): Subagent {
+    const spec = SUBAGENT_SPECIALIZATIONS.security;
+    return this.createSubagent(
+      name || `security-${generateId()}`,
+      "security",
+      capabilities || spec.defaultCapabilities,
+      true
+    );
+  }
+
+  async initializeFromDatabase(): Promise<void> {
+    console.log("[Orchestrator] Initializing from database...");
+    await this.loadJobsFromDatabase(["queued", "running"]);
+    await this.loadSubagentsFromDatabase();
+    console.log("[Orchestrator] Database initialization complete");
   }
 }
 

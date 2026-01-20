@@ -140,7 +140,8 @@ class AIFallbackManager {
 
   async selectProvider(
     requestedProvider: "auto" | "ollama" | "openai" | "custom",
-    customEndpoint?: string
+    customEndpoint?: string,
+    localAIOnly: boolean = false
   ): Promise<FallbackDecision> {
     this.metrics.totalRequests++;
 
@@ -153,6 +154,9 @@ class AIFallbackManager {
     }
 
     if (requestedProvider === "openai") {
+      if (localAIOnly) {
+        console.log("[AIFallback] OpenAI explicitly requested but LOCAL_AI_ONLY is enabled - allowing explicit request");
+      }
       this.metrics.openaiRequests++;
       return {
         provider: "openai",
@@ -162,18 +166,24 @@ class AIFallbackManager {
     }
 
     const ollamaHealth = await this.checkOllamaHealth();
-    const openaiHealth = await this.checkOpenAIHealth();
 
-    if (requestedProvider === "ollama") {
+    if (requestedProvider === "ollama" || localAIOnly) {
       if (ollamaHealth.status === "online" || ollamaHealth.status === "degraded") {
         this.metrics.ollamaRequests++;
         return {
           provider: "ollama",
           isFallback: false,
-          reason: ollamaHealth.status === "degraded" ? "Ollama available (degraded)" : "Ollama online",
+          reason: ollamaHealth.status === "degraded" 
+            ? "Ollama available (degraded)" 
+            : localAIOnly ? "Ollama online (local-only mode)" : "Ollama online",
         };
       }
 
+      if (localAIOnly) {
+        throw new Error("Local AI is offline. Please start Ollama on your Windows VM or set LOCAL_AI_ONLY=false to allow cloud fallback.");
+      }
+
+      const openaiHealth = await this.checkOpenAIHealth();
       if (openaiHealth.status === "online") {
         this.recordFallback("Ollama requested but offline");
         return {
@@ -205,6 +215,7 @@ class AIFallbackManager {
       };
     }
 
+    const openaiHealth = await this.checkOpenAIHealth();
     if (openaiHealth.status === "online") {
       this.metrics.openaiRequests++;
       return {

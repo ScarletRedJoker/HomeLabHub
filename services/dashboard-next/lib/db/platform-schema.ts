@@ -704,3 +704,59 @@ export const discordPresenceSettings = pgTable("discord_presence_settings", {
 
 export type DiscordPresenceSettings = typeof discordPresenceSettings.$inferSelect;
 export type NewDiscordPresenceSettings = typeof discordPresenceSettings.$inferInsert;
+
+export const jarvisJobs = pgTable("jarvis_jobs", {
+  id: varchar("id", { length: 50 }).primaryKey(),
+  type: varchar("type", { length: 50 }).notNull(),
+  priority: varchar("priority", { length: 20 }).notNull().default("normal"),
+  status: varchar("status", { length: 20 }).notNull().default("queued"),
+  progress: integer("progress").default(0),
+  params: jsonb("params").notNull().default({}),
+  result: jsonb("result"),
+  error: text("error"),
+  subagentId: varchar("subagent_id", { length: 50 }),
+  parentJobId: varchar("parent_job_id", { length: 50 }),
+  retries: integer("retries").default(0),
+  maxRetries: integer("max_retries").default(2),
+  timeout: integer("timeout").default(120000),
+  notifyOnComplete: boolean("notify_on_complete").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+});
+
+export const jarvisSubagents = pgTable("jarvis_subagents", {
+  id: varchar("id", { length: 50 }).primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  type: varchar("type", { length: 50 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("idle"),
+  currentJobId: varchar("current_job_id", { length: 50 }),
+  capabilities: text("capabilities").array().default([]),
+  preferLocalAI: boolean("prefer_local_ai").default(true),
+  tasksCompleted: integer("tasks_completed").default(0),
+  tasksRunning: integer("tasks_running").default(0),
+  config: jsonb("config"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastActiveAt: timestamp("last_active_at").defaultNow(),
+});
+
+export const jarvisTaskReviews = pgTable("jarvis_task_reviews", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id", { length: 50 }).references(() => jarvisJobs.id).notNull(),
+  executorSubagentId: varchar("executor_subagent_id", { length: 50 }),
+  verifierSubagentId: varchar("verifier_subagent_id", { length: 50 }),
+  reviewStatus: varchar("review_status", { length: 20 }).notNull().default("pending"),
+  issues: jsonb("issues").default([]),
+  suggestions: jsonb("suggestions").default([]),
+  fixAttempts: integer("fix_attempts").default(0),
+  escalated: boolean("escalated").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+});
+
+export type JarvisJob = typeof jarvisJobs.$inferSelect;
+export type NewJarvisJob = typeof jarvisJobs.$inferInsert;
+export type JarvisSubagent = typeof jarvisSubagents.$inferSelect;
+export type NewJarvisSubagent = typeof jarvisSubagents.$inferInsert;
+export type JarvisTaskReview = typeof jarvisTaskReviews.$inferSelect;
+export type NewJarvisTaskReview = typeof jarvisTaskReviews.$inferInsert;

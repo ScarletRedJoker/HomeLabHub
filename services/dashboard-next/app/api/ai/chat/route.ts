@@ -10,6 +10,8 @@ import { demoMode } from "@/lib/demo-mode";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const LOCAL_AI_ONLY = process.env.LOCAL_AI_ONLY !== "false";
+
 type AIProvider = "openai" | "ollama" | "auto" | "custom";
 
 interface ChatRequestBody {
@@ -231,10 +233,12 @@ function detectToolIntent(message: string): boolean {
 async function selectProvider(requestedProvider: AIProvider): Promise<{ provider: "openai" | "ollama"; fallback: boolean; reason: string }> {
   try {
     const decision = await aiFallbackManager.selectProvider(
-      requestedProvider === "custom" ? "openai" : requestedProvider
+      requestedProvider === "custom" ? "openai" : requestedProvider,
+      undefined,
+      LOCAL_AI_ONLY
     );
     
-    console.log(`[AIChat] Provider selection: ${decision.provider} (fallback: ${decision.isFallback}, reason: ${decision.reason})`);
+    console.log(`[AIChat] Provider selection: ${decision.provider} (fallback: ${decision.isFallback}, reason: ${decision.reason}, localOnly: ${LOCAL_AI_ONLY})`);
     
     return {
       provider: decision.provider === "custom" ? "openai" : decision.provider,
@@ -243,6 +247,14 @@ async function selectProvider(requestedProvider: AIProvider): Promise<{ provider
     };
   } catch (error: any) {
     console.error(`[AIChat] Provider selection failed: ${error.message}`);
+    
+    if (LOCAL_AI_ONLY && requestedProvider !== "openai") {
+      const ollamaOnline = await localAIRuntime.isOllamaOnline();
+      if (!ollamaOnline.online) {
+        throw new Error("Local AI is offline. Please start Ollama on your Windows VM or set LOCAL_AI_ONLY=false to allow cloud fallback.");
+      }
+      return { provider: "ollama", fallback: false, reason: "Ollama available (local-only mode)" };
+    }
     
     if (requestedProvider === "openai") {
       return { provider: "openai", fallback: false, reason: "OpenAI explicitly requested" };
@@ -295,12 +307,12 @@ You are a powerful, autonomous AI development assistant with multi-agent orchest
 - Home Server: Plex (32400), Home Assistant (8123), MinIO, Tailscale, Ollama, Stable Diffusion
 - Windows VM (GPU): Ollama LLMs, ComfyUI, Stable Diffusion WebUI - primary local AI
 
-**LOCAL-FIRST AI POLICY:**
-Always prefer local AI resources when available:
-1. Check local GPU status with check_ai_services
-2. Use Ollama for text generation when online
-3. Use local Stable Diffusion for images when online
-4. Fall back to cloud (OpenAI, Replicate) only when local is unavailable
+**LOCAL-ONLY AI POLICY:**
+This instance runs in LOCAL-ONLY mode - cloud AI fallback is disabled:
+1. All text generation uses Ollama on the Windows VM (GPU)
+2. All image generation uses local Stable Diffusion
+3. If local AI is offline, users must start the Windows VM - NO cloud fallback
+4. Use check_ai_services to verify local AI status before operations
 
 **WHEN TO USE TOOLS:**
 - "Generate an image of X" → generate_image (auto-selects local SD or DALL-E)
