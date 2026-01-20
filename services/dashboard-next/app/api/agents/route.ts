@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySession } from "@/lib/session";
 import { cookies } from "next/headers";
-import { aiOrchestrator } from "@/lib/ai-orchestrator";
 import { db } from "@/lib/db";
-import { agents, agentExecutions } from "@/lib/db/platform-schema";
-import { eq } from "drizzle-orm";
+import { jarvisAgents, jarvisAgentExecutions } from "@/lib/db/platform-schema";
+import { eq, and, sql, count, desc, ilike, inArray } from "drizzle-orm";
 
 async function checkAuth() {
   const cookieStore = await cookies();
@@ -13,76 +12,89 @@ async function checkAuth() {
   return await verifySession(session.value);
 }
 
-interface AgentProfile {
-  id: string;
+export interface JarvisAgentConfig {
+  id: number;
   name: string;
-  description: string;
-  systemPrompt: string;
-  model: string;
-  temperature: number;
+  persona: string;
+  description: string | null;
+  capabilities: string[];
   tools: string[];
-  isActive: boolean;
-  isBuiltin?: boolean;
+  modelPreference: string | null;
+  temperature: number;
+  maxTokens: number | null;
+  nodeAffinity: string | null;
+  isActive: boolean | null;
+  isSystem: boolean | null;
+  createdBy: string | null;
+  createdAt: Date;
+  updatedAt: Date | null;
 }
 
-const BUILTIN_AGENTS: AgentProfile[] = [
+export const BUILTIN_AGENT_CONFIGS: Omit<JarvisAgentConfig, "id" | "createdAt" | "updatedAt">[] = [
   {
-    id: "jarvis",
-    name: "Jarvis",
-    description: "General-purpose AI assistant for Nebula Command",
-    systemPrompt: `You are Jarvis, the AI assistant for Nebula Command - a comprehensive homelab management platform. You help users with:
-- Managing Docker containers and services
-- Troubleshooting deployment issues
+    name: "jarvis",
+    persona: `You are Jarvis, the AI assistant for Nebula Command - a comprehensive homelab management platform. You help users with:
+- Managing Docker containers and services across multiple servers
+- Troubleshooting deployment issues and infrastructure problems
 - Writing and debugging code
 - Automating tasks and workflows
 - Creative content generation
 
 You have access to the homelab infrastructure and can provide specific, actionable advice. Be concise but thorough.`,
-    model: "gpt-4o",
+    description: "General-purpose AI assistant for Nebula Command",
+    capabilities: ["general", "infrastructure", "automation", "creative"],
+    tools: ["docker_manage", "file_read", "file_write", "ssh_execute", "web_search"],
+    modelPreference: "llama3.2",
     temperature: 0.7,
-    tools: ["docker_manage", "file_read", "file_write", "ssh_execute"],
+    maxTokens: 4096,
+    nodeAffinity: "any",
     isActive: true,
-    isBuiltin: true,
+    isSystem: true,
+    createdBy: "system",
   },
   {
-    id: "coder",
-    name: "Code Assistant",
-    description: "Specialized in code generation and debugging",
-    systemPrompt: `You are an expert software engineer. You help users:
+    name: "coder",
+    persona: `You are an expert software engineer. You help users:
 - Write clean, efficient code following best practices
 - Debug issues and fix errors
 - Refactor and optimize existing code
 - Explain complex programming concepts
 
 Always provide complete, working code examples. Use proper error handling and comments.`,
-    model: "gpt-4o",
+    description: "Specialized in code generation and debugging",
+    capabilities: ["coding", "debugging", "refactoring", "code-review"],
+    tools: ["file_read", "file_write", "grep_search", "code_execute"],
+    modelPreference: "codellama",
     temperature: 0.3,
-    tools: ["file_read", "file_write", "grep_search"],
+    maxTokens: 8192,
+    nodeAffinity: "any",
     isActive: true,
-    isBuiltin: true,
+    isSystem: true,
+    createdBy: "system",
   },
   {
-    id: "creative",
-    name: "Creative Studio",
-    description: "AI for content creation and digital media",
-    systemPrompt: `You are a creative AI assistant specializing in digital content. You help users:
+    name: "creative",
+    persona: `You are a creative AI assistant specializing in digital content. You help users:
 - Generate images with detailed prompts
 - Write compelling copy and marketing content
 - Create social media posts and captions
 - Design concepts and visual ideas
 
 Be creative and inspiring while following brand guidelines when provided.`,
-    model: "gpt-4o",
+    description: "AI for content creation and digital media",
+    capabilities: ["image-generation", "copywriting", "design", "creative-writing"],
+    tools: ["generate_image", "file_write", "web_search"],
+    modelPreference: "llama3.2",
     temperature: 0.9,
-    tools: ["generate_image", "file_write"],
+    maxTokens: 4096,
+    nodeAffinity: "windows",
     isActive: true,
-    isBuiltin: true,
+    isSystem: true,
+    createdBy: "system",
   },
   {
-    id: "devops",
-    name: "DevOps Assistant",
-    description: "Infrastructure and deployment automation",
-    systemPrompt: `You are a DevOps engineer AI. You help users with:
+    name: "devops",
+    persona: `You are a DevOps engineer AI. You help users with:
 - Docker and container management
 - CI/CD pipeline configuration
 - Server monitoring and troubleshooting
@@ -90,92 +102,36 @@ Be creative and inspiring while following brand guidelines when provided.`,
 - Kubernetes and container orchestration
 
 Provide production-ready configurations with proper security practices.`,
-    model: "gpt-4o",
+    description: "Infrastructure and deployment automation",
+    capabilities: ["docker", "ci-cd", "monitoring", "infrastructure"],
+    tools: ["docker_manage", "ssh_execute", "file_read", "file_write", "kubernetes_manage"],
+    modelPreference: "llama3.2",
     temperature: 0.5,
-    tools: ["docker_manage", "ssh_execute", "file_read", "file_write"],
+    maxTokens: 4096,
+    nodeAffinity: "linode",
     isActive: true,
-    isBuiltin: true,
+    isSystem: true,
+    createdBy: "system",
   },
-];
+  {
+    name: "researcher",
+    persona: `You are a research assistant AI. You help users:
+- Find and summarize information from multiple sources
+- Conduct in-depth research on technical topics
+- Compare options and provide recommendations
+- Fact-check and verify information
 
-const BUILTIN_FUNCTIONS = [
-  {
-    id: "docker_manage",
-    name: "docker_manage",
-    description: "Manage Docker containers (start, stop, restart, logs)",
-    parameters: {
-      type: "object",
-      properties: {
-        action: { type: "string", enum: ["start", "stop", "restart", "logs", "list"] },
-        container: { type: "string", description: "Container name or ID" },
-      },
-      required: ["action"],
-    },
-  },
-  {
-    id: "file_read",
-    name: "file_read",
-    description: "Read contents of a file",
-    parameters: {
-      type: "object",
-      properties: {
-        path: { type: "string", description: "File path to read" },
-      },
-      required: ["path"],
-    },
-  },
-  {
-    id: "file_write",
-    name: "file_write",
-    description: "Write or update a file",
-    parameters: {
-      type: "object",
-      properties: {
-        path: { type: "string", description: "File path to write" },
-        content: { type: "string", description: "Content to write" },
-      },
-      required: ["path", "content"],
-    },
-  },
-  {
-    id: "ssh_execute",
-    name: "ssh_execute",
-    description: "Execute command on remote server via SSH",
-    parameters: {
-      type: "object",
-      properties: {
-        server: { type: "string", enum: ["linode", "homelab"] },
-        command: { type: "string", description: "Command to execute" },
-      },
-      required: ["server", "command"],
-    },
-  },
-  {
-    id: "grep_search",
-    name: "grep_search",
-    description: "Search for patterns in files",
-    parameters: {
-      type: "object",
-      properties: {
-        pattern: { type: "string", description: "Search pattern (regex)" },
-        path: { type: "string", description: "Directory to search" },
-      },
-      required: ["pattern"],
-    },
-  },
-  {
-    id: "generate_image",
-    name: "generate_image",
-    description: "Generate an image using AI",
-    parameters: {
-      type: "object",
-      properties: {
-        prompt: { type: "string", description: "Image description" },
-        size: { type: "string", enum: ["1024x1024", "1792x1024", "1024x1792"] },
-        style: { type: "string", enum: ["vivid", "natural"] },
-      },
-      required: ["prompt"],
-    },
+Be thorough, cite sources when possible, and present balanced viewpoints.`,
+    description: "Research and information gathering specialist",
+    capabilities: ["research", "summarization", "fact-checking", "analysis"],
+    tools: ["web_search", "file_read", "file_write"],
+    modelPreference: "llama3.2",
+    temperature: 0.4,
+    maxTokens: 8192,
+    nodeAffinity: "any",
+    isActive: true,
+    isSystem: true,
+    createdBy: "system",
   },
 ];
 
@@ -186,32 +142,88 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const dbAgents = await db.select().from(agents).where(eq(agents.isActive, true));
-    
-    const customAgents: AgentProfile[] = dbAgents.map((agent) => ({
+    const { searchParams } = new URL(request.url);
+    const activeOnly = searchParams.get("active") === "true";
+    const capability = searchParams.get("capability");
+    const search = searchParams.get("search");
+    const includeBuiltin = searchParams.get("includeBuiltin") !== "false";
+
+    let query = db.select().from(jarvisAgents);
+
+    const conditions = [];
+    if (activeOnly) {
+      conditions.push(eq(jarvisAgents.isActive, true));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as typeof query;
+    }
+
+    const dbAgents = await query.orderBy(desc(jarvisAgents.createdAt));
+
+    let allAgents: JarvisAgentConfig[] = dbAgents.map((agent) => ({
       id: agent.id,
       name: agent.name,
-      description: agent.description || "",
-      systemPrompt: agent.systemPrompt,
-      model: agent.model,
+      persona: agent.persona,
+      description: agent.description,
+      capabilities: (agent.capabilities as string[]) || [],
+      tools: (agent.tools as string[]) || [],
+      modelPreference: agent.modelPreference,
       temperature: parseFloat(agent.temperature?.toString() || "0.7"),
-      tools: agent.tools || [],
-      isActive: agent.isActive ?? true,
-      isBuiltin: false,
+      maxTokens: agent.maxTokens,
+      nodeAffinity: agent.nodeAffinity,
+      isActive: agent.isActive,
+      isSystem: agent.isSystem,
+      createdBy: agent.createdBy,
+      createdAt: agent.createdAt,
+      updatedAt: agent.updatedAt,
     }));
 
-    const allAgents = [...BUILTIN_AGENTS, ...customAgents];
+    if (capability) {
+      allAgents = allAgents.filter(agent => 
+        agent.capabilities.includes(capability)
+      );
+    }
+
+    if (search) {
+      const searchLower = search.toLowerCase();
+      allAgents = allAgents.filter(agent =>
+        agent.name.toLowerCase().includes(searchLower) ||
+        agent.description?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    const executionStats = await db
+      .select({
+        agentId: jarvisAgentExecutions.agentId,
+        totalExecutions: count(jarvisAgentExecutions.id),
+      })
+      .from(jarvisAgentExecutions)
+      .groupBy(jarvisAgentExecutions.agentId);
+
+    const statsMap = new Map(executionStats.map(s => [s.agentId, s.totalExecutions]));
+
+    const agentsWithStats = allAgents.map(agent => ({
+      ...agent,
+      executionCount: statsMap.get(agent.id) || 0,
+    }));
 
     return NextResponse.json({
-      agents: allAgents,
-      functions: BUILTIN_FUNCTIONS,
+      agents: agentsWithStats,
+      total: agentsWithStats.length,
+      filters: {
+        activeOnly,
+        capability,
+        search,
+        includeBuiltin,
+      },
     });
   } catch (error: any) {
-    console.error("Error fetching agents:", error);
-    return NextResponse.json({
-      agents: BUILTIN_AGENTS,
-      functions: BUILTIN_FUNCTIONS,
-    });
+    console.error("[Agents] Error fetching agents:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to fetch agents" },
+      { status: 500 }
+    );
   }
 }
 
@@ -221,217 +233,99 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
-  const { agentId, input } = body;
-
-  const allAgentsResponse = await GET(request);
-  const allAgentsData = await allAgentsResponse.json();
-  const agent = allAgentsData.agents?.find((a: AgentProfile) => a.id === agentId);
-  
-  if (!agent) {
-    return NextResponse.json({ error: "Agent not found" }, { status: 404 });
-  }
-
-  const startTime = Date.now();
-
-  try {
-    const response = await aiOrchestrator.chat({
-      messages: [
-        { role: "system", content: agent.systemPrompt },
-        { role: "user", content: input },
-      ],
-      config: {
-        model: agent.model,
-        temperature: agent.temperature,
-      },
-    });
-
-    const durationMs = Date.now() - startTime;
-
-    try {
-      await db.insert(agentExecutions).values({
-        agentId: agent.isBuiltin ? null : agent.id,
-        input,
-        output: response.content,
-        status: "completed",
-        tokensUsed: response.usage?.totalTokens || null,
-        durationMs,
-        functionCalls: null,
-      });
-    } catch (dbError) {
-      console.error("Failed to save agent execution:", dbError);
-    }
-
-    return NextResponse.json({
-      agentId: agent.id,
-      input,
-      output: response.content,
-      model: response.model,
-      usage: response.usage,
-    });
-  } catch (error: any) {
-    const durationMs = Date.now() - startTime;
-
-    try {
-      await db.insert(agentExecutions).values({
-        agentId: agent.isBuiltin ? null : agent.id,
-        input,
-        output: null,
-        status: "failed",
-        tokensUsed: null,
-        durationMs,
-        functionCalls: null,
-      });
-    } catch (dbError) {
-      console.error("Failed to save failed agent execution:", dbError);
-    }
-
-    return NextResponse.json(
-      { error: error.message || "Agent execution failed" },
-      { status: 500 }
-    );
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  const user = await checkAuth();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
     const body = await request.json();
-    const { id, name, description, systemPrompt, model, temperature, tools, isActive } = body;
+    const {
+      name,
+      persona,
+      description,
+      capabilities,
+      tools,
+      modelPreference,
+      temperature,
+      maxTokens,
+      nodeAffinity,
+    } = body;
 
-    if (!name || !systemPrompt || !model) {
+    if (!name || typeof name !== "string" || name.trim().length === 0) {
       return NextResponse.json(
-        { error: "Missing required fields: name, systemPrompt, model" },
+        { error: "Agent name is required and must be a non-empty string" },
         { status: 400 }
       );
     }
 
-    if (id) {
-      const builtinIds = BUILTIN_AGENTS.map((a) => a.id);
-      if (builtinIds.includes(id)) {
-        return NextResponse.json(
-          { error: "Cannot modify built-in agents" },
-          { status: 400 }
-        );
-      }
-
-      const [updated] = await db
-        .update(agents)
-        .set({
-          name,
-          description: description || null,
-          systemPrompt,
-          model,
-          temperature: temperature?.toString() || "0.7",
-          tools: tools || [],
-          isActive: isActive ?? true,
-          updatedAt: new Date(),
-        })
-        .where(eq(agents.id, id))
-        .returning();
-
-      if (!updated) {
-        return NextResponse.json({ error: "Agent not found" }, { status: 404 });
-      }
-
-      return NextResponse.json({
-        message: "Agent updated successfully",
-        agent: {
-          id: updated.id,
-          name: updated.name,
-          description: updated.description,
-          systemPrompt: updated.systemPrompt,
-          model: updated.model,
-          temperature: parseFloat(updated.temperature?.toString() || "0.7"),
-          tools: updated.tools || [],
-          isActive: updated.isActive,
-          isBuiltin: false,
-        },
-      });
-    } else {
-      const [created] = await db
-        .insert(agents)
-        .values({
-          name,
-          description: description || null,
-          systemPrompt,
-          model,
-          temperature: temperature?.toString() || "0.7",
-          tools: tools || [],
-          isActive: isActive ?? true,
-        })
-        .returning();
-
-      return NextResponse.json({
-        message: "Agent created successfully",
-        agent: {
-          id: created.id,
-          name: created.name,
-          description: created.description,
-          systemPrompt: created.systemPrompt,
-          model: created.model,
-          temperature: parseFloat(created.temperature?.toString() || "0.7"),
-          tools: created.tools || [],
-          isActive: created.isActive,
-          isBuiltin: false,
-        },
-      }, { status: 201 });
-    }
-  } catch (error: any) {
-    console.error("Error creating/updating agent:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to create/update agent" },
-      { status: 500 }
-    );
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  const user = await checkAuth();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  try {
-    const { searchParams } = new URL(request.url);
-    const agentId = searchParams.get("id");
-
-    if (!agentId) {
+    if (!persona || typeof persona !== "string" || persona.trim().length === 0) {
       return NextResponse.json(
-        { error: "Agent ID is required" },
+        { error: "Agent persona (system prompt) is required" },
         { status: 400 }
       );
     }
 
-    const builtinIds = BUILTIN_AGENTS.map((a) => a.id);
-    if (builtinIds.includes(agentId)) {
+    const existing = await db
+      .select()
+      .from(jarvisAgents)
+      .where(eq(jarvisAgents.name, name.trim().toLowerCase()))
+      .limit(1);
+
+    if (existing.length > 0) {
       return NextResponse.json(
-        { error: "Cannot delete built-in agents" },
-        { status: 400 }
+        { error: `An agent with name "${name}" already exists` },
+        { status: 409 }
       );
     }
 
-    const [deleted] = await db
-      .delete(agents)
-      .where(eq(agents.id, agentId))
+    const validCapabilities = Array.isArray(capabilities) ? capabilities : [];
+    const validTools = Array.isArray(tools) ? tools : [];
+    const validTemperature = typeof temperature === "number" && temperature >= 0 && temperature <= 2
+      ? temperature.toString()
+      : "0.7";
+    const validMaxTokens = typeof maxTokens === "number" && maxTokens > 0 ? maxTokens : 4096;
+    const validNodeAffinity = ["any", "linode", "home", "windows"].includes(nodeAffinity)
+      ? nodeAffinity
+      : "any";
+
+    const [created] = await db
+      .insert(jarvisAgents)
+      .values({
+        name: name.trim().toLowerCase(),
+        persona: persona.trim(),
+        description: description?.trim() || null,
+        capabilities: validCapabilities,
+        tools: validTools,
+        modelPreference: modelPreference || "llama3.2",
+        temperature: validTemperature,
+        maxTokens: validMaxTokens,
+        nodeAffinity: validNodeAffinity,
+        isActive: true,
+        isSystem: false,
+        createdBy: user.username || "user",
+      })
       .returning();
 
-    if (!deleted) {
-      return NextResponse.json({ error: "Agent not found" }, { status: 404 });
-    }
-
     return NextResponse.json({
-      message: "Agent deleted successfully",
-      agentId: deleted.id,
-    });
+      message: "Agent created successfully",
+      agent: {
+        id: created.id,
+        name: created.name,
+        persona: created.persona,
+        description: created.description,
+        capabilities: created.capabilities,
+        tools: created.tools,
+        modelPreference: created.modelPreference,
+        temperature: parseFloat(created.temperature?.toString() || "0.7"),
+        maxTokens: created.maxTokens,
+        nodeAffinity: created.nodeAffinity,
+        isActive: created.isActive,
+        isSystem: created.isSystem,
+        createdBy: created.createdBy,
+        createdAt: created.createdAt,
+        updatedAt: created.updatedAt,
+      },
+    }, { status: 201 });
   } catch (error: any) {
-    console.error("Error deleting agent:", error);
+    console.error("[Agents] Error creating agent:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to delete agent" },
+      { error: error.message || "Failed to create agent" },
       { status: 500 }
     );
   }

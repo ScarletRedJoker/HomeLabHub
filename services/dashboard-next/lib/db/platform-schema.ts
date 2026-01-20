@@ -762,6 +762,47 @@ export type JarvisTaskReview = typeof jarvisTaskReviews.$inferSelect;
 export type NewJarvisTaskReview = typeof jarvisTaskReviews.$inferInsert;
 
 // ============================================
+// Jarvis Agent Configuration System
+// ============================================
+
+export const jarvisAgents = pgTable("jarvis_agents", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull().unique(),
+  persona: text("persona").notNull(),
+  description: text("description"),
+  capabilities: jsonb("capabilities").notNull().default([]),
+  tools: jsonb("tools").notNull().default([]),
+  modelPreference: varchar("model_preference", { length: 100 }).default("llama3.2"),
+  temperature: decimal("temperature", { precision: 3, scale: 2 }).default("0.70"),
+  maxTokens: integer("max_tokens").default(4096),
+  nodeAffinity: varchar("node_affinity", { length: 50 }).default("any"),
+  isActive: boolean("is_active").default(true),
+  isSystem: boolean("is_system").default(false),
+  createdBy: varchar("created_by", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const jarvisAgentExecutions = pgTable("jarvis_agent_executions", {
+  id: serial("id").primaryKey(),
+  agentId: integer("agent_id").references(() => jarvisAgents.id).notNull(),
+  task: text("task").notNull(),
+  status: varchar("status", { length: 50 }).notNull().default("pending"),
+  input: jsonb("input").default({}),
+  output: jsonb("output"),
+  tokensUsed: integer("tokens_used"),
+  executionTimeMs: integer("execution_time_ms"),
+  error: text("error"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+});
+
+export type JarvisAgent = typeof jarvisAgents.$inferSelect;
+export type NewJarvisAgent = typeof jarvisAgents.$inferInsert;
+export type JarvisAgentExecution = typeof jarvisAgentExecutions.$inferSelect;
+export type NewJarvisAgentExecution = typeof jarvisAgentExecutions.$inferInsert;
+
+// ============================================
 // Nebula Creative Engine Schema
 // ============================================
 
