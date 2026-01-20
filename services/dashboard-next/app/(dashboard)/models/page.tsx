@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -249,9 +250,10 @@ export default function ModelsPage() {
       setDownloadDialogOpen(false);
       setDownloadUrl("");
       setDownloadFilename("");
+      toast.success("Download queued successfully");
       fetchDownloads();
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      toast.error(`Error: ${err.message}`);
     } finally {
       setSubmittingDownload(false);
     }
@@ -354,13 +356,14 @@ export default function ModelsPage() {
       }
 
       setDeleteModel(null);
+      toast.success("Model deleted successfully");
       if (type === "ollama") {
         fetchOllamaModels();
       } else {
         fetchWindowsModels();
       }
     } catch (err: any) {
-      alert(`Failed to delete model: ${err.message}`);
+      toast.error(`Failed to delete model: ${err.message}`);
     } finally {
       setDeleting(false);
     }

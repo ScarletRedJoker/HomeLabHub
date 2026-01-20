@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -163,7 +164,9 @@ export default function AIPage() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to get response");
+        const errorMessage = `API Error: ${response.status} ${response.statusText}`;
+        toast.error(errorMessage);
+        throw new Error(errorMessage);
       }
 
       const contentType = response.headers.get("content-type");
@@ -247,10 +250,19 @@ export default function AIPage() {
         setMessages((prev) => [...prev, assistantMessage]);
       }
     } catch (error) {
+      const errorDetails = error instanceof Error ? error.message : "Unknown error occurred";
+      const userFriendlyMessage = errorDetails.includes("API Error") 
+        ? "Failed to get AI response. The service may be temporarily unavailable."
+        : errorDetails.includes("Failed to fetch")
+        ? "Network error. Please check your connection and try again."
+        : "I encountered an error processing your request. Please try again.";
+      
+      toast.error(userFriendlyMessage);
+      
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "I apologize, but I encountered an error. Please try again.",
+        content: `⚠️ Error: ${userFriendlyMessage}`,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);

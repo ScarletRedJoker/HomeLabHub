@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -210,12 +211,13 @@ export default function GeneratePage() {
         const data = await res.json();
         setResult(data);
         saveToHistory(data, description);
+        toast.success("Code generated successfully!");
       } else {
         const error = await res.json();
-        alert(`Error: ${error.details || error.error}`);
+        toast.error(`Error: ${error.details || error.error}`);
       }
     } catch (error: any) {
-      alert(`Failed to generate code: ${error.message}`);
+      toast.error(`Failed to generate code: ${error.message}`);
     } finally {
       setGenerating(false);
     }

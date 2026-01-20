@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -201,9 +202,10 @@ export default function PromptsPage() {
       if (res.ok) {
         await fetchPrompts();
         setShowCreateDialog(false);
+        toast.success("Prompt saved successfully!");
       } else {
         const error = await res.json();
-        alert(error.error || "Failed to save prompt");
+        toast.error(error.error || "Failed to save prompt");
       }
     } catch (error) {
       console.error("Failed to save prompt:", error);
@@ -222,9 +224,10 @@ export default function PromptsPage() {
 
       if (res.ok) {
         await fetchPrompts();
+        toast.success("Prompt deleted successfully!");
       } else {
         const error = await res.json();
-        alert(error.error || "Failed to delete prompt");
+        toast.error(error.error || "Failed to delete prompt");
       }
     } catch (error) {
       console.error("Failed to delete prompt:", error);
