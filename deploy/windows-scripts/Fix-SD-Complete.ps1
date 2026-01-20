@@ -32,8 +32,8 @@ try {
     & $pythonExe -m pip install torch==2.1.2+cu121 torchvision==0.16.2+cu121 torchaudio==2.1.2+cu121 --index-url https://download.pytorch.org/whl/cu121 --no-cache-dir
     if ($LASTEXITCODE -ne 0) { throw "PyTorch installation failed" }
 
-    Write-Host "[3/5] Installing xFormers 0.0.22.post7..." -ForegroundColor Yellow
-    & $pythonExe -m pip install xformers==0.0.22.post7 --no-cache-dir
+    Write-Host "[3/5] Installing xFormers 0.0.23.post1 (for torch 2.1.2)..." -ForegroundColor Yellow
+    & $pythonExe -m pip install xformers==0.0.23.post1 --index-url https://download.pytorch.org/whl/cu121 --no-cache-dir
     if ($LASTEXITCODE -ne 0) { throw "xFormers installation failed" }
 
     Write-Host "[4/5] Installing transformers, protobuf, accelerate, diffusers..." -ForegroundColor Yellow
