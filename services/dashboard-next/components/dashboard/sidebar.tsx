@@ -123,7 +123,7 @@ const navGroups: NavGroup[] = [
       { href: "/ai-speech", label: "Speech", icon: Wand2 },
       { href: "/ai-knowledge", label: "Knowledge Base", icon: Layers },
       { href: "/ai-sandbox", label: "AI Sandbox", icon: Wand2 },
-      { href: "/creative", label: "Creative Studio", icon: Sparkles },
+      { href: "/creative-studio", label: "Creative Studio", icon: Sparkles },
     ],
   },
   {
