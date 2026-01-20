@@ -9,9 +9,10 @@ import { demoMode } from "@/lib/demo-mode";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// LOCAL_AI_ONLY mode: When true, NEVER use cloud AI providers (OpenAI, etc.)
+// LOCAL_AI_ONLY mode: When explicitly set to "true", NEVER use cloud AI providers (OpenAI, etc.)
 // All requests must use Ollama running locally on the Windows VM
-const LOCAL_AI_ONLY = process.env.LOCAL_AI_ONLY !== "false";
+// When not set or set to any other value, cloud fallback is allowed
+const LOCAL_AI_ONLY = process.env.LOCAL_AI_ONLY === "true";
 const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
 
 // Standard troubleshooting steps for local AI errors
@@ -241,7 +242,13 @@ function detectToolIntent(message: string): boolean {
   return toolPatterns.some(pattern => pattern.test(message));
 }
 
+function canUseFallback(): boolean {
+  return getOpenAIClient() !== null && !LOCAL_AI_ONLY;
+}
+
 async function selectProvider(requestedProvider: AIProvider): Promise<{ provider: "openai" | "ollama"; fallback: boolean; reason: string }> {
+  const ollamaStatus = await localAIRuntime.isOllamaOnline();
+  
   // LOCAL_AI_ONLY MODE: Completely bypass any cloud provider logic
   if (LOCAL_AI_ONLY) {
     // Reject any explicit OpenAI/cloud provider request
@@ -250,9 +257,8 @@ async function selectProvider(requestedProvider: AIProvider): Promise<{ provider
     }
     
     // Check if Ollama is available
-    const ollamaStatus = await localAIRuntime.isOllamaOnline();
     if (!ollamaStatus.online) {
-      throw new Error(`Local AI is currently unavailable. Please ensure Ollama is running on your Windows VM (${WINDOWS_VM_IP}:11434).`);
+      throw new Error(`Local AI is currently unavailable and LOCAL_AI_ONLY=true prevents cloud fallback. Please ensure Ollama is running on your Windows VM (${WINDOWS_VM_IP}:11434).`);
     }
     
     console.log(`[AIChat] LOCAL_AI_ONLY mode: Using Ollama (${ollamaStatus.latencyMs}ms)`);
@@ -263,36 +269,37 @@ async function selectProvider(requestedProvider: AIProvider): Promise<{ provider
     };
   }
   
-  // Non-LOCAL_AI_ONLY mode: standard provider selection with fallback
-  const ollamaStatus = await localAIRuntime.isOllamaOnline();
-  
+  // Non-LOCAL_AI_ONLY mode: standard provider selection with graceful fallback
   if (requestedProvider === "openai") {
     return { provider: "openai", fallback: false, reason: "OpenAI explicitly requested" };
   }
   
   if (requestedProvider === "ollama") {
-    if (!ollamaStatus.online) {
-      const openai = getOpenAIClient();
-      if (openai) {
-        console.log(`[AIChat] Ollama offline, falling back to OpenAI`);
-        return { provider: "openai", fallback: true, reason: `Ollama offline: ${ollamaStatus.error}` };
-      }
-      throw new Error("Ollama is offline and OpenAI is not configured");
+    if (ollamaStatus.online) {
+      return { provider: "ollama", fallback: false, reason: "Ollama explicitly requested" };
     }
-    return { provider: "ollama", fallback: false, reason: "Ollama explicitly requested" };
+    // Ollama requested but offline - try to fall back to OpenAI
+    const openai = getOpenAIClient();
+    if (openai) {
+      console.log(`[AIChat] Ollama offline, falling back to OpenAI`);
+      return { provider: "openai", fallback: true, reason: `Ollama offline: ${ollamaStatus.error}. Falling back to OpenAI.` };
+    }
+    throw new Error("Ollama is offline and OpenAI is not configured. Start Ollama or add OPENAI_API_KEY for fallback.");
   }
   
-  // Auto mode: prefer Ollama, fallback to OpenAI
+  // Auto mode: prefer Ollama, gracefully fallback to OpenAI
   if (ollamaStatus.online) {
     return { provider: "ollama", fallback: false, reason: "Auto: Ollama available (preferred)" };
   }
   
+  // Ollama offline in auto mode - try OpenAI fallback
   const openai = getOpenAIClient();
   if (openai) {
-    return { provider: "openai", fallback: true, reason: "Auto: Ollama offline, using OpenAI" };
+    console.log(`[AIChat] Auto mode: Ollama offline, falling back to OpenAI`);
+    return { provider: "openai", fallback: true, reason: "Auto: Ollama offline, using OpenAI fallback" };
   }
   
-  throw new Error("No AI providers available");
+  throw new Error("No AI providers available. Start Ollama on your Windows VM or configure OPENAI_API_KEY for cloud fallback.");
 }
 
 const systemPrompt = `You are Jarvis, an advanced AI assistant for Nebula Command - a comprehensive homelab management and development platform.
@@ -333,11 +340,11 @@ You are a powerful, autonomous AI development assistant with multi-agent orchest
 - Home Server: Plex (32400), Home Assistant (8123), MinIO, Tailscale, Ollama, Stable Diffusion
 - Windows VM (GPU): Ollama LLMs, ComfyUI, Stable Diffusion WebUI - primary local AI
 
-**LOCAL-ONLY AI POLICY:**
-This instance runs in LOCAL-ONLY mode - cloud AI fallback is disabled:
-1. All text generation uses Ollama on the Windows VM (GPU)
-2. All image generation uses local Stable Diffusion
-3. If local AI is offline, users must start the Windows VM - NO cloud fallback
+**AI PROVIDER POLICY:**
+This instance prefers local AI but supports cloud fallback:
+1. Primary: Ollama on the Windows VM (GPU) for text generation
+2. Primary: Local Stable Diffusion for image generation
+3. Fallback: OpenAI cloud when local services are offline (unless LOCAL_AI_ONLY=true)
 4. Use check_ai_services to verify local AI status before operations
 
 **WHEN TO USE TOOLS:**
@@ -1026,6 +1033,7 @@ export async function POST(request: NextRequest) {
       provider: result.provider,
       model: result.model,
       fallback: usedFallback,
+      usingFallback: usedFallback,
       fallbackReason: usedFallback ? fallbackReason : undefined,
       actualProvider: actualProvider || result.provider,
       codeBlocks: codeBlocks.length > 0 ? codeBlocks : undefined,
@@ -1120,7 +1128,9 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     providers,
     defaultProvider: ollamaAvailable ? "ollama" : "openai",
-    fallbackEnabled: true,
+    localAIOnly: LOCAL_AI_ONLY,
+    fallbackAvailable: canUseFallback(),
+    fallbackEnabled: !LOCAL_AI_ONLY,
     fallbackChain: ["ollama (primary)", "ollama (fallback)", "openai"],
   });
 }

@@ -10,10 +10,42 @@ import { aiOrchestrator } from "@/lib/ai-orchestrator";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+const NON_CHECKPOINT_PATTERNS = [
+  "motion",
+  "mm_",
+  "animatediff",
+  "lora",
+  "vae",
+  "embedding",
+  "hypernetwork",
+  "controlnet",
+  "clip",
+  "text_encoder",
+];
+
+function isNonCheckpointModel(modelName: string): boolean {
+  const nameLower = modelName.toLowerCase();
+  return NON_CHECKPOINT_PATTERNS.some(pattern => nameLower.includes(pattern));
+}
+
+function isValidCheckpoint(modelName: string, availableModels: string[]): boolean {
+  if (!modelName) return false;
+  const modelLower = modelName.toLowerCase();
+  // Get valid checkpoints first
+  const validCheckpoints = getValidCheckpoints(availableModels);
+  // Require exact case-insensitive match
+  return validCheckpoints.some(m => m.toLowerCase() === modelLower);
+}
+
+function getValidCheckpoints(availableModels: string[]): string[] {
+  return availableModels.filter(model => !isNonCheckpointModel(model));
+}
+
 export async function GET(request: NextRequest) {
   try {
     const refresh = request.nextUrl.searchParams.get("refresh") === "true";
-    const localAIOnly = process.env.LOCAL_AI_ONLY !== "false";
+    // LOCAL_AI_ONLY must be explicitly set to "true" to disable cloud fallback
+    const localAIOnly = process.env.LOCAL_AI_ONLY === "true";
 
     if (refresh) {
       await aiOrchestrator.refreshEndpoints();
@@ -24,16 +56,13 @@ export async function GET(request: NextRequest) {
       aiOrchestrator.getAdvancedCapabilities(),
     ]);
 
-    // Only flag actual AnimateDiff motion modules, not regular checkpoints with "mm_" prefix
-    // Motion modules are separate files like "mm_sd_v14.ckpt" used WITH a base model, not AS a base model
-    // Regular checkpoints can have any naming convention
-    const modelLower = sdStatus.currentModel?.toLowerCase() || "";
-    const hasMotionModule = modelLower.includes("motion_module") || 
-      modelLower.includes("animatediff") ||
-      (modelLower.includes("motion") && !modelLower.includes("sd"));
-
-    // SD is ready if available and has any model loaded (motion module check is informational only)
-    const sdReady = sdStatus.available && sdStatus.modelLoaded;
+    const currentModel = sdStatus.currentModel || "";
+    const availableModels = sdStatus.availableModels || [];
+    const validCheckpoints = getValidCheckpoints(availableModels);
+    const hasValidCheckpointLoaded = isValidCheckpoint(currentModel, availableModels);
+    const hasMotionModule = isNonCheckpointModel(currentModel);
+    const requiresModelSwitch = sdStatus.available && sdStatus.modelLoaded && !hasValidCheckpointLoaded && validCheckpoints.length > 0;
+    const sdReady = sdStatus.available && sdStatus.modelLoaded && hasValidCheckpointLoaded;
 
     const capabilities = {
       stableDiffusion: {
@@ -41,11 +70,13 @@ export async function GET(request: NextRequest) {
         modelLoaded: sdStatus.modelLoaded,
         currentModel: sdStatus.currentModel,
         modelLoading: sdStatus.modelLoading,
-        availableModels: sdStatus.availableModels || [],
+        availableModels: availableModels,
+        validCheckpoints,
         url: sdStatus.url,
         vram: sdStatus.vram,
         error: sdStatus.error,
         hasMotionModule,
+        requiresModelSwitch,
         ready: sdReady,
       },
       features: {

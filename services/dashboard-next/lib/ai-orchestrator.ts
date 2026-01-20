@@ -45,6 +45,7 @@ export interface ChatResponse {
   content: string;
   provider: string;
   model: string;
+  fallbackUsed: boolean;
   usage?: {
     promptTokens: number;
     completionTokens: number;
@@ -384,15 +385,46 @@ class AIOrchestrator {
     }
   }
 
+  canUseFallback(): boolean {
+    return this.openaiClient !== null;
+  }
+
+  private isLocalAIOnlyStrict(): boolean {
+    return process.env.LOCAL_AI_ONLY === "true";
+  }
+
   async chat(request: ChatRequest): Promise<ChatResponse> {
     const config = { ...DEFAULT_CONFIG, ...request.config };
     const provider = config.provider === "auto" ? await this.selectBestProvider("chat") : config.provider;
 
-    if (provider === "ollama") {
-      return this.chatWithOllama(request.messages, config);
+    if (provider === "ollama" || config.provider === "auto") {
+      try {
+        const response = await this.chatWithOllama(request.messages, config);
+        return { ...response, fallbackUsed: false };
+      } catch (ollamaError: any) {
+        console.log(`[AI Orchestrator] Ollama failed: ${ollamaError.message}`);
+        
+        if (this.canUseFallback() && !this.isLocalAIOnlyStrict()) {
+          console.log(`[AI Orchestrator] Falling back to OpenAI`);
+          const response = await this.chatWithOpenAI(request.messages, config);
+          return { ...response, fallbackUsed: true };
+        }
+        
+        if (this.isLocalAIOnlyStrict()) {
+          throw new Error(`Local AI failed and LOCAL_AI_ONLY=true prevents cloud fallback. Ollama error: ${ollamaError.message}`);
+        }
+        
+        throw ollamaError;
+      }
     }
 
-    return this.chatWithOpenAI(request.messages, config);
+    if (provider === "openai") {
+      const response = await this.chatWithOpenAI(request.messages, config);
+      return { ...response, fallbackUsed: false };
+    }
+
+    const response = await this.chatWithOpenAI(request.messages, config);
+    return { ...response, fallbackUsed: false };
   }
 
   private async chatWithOpenAI(messages: ChatMessage[], config: AIConfig): Promise<ChatResponse> {
@@ -457,7 +489,7 @@ class AIOrchestrator {
 
   async generateImage(request: ImageRequest): Promise<ImageResponse> {
     const provider = request.provider || "auto";
-    const localAIOnly = process.env.LOCAL_AI_ONLY !== "false";
+    const localAIOnly = process.env.LOCAL_AI_ONLY === "true";
 
     // Auto mode: try local SD first if available, fall back to DALL-E (unless LOCAL_AI_ONLY)
     if (provider === "auto") {
@@ -1393,7 +1425,7 @@ class AIOrchestrator {
    * Throws an error if local SD is required but unavailable.
    */
   private async ensureLocalSDAvailable(operation: string): Promise<SDStatus> {
-    const localAIOnly = process.env.LOCAL_AI_ONLY !== "false";
+    const localAIOnly = process.env.LOCAL_AI_ONLY === "true";
     const sdStatus = await this.getSDStatus(1);
 
     if (!sdStatus.available) {

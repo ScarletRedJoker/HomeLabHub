@@ -53,7 +53,12 @@ import {
   Sparkles,
   Search,
   Wrench,
+  AlertTriangle,
+  Cloud,
+  CloudOff,
+  Info,
 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 
 interface PipelineStatus {
@@ -66,17 +71,19 @@ interface PipelineStatus {
       latencyMs?: number;
       modelsLoaded: number;
       vramUsed?: number;
-    } | null;
+    };
     stableDiffusion: {
       status: string;
       url: string;
       gpuUsage?: number;
-    } | null;
+    };
     comfyUI: {
       status: string;
       url: string;
-    } | null;
+    };
   };
+  fallbackAvailable: boolean;
+  actionableMessage: string;
   opencode: {
     available: boolean;
     selectedProvider: string;
@@ -190,10 +197,11 @@ export default function JarvisPage() {
     return () => clearInterval(interval);
   }, []);
 
-  async function fetchStatus() {
+  async function fetchStatus(forceRefresh = false) {
     try {
+      const pipelineUrl = forceRefresh ? "/api/dev/pipeline?forceRefresh=true" : "/api/dev/pipeline";
       const [pipelineRes, autonomousRes, codeRes] = await Promise.all([
-        fetch("/api/dev/pipeline"),
+        fetch(pipelineUrl),
         fetch("/api/dev/autonomous"),
         fetch("/api/ai/code"),
       ]);
@@ -218,10 +226,19 @@ export default function JarvisPage() {
     }
   }
 
-  async function handleRefresh() {
+  async function handleRefresh(forceRefresh = false) {
     setRefreshing(true);
-    await fetchStatus();
+    await fetchStatus(forceRefresh);
   }
+
+  const ollamaOnline = pipelineStatus?.localAI.ollama?.status === "online";
+  const sdOnline = pipelineStatus?.localAI.stableDiffusion?.status === "online";
+  const comfyOnline = pipelineStatus?.localAI.comfyUI?.status === "online";
+  const anyLocalAIOnline = ollamaOnline || sdOnline || comfyOnline;
+  const canUseAI = pipelineStatus?.localAI?.ollama?.status === "online" || 
+                   pipelineStatus?.localAI?.available || 
+                   pipelineStatus?.fallbackAvailable;
+  const canGenerateCode = canUseAI;
 
   async function handleStartCodeGeneration() {
     if (!codeDescription.trim()) return;
@@ -409,11 +426,88 @@ export default function JarvisPage() {
             </p>
           </div>
         </div>
-        <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
-          <RefreshCw className={cn("h-4 w-4 mr-2", refreshing && "animate-spin")} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => handleRefresh(false)} disabled={refreshing}>
+            <RefreshCw className={cn("h-4 w-4 mr-2", refreshing && "animate-spin")} />
+            Refresh
+          </Button>
+          <Button variant="secondary" onClick={() => handleRefresh(true)} disabled={refreshing}>
+            <RotateCcw className={cn("h-4 w-4 mr-2", refreshing && "animate-spin")} />
+            Force Refresh
+          </Button>
+        </div>
       </div>
+
+      {pipelineStatus && (
+        <Card className={cn(
+          "p-4 border-l-4",
+          !anyLocalAIOnline && !pipelineStatus.fallbackAvailable && "border-l-red-500 bg-red-500/5",
+          !anyLocalAIOnline && pipelineStatus.fallbackAvailable && "border-l-yellow-500 bg-yellow-500/5",
+          anyLocalAIOnline && "border-l-green-500 bg-green-500/5"
+        )}>
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-3">
+              {!anyLocalAIOnline && !pipelineStatus.fallbackAvailable && (
+                <CloudOff className="h-5 w-5 text-red-500 mt-0.5" />
+              )}
+              {!anyLocalAIOnline && pipelineStatus.fallbackAvailable && (
+                <Cloud className="h-5 w-5 text-yellow-500 mt-0.5" />
+              )}
+              {anyLocalAIOnline && (
+                <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5" />
+              )}
+              <div className="space-y-1">
+                <div className="font-semibold">
+                  {!anyLocalAIOnline && !pipelineStatus.fallbackAvailable && "AI Services Unavailable"}
+                  {!anyLocalAIOnline && pipelineStatus.fallbackAvailable && "Local AI Offline - Using Cloud Fallback"}
+                  {anyLocalAIOnline && "AI Services Online"}
+                </div>
+                {pipelineStatus.actionableMessage && (
+                  <p className="text-sm text-muted-foreground">{pipelineStatus.actionableMessage}</p>
+                )}
+                <div className="flex flex-wrap gap-3 mt-2">
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <div className={cn(
+                      "w-2 h-2 rounded-full",
+                      ollamaOnline ? "bg-green-500" : "bg-red-500"
+                    )} />
+                    <span className={ollamaOnline ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}>
+                      Ollama: {ollamaOnline ? "Online" : "Offline"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <div className={cn(
+                      "w-2 h-2 rounded-full",
+                      sdOnline ? "bg-green-500" : "bg-red-500"
+                    )} />
+                    <span className={sdOnline ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}>
+                      Stable Diffusion: {sdOnline ? "Online" : "Offline"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <div className={cn(
+                      "w-2 h-2 rounded-full",
+                      comfyOnline ? "bg-green-500" : "bg-red-500"
+                    )} />
+                    <span className={comfyOnline ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}>
+                      ComfyUI: {comfyOnline ? "Online" : "Offline"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <div className={cn(
+                      "w-2 h-2 rounded-full",
+                      pipelineStatus.fallbackAvailable ? "bg-green-500" : "bg-gray-400"
+                    )} />
+                    <span className={pipelineStatus.fallbackAvailable ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>
+                      OpenAI Fallback: {pipelineStatus.fallbackAvailable ? "Available" : "Not Configured"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="p-4 space-y-4">
@@ -654,10 +748,15 @@ export default function JarvisPage() {
             <Button
               className="w-full"
               onClick={handleStartCodeGeneration}
-              disabled={codeSubmitting || !codeDescription.trim()}
+              disabled={codeSubmitting || !codeDescription.trim() || !canGenerateCode}
             >
               {codeSubmitting ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : !canGenerateCode ? (
+                <>
+                  <CloudOff className="h-4 w-4 mr-2" />
+                  <span>AI Services Offline</span>
+                </>
               ) : (
                 <>
                   {getJobTypeIcon(jobType)}
@@ -665,6 +764,11 @@ export default function JarvisPage() {
                 </>
               )}
             </Button>
+            {!canGenerateCode && (
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                AI code generation requires Ollama or OpenAI fallback to be available.
+              </p>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -824,15 +928,25 @@ export default function JarvisPage() {
             <Button
               className="w-full"
               onClick={handleStartAutonomous}
-              disabled={submitting || !objective.trim()}
+              disabled={submitting || !objective.trim() || !canGenerateCode}
             >
               {submitting ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : !canGenerateCode ? (
+                <>
+                  <CloudOff className="h-4 w-4 mr-2" />
+                  AI Services Offline
+                </>
               ) : (
                 <Play className="h-4 w-4 mr-2" />
               )}
-              Start Autonomous Development
+              {canGenerateCode && "Start Autonomous Development"}
             </Button>
+            {!canGenerateCode && (
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                Autonomous development requires AI services to be available.
+              </p>
+            )}
           </div>
         </Card>
 

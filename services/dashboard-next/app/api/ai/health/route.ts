@@ -7,7 +7,7 @@ import { cookies } from "next/headers";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const LOCAL_AI_ONLY = process.env.LOCAL_AI_ONLY !== "false";
+const LOCAL_AI_ONLY = process.env.LOCAL_AI_ONLY === "true";
 
 async function checkAuth() {
   const cookieStore = await cookies();
@@ -135,8 +135,11 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  const fallbackAvailable = !LOCAL_AI_ONLY && openaiHealth.status === "online";
+
   return NextResponse.json({
     localAIOnly: LOCAL_AI_ONLY,
+    fallbackAvailable,
     timestamp: new Date().toISOString(),
     providers: {
       ollama: {
@@ -157,9 +160,9 @@ export async function GET(request: NextRequest) {
       ? "Local AI is required but offline. Start Ollama on your Windows VM."
       : anyOllamaOnline
       ? "Using local AI (preferred)"
-      : openaiHealth.status === "online"
-      ? "Using OpenAI cloud (local AI offline)"
-      : "No AI providers available",
+      : fallbackAvailable
+      ? "Using OpenAI cloud fallback (local AI offline)"
+      : "No AI providers available. Configure OPENAI_API_KEY for cloud fallback.",
   });
 }
 

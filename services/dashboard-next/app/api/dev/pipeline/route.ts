@@ -210,6 +210,13 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const url = new URL(request.url);
+    const forceRefresh = url.searchParams.get("forceRefresh") === "true";
+    
+    if (forceRefresh) {
+      console.log("[Pipeline] Force refresh requested");
+    }
+
     const [localAIStatus, openCodeStatus, targets, healthChecks] = await Promise.all([
       localAIRuntime.checkAllRuntimes(),
       openCodeIntegration.checkInstallation(),
@@ -224,17 +231,36 @@ export async function GET(request: NextRequest) {
     const sdStatus = localAIStatus.find(s => s.provider === "stable-diffusion");
     const comfyStatus = localAIStatus.find(s => s.provider === "comfyui");
 
+    const ollamaOnline = ollamaStatus?.status === "online";
+    const sdOnline = sdStatus?.status === "online";
+    const comfyOnline = comfyStatus?.status === "online";
+    const anyLocalAIOnline = ollamaOnline || sdOnline || comfyOnline;
+    
+    const hasOpenAIKey = !!process.env.OPENAI_API_KEY || !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+    const fallbackAvailable = hasOpenAIKey && providerInfo.provider !== "none";
+
+    let actionableMessage = "";
+    if (!anyLocalAIOnline && !fallbackAvailable) {
+      actionableMessage = "All AI services are offline. Start Ollama on your Windows VM or configure an OpenAI API key to enable AI features.";
+    } else if (!anyLocalAIOnline && fallbackAvailable) {
+      actionableMessage = "Local AI services are offline. Using cloud fallback (OpenAI). Start Ollama for local inference.";
+    } else if (!ollamaOnline) {
+      actionableMessage = "Ollama is offline. Text generation will use cloud fallback if available.";
+    } else if (ollamaOnline && !sdOnline && !comfyOnline) {
+      actionableMessage = "Image generation services (Stable Diffusion, ComfyUI) are offline. Text generation is available via Ollama.";
+    }
+
     return NextResponse.json({
       status: "ready",
       localAI: {
-        available: localAIStatus.some(s => s.status === "online"),
+        available: anyLocalAIOnline,
         ollama: ollamaStatus ? {
           status: ollamaStatus.status,
           url: ollamaStatus.url,
           latencyMs: ollamaStatus.latencyMs,
           modelsLoaded: ollamaStatus.modelsLoaded,
           vramUsed: ollamaStatus.vramUsed,
-        } : null,
+        } : { status: "offline", url: "", modelsLoaded: 0 },
         stableDiffusion: sdStatus ? {
           status: sdStatus.status,
           url: sdStatus.url,
@@ -242,12 +268,14 @@ export async function GET(request: NextRequest) {
           gpuUsage: sdStatus.gpuUsage,
           vramUsed: sdStatus.vramUsed,
           vramTotal: sdStatus.vramTotal,
-        } : null,
+        } : { status: "offline", url: "", gpuUsage: 0 },
         comfyUI: comfyStatus ? {
           status: comfyStatus.status,
           url: comfyStatus.url,
-        } : null,
+        } : { status: "offline", url: "" },
       },
+      fallbackAvailable,
+      actionableMessage,
       opencode: {
         available: openCodeStatus,
         selectedProvider: providerInfo.provider,

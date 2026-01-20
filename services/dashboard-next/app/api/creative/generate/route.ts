@@ -76,13 +76,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const localAIOnly = process.env.LOCAL_AI_ONLY !== "false";
+    // LOCAL_AI_ONLY must be explicitly set to "true" to disable cloud fallback
+    const localAIOnly = process.env.LOCAL_AI_ONLY === "true";
     const sdStatus = await aiOrchestrator.getSDStatus();
 
     if (!sdStatus.available) {
       const errorMsg = localAIOnly
-        ? "Local Stable Diffusion is offline. Start SD WebUI on your Windows VM (port 7860) or set LOCAL_AI_ONLY=false."
-        : "Stable Diffusion is offline. Please start SD WebUI.";
+        ? "Local Stable Diffusion is offline. Start SD WebUI on your Windows VM (port 7860) to enable image generation."
+        : "Stable Diffusion is offline. Please start SD WebUI or configure a cloud image generation service.";
       return NextResponse.json(
         { success: false, error: errorMsg, sdStatus },
         { status: 503 }

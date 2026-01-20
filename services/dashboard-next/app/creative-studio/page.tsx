@@ -63,10 +63,12 @@ interface SDStatus {
   currentModel: string | null;
   modelLoading: boolean;
   availableModels: string[];
+  validCheckpoints?: string[];
   url?: string;
   vram?: { total: number; used: number; free: number };
   error?: string;
   hasMotionModule?: boolean;
+  requiresModelSwitch?: boolean;
   ready: boolean;
 }
 
@@ -558,6 +560,52 @@ export default function CreativeStudioPage() {
             </Button>
           </div>
         </div>
+
+        {capabilities?.stableDiffusion.requiresModelSwitch && (
+          <Card className="border-amber-500/50 bg-amber-500/10">
+            <CardContent className="py-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                  <AlertCircle className="h-5 w-5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium">Invalid Model Loaded</p>
+                    <p className="text-sm text-muted-foreground">
+                      The current model ({capabilities.stableDiffusion.currentModel}) is not a valid checkpoint.
+                      {capabilities.stableDiffusion.hasMotionModule && " It appears to be a motion module or auxiliary model."}
+                      {" "}Please switch to a valid checkpoint to enable image generation.
+                    </p>
+                  </div>
+                </div>
+                {(capabilities.stableDiffusion.validCheckpoints?.length ?? 0) > 0 && (
+                  <div className="flex items-center gap-2 ml-auto">
+                    <Select
+                      onValueChange={switchModel}
+                      disabled={switchingModel}
+                    >
+                      <SelectTrigger className="w-[200px] h-9">
+                        {switchingModel ? (
+                          <span className="flex items-center gap-1">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Switching...
+                          </span>
+                        ) : (
+                          <SelectValue placeholder="Switch to checkpoint" />
+                        )}
+                      </SelectTrigger>
+                      <SelectContent>
+                        {capabilities.stableDiffusion.validCheckpoints?.map((model) => (
+                          <SelectItem key={model} value={model} className="text-sm">
+                            <span className="truncate max-w-[180px]">{model}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Tabs value={mode} onValueChange={(v) => setMode(v as GenerationMode)}>
           <TabsList className="grid grid-cols-3 lg:grid-cols-6 h-auto">

@@ -280,6 +280,12 @@ curl http://localhost:5000/api/setup/step/secrets
 *   **Stable Diffusion/ComfyUI:** Local image generation
 
 ## Recent Changes
+- **January 20, 2026**: Major AI features overhaul:
+  - Fixed Creative Studio model validation - properly distinguishes base checkpoints from motion modules/LoRA/VAE
+  - Added model switch warning banner in Creative Studio when invalid model is loaded
+  - Enabled AI cloud fallback - OpenAI fallback now works when local AI is offline (unless LOCAL_AI_ONLY=true)
+  - Improved Jarvis AI status indicators - clear service status banners and actionable error messages
+  - Added health gating to disable UI actions when required AI services are offline
 - **January 2026**: Added comprehensive OOTB Setup Wizard with 7-step guided configuration
 - **January 2026**: Updated API routes for setup wizard steps (secrets, database, AI, platforms, deployment)
 - **January 2026**: Added environment detection and service connectivity testing
