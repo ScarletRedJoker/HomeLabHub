@@ -21,8 +21,9 @@ $Script:Config = @{
     MaxPythonMinor = 12
     Python310Path = "C:\Python310\python.exe"
     ComfyUIPath = "C:\AI\ComfyUI"
-    StableDiffusionForgePath = "C:\AI\stable-diffusion-webui-forge"
+    # A1111 is primary (stable), Forge is secondary (has dependency issues)
     StableDiffusionPath = "C:\AI\stable-diffusion-webui"
+    StableDiffusionForgePath = "C:\AI\stable-diffusion-webui-forge"
     AgentPath = "C:\NebulaCommand\deploy\windows\agent"
     Services = @(
         @{ Name = "Ollama"; Key = "ollama"; Port = 11434 }
