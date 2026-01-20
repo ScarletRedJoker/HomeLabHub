@@ -860,6 +860,7 @@ class JarvisOrchestrator {
 
   async refreshResourceStatus(): Promise<AIResource[]> {
     try {
+      const previousOllamaStatus = this.aiResources.find(r => r.provider === "ollama")?.status;
       const runtimes = await localAIRuntime.checkAllRuntimes();
       
       for (const runtime of runtimes) {
@@ -868,6 +869,12 @@ class JarvisOrchestrator {
           resource.status = runtime.status === "online" ? "available" : "offline";
           resource.latencyMs = runtime.latencyMs;
         }
+      }
+      
+      const newOllamaStatus = this.aiResources.find(r => r.provider === "ollama")?.status;
+      if (previousOllamaStatus === "offline" && newOllamaStatus === "available") {
+        console.log("[Orchestrator] Ollama recovered - resuming paused AI jobs");
+        this.resumePausedAIJobs();
       }
 
       const openCodeAvailable = await openCodeIntegration.checkInstallation();
@@ -955,6 +962,49 @@ class JarvisOrchestrator {
     if (job.status === "queued") {
       job.status = "cancelled";
       job.completedAt = new Date();
+      return true;
+    }
+    
+    return false;
+  }
+
+  resumePausedAIJobs(): number {
+    let resumedCount = 0;
+    const failedAIJobs = Array.from(this.jobs.values()).filter(job => 
+      job.status === "failed" && 
+      job.type === "ai_generation" &&
+      job.error?.includes("offline") &&
+      job.retries < job.maxRetries + 1
+    );
+    
+    for (const job of failedAIJobs) {
+      job.status = "queued";
+      job.retries = Math.max(0, job.retries - 1);
+      job.error = undefined;
+      console.log(`[Orchestrator] Resuming AI job ${job.id} after Ollama recovery`);
+      resumedCount++;
+      this.notifyListeners(job.id, job);
+    }
+    
+    if (resumedCount > 0) {
+      console.log(`[Orchestrator] Resumed ${resumedCount} paused AI job(s)`);
+      this.processQueue();
+    }
+    
+    return resumedCount;
+  }
+
+  retryJob(jobId: string): boolean {
+    const job = this.jobs.get(jobId);
+    if (!job) return false;
+    
+    if (job.status === "failed") {
+      job.status = "queued";
+      job.retries = Math.max(0, job.retries - 1);
+      job.error = undefined;
+      console.log(`[Orchestrator] Manually retrying job ${jobId}`);
+      this.notifyListeners(jobId, job);
+      this.processQueue();
       return true;
     }
     

@@ -438,6 +438,335 @@ const COMPONENT_LIBRARY: ComponentDefinition[] = [
     defaultCss: `.divider { border: none; height: 1px; background: linear-gradient(to right, transparent, #ddd, transparent); margin: 2rem 0; }`,
     defaultProps: {},
   },
+  {
+    id: "hero-2",
+    name: "Hero with Image",
+    category: "headers",
+    type: "hero-image",
+    icon: <Layout className="h-4 w-4" />,
+    defaultHtml: `<section class="hero-image">
+  <div class="hero-content">
+    <div class="hero-text">
+      <h1>Build Something Amazing</h1>
+      <p>Transform your ideas into reality with our powerful platform</p>
+      <div class="hero-buttons">
+        <button class="btn-primary">Get Started</button>
+        <button class="btn-secondary">Learn More</button>
+      </div>
+    </div>
+    <div class="hero-img">
+      <img src="https://via.placeholder.com/500x400" alt="Hero image" />
+    </div>
+  </div>
+</section>`,
+    defaultCss: `.hero-image { padding: 4rem 2rem; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
+.hero-image .hero-content { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; align-items: center; }
+.hero-image .hero-text { color: white; }
+.hero-image h1 { font-size: 3rem; margin-bottom: 1rem; }
+.hero-image p { font-size: 1.2rem; opacity: 0.9; margin-bottom: 2rem; }
+.hero-buttons { display: flex; gap: 1rem; }
+.btn-primary { background: #6366f1; color: white; border: none; padding: 0.75rem 2rem; border-radius: 8px; cursor: pointer; }
+.btn-secondary { background: transparent; color: white; border: 1px solid white; padding: 0.75rem 2rem; border-radius: 8px; cursor: pointer; }
+.hero-img img { width: 100%; border-radius: 12px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+@media (max-width: 768px) { .hero-image .hero-content { grid-template-columns: 1fr; } }`,
+    defaultProps: { title: "Build Something Amazing" },
+  },
+  {
+    id: "hero-3",
+    name: "Hero Centered",
+    category: "headers",
+    type: "hero-centered",
+    icon: <Layout className="h-4 w-4" />,
+    defaultHtml: `<section class="hero-centered">
+  <div class="hero-badge">New Feature Available</div>
+  <h1>Supercharge Your Workflow</h1>
+  <p>The all-in-one platform that helps you build, deploy, and scale your projects faster than ever before.</p>
+  <div class="hero-actions">
+    <button class="cta-main">Start Free Trial</button>
+    <button class="cta-watch"><span>▶</span> Watch Demo</button>
+  </div>
+  <div class="hero-stats">
+    <div class="stat"><strong>10K+</strong><span>Users</span></div>
+    <div class="stat"><strong>99.9%</strong><span>Uptime</span></div>
+    <div class="stat"><strong>24/7</strong><span>Support</span></div>
+  </div>
+</section>`,
+    defaultCss: `.hero-centered { min-height: 90vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 4rem 2rem; background: radial-gradient(ellipse at top, #1e293b 0%, #0f172a 100%); color: white; }
+.hero-badge { background: rgba(99, 102, 241, 0.2); color: #a5b4fc; padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.875rem; margin-bottom: 1.5rem; }
+.hero-centered h1 { font-size: 4rem; margin-bottom: 1.5rem; max-width: 800px; background: linear-gradient(to right, #fff, #a5b4fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.hero-centered > p { font-size: 1.25rem; opacity: 0.8; max-width: 600px; margin-bottom: 2.5rem; }
+.hero-actions { display: flex; gap: 1rem; margin-bottom: 3rem; }
+.cta-main { background: #6366f1; color: white; border: none; padding: 1rem 2rem; border-radius: 8px; font-size: 1rem; cursor: pointer; }
+.cta-watch { background: transparent; color: white; border: 1px solid rgba(255,255,255,0.3); padding: 1rem 2rem; border-radius: 8px; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
+.hero-stats { display: flex; gap: 4rem; }
+.stat { display: flex; flex-direction: column; }
+.stat strong { font-size: 2rem; }
+.stat span { opacity: 0.7; font-size: 0.875rem; }`,
+    defaultProps: {},
+  },
+  {
+    id: "testimonials-1",
+    name: "Testimonials Grid",
+    category: "content",
+    type: "testimonials",
+    icon: <MessageSquare className="h-4 w-4" />,
+    defaultHtml: `<section class="testimonials">
+  <h2>What Our Customers Say</h2>
+  <div class="testimonials-grid">
+    <div class="testimonial">
+      <p>"This product has completely transformed how we work. Couldn't imagine going back."</p>
+      <div class="author">
+        <div class="avatar">JD</div>
+        <div class="info">
+          <strong>John Doe</strong>
+          <span>CEO, TechCorp</span>
+        </div>
+      </div>
+    </div>
+    <div class="testimonial">
+      <p>"The best tool we've ever used. Our productivity increased by 300%."</p>
+      <div class="author">
+        <div class="avatar">SA</div>
+        <div class="info">
+          <strong>Sarah Anderson</strong>
+          <span>CTO, StartupXYZ</span>
+        </div>
+      </div>
+    </div>
+    <div class="testimonial">
+      <p>"Outstanding support and incredible features. Highly recommended!"</p>
+      <div class="author">
+        <div class="avatar">MJ</div>
+        <div class="info">
+          <strong>Mike Johnson</strong>
+          <span>Founder, DevAgency</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>`,
+    defaultCss: `.testimonials { padding: 5rem 2rem; background: #f8fafc; }
+.testimonials h2 { text-align: center; font-size: 2.5rem; margin-bottom: 3rem; color: #1e293b; }
+.testimonials-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; max-width: 1200px; margin: 0 auto; }
+.testimonial { background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+.testimonial p { font-size: 1.1rem; color: #475569; margin-bottom: 1.5rem; line-height: 1.7; font-style: italic; }
+.author { display: flex; align-items: center; gap: 1rem; }
+.avatar { width: 48px; height: 48px; background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }
+.author .info { display: flex; flex-direction: column; }
+.author strong { color: #1e293b; }
+.author span { font-size: 0.875rem; color: #64748b; }`,
+    defaultProps: {},
+  },
+  {
+    id: "testimonials-2",
+    name: "Testimonial Carousel",
+    category: "content",
+    type: "testimonial-single",
+    icon: <MessageSquare className="h-4 w-4" />,
+    defaultHtml: `<section class="testimonial-single">
+  <div class="quote-icon">❝</div>
+  <blockquote>
+    "This platform has been a game-changer for our business. The intuitive interface and powerful features have helped us achieve results we never thought possible."
+  </blockquote>
+  <div class="testimonial-author">
+    <img src="https://via.placeholder.com/80x80" alt="Author" class="author-img" />
+    <div>
+      <strong>Emily Parker</strong>
+      <span>VP of Engineering, InnovateCo</span>
+    </div>
+  </div>
+</section>`,
+    defaultCss: `.testimonial-single { padding: 5rem 2rem; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+.quote-icon { font-size: 5rem; opacity: 0.3; line-height: 1; }
+.testimonial-single blockquote { font-size: 1.5rem; max-width: 800px; margin: 0 auto 2rem; line-height: 1.8; font-style: italic; }
+.testimonial-author { display: flex; align-items: center; justify-content: center; gap: 1rem; }
+.author-img { width: 64px; height: 64px; border-radius: 50%; border: 3px solid white; }
+.testimonial-author strong { display: block; }
+.testimonial-author span { opacity: 0.9; font-size: 0.875rem; }`,
+    defaultProps: {},
+  },
+  {
+    id: "features-1",
+    name: "Features Grid",
+    category: "content",
+    type: "features",
+    icon: <LayoutGrid className="h-4 w-4" />,
+    defaultHtml: `<section class="features-section">
+  <div class="features-header">
+    <span class="features-badge">Features</span>
+    <h2>Everything You Need</h2>
+    <p>Powerful tools to help you build and grow your business</p>
+  </div>
+  <div class="features-grid">
+    <div class="feature">
+      <div class="feature-icon">⚡</div>
+      <h3>Lightning Fast</h3>
+      <p>Optimized performance that keeps your users engaged and happy.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🔒</div>
+      <h3>Secure by Default</h3>
+      <p>Enterprise-grade security to protect your data and privacy.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🎨</div>
+      <h3>Fully Customizable</h3>
+      <p>Tailor every aspect to match your brand and requirements.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">📊</div>
+      <h3>Analytics Built-in</h3>
+      <p>Track performance and make data-driven decisions.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🔌</div>
+      <h3>Easy Integrations</h3>
+      <p>Connect with your favorite tools and services seamlessly.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">💬</div>
+      <h3>24/7 Support</h3>
+      <p>Our team is always here to help you succeed.</p>
+    </div>
+  </div>
+</section>`,
+    defaultCss: `.features-section { padding: 5rem 2rem; }
+.features-header { text-align: center; margin-bottom: 4rem; }
+.features-badge { background: #eef2ff; color: #6366f1; padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.875rem; font-weight: 500; }
+.features-header h2 { font-size: 2.5rem; margin: 1rem 0 0.5rem; color: #1e293b; }
+.features-header p { color: #64748b; font-size: 1.1rem; }
+.features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; max-width: 1200px; margin: 0 auto; }
+.feature { padding: 2rem; border-radius: 16px; border: 1px solid #e2e8f0; transition: all 0.3s; }
+.feature:hover { border-color: #6366f1; box-shadow: 0 10px 30px rgba(99,102,241,0.1); }
+.feature-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+.feature h3 { font-size: 1.25rem; color: #1e293b; margin-bottom: 0.5rem; }
+.feature p { color: #64748b; line-height: 1.6; }`,
+    defaultProps: {},
+  },
+  {
+    id: "pricing-1",
+    name: "Pricing Table",
+    category: "content",
+    type: "pricing",
+    icon: <LayoutGrid className="h-4 w-4" />,
+    defaultHtml: `<section class="pricing">
+  <h2>Simple, Transparent Pricing</h2>
+  <p class="pricing-subtitle">Choose the plan that's right for you</p>
+  <div class="pricing-grid">
+    <div class="price-card">
+      <h3>Starter</h3>
+      <div class="price">$9<span>/month</span></div>
+      <ul>
+        <li>✓ Up to 3 projects</li>
+        <li>✓ Basic analytics</li>
+        <li>✓ Email support</li>
+      </ul>
+      <button>Get Started</button>
+    </div>
+    <div class="price-card featured">
+      <div class="popular-badge">Most Popular</div>
+      <h3>Pro</h3>
+      <div class="price">$29<span>/month</span></div>
+      <ul>
+        <li>✓ Unlimited projects</li>
+        <li>✓ Advanced analytics</li>
+        <li>✓ Priority support</li>
+        <li>✓ Custom domains</li>
+      </ul>
+      <button>Get Started</button>
+    </div>
+    <div class="price-card">
+      <h3>Enterprise</h3>
+      <div class="price">$99<span>/month</span></div>
+      <ul>
+        <li>✓ Everything in Pro</li>
+        <li>✓ SSO & SAML</li>
+        <li>✓ Dedicated support</li>
+        <li>✓ Custom contracts</li>
+      </ul>
+      <button>Contact Sales</button>
+    </div>
+  </div>
+</section>`,
+    defaultCss: `.pricing { padding: 5rem 2rem; background: #f8fafc; text-align: center; }
+.pricing h2 { font-size: 2.5rem; margin-bottom: 0.5rem; color: #1e293b; }
+.pricing-subtitle { color: #64748b; margin-bottom: 3rem; }
+.pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; max-width: 1000px; margin: 0 auto; }
+.price-card { background: white; padding: 2rem; border-radius: 16px; border: 1px solid #e2e8f0; text-align: left; position: relative; }
+.price-card.featured { border: 2px solid #6366f1; transform: scale(1.05); }
+.popular-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #6366f1; color: white; padding: 0.25rem 1rem; border-radius: 20px; font-size: 0.75rem; }
+.price-card h3 { font-size: 1.25rem; color: #1e293b; margin-bottom: 1rem; }
+.price { font-size: 3rem; font-weight: bold; color: #1e293b; margin-bottom: 1.5rem; }
+.price span { font-size: 1rem; font-weight: normal; color: #64748b; }
+.price-card ul { list-style: none; padding: 0; margin-bottom: 2rem; }
+.price-card li { padding: 0.5rem 0; color: #475569; }
+.price-card button { width: 100%; padding: 0.75rem; background: #6366f1; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; }`,
+    defaultProps: {},
+  },
+  {
+    id: "cta-1",
+    name: "Call to Action",
+    category: "content",
+    type: "cta",
+    icon: <Rocket className="h-4 w-4" />,
+    defaultHtml: `<section class="cta-section">
+  <h2>Ready to Get Started?</h2>
+  <p>Join thousands of satisfied customers and transform your business today.</p>
+  <div class="cta-buttons">
+    <button class="cta-primary">Start Free Trial</button>
+    <button class="cta-secondary">Schedule Demo</button>
+  </div>
+</section>`,
+    defaultCss: `.cta-section { padding: 5rem 2rem; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); text-align: center; color: white; }
+.cta-section h2 { font-size: 2.5rem; margin-bottom: 1rem; }
+.cta-section p { font-size: 1.2rem; opacity: 0.9; margin-bottom: 2rem; max-width: 600px; margin-left: auto; margin-right: auto; }
+.cta-buttons { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+.cta-primary { background: white; color: #6366f1; border: none; padding: 1rem 2rem; border-radius: 8px; font-size: 1rem; font-weight: 500; cursor: pointer; }
+.cta-secondary { background: transparent; color: white; border: 2px solid white; padding: 1rem 2rem; border-radius: 8px; font-size: 1rem; cursor: pointer; }`,
+    defaultProps: {},
+  },
+  {
+    id: "custom-html-1",
+    name: "Custom HTML/CSS",
+    category: "layout",
+    type: "custom",
+    icon: <Code2 className="h-4 w-4" />,
+    defaultHtml: `<div class="custom-block">
+  <!-- Add your custom HTML here -->
+  <p>This is a custom HTML/CSS block. Edit the code to create anything you want!</p>
+</div>`,
+    defaultCss: `.custom-block { padding: 2rem; background: #f0f9ff; border: 2px dashed #0ea5e9; border-radius: 8px; text-align: center; }
+.custom-block p { color: #0369a1; }`,
+    defaultProps: { isCustom: true },
+  },
+  {
+    id: "spacer-1",
+    name: "Spacer",
+    category: "layout",
+    type: "spacer",
+    icon: <Box className="h-4 w-4" />,
+    defaultHtml: `<div class="spacer"></div>`,
+    defaultCss: `.spacer { height: 80px; }`,
+    defaultProps: { height: 80 },
+  },
+  {
+    id: "video-1",
+    name: "Video Embed",
+    category: "content",
+    type: "video",
+    icon: <Box className="h-4 w-4" />,
+    defaultHtml: `<div class="video-container">
+  <div class="video-wrapper">
+    <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" frameborder="0" allowfullscreen></iframe>
+  </div>
+  <p class="video-caption">Watch our product demo</p>
+</div>`,
+    defaultCss: `.video-container { padding: 3rem 2rem; max-width: 900px; margin: 0 auto; }
+.video-wrapper { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+.video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+.video-caption { text-align: center; margin-top: 1rem; color: #64748b; }`,
+    defaultProps: { videoUrl: "" },
+  },
 ];
 
 const CATEGORIES = [
@@ -746,6 +1075,69 @@ export default function WebsiteBuilderPage() {
     }
   };
 
+  const handleExportHtml = () => {
+    if (!selectedProject || !selectedPage) {
+      toast.error("No page to export");
+      return;
+    }
+
+    const globalCss = selectedProject.globalCss || "";
+    const pageCss = selectedPage.pageCss || "";
+    const componentsHtml = selectedPage.components?.map(c => c.html).join("\n\n") || "";
+    const componentsCss = selectedPage.components?.map(c => c.css || "").join("\n\n") || "";
+
+    const fullHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="${selectedPage.description || selectedProject.description || ""}">
+  <title>${selectedPage.title || selectedProject.name}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+${globalCss}
+
+${pageCss}
+
+${componentsCss}
+
+/* Animation keyframes */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideLeft { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes slideRight { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes zoomIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+@keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+.animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+.animate-slide-up { animation: slideUp 0.5s ease-out forwards; }
+.animate-slide-down { animation: slideDown 0.5s ease-out forwards; }
+.animate-slide-left { animation: slideLeft 0.5s ease-out forwards; }
+.animate-slide-right { animation: slideRight 0.5s ease-out forwards; }
+.animate-zoom-in { animation: zoomIn 0.5s ease-out forwards; }
+.animate-bounce { animation: bounce 1s ease-in-out infinite; }
+  </style>
+</head>
+<body>
+${componentsHtml}
+</body>
+</html>`;
+
+    const blob = new Blob([fullHtml], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${selectedProject.name.toLowerCase().replace(/\s+/g, "-")}-${selectedPage.slug.replace(/\//g, "") || "home"}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("HTML exported successfully!");
+  };
+
   const handleDragStart = (component: ComponentDefinition) => {
     setDraggedComponent(component);
   };
@@ -1027,6 +1419,20 @@ export default function WebsiteBuilderPage() {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Code View</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleExportHtml}
+                    disabled={!selectedProject}
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Export HTML</TooltipContent>
               </Tooltip>
 
               <Dialog open={showAiDialog} onOpenChange={setShowAiDialog}>
@@ -1540,6 +1946,162 @@ export default function WebsiteBuilderPage() {
                                 rows={4}
                                 value={selectedComponent.css || ""}
                               />
+                            </div>
+
+                            <Separator />
+
+                            <div className="space-y-2">
+                              <Label className="text-xs font-semibold flex items-center gap-2">
+                                <Link className="h-3 w-3" />
+                                Link Configuration
+                              </Label>
+                              <div className="space-y-2">
+                                <Input
+                                  className="h-8 text-xs"
+                                  placeholder="https://example.com or /page"
+                                  value={(selectedComponent.props.linkUrl as string) || ""}
+                                  onChange={(e) => handleComponentPropertyChange("linkUrl", e.target.value)}
+                                />
+                                <Select
+                                  value={(selectedComponent.props.linkTarget as string) || "_self"}
+                                  onValueChange={(v) => handleComponentPropertyChange("linkTarget", v)}
+                                >
+                                  <SelectTrigger className="h-8 text-xs">
+                                    <SelectValue placeholder="Open in..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="_self">Same Tab</SelectItem>
+                                    <SelectItem value="_blank">New Tab</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+
+                            <Separator />
+
+                            <div className="space-y-2">
+                              <Label className="text-xs font-semibold flex items-center gap-2">
+                                <Sparkles className="h-3 w-3" />
+                                Animation
+                              </Label>
+                              <Select
+                                value={(selectedComponent.props.animation as string) || "none"}
+                                onValueChange={(v) => handleComponentPropertyChange("animation", v)}
+                              >
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue placeholder="Select animation" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">None</SelectItem>
+                                  <SelectItem value="fade-in">Fade In</SelectItem>
+                                  <SelectItem value="slide-up">Slide Up</SelectItem>
+                                  <SelectItem value="slide-down">Slide Down</SelectItem>
+                                  <SelectItem value="slide-left">Slide Left</SelectItem>
+                                  <SelectItem value="slide-right">Slide Right</SelectItem>
+                                  <SelectItem value="zoom-in">Zoom In</SelectItem>
+                                  <SelectItem value="bounce">Bounce</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">Duration (ms)</Label>
+                                  <Input
+                                    type="number"
+                                    className="h-8 text-xs"
+                                    placeholder="500"
+                                    value={(selectedComponent.props.animationDuration as number) || 500}
+                                    onChange={(e) => handleComponentPropertyChange("animationDuration", parseInt(e.target.value) || 500)}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">Delay (ms)</Label>
+                                  <Input
+                                    type="number"
+                                    className="h-8 text-xs"
+                                    placeholder="0"
+                                    value={(selectedComponent.props.animationDelay as number) || 0}
+                                    onChange={(e) => handleComponentPropertyChange("animationDelay", parseInt(e.target.value) || 0)}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            <Separator />
+
+                            <div className="space-y-2">
+                              <Label className="text-xs font-semibold flex items-center gap-2">
+                                <AlignCenter className="h-3 w-3" />
+                                Text Alignment
+                              </Label>
+                              <div className="flex gap-1">
+                                <Button
+                                  variant={(selectedComponent.props.textAlign as string) === "left" ? "secondary" : "ghost"}
+                                  size="sm"
+                                  className="h-8 flex-1"
+                                  onClick={() => handleComponentPropertyChange("textAlign", "left")}
+                                >
+                                  <AlignLeft className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant={(selectedComponent.props.textAlign as string) === "center" ? "secondary" : "ghost"}
+                                  size="sm"
+                                  className="h-8 flex-1"
+                                  onClick={() => handleComponentPropertyChange("textAlign", "center")}
+                                >
+                                  <AlignCenter className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant={(selectedComponent.props.textAlign as string) === "right" ? "secondary" : "ghost"}
+                                  size="sm"
+                                  className="h-8 flex-1"
+                                  onClick={() => handleComponentPropertyChange("textAlign", "right")}
+                                >
+                                  <AlignRight className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label className="text-xs font-semibold flex items-center gap-2">
+                                <Type className="h-3 w-3" />
+                                Font Size
+                              </Label>
+                              <Select
+                                value={(selectedComponent.props.fontSize as string) || "base"}
+                                onValueChange={(v) => handleComponentPropertyChange("fontSize", v)}
+                              >
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue placeholder="Font size" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="xs">Extra Small</SelectItem>
+                                  <SelectItem value="sm">Small</SelectItem>
+                                  <SelectItem value="base">Normal</SelectItem>
+                                  <SelectItem value="lg">Large</SelectItem>
+                                  <SelectItem value="xl">Extra Large</SelectItem>
+                                  <SelectItem value="2xl">2X Large</SelectItem>
+                                  <SelectItem value="3xl">3X Large</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="flex gap-2">
+                              <Button
+                                variant={(selectedComponent.props.fontWeight as string) === "bold" ? "secondary" : "ghost"}
+                                size="sm"
+                                className="h-8"
+                                onClick={() => handleComponentPropertyChange("fontWeight", (selectedComponent.props.fontWeight as string) === "bold" ? "normal" : "bold")}
+                              >
+                                <Bold className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant={(selectedComponent.props.fontStyle as string) === "italic" ? "secondary" : "ghost"}
+                                size="sm"
+                                className="h-8"
+                                onClick={() => handleComponentPropertyChange("fontStyle", (selectedComponent.props.fontStyle as string) === "italic" ? "normal" : "italic")}
+                              >
+                                <Italic className="h-4 w-4" />
+                              </Button>
                             </div>
                           </div>
                         </div>

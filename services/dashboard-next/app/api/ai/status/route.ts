@@ -3,6 +3,18 @@ import OpenAI from "openai";
 import { verifySession } from "@/lib/session";
 import { cookies } from "next/headers";
 
+const LOCAL_AI_ONLY = process.env.LOCAL_AI_ONLY !== "false";
+const STATUS_CACHE_TTL_MS = 30000;
+
+interface CachedStatus {
+  data: any;
+  timestamp: number;
+}
+
+let statusCache: CachedStatus | null = null;
+let ollamaRecoveryCallbacks: Array<() => void> = [];
+let lastOllamaStatus: "connected" | "error" | "not_configured" = "not_configured";
+
 async function checkAuth() {
   const cookieStore = await cookies();
   const session = cookieStore.get("session");
@@ -16,6 +28,8 @@ interface AIProviderStatus {
   model?: string;
   latency?: number;
   error?: string;
+  troubleshooting?: string[];
+  url?: string;
 }
 
 async function checkOpenAI(): Promise<AIProviderStatus> {
@@ -85,6 +99,14 @@ async function checkOllama(): Promise<AIProviderStatus> {
   const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
   const ollamaUrl = process.env.OLLAMA_URL || `http://${WINDOWS_VM_IP}:11434`;
 
+  const troubleshootingSteps = [
+    "Check if Windows VM is powered on",
+    "Verify Tailscale connection (ping 100.118.44.102)",
+    "Start Ollama: 'ollama serve' in Windows terminal",
+    "Check Windows Firewall allows port 11434",
+    `Test: curl ${ollamaUrl}/api/tags`,
+  ];
+
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
@@ -96,25 +118,73 @@ async function checkOllama(): Promise<AIProviderStatus> {
     clearTimeout(timeout);
 
     if (!response.ok) {
-      return { name: "Ollama", status: "error", error: `HTTP ${response.status}` };
+      const result: AIProviderStatus = { 
+        name: "Ollama", 
+        status: "error", 
+        error: `HTTP ${response.status}`,
+        url: ollamaUrl,
+        troubleshooting: troubleshootingSteps,
+      };
+      handleOllamaStatusChange(result.status);
+      return result;
     }
 
     const latency = Date.now() - start;
     const data = await response.json();
     const models = data.models?.map((m: any) => m.name) || [];
 
-    return {
+    const result: AIProviderStatus = {
       name: "Ollama",
       status: "connected",
       model: models.length > 0 ? models.join(", ") : "No models loaded",
       latency,
+      url: ollamaUrl,
     };
+    handleOllamaStatusChange(result.status);
+    return result;
   } catch (error: any) {
+    let errorMsg: string;
     if (error.name === "AbortError") {
-      return { name: "Ollama", status: "error", error: "Connection timeout" };
+      errorMsg = `Connection timeout after 5s to ${ollamaUrl}`;
+    } else if (error.code === "ECONNREFUSED") {
+      errorMsg = `Connection refused - Ollama not running at ${ollamaUrl}`;
+    } else if (error.code === "ENOTFOUND" || error.code === "ENETUNREACH") {
+      errorMsg = `Cannot reach ${WINDOWS_VM_IP} - check Tailscale connection`;
+    } else {
+      errorMsg = error.message || "Ollama not reachable";
     }
-    return { name: "Ollama", status: "not_configured", error: "Ollama not reachable" };
+    
+    const result: AIProviderStatus = { 
+      name: "Ollama", 
+      status: "error", 
+      error: errorMsg,
+      url: ollamaUrl,
+      troubleshooting: troubleshootingSteps,
+    };
+    handleOllamaStatusChange(result.status);
+    return result;
   }
+}
+
+function handleOllamaStatusChange(newStatus: "connected" | "error" | "not_configured") {
+  if (lastOllamaStatus !== "connected" && newStatus === "connected") {
+    console.log("[AI Status] Ollama recovered - now online!");
+    ollamaRecoveryCallbacks.forEach(cb => {
+      try { cb(); } catch (e) { console.error("Recovery callback error:", e); }
+    });
+  }
+  lastOllamaStatus = newStatus;
+}
+
+export function onOllamaRecovery(callback: () => void): () => void {
+  ollamaRecoveryCallbacks.push(callback);
+  return () => {
+    ollamaRecoveryCallbacks = ollamaRecoveryCallbacks.filter(cb => cb !== callback);
+  };
+}
+
+export function getLastOllamaStatus(): "connected" | "error" | "not_configured" {
+  return lastOllamaStatus;
 }
 
 async function checkImageGeneration(): Promise<AIProviderStatus> {
@@ -259,6 +329,18 @@ async function checkComfyUI(): Promise<AIProviderStatus> {
 }
 
 export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const forceRefresh = searchParams.get("refresh") === "true";
+  
+  if (!forceRefresh && statusCache && (Date.now() - statusCache.timestamp) < STATUS_CACHE_TTL_MS) {
+    console.log(`[AI Status] Returning cached status (age: ${Math.round((Date.now() - statusCache.timestamp) / 1000)}s)`);
+    return NextResponse.json({
+      ...statusCache.data,
+      cached: true,
+      cacheAge: Date.now() - statusCache.timestamp,
+    });
+  }
+
   const [openai, ollama, dalle, sd, comfyui] = await Promise.all([
     checkOpenAI(),
     checkOllama(),
@@ -267,7 +349,6 @@ export async function GET(request: NextRequest) {
     checkComfyUI(),
   ]);
 
-  // Check for Replicate API token
   const replicateToken = process.env.REPLICATE_API_TOKEN;
   const replicateStatus: AIProviderStatus = replicateToken
     ? { name: "Replicate", status: "connected", model: "WAN 2.1" }
@@ -279,16 +360,65 @@ export async function GET(request: NextRequest) {
     video: [comfyui, replicateStatus],
   };
 
-  const overallStatus = openai.status === "connected" ? "healthy" : "degraded";
+  let overallStatus: "healthy" | "degraded" | "local_only" | "offline";
+  
+  if (LOCAL_AI_ONLY) {
+    if (ollama.status === "connected") {
+      overallStatus = "local_only";
+    } else {
+      overallStatus = "offline";
+    }
+  } else {
+    if (openai.status === "connected" || ollama.status === "connected") {
+      overallStatus = "healthy";
+    } else {
+      overallStatus = "degraded";
+    }
+  }
 
-  return NextResponse.json({
+  const responseData = {
     status: overallStatus,
+    localAIOnly: LOCAL_AI_ONLY,
     providers,
     capabilities: {
-      chat: openai.status === "connected" || ollama.status === "connected",
-      imageGeneration: dalle.status === "connected" || sd.status === "connected",
-      videoGeneration: comfyui.status === "connected" || replicateStatus.status === "connected",
+      chat: ollama.status === "connected" || (!LOCAL_AI_ONLY && openai.status === "connected"),
+      imageGeneration: sd.status === "connected" || (!LOCAL_AI_ONLY && dalle.status === "connected"),
+      videoGeneration: comfyui.status === "connected" || (!LOCAL_AI_ONLY && replicateStatus.status === "connected"),
       localLLM: ollama.status === "connected",
+      localImageGen: sd.status === "connected",
+      localVideoGen: comfyui.status === "connected",
     },
-  });
+    localAI: {
+      ollama: {
+        online: ollama.status === "connected",
+        url: (ollama as any).url,
+        latency: ollama.latency,
+        models: ollama.model,
+        error: ollama.error,
+        troubleshooting: (ollama as any).troubleshooting,
+      },
+      stableDiffusion: {
+        online: sd.status === "connected",
+        model: sd.model,
+        error: sd.error,
+      },
+      comfyUI: {
+        online: comfyui.status === "connected",
+        error: comfyui.error,
+      },
+    },
+    timestamp: new Date().toISOString(),
+  };
+
+  statusCache = {
+    data: responseData,
+    timestamp: Date.now(),
+  };
+
+  return NextResponse.json(responseData);
+}
+
+export function invalidateStatusCache(): void {
+  statusCache = null;
+  console.log("[AI Status] Cache invalidated");
 }

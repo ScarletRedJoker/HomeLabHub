@@ -487,6 +487,93 @@ async function chatWithOpenAI(
 
 const OLLAMA_REQUEST_TIMEOUT = 120000;
 const OLLAMA_CONNECT_TIMEOUT = 10000;
+const MAX_RETRIES = 3;
+const INITIAL_RETRY_DELAY_MS = 1000;
+
+interface RetryConfig {
+  maxRetries: number;
+  initialDelayMs: number;
+  maxDelayMs: number;
+  backoffMultiplier: number;
+}
+
+const DEFAULT_RETRY_CONFIG: RetryConfig = {
+  maxRetries: MAX_RETRIES,
+  initialDelayMs: INITIAL_RETRY_DELAY_MS,
+  maxDelayMs: 10000,
+  backoffMultiplier: 2,
+};
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  config: RetryConfig = DEFAULT_RETRY_CONFIG,
+  onRetry?: (attempt: number, error: Error) => void
+): Promise<T> {
+  let lastError: Error | null = null;
+  let delay = config.initialDelayMs;
+  
+  for (let attempt = 1; attempt <= config.maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      
+      if (attempt === config.maxRetries) {
+        break;
+      }
+      
+      const isRetryable = !error.message?.includes("not configured") && 
+                          !error.message?.includes("API key");
+      
+      if (!isRetryable) {
+        throw error;
+      }
+      
+      console.log(`[AIChat] Retry ${attempt}/${config.maxRetries} after ${delay}ms: ${error.message}`);
+      onRetry?.(attempt, error);
+      
+      await sleep(delay);
+      delay = Math.min(delay * config.backoffMultiplier, config.maxDelayMs);
+    }
+  }
+  
+  throw lastError || new Error("Max retries exceeded");
+}
+
+async function preFlightHealthCheck(): Promise<{
+  ollamaOnline: boolean;
+  ollamaLatency?: number;
+  ollamaModels: string[];
+  ollamaError?: string;
+}> {
+  try {
+    const result = await localAIRuntime.isOllamaOnline();
+    if (!result.online) {
+      return {
+        ollamaOnline: false,
+        ollamaError: result.error || "Ollama not reachable",
+        ollamaModels: [],
+      };
+    }
+    
+    const models = await fetchOllamaModels();
+    return {
+      ollamaOnline: true,
+      ollamaLatency: result.latencyMs,
+      ollamaModels: models,
+    };
+  } catch (error: any) {
+    return {
+      ollamaOnline: false,
+      ollamaError: error.message,
+      ollamaModels: [],
+    };
+  }
+}
 
 async function tryOllamaEndpoint(
   endpoint: string,
@@ -757,6 +844,30 @@ export async function POST(request: NextRequest) {
 
     const messageRequiresTool = detectToolIntent(message);
     
+    if (LOCAL_AI_ONLY && provider !== "openai" && !messageRequiresTool) {
+      const healthCheck = await preFlightHealthCheck();
+      if (!healthCheck.ollamaOnline) {
+        console.error("[AIChat] Pre-flight check failed: Ollama is offline");
+        return NextResponse.json({
+          error: "Local AI is currently offline",
+          errorCode: "LOCAL_AI_OFFLINE",
+          localAIOnly: true,
+          ollamaStatus: "offline",
+          details: healthCheck.ollamaError || "Ollama is not responding",
+          troubleshooting: [
+            "1. Check if the Windows VM is powered on",
+            "2. Verify Tailscale connection is active (100.118.44.102)",
+            "3. Start Ollama: 'ollama serve' in Windows terminal",
+            "4. Check Windows Firewall allows port 11434",
+            "5. Try: curl http://100.118.44.102:11434/api/tags",
+          ],
+          retryable: true,
+          retryAfterMs: 5000,
+        }, { status: 503 });
+      }
+      console.log(`[AIChat] Pre-flight check passed: Ollama online (${healthCheck.ollamaLatency}ms, ${healthCheck.ollamaModels.length} models)`);
+    }
+    
     if (provider === "custom" && customEndpoint) {
       const validation = validateCustomEndpoint(customEndpoint);
       if (!validation.valid) {
@@ -783,9 +894,15 @@ export async function POST(request: NextRequest) {
 
       if (selectedProvider === "ollama") {
         try {
-          result = await chatWithOllama(messages, finalModel, stream);
+          result = await withRetry(
+            () => chatWithOllama(messages, finalModel, stream),
+            { ...DEFAULT_RETRY_CONFIG, maxRetries: 2 },
+            (attempt, error) => {
+              console.log(`[AIChat] Ollama retry ${attempt}: ${error.message}`);
+            }
+          );
         } catch (ollamaError: any) {
-          console.warn("All Ollama endpoints failed:", ollamaError.message);
+          console.warn("All Ollama endpoints failed after retries:", ollamaError.message);
           
           if (LOCAL_AI_ONLY) {
             console.error("[AIChat] LOCAL_AI_ONLY mode - refusing to fall back to cloud AI");
