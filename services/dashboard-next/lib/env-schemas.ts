@@ -21,7 +21,7 @@ export interface ServiceEnvConfig {
 }
 
 export const dashboardEnvSchema = z.object({
-  DATABASE_URL: z.string().regex(/^postgres(ql)?:\/\/[^:]+:[^@]+@[^:]+:\d+\/\w+/, "Invalid PostgreSQL URL format").optional(),
+  DATABASE_URL: z.string().regex(/^postgres(ql)?:\/\/[^:]+:[^@]+@[^:]+:\d+\/\w+/, "Invalid PostgreSQL URL format"),
   SESSION_SECRET: z.string().min(32, "Session secret must be at least 32 characters"),
   ADMIN_USERNAME: z.string().min(1, "Admin username is required").default("admin"),
   ADMIN_PASSWORD: z.string().min(8, "Password must be at least 8 characters"),
@@ -46,7 +46,7 @@ export const discordBotEnvSchema = z.object({
   DISCORD_CLIENT_ID: z.string().regex(/^\d{17,20}$/, "Invalid Discord client ID format"),
   DISCORD_CLIENT_SECRET: z.string().min(32, "Client secret must be at least 32 characters"),
   DISCORD_APP_ID: z.string().regex(/^\d{17,20}$/, "Invalid Discord app ID format"),
-  DATABASE_URL: z.string().regex(/^postgres(ql)?:\/\/[^:]+:[^@]+@[^:]+:\d+\/\w+/, "Invalid PostgreSQL URL format").optional(),
+  DATABASE_URL: z.string().regex(/^postgres(ql)?:\/\/[^:]+:[^@]+@[^:]+:\d+\/\w+/, "Invalid PostgreSQL URL format"),
   SESSION_SECRET: z.string().min(32, "Session secret must be at least 32 characters"),
   DISCORD_CALLBACK_URL: z.string().url("Must be a valid URL").optional(),
   APP_URL: z.string().url("Must be a valid URL").optional(),
@@ -59,8 +59,9 @@ export const discordBotEnvSchema = z.object({
 });
 
 export const streamBotEnvSchema = z.object({
-  DATABASE_URL: z.string().regex(/^postgres(ql)?:\/\/[^:]+:[^@]+@[^:]+:\d+\/\w+/, "Invalid PostgreSQL URL format").optional(),
+  DATABASE_URL: z.string().regex(/^postgres(ql)?:\/\/[^:]+:[^@]+@[^:]+:\d+\/\w+/, "Invalid PostgreSQL URL format"),
   SESSION_SECRET: z.string().min(32, "Session secret must be at least 32 characters"),
+  APP_URL: z.string().url("Must be a valid URL"),
   TWITCH_CLIENT_ID: z.string().regex(/^[a-z0-9]{30}$/, "Invalid Twitch client ID format").optional(),
   TWITCH_CLIENT_SECRET: z.string().min(30, "Twitch client secret appears too short").optional(),
   TWITCH_CHANNEL: z.string().regex(/^[a-zA-Z0-9_]{4,25}$/, "Invalid Twitch channel name").optional(),
@@ -75,9 +76,9 @@ export const streamBotEnvSchema = z.object({
   KICK_CLIENT_SECRET: z.string().optional(),
   OPENAI_API_KEY: z.string().regex(/^sk-(proj-)?[a-zA-Z0-9_-]+$/, "Invalid OpenAI API key format").optional(),
   OBS_ENCRYPTION_KEY: z.string().min(32, "Encryption key must be at least 32 characters").optional(),
+  OBS_PASSWORD: z.string().optional(),
   STREAM_BOT_WEBHOOK_SECRET: z.string().min(32, "Webhook secret must be at least 32 characters").optional(),
   DISCORD_BOT_URL: z.string().url("Must be a valid URL").optional(),
-  APP_URL: z.string().url("Must be a valid URL").optional(),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   PORT: z.coerce.number().default(3000),
 });
@@ -106,7 +107,7 @@ export const infrastructureEnvSchema = z.object({
 });
 
 export const dashboardVariables: EnvVariable[] = [
-  { key: "DATABASE_URL", type: "string", required: false, description: "PostgreSQL connection string", example: "postgresql://user:password@localhost:5432/dashboard", instructions: "Create a PostgreSQL database and user. Format: postgresql://USER:PASSWORD@HOST:PORT/DATABASE", sensitive: true },
+  { key: "DATABASE_URL", type: "string", required: true, description: "PostgreSQL connection string", example: "postgresql://user:password@localhost:5432/dashboard", instructions: "Create a PostgreSQL database and user. Format: postgresql://USER:PASSWORD@HOST:PORT/DATABASE", sensitive: true },
   { key: "SESSION_SECRET", type: "string", required: true, description: "Secret key for signing session cookies (min 32 chars)", example: "your_secure_random_session_secret_here_minimum_32_chars", instructions: "Generate: openssl rand -hex 32", sensitive: true },
   { key: "ADMIN_USERNAME", type: "string", required: true, description: "Username for admin dashboard login", example: "admin", default: "admin", instructions: "Set a username for the admin login" },
   { key: "ADMIN_PASSWORD", type: "string", required: true, description: "Password for admin dashboard login (min 8 chars)", example: "your_secure_password", instructions: "Set a strong password with mixed case, numbers, and symbols", sensitive: true },
@@ -130,10 +131,10 @@ export const discordBotVariables: EnvVariable[] = [
   { key: "DISCORD_CLIENT_ID", type: "string", required: true, description: "Discord application client ID", hint: "https://discord.com/developers/applications", instructions: "Copy Application ID from General Information page" },
   { key: "DISCORD_CLIENT_SECRET", type: "string", required: true, description: "Discord application client secret", hint: "https://discord.com/developers/applications", instructions: "Go to OAuth2 > Reset Secret", sensitive: true },
   { key: "DISCORD_APP_ID", type: "string", required: true, description: "Discord application ID (same as CLIENT_ID)", instructions: "Same as DISCORD_CLIENT_ID, used for slash commands" },
-  { key: "DATABASE_URL", type: "string", required: false, description: "PostgreSQL connection string", example: "postgresql://ticketbot:password@localhost:5432/ticketbot", sensitive: true },
+  { key: "DATABASE_URL", type: "string", required: true, description: "PostgreSQL connection string", example: "postgresql://ticketbot:password@localhost:5432/ticketbot", sensitive: true },
   { key: "SESSION_SECRET", type: "string", required: true, description: "Secret for signing session cookies", instructions: "Generate: openssl rand -hex 32", sensitive: true },
   { key: "DISCORD_CALLBACK_URL", type: "string", required: false, description: "OAuth2 callback URL", example: "https://bot.rig-city.com/auth/discord/callback", instructions: "Set to your bot URL + /auth/discord/callback" },
-  { key: "APP_URL", type: "string", required: false, description: "Public base URL of the Discord bot", example: "https://bot.rig-city.com" },
+  { key: "APP_URL", type: "string", required: true, description: "Public base URL of the Discord bot", example: "https://bot.rig-city.com" },
   { key: "DISCORD_PRIMARY_GUILD_ID", type: "string", required: false, description: "Primary Discord server/guild ID", instructions: "Right-click server > Copy Server ID" },
   { key: "PLEX_URL", type: "string", required: false, description: "URL to Plex Media Server", example: "http://100.66.61.51:32400" },
   { key: "PLEX_TOKEN", type: "string", required: false, description: "Plex authentication token", hint: "Get from Plex Web > View XML > X-Plex-Token", sensitive: true },
@@ -143,7 +144,7 @@ export const discordBotVariables: EnvVariable[] = [
 ];
 
 export const streamBotVariables: EnvVariable[] = [
-  { key: "DATABASE_URL", type: "string", required: false, description: "PostgreSQL connection string", example: "postgresql://streambot:password@localhost:5432/streambot", sensitive: true },
+  { key: "DATABASE_URL", type: "string", required: true, description: "PostgreSQL connection string", example: "postgresql://streambot:password@localhost:5432/streambot", sensitive: true },
   { key: "SESSION_SECRET", type: "string", required: true, description: "Secret for signing session cookies", instructions: "Generate: openssl rand -hex 32", sensitive: true },
   { key: "TWITCH_CLIENT_ID", type: "string", required: false, description: "Twitch application client ID", hint: "https://dev.twitch.tv/console/apps", instructions: "Register app and copy Client ID" },
   { key: "TWITCH_CLIENT_SECRET", type: "string", required: false, description: "Twitch application client secret", hint: "https://dev.twitch.tv/console/apps", instructions: "Click New Secret and copy it", sensitive: true },
@@ -161,7 +162,8 @@ export const streamBotVariables: EnvVariable[] = [
   { key: "OBS_ENCRYPTION_KEY", type: "string", required: false, description: "Encryption key for OBS WebSocket", instructions: "Generate: openssl rand -hex 32", sensitive: true },
   { key: "STREAM_BOT_WEBHOOK_SECRET", type: "string", required: false, description: "Secret for Discord Bot webhooks", instructions: "Generate: openssl rand -hex 32", sensitive: true },
   { key: "DISCORD_BOT_URL", type: "string", required: false, description: "URL to Discord Bot for notifications", example: "https://bot.rig-city.com" },
-  { key: "APP_URL", type: "string", required: false, description: "Public base URL of Stream Bot", example: "https://stream.rig-city.com" },
+  { key: "APP_URL", type: "string", required: true, description: "Public base URL of Stream Bot", example: "https://stream.rig-city.com" },
+  { key: "OBS_PASSWORD", type: "string", required: false, description: "Password for OBS WebSocket connection", instructions: "Set in OBS > Tools > WebSocket Server Settings", sensitive: true },
   { key: "NODE_ENV", type: "string", required: false, description: "Node.js environment mode", example: "production", default: "development" },
   { key: "PORT", type: "number", required: false, description: "HTTP port for Stream Bot", example: "3000", default: "3000" },
 ];

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const STREAM_BOT_API = "http://localhost:3000";
+const STREAM_BOT_API = process.env.STREAM_BOT_URL || "http://localhost:3000";
 
 async function proxyRequest(
   req: NextRequest,
@@ -13,10 +13,23 @@ async function proxyRequest(
       "Content-Type": "application/json",
     };
 
+    // Forward cookies for authentication
+    const cookies = req.headers.get("cookie");
+    if (cookies) {
+      headers["Cookie"] = cookies;
+    }
+
+    // Forward authorization header if present
+    const auth = req.headers.get("authorization");
+    if (auth) {
+      headers["Authorization"] = auth;
+    }
+
     const options: RequestInit = {
       method,
       headers,
       cache: "no-store",
+      credentials: "include",
     };
 
     if (body && method !== "GET") {
@@ -25,13 +38,20 @@ async function proxyRequest(
 
     const response = await fetch(`${STREAM_BOT_API}${endpoint}`, options);
 
+    // Forward set-cookie headers from response
+    const responseHeaders = new Headers();
+    const setCookie = response.headers.get("set-cookie");
+    if (setCookie) {
+      responseHeaders.set("Set-Cookie", setCookie);
+    }
+
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: "Unknown error" }));
-      return NextResponse.json(error, { status: response.status });
+      return NextResponse.json(error, { status: response.status, headers: responseHeaders });
     }
 
     const data = await response.json();
-    return NextResponse.json(data);
+    return NextResponse.json(data, { headers: responseHeaders });
   } catch (error: any) {
     console.error(`[Stream Config API] Error proxying to ${endpoint}:`, error.message);
     return NextResponse.json(
