@@ -103,28 +103,32 @@ export async function POST(request: NextRequest) {
 
     let jobId: number | null = null;
     if (saveToDb) {
-      const newJob: NewCreativeJob = {
-        type,
-        status: "processing",
-        prompt: body.prompt || "",
-        negativePrompt: body.negativePrompt || null,
-        parameters: {
-          size: body.size,
-          steps: body.steps,
-          cfgScale: body.cfgScale,
-          denoisingStrength: body.denoisingStrength,
-          scaleFactor: body.scaleFactor,
-          upscaler: body.upscaler,
-        },
-        inputImages: getInputImages(body),
-        outputImages: [],
-        userId: body.userId || null,
-        controlnetConfig: body.controlNets || null,
-      };
+      try {
+        const newJob: NewCreativeJob = {
+          type,
+          status: "processing",
+          prompt: body.prompt || "",
+          negativePrompt: body.negativePrompt || null,
+          parameters: {
+            size: body.size,
+            steps: body.steps,
+            cfgScale: body.cfgScale,
+            denoisingStrength: body.denoisingStrength,
+            scaleFactor: body.scaleFactor,
+            upscaler: body.upscaler,
+          },
+          inputImages: getInputImages(body),
+          outputImages: [],
+          userId: body.userId || null,
+          controlnetConfig: body.controlNets || null,
+        };
 
-      const [insertedJob] = await db.insert(creativeJobs).values(newJob).returning();
-      jobId = insertedJob.id;
-      console.log(`[Creative Generate API] Created job ${jobId} for ${type}`);
+        const [insertedJob] = await db.insert(creativeJobs).values(newJob).returning();
+        jobId = insertedJob.id;
+        console.log(`[Creative Generate API] Created job ${jobId} for ${type}`);
+      } catch (dbError) {
+        console.warn(`[Creative Generate API] Could not save job to database (table may not exist): ${dbError}`);
+      }
     }
 
     let result;
@@ -132,46 +136,54 @@ export async function POST(request: NextRequest) {
       result = await executeGeneration(type, body);
     } catch (genError) {
       if (jobId) {
-        await db
-          .update(creativeJobs)
-          .set({
-            status: "failed",
-            error: genError instanceof Error ? genError.message : "Generation failed",
-            updatedAt: new Date(),
-          })
-          .where(eq(creativeJobs.id, jobId));
+        try {
+          await db
+            .update(creativeJobs)
+            .set({
+              status: "failed",
+              error: genError instanceof Error ? genError.message : "Generation failed",
+              updatedAt: new Date(),
+            })
+            .where(eq(creativeJobs.id, jobId));
+        } catch {
+          console.warn("[Creative Generate API] Could not update job status");
+        }
       }
       throw genError;
     }
 
     if (jobId && result) {
-      const outputImages = [];
-      if (result.base64) {
-        outputImages.push({
-          type: "base64",
-          data: result.base64,
-          provider: result.provider,
-        });
-      }
-      if (result.url) {
-        outputImages.push({
-          type: "url",
-          url: result.url,
-          provider: result.provider,
-        });
-      }
+      try {
+        const outputImages = [];
+        if (result.base64) {
+          outputImages.push({
+            type: "base64",
+            data: result.base64,
+            provider: result.provider,
+          });
+        }
+        if (result.url) {
+          outputImages.push({
+            type: "url",
+            url: result.url,
+            provider: result.provider,
+          });
+        }
 
-      await db
-        .update(creativeJobs)
-        .set({
-          status: "completed",
-          outputImages,
-          completedAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(eq(creativeJobs.id, jobId));
+        await db
+          .update(creativeJobs)
+          .set({
+            status: "completed",
+            outputImages,
+            completedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(creativeJobs.id, jobId));
 
-      console.log(`[Creative Generate API] Completed job ${jobId}`);
+        console.log(`[Creative Generate API] Completed job ${jobId}`);
+      } catch {
+        console.warn("[Creative Generate API] Could not update job completion status");
+      }
     }
 
     const images: Array<{ base64?: string; url?: string; provider: string }> = [];
