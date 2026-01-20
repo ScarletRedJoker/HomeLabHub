@@ -6,8 +6,10 @@ param(
     [string]$SDPath = "C:\AI\stable-diffusion-webui-forge",
     [string]$ComfyUIPath = "C:\AI\ComfyUI",
     [string]$FFmpegPath = "C:\ffmpeg",
+    [string]$PythonPath = "C:\Python310\python.exe",
     [switch]$SDOnly,
-    [switch]$ComfyOnly
+    [switch]$ComfyOnly,
+    [switch]$FixVenv
 )
 
 $scriptDir = $PSScriptRoot
@@ -19,30 +21,64 @@ Write-Host "======================================================" -ForegroundC
 Write-Host ""
 
 $results = @{
+    SDVenv = "SKIPPED"
     StableDiffusion = "SKIPPED"
     ComfyUI = "SKIPPED"
 }
 
 if (-not $ComfyOnly) {
+    $sdVenvPython = Join-Path $SDPath "venv\Scripts\python.exe"
+    
+    if ($FixVenv -or -not (Test-Path $sdVenvPython)) {
+        Write-Host "--- SD Venv Fix ---" -ForegroundColor Cyan
+        Write-Host ""
+        
+        $venvScript = Join-Path $scriptDir "Fix-SD-Venv.ps1"
+        if (Test-Path $venvScript) {
+            try {
+                & $venvScript -SDPath $SDPath -PythonPath $PythonPath
+                if ($LASTEXITCODE -eq 0) {
+                    $results.SDVenv = "SUCCESS"
+                } else {
+                    $results.SDVenv = "FAILED"
+                }
+            }
+            catch {
+                Write-Host "Venv Fix Error: $_" -ForegroundColor Red
+                $results.SDVenv = "FAILED"
+            }
+        } else {
+            Write-Host "Fix-SD-Venv.ps1 not found" -ForegroundColor Red
+            $results.SDVenv = "NOT_FOUND"
+        }
+        Write-Host ""
+    }
+    
     Write-Host "--- Stable Diffusion Repair ---" -ForegroundColor Cyan
     Write-Host ""
     
     $sdScript = Join-Path $scriptDir "Fix-SD-Complete.ps1"
     if (Test-Path $sdScript) {
-        try {
-            & $sdScript -SDPath $SDPath
-            if ($LASTEXITCODE -eq 0) {
-                $results.StableDiffusion = "SUCCESS"
-            } else {
+        $sdVenvPython = Join-Path $SDPath "venv\Scripts\python.exe"
+        if (Test-Path $sdVenvPython) {
+            try {
+                & $sdScript -SDPath $SDPath
+                if ($LASTEXITCODE -eq 0) {
+                    $results.StableDiffusion = "SUCCESS"
+                } else {
+                    $results.StableDiffusion = "FAILED"
+                }
+            }
+            catch {
+                Write-Host "SD Repair Error: $_" -ForegroundColor Red
                 $results.StableDiffusion = "FAILED"
             }
-        }
-        catch {
-            Write-Host "SD Repair Error: $_" -ForegroundColor Red
-            $results.StableDiffusion = "FAILED"
+        } else {
+            Write-Host "SD venv not found. Run with -FixVenv to create it." -ForegroundColor Yellow
+            $results.StableDiffusion = "NO_VENV"
         }
     } else {
-        Write-Host "Fix-SD-Complete.ps1 not found at $sdScript" -ForegroundColor Red
+        Write-Host "Fix-SD-Complete.ps1 not found" -ForegroundColor Red
         $results.StableDiffusion = "NOT_FOUND"
     }
     Write-Host ""
@@ -67,7 +103,7 @@ if (-not $SDOnly) {
             $results.ComfyUI = "FAILED"
         }
     } else {
-        Write-Host "Fix-ComfyUI-Complete.ps1 not found at $comfyScript" -ForegroundColor Red
+        Write-Host "Fix-ComfyUI-Complete.ps1 not found" -ForegroundColor Red
         $results.ComfyUI = "NOT_FOUND"
     }
     Write-Host ""
@@ -80,10 +116,11 @@ Write-Host ""
 
 foreach ($key in $results.Keys) {
     $status = $results[$key]
+    if ($status -eq "SKIPPED") { continue }
     $color = switch ($status) {
         "SUCCESS" { "Green" }
         "FAILED" { "Red" }
-        "SKIPPED" { "Yellow" }
+        "NO_VENV" { "Yellow" }
         default { "Gray" }
     }
     Write-Host "  $key : $status" -ForegroundColor $color

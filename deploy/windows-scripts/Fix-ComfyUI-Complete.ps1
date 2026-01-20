@@ -35,7 +35,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "imageio installation failed" }
 
     Write-Host "[3/4] Installing image processing libraries..." -ForegroundColor Yellow
-    & $pythonExe -m pip install scikit-image av PyAV --no-cache-dir
+    & $pythonExe -m pip install scikit-image av --no-cache-dir
     if ($LASTEXITCODE -ne 0) { throw "Image processing libs failed" }
 
     Write-Host "[4/4] Setting up FFmpeg..." -ForegroundColor Yellow
