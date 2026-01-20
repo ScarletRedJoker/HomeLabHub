@@ -988,3 +988,72 @@ export type TokenRotationConfig = typeof tokenRotationConfig.$inferSelect;
 export type NewTokenRotationConfig = typeof tokenRotationConfig.$inferInsert;
 export type DeploymentTarget = typeof deploymentTargets.$inferSelect;
 export type NewDeploymentTarget = typeof deploymentTargets.$inferInsert;
+
+// ============================================
+// Video Generation Pipeline System
+// ============================================
+
+export const videoJobs = pgTable("video_jobs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  mode: varchar("mode", { length: 50 }).notNull(), // 'text-to-video', 'image-to-video', 'video-to-video'
+  status: varchar("status", { length: 50 }).notNull().default("queued"), // 'queued', 'processing', 'completed', 'failed', 'cancelled'
+  progress: integer("progress").default(0),
+  prompt: text("prompt").notNull(),
+  negativePrompt: text("negative_prompt"),
+  inputImage: text("input_image"),
+  inputVideo: text("input_video"),
+  outputUrl: text("output_url"),
+  thumbnailUrl: text("thumbnail_url"),
+  previewFrames: jsonb("preview_frames").default([]),
+  duration: integer("duration").default(16), // frames
+  fps: integer("fps").default(8),
+  width: integer("width").default(512),
+  height: integer("height").default(512),
+  motionScale: decimal("motion_scale", { precision: 4, scale: 2 }).default("1.00"),
+  cfgScale: decimal("cfg_scale", { precision: 4, scale: 2 }).default("7.00"),
+  steps: integer("steps").default(25),
+  scheduler: varchar("scheduler", { length: 100 }).default("euler"),
+  animateDiffModel: varchar("animatediff_model", { length: 255 }),
+  cameraMotion: jsonb("camera_motion").default({}), // { pan: 0, zoom: 0, rotate: 0 }
+  subjectMotion: decimal("subject_motion", { precision: 4, scale: 2 }).default("1.00"),
+  seed: integer("seed").default(-1),
+  presetId: uuid("preset_id"),
+  comfyJobId: varchar("comfy_job_id", { length: 255 }),
+  error: text("error"),
+  userId: varchar("user_id", { length: 255 }),
+  batchId: uuid("batch_id"),
+  batchIndex: integer("batch_index"),
+  processingTimeMs: integer("processing_time_ms"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+});
+
+export const videoPresets = pgTable("video_presets", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  mode: varchar("mode", { length: 50 }).notNull().default("text-to-video"),
+  duration: integer("duration").default(16),
+  fps: integer("fps").default(8),
+  width: integer("width").default(512),
+  height: integer("height").default(512),
+  motionScale: decimal("motion_scale", { precision: 4, scale: 2 }).default("1.00"),
+  cfgScale: decimal("cfg_scale", { precision: 4, scale: 2 }).default("7.00"),
+  steps: integer("steps").default(25),
+  scheduler: varchar("scheduler", { length: 100 }).default("euler"),
+  animateDiffModel: varchar("animatediff_model", { length: 255 }),
+  cameraMotion: jsonb("camera_motion").default({}),
+  subjectMotion: decimal("subject_motion", { precision: 4, scale: 2 }).default("1.00"),
+  negativePrompt: text("negative_prompt"),
+  isDefault: boolean("is_default").default(false),
+  isPublic: boolean("is_public").default(true),
+  userId: varchar("user_id", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type VideoJob = typeof videoJobs.$inferSelect;
+export type NewVideoJob = typeof videoJobs.$inferInsert;
+export type VideoPreset = typeof videoPresets.$inferSelect;
+export type NewVideoPreset = typeof videoPresets.$inferInsert;
