@@ -4,13 +4,34 @@ import OpenAI from "openai";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
+// LOCAL_AI_ONLY mode: When true, NEVER use cloud AI providers
+const LOCAL_AI_ONLY = process.env.LOCAL_AI_ONLY !== "false";
+const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
+
+const LOCAL_AI_TROUBLESHOOTING = [
+  `1. Check if Windows VM is powered on`,
+  `2. Verify Tailscale connection: ping ${WINDOWS_VM_IP}`,
+  `3. Start Ollama: 'ollama serve' in Windows terminal`,
+  `4. Check Windows Firewall allows port 11434`,
+  `5. Test: curl http://${WINDOWS_VM_IP}:11434/api/tags`,
+];
+
 let openai: OpenAI | null = null;
-function getOpenAI(): OpenAI {
+function getOpenAI(): OpenAI | null {
+  // In LOCAL_AI_ONLY mode, never return OpenAI client
+  if (LOCAL_AI_ONLY) {
+    return null;
+  }
+  
   if (!openai) {
     const integrationKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
     const directKey = process.env.OPENAI_API_KEY;
     const apiKey = (integrationKey && integrationKey.startsWith('sk-')) ? integrationKey : directKey;
     const projectId = process.env.OPENAI_PROJECT_ID;
+    
+    if (!apiKey || !apiKey.startsWith('sk-')) {
+      return null;
+    }
     
     openai = new OpenAI({
       apiKey: apiKey?.trim(),
@@ -126,6 +147,11 @@ function getFileExtension(language: string): string {
 }
 
 async function generateWithAI(templateId: string, config: ProjectConfig): Promise<GeneratedFile[]> {
+  const client = getOpenAI();
+  if (!client) {
+    throw new Error("AI generation unavailable - OpenAI not configured");
+  }
+
   const basePrompt = templatePrompts[templateId] || "Create a basic web application";
   
   const prompt = `You are an expert software architect. Generate a complete, production-ready project based on these requirements:
@@ -159,7 +185,7 @@ Return ONLY valid JSON array, no markdown formatting:
 [{"path": "...", "content": "...", "language": "..."}]`;
 
   try {
-    const response = await getOpenAI().chat.completions.create({
+    const response = await client.chat.completions.create({
       model: "gpt-4o",
       messages: [
         {

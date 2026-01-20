@@ -24,14 +24,67 @@ async function checkAuth() {
   return await verifySession(session.value);
 }
 
+interface CloudflareStatus {
+  configured: boolean;
+  connected: boolean;
+  error: string | null;
+  zonesAvailable: number;
+}
+
+async function getCloudflareStatus(): Promise<CloudflareStatus> {
+  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+  const apiKey = process.env.CLOUDFLARE_API_KEY;
+  
+  if (!apiToken && !apiKey) {
+    return {
+      configured: false,
+      connected: false,
+      error: "Cloudflare credentials not configured. Add CLOUDFLARE_API_TOKEN to enable Cloudflare features.",
+      zonesAvailable: 0,
+    };
+  }
+
+  try {
+    const response = await fetch("https://api.cloudflare.com/client/v4/zones?per_page=1", {
+      headers: {
+        Authorization: `Bearer ${apiToken || apiKey}`,
+        "Content-Type": "application/json",
+      },
+    });
+    const data = await response.json();
+    if (data.success) {
+      return {
+        configured: true,
+        connected: true,
+        error: null,
+        zonesAvailable: data.result_info?.total_count || 0,
+      };
+    }
+    return {
+      configured: true,
+      connected: false,
+      error: data.errors?.[0]?.message || "Failed to connect to Cloudflare API",
+      zonesAvailable: 0,
+    };
+  } catch (e: any) {
+    return {
+      configured: true,
+      connected: false,
+      error: e.message || "Failed to connect to Cloudflare API",
+      zonesAvailable: 0,
+    };
+  }
+}
+
 async function getCloudflareZones() {
   const apiToken = process.env.CLOUDFLARE_API_TOKEN;
-  if (!apiToken) return [];
+  const apiKey = process.env.CLOUDFLARE_API_KEY;
+  if (!apiToken && !apiKey) return [];
 
   try {
     const response = await fetch("https://api.cloudflare.com/client/v4/zones", {
       headers: {
-        Authorization: `Bearer ${apiToken}`,
+        Authorization: `Bearer ${apiToken || apiKey}`,
         "Content-Type": "application/json",
       },
     });
@@ -110,12 +163,16 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    const cloudflareZones = await getCloudflareZones();
+    const [cloudflareZones, cloudflareStatus] = await Promise.all([
+      getCloudflareZones(),
+      getCloudflareStatus(),
+    ]);
 
     return NextResponse.json({
       domains: domainsWithRecords,
       cloudflareZones,
-      cloudflareEnabled: !!process.env.CLOUDFLARE_API_TOKEN,
+      cloudflareEnabled: cloudflareStatus.configured && cloudflareStatus.connected,
+      cloudflareStatus,
     });
   } catch (error: any) {
     console.error("Domains GET error:", error);

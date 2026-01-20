@@ -88,6 +88,13 @@ interface CloudflareZone {
   status: string;
 }
 
+interface CloudflareStatus {
+  configured: boolean;
+  connected: boolean;
+  error: string | null;
+  zonesAvailable: number;
+}
+
 interface Service {
   id: string;
   name: string;
@@ -100,6 +107,7 @@ export default function DomainsPage() {
   const [domains, setDomains] = useState<Domain[]>([]);
   const [cloudflareZones, setCloudflareZones] = useState<CloudflareZone[]>([]);
   const [cloudflareEnabled, setCloudflareEnabled] = useState(false);
+  const [cloudflareStatus, setCloudflareStatus] = useState<CloudflareStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -125,6 +133,7 @@ export default function DomainsPage() {
       setDomains(data.domains || []);
       setCloudflareZones(data.cloudflareZones || []);
       setCloudflareEnabled(data.cloudflareEnabled || false);
+      setCloudflareStatus(data.cloudflareStatus || null);
     } catch (error) {
       console.error("Failed to fetch domains:", error);
       toast({
@@ -226,6 +235,15 @@ export default function DomainsPage() {
   };
 
   const handleSyncDomain = async (domainId: string) => {
+    if (!cloudflareStatus?.configured) {
+      toast({
+        title: "Cloudflare Not Configured",
+        description: "Add CLOUDFLARE_API_TOKEN in Secrets Manager to enable sync",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setActionLoading(`sync-${domainId}`);
     try {
       const res = await fetch(`/api/domains/${domainId}/sync`, {
@@ -233,7 +251,25 @@ export default function DomainsPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to sync");
+      if (!res.ok) {
+        if (data.code === "CLOUDFLARE_NOT_CONFIGURED") {
+          toast({
+            title: "Cloudflare Not Configured",
+            description: data.message || "Add CLOUDFLARE_API_TOKEN to enable sync",
+            variant: "destructive",
+          });
+          return;
+        }
+        if (data.code === "ZONE_NOT_LINKED") {
+          toast({
+            title: "Zone Not Linked",
+            description: data.message || "Link this domain to a Cloudflare zone first",
+            variant: "destructive",
+          });
+          return;
+        }
+        throw new Error(data.error || "Failed to sync");
+      }
 
       toast({
         title: "Success",
@@ -776,22 +812,79 @@ export default function DomainsPage() {
         </Card>
       )}
 
-      {!cloudflareEnabled && (
+      {cloudflareStatus && !cloudflareStatus.configured && (
         <Card className="border-yellow-500/50 bg-yellow-500/5">
-          <CardHeader>
+          <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-yellow-600">
-              <AlertCircle className="h-5 w-5" />
-              Cloudflare Integration
+              <Cloud className="h-5 w-5" />
+              Cloudflare Not Configured
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Cloudflare API is not configured. Add your{" "}
-              <code className="bg-muted px-1 rounded">CLOUDFLARE_API_TOKEN</code>{" "}
-              environment variable to enable automatic DNS management and SSL
-              certificate verification.
+              Cloudflare API credentials are not configured. Some features are unavailable:
             </p>
+            <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+              <li>DNS record sync from Cloudflare</li>
+              <li>Cloudflare analytics and traffic data</li>
+              <li>Proxy status and SSL management</li>
+              <li>Automatic zone detection</li>
+            </ul>
+            <div className="pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push("/secrets-manager")}
+                className="border-yellow-500/50 text-yellow-600 hover:bg-yellow-500/10"
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Configure Cloudflare
+              </Button>
+            </div>
           </CardContent>
+        </Card>
+      )}
+
+      {cloudflareStatus && cloudflareStatus.configured && !cloudflareStatus.connected && (
+        <Card className="border-red-500/50 bg-red-500/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-red-600">
+              <AlertCircle className="h-5 w-5" />
+              Cloudflare Connection Error
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {cloudflareStatus.error || "Failed to connect to Cloudflare API. Please check your API token."}
+            </p>
+            <div className="pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push("/secrets-manager")}
+                className="border-red-500/50 text-red-600 hover:bg-red-500/10"
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Update Credentials
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {cloudflareStatus?.configured && cloudflareStatus?.connected && (
+        <Card className="border-green-500/20 bg-green-500/5">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-green-600 text-base">
+                <Cloud className="h-5 w-5" />
+                Cloudflare Connected
+              </CardTitle>
+              <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
+                {cloudflareStatus.zonesAvailable} zones available
+              </Badge>
+            </div>
+          </CardHeader>
         </Card>
       )}
     </div>

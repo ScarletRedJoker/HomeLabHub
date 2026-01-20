@@ -33,6 +33,15 @@ interface AIProviderStatus {
 }
 
 async function checkOpenAI(): Promise<AIProviderStatus> {
+  // LOCAL_AI_ONLY MODE: Skip OpenAI check entirely - no cloud API calls allowed
+  if (LOCAL_AI_ONLY) {
+    return {
+      name: "OpenAI",
+      status: "not_configured",
+      error: "Cloud AI providers disabled (LOCAL_AI_ONLY=true)",
+    };
+  }
+
   const baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
   const integrationKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
   const directKey = process.env.OPENAI_API_KEY;

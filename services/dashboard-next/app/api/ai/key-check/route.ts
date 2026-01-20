@@ -3,6 +3,9 @@ import OpenAI from "openai";
 import { verifySession } from "@/lib/session";
 import { cookies } from "next/headers";
 
+// LOCAL_AI_ONLY mode: When true, NEVER use cloud AI providers
+const LOCAL_AI_ONLY = process.env.LOCAL_AI_ONLY !== "false";
+
 async function checkAuth() {
   const cookieStore = await cookies();
   const session = cookieStore.get("session");
@@ -14,6 +17,16 @@ export async function GET(request: NextRequest) {
   const user = await checkAuth();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // LOCAL_AI_ONLY MODE: Skip OpenAI key check entirely
+  if (LOCAL_AI_ONLY) {
+    return NextResponse.json({
+      timestamp: new Date().toISOString(),
+      localAIOnly: true,
+      validation: "DISABLED",
+      message: "OpenAI key check skipped - cloud AI providers are disabled (LOCAL_AI_ONLY=true)",
+    });
   }
 
   const integrationKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;

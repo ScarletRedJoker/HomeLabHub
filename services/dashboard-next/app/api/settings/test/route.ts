@@ -6,6 +6,9 @@ import OpenAI from "openai";
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
+// LOCAL_AI_ONLY mode: When true, NEVER use cloud AI providers
+const LOCAL_AI_ONLY = process.env.LOCAL_AI_ONLY !== "false";
+
 async function checkAuth() {
   const cookieStore = await cookies();
   const session = cookieStore.get("session");
@@ -15,13 +18,22 @@ async function checkAuth() {
 
 interface TestResult {
   service: string;
-  status: "success" | "error" | "not_configured";
+  status: "success" | "error" | "not_configured" | "disabled";
   message: string;
   latency?: number;
   details?: Record<string, any>;
 }
 
 async function testOpenAI(): Promise<TestResult> {
+  // LOCAL_AI_ONLY MODE: Skip OpenAI test entirely
+  if (LOCAL_AI_ONLY) {
+    return {
+      service: "openai",
+      status: "disabled",
+      message: "Cloud AI providers disabled (LOCAL_AI_ONLY=true)",
+    };
+  }
+
   const integrationKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
   const directKey = process.env.OPENAI_API_KEY;
   const baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;

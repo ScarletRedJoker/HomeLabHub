@@ -5,6 +5,18 @@ import OpenAI from "openai";
 
 export const dynamic = "force-dynamic";
 
+// LOCAL_AI_ONLY mode: When true, NEVER use cloud AI providers
+const LOCAL_AI_ONLY = process.env.LOCAL_AI_ONLY !== "false";
+const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
+
+const LOCAL_AI_TROUBLESHOOTING = [
+  `1. Check if Windows VM is powered on`,
+  `2. Verify Tailscale connection: ping ${WINDOWS_VM_IP}`,
+  `3. Start Ollama: 'ollama serve' in Windows terminal`,
+  `4. Check Windows Firewall allows port 11434`,
+  `5. Test: curl http://${WINDOWS_VM_IP}:11434/api/tags`,
+];
+
 async function checkAuth() {
   const cookieStore = await cookies();
   const session = cookieStore.get("session");
@@ -13,6 +25,11 @@ async function checkAuth() {
 }
 
 function getOpenAIClient(): OpenAI | null {
+  // In LOCAL_AI_ONLY mode, never return OpenAI client
+  if (LOCAL_AI_ONLY) {
+    return null;
+  }
+  
   const baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
   const integrationKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
   const directKey = process.env.OPENAI_API_KEY;
@@ -49,6 +66,17 @@ export async function POST(request: NextRequest) {
       }
 
       if (provider === "openai") {
+        // LOCAL_AI_ONLY MODE: Reject OpenAI provider
+        if (LOCAL_AI_ONLY) {
+          return NextResponse.json({ 
+            error: "Cloud AI providers are disabled in local-only mode",
+            errorCode: "LOCAL_AI_ONLY_VIOLATION",
+            localAIOnly: true,
+            details: "Use browser-based speech recognition instead.",
+            fallback: "browser"
+          }, { status: 400 });
+        }
+        
         const openai = getOpenAIClient();
         if (!openai) {
           return NextResponse.json({ 
@@ -89,6 +117,17 @@ export async function POST(request: NextRequest) {
       }
 
       if (provider === "openai") {
+        // LOCAL_AI_ONLY MODE: Reject OpenAI provider
+        if (LOCAL_AI_ONLY) {
+          return NextResponse.json({ 
+            error: "Cloud AI providers are disabled in local-only mode",
+            errorCode: "LOCAL_AI_ONLY_VIOLATION",
+            localAIOnly: true,
+            details: "Use browser SpeechSynthesis instead.",
+            fallback: "browser"
+          }, { status: 400 });
+        }
+        
         const openai = getOpenAIClient();
         if (!openai) {
           return NextResponse.json({ 
@@ -140,8 +179,10 @@ export async function GET(request: NextRequest) {
   }
 
   const openai = getOpenAIClient();
+  const openaiAvailable = !LOCAL_AI_ONLY && openai !== null;
 
   return NextResponse.json({
+    localAIOnly: LOCAL_AI_ONLY,
     speechToText: {
       providers: [
         {
@@ -151,14 +192,18 @@ export async function GET(request: NextRequest) {
           available: true,
           free: true,
           local: true,
+          recommended: LOCAL_AI_ONLY,
         },
         {
           id: "openai",
           name: "OpenAI Whisper",
-          description: "Cloud-based, highly accurate, supports many languages",
-          available: openai !== null,
+          description: LOCAL_AI_ONLY 
+            ? "Disabled - LOCAL_AI_ONLY mode active"
+            : "Cloud-based, highly accurate, supports many languages",
+          available: openaiAvailable,
           free: false,
           local: false,
+          disabled: LOCAL_AI_ONLY,
         },
       ],
       defaultProvider: "browser",
@@ -173,20 +218,29 @@ export async function GET(request: NextRequest) {
           free: true,
           local: true,
           voices: ["default"],
+          recommended: LOCAL_AI_ONLY,
         },
         {
           id: "openai",
           name: "OpenAI TTS",
-          description: "High-quality neural voices",
-          available: openai !== null,
+          description: LOCAL_AI_ONLY 
+            ? "Disabled - LOCAL_AI_ONLY mode active"
+            : "High-quality neural voices",
+          available: openaiAvailable,
           free: false,
           local: false,
           voices: ["alloy", "echo", "fable", "onyx", "nova", "shimmer"],
+          disabled: LOCAL_AI_ONLY,
         },
       ],
       defaultProvider: "browser",
     },
-    capabilities: [
+    capabilities: LOCAL_AI_ONLY ? [
+      "Speech-to-text transcription (browser only)",
+      "Text-to-speech synthesis (browser only)", 
+      "Real-time voice input for AI chat",
+      "Voice output for AI responses",
+    ] : [
       "Speech-to-text transcription (local browser or cloud)",
       "Text-to-speech synthesis (local browser or cloud)", 
       "Real-time voice input for AI chat",

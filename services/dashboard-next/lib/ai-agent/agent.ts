@@ -2,10 +2,17 @@
  * AI Agent Core
  * Autonomous agent that can use tools to complete tasks
  * Supports both local (Ollama) and cloud (OpenAI) models
+ * 
+ * LOCAL_AI_ONLY MODE: When LOCAL_AI_ONLY=true, ONLY local Ollama is used.
+ * Cloud providers are completely disabled to ensure no external API calls.
  */
 
 import OpenAI from "openai";
 import { tools, getToolByName, getToolsSchema, formatToolsForPrompt, Tool, ToolResult, ToolCall } from "./tools";
+
+// LOCAL_AI_ONLY mode: When true, NEVER use cloud AI providers
+const LOCAL_AI_ONLY = process.env.LOCAL_AI_ONLY !== "false";
+const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
 
 export type AgentProvider = "openai" | "ollama" | "auto";
 
@@ -119,6 +126,21 @@ export class AIAgent {
   }
 
   private async selectProvider(): Promise<{ provider: "openai" | "ollama"; model: string }> {
+    // LOCAL_AI_ONLY MODE: ONLY use Ollama, never cloud providers
+    if (LOCAL_AI_ONLY) {
+      if (this.config.provider === "openai") {
+        throw new Error("Cloud AI providers are disabled. LOCAL_AI_ONLY=true. Use local Ollama only.");
+      }
+      
+      const ollamaAvailable = await this.isOllamaAvailable();
+      if (!ollamaAvailable) {
+        throw new Error(`Local AI is currently unavailable. Please ensure Ollama is running on your Windows VM (${WINDOWS_VM_IP}:11434).`);
+      }
+      
+      return { provider: "ollama", model: this.config.model || "llama3.2:latest" };
+    }
+
+    // Non-LOCAL_AI_ONLY mode: standard provider selection
     if (this.config.provider === "openai") {
       return { provider: "openai", model: this.config.model || "gpt-4o" };
     }

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
+// LOCAL_AI_ONLY mode: When true, NEVER use cloud AI providers
+const LOCAL_AI_ONLY = process.env.LOCAL_AI_ONLY !== "false";
+
 interface ProviderStatus {
   name: string;
   available: boolean;
@@ -11,6 +14,7 @@ interface ProviderStatus {
   latencyMs?: number;
   error?: string;
   details?: Record<string, any>;
+  disabled?: boolean;
 }
 
 interface Issue {
@@ -160,6 +164,13 @@ class AIProviderDiagnostics {
       authenticated: false,
       modelsAvailable: [],
     };
+
+    // LOCAL_AI_ONLY MODE: Skip OpenAI check entirely - no cloud API calls allowed
+    if (LOCAL_AI_ONLY) {
+      status.disabled = true;
+      status.error = "Cloud AI providers disabled (LOCAL_AI_ONLY=true)";
+      return status;
+    }
 
     const baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
     const integrationKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;

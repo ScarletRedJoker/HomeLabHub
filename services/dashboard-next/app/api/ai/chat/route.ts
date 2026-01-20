@@ -4,13 +4,24 @@ import { verifySession } from "@/lib/session";
 import { cookies } from "next/headers";
 import { localAIRuntime } from "@/lib/local-ai-runtime";
 import { getOpenAITools, executeJarvisTool } from "@/lib/jarvis-tools";
-import { aiFallbackManager, type FallbackDecision } from "@/lib/ai-fallback";
 import { demoMode } from "@/lib/demo-mode";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// LOCAL_AI_ONLY mode: When true, NEVER use cloud AI providers (OpenAI, etc.)
+// All requests must use Ollama running locally on the Windows VM
 const LOCAL_AI_ONLY = process.env.LOCAL_AI_ONLY !== "false";
+const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
+
+// Standard troubleshooting steps for local AI errors
+const LOCAL_AI_TROUBLESHOOTING = [
+  `1. Check if Windows VM is powered on`,
+  `2. Verify Tailscale connection: ping ${WINDOWS_VM_IP}`,
+  `3. Start Ollama: 'ollama serve' in Windows terminal`,
+  `4. Check Windows Firewall allows port 11434`,
+  `5. Test: curl http://${WINDOWS_VM_IP}:11434/api/tags`,
+];
 
 type AIProvider = "openai" | "ollama" | "auto" | "custom";
 
@@ -231,42 +242,57 @@ function detectToolIntent(message: string): boolean {
 }
 
 async function selectProvider(requestedProvider: AIProvider): Promise<{ provider: "openai" | "ollama"; fallback: boolean; reason: string }> {
-  try {
-    const decision = await aiFallbackManager.selectProvider(
-      requestedProvider === "custom" ? "openai" : requestedProvider,
-      undefined,
-      LOCAL_AI_ONLY
-    );
+  // LOCAL_AI_ONLY MODE: Completely bypass any cloud provider logic
+  if (LOCAL_AI_ONLY) {
+    // Reject any explicit OpenAI/cloud provider request
+    if (requestedProvider === "openai" || requestedProvider === "custom") {
+      throw new Error("Cloud AI providers are disabled. LOCAL_AI_ONLY=true. Use local Ollama only.");
+    }
     
-    console.log(`[AIChat] Provider selection: ${decision.provider} (fallback: ${decision.isFallback}, reason: ${decision.reason}, localOnly: ${LOCAL_AI_ONLY})`);
+    // Check if Ollama is available
+    const ollamaStatus = await localAIRuntime.isOllamaOnline();
+    if (!ollamaStatus.online) {
+      throw new Error(`Local AI is currently unavailable. Please ensure Ollama is running on your Windows VM (${WINDOWS_VM_IP}:11434).`);
+    }
     
-    return {
-      provider: decision.provider === "custom" ? "openai" : decision.provider,
-      fallback: decision.isFallback,
-      reason: decision.reason,
+    console.log(`[AIChat] LOCAL_AI_ONLY mode: Using Ollama (${ollamaStatus.latencyMs}ms)`);
+    return { 
+      provider: "ollama", 
+      fallback: false, 
+      reason: `Local-only mode: Ollama online (${ollamaStatus.latencyMs}ms)` 
     };
-  } catch (error: any) {
-    console.error(`[AIChat] Provider selection failed: ${error.message}`);
-    
-    if (LOCAL_AI_ONLY && requestedProvider !== "openai") {
-      const ollamaOnline = await localAIRuntime.isOllamaOnline();
-      if (!ollamaOnline.online) {
-        throw new Error("Local AI is offline. Please start Ollama on your Windows VM or set LOCAL_AI_ONLY=false to allow cloud fallback.");
-      }
-      return { provider: "ollama", fallback: false, reason: "Ollama available (local-only mode)" };
-    }
-    
-    if (requestedProvider === "openai") {
-      return { provider: "openai", fallback: false, reason: "OpenAI explicitly requested" };
-    }
-    
-    const ollamaOnline = await localAIRuntime.isOllamaOnline();
-    if (ollamaOnline.online) {
-      return { provider: "ollama", fallback: false, reason: "Ollama available" };
-    }
-    
-    return { provider: "openai", fallback: true, reason: `Fallback to OpenAI: ${error.message}` };
   }
+  
+  // Non-LOCAL_AI_ONLY mode: standard provider selection with fallback
+  const ollamaStatus = await localAIRuntime.isOllamaOnline();
+  
+  if (requestedProvider === "openai") {
+    return { provider: "openai", fallback: false, reason: "OpenAI explicitly requested" };
+  }
+  
+  if (requestedProvider === "ollama") {
+    if (!ollamaStatus.online) {
+      const openai = getOpenAIClient();
+      if (openai) {
+        console.log(`[AIChat] Ollama offline, falling back to OpenAI`);
+        return { provider: "openai", fallback: true, reason: `Ollama offline: ${ollamaStatus.error}` };
+      }
+      throw new Error("Ollama is offline and OpenAI is not configured");
+    }
+    return { provider: "ollama", fallback: false, reason: "Ollama explicitly requested" };
+  }
+  
+  // Auto mode: prefer Ollama, fallback to OpenAI
+  if (ollamaStatus.online) {
+    return { provider: "ollama", fallback: false, reason: "Auto: Ollama available (preferred)" };
+  }
+  
+  const openai = getOpenAIClient();
+  if (openai) {
+    return { provider: "openai", fallback: true, reason: "Auto: Ollama offline, using OpenAI" };
+  }
+  
+  throw new Error("No AI providers available");
 }
 
 const systemPrompt = `You are Jarvis, an advanced AI assistant for Nebula Command - a comprehensive homelab management and development platform.
@@ -868,6 +894,19 @@ export async function POST(request: NextRequest) {
       console.log(`[AIChat] Pre-flight check passed: Ollama online (${healthCheck.ollamaLatency}ms, ${healthCheck.ollamaModels.length} models)`);
     }
     
+    // LOCAL_AI_ONLY MODE: Reject all cloud provider requests upfront
+    if (LOCAL_AI_ONLY) {
+      if (provider === "openai" || provider === "custom") {
+        return NextResponse.json({
+          error: "Cloud AI providers are disabled",
+          errorCode: "LOCAL_AI_ONLY_VIOLATION",
+          localAIOnly: true,
+          details: "LOCAL_AI_ONLY=true. Cloud providers (OpenAI, custom endpoints) are not allowed. Use local Ollama only.",
+          troubleshooting: LOCAL_AI_TROUBLESHOOTING,
+        }, { status: 400 });
+      }
+    }
+
     if (provider === "custom" && customEndpoint) {
       const validation = validateCustomEndpoint(customEndpoint);
       if (!validation.valid) {
@@ -879,10 +918,31 @@ export async function POST(request: NextRequest) {
       const customModel = model || "default";
       result = await chatWithCustomEndpoint(customEndpoint, messages, customModel, stream);
     } else if (messageRequiresTool) {
-      console.log("[Jarvis] Message requires tool use, forcing OpenAI for function calling");
-      const openaiModel = model || "gpt-4o";
-      result = await chatWithOpenAI(messages, openaiModel, stream);
-      actualProvider = "openai";
+      // In LOCAL_AI_ONLY mode, we cannot use OpenAI for tool calling
+      // Use Ollama instead (tools won't work as well, but we MUST respect local-only)
+      if (LOCAL_AI_ONLY) {
+        console.log("[Jarvis] LOCAL_AI_ONLY: Tool intent detected but using Ollama (no OpenAI allowed)");
+        const ollamaModel = model || "llama3.2:latest";
+        try {
+          result = await chatWithOllama(messages, ollamaModel, stream);
+          actualProvider = "ollama";
+        } catch (error: any) {
+          return NextResponse.json({
+            error: "Local AI is currently unavailable",
+            errorCode: "LOCAL_AI_OFFLINE",
+            localAIOnly: true,
+            details: `Ollama is not responding: ${error.message}`,
+            troubleshooting: LOCAL_AI_TROUBLESHOOTING,
+            retryable: true,
+            retryAfterMs: 5000,
+          }, { status: 503 });
+        }
+      } else {
+        console.log("[Jarvis] Message requires tool use, forcing OpenAI for function calling");
+        const openaiModel = model || "gpt-4o";
+        result = await chatWithOpenAI(messages, openaiModel, stream);
+        actualProvider = "openai";
+      }
     } else {
       const { provider: selectedProvider, fallback, reason } = await selectProvider(provider as AIProvider);
       usedFallback = fallback;
@@ -904,23 +964,21 @@ export async function POST(request: NextRequest) {
         } catch (ollamaError: any) {
           console.warn("All Ollama endpoints failed after retries:", ollamaError.message);
           
+          // LOCAL_AI_ONLY MODE: NEVER fall back to cloud AI
           if (LOCAL_AI_ONLY) {
-            console.error("[AIChat] LOCAL_AI_ONLY mode - refusing to fall back to cloud AI");
+            console.error("[AIChat] LOCAL_AI_ONLY mode - refusing cloud fallback");
             return NextResponse.json({
-              error: "Local AI is currently offline",
+              error: "Local AI is currently unavailable",
               errorCode: "LOCAL_AI_OFFLINE",
               localAIOnly: true,
-              details: "Ollama is not responding. Please start Ollama on your Windows VM.",
-              troubleshooting: [
-                "Check if the Windows VM is running",
-                "Verify Tailscale connection is active",
-                "Start Ollama: ollama serve",
-                "Check Windows firewall allows port 11434",
-              ],
+              details: `Ollama is not responding: ${ollamaError.message}. Please ensure Ollama is running on your Windows VM (${WINDOWS_VM_IP}:11434).`,
+              troubleshooting: LOCAL_AI_TROUBLESHOOTING,
               retryable: true,
+              retryAfterMs: 5000,
             }, { status: 503 });
           }
           
+          // Non-LOCAL_AI_ONLY mode: allow fallback to OpenAI
           console.warn("[AIChat] Falling back to OpenAI:", ollamaError.message);
           const openaiModel = "gpt-4o";
           try {

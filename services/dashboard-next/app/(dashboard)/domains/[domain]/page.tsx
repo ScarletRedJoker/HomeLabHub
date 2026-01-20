@@ -122,6 +122,13 @@ interface VerifyResult {
   }>;
 }
 
+interface CloudflareStatus {
+  configured: boolean;
+  zoneLinked: boolean;
+  canSync: boolean;
+  message: string | null;
+}
+
 const DNS_TEMPLATES = [
   {
     id: "basic-web",
@@ -169,6 +176,7 @@ export default function DomainDetailPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [cloudflareEnabled, setCloudflareEnabled] = useState(false);
+  const [cloudflareStatus, setCloudflareStatus] = useState<CloudflareStatus | null>(null);
   const [sslDetails, setSslDetails] = useState<SSLDetails | null>(null);
   const [verifyResult, setVerifyResult] = useState<VerifyResult | null>(null);
   const [activeTab, setActiveTab] = useState("dns");
@@ -222,6 +230,7 @@ export default function DomainDetailPage() {
       setDomain(data.domain);
       setRecords(data.records || []);
       setCloudflareEnabled(data.cloudflareEnabled || false);
+      setCloudflareStatus(data.cloudflareStatus || null);
     } catch (error) {
       console.error("Failed to fetch domain:", error);
       toast({
@@ -371,6 +380,24 @@ export default function DomainDetailPage() {
   };
 
   const handleSyncDomain = async () => {
+    if (!cloudflareStatus?.configured) {
+      toast({
+        title: "Cloudflare Not Configured",
+        description: "Add CLOUDFLARE_API_TOKEN in Secrets Manager to enable sync",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!cloudflareStatus?.zoneLinked) {
+      toast({
+        title: "Zone Not Linked",
+        description: "Link this domain to a Cloudflare zone first",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setActionLoading("sync");
     try {
       const res = await fetch(`/api/domains/${domainId}/sync`, {
@@ -378,7 +405,25 @@ export default function DomainDetailPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to sync");
+      if (!res.ok) {
+        if (data.code === "CLOUDFLARE_NOT_CONFIGURED") {
+          toast({
+            title: "Cloudflare Not Configured",
+            description: data.message || "Add CLOUDFLARE_API_TOKEN to enable sync",
+            variant: "destructive",
+          });
+          return;
+        }
+        if (data.code === "ZONE_NOT_LINKED") {
+          toast({
+            title: "Zone Not Linked",
+            description: data.message || "Link this domain to a Cloudflare zone first",
+            variant: "destructive",
+          });
+          return;
+        }
+        throw new Error(data.error || "Failed to sync");
+      }
 
       toast({
         title: "Success",
@@ -672,7 +717,7 @@ export default function DomainDetailPage() {
             )}
             Verify DNS
           </Button>
-          {cloudflareEnabled && (
+          {cloudflareStatus?.canSync && (
             <Button
               variant="outline"
               size="sm"
@@ -684,7 +729,7 @@ export default function DomainDetailPage() {
               ) : (
                 <RefreshCw className="mr-2 h-4 w-4" />
               )}
-              Sync
+              Sync Cloudflare
             </Button>
           )}
           <Button
@@ -697,6 +742,49 @@ export default function DomainDetailPage() {
           </Button>
         </div>
       </div>
+
+      {cloudflareStatus && !cloudflareStatus.configured && (
+        <Card className="border-yellow-500/50 bg-yellow-500/5">
+          <CardContent className="py-4">
+            <div className="flex items-start gap-3">
+              <Cloud className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="font-medium text-yellow-600">Cloudflare Not Configured</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Some features like DNS sync, analytics, and proxy management are unavailable.
+                  Add CLOUDFLARE_API_TOKEN in Secrets Manager to enable these features.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push("/secrets-manager")}
+                className="border-yellow-500/50 text-yellow-600 hover:bg-yellow-500/10 flex-shrink-0"
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Configure
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {cloudflareStatus?.configured && !cloudflareStatus?.zoneLinked && (
+        <Card className="border-blue-500/50 bg-blue-500/5">
+          <CardContent className="py-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="font-medium text-blue-600">Zone Not Linked</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  This domain is not linked to a Cloudflare zone. Edit the domain to link it
+                  to a zone and enable sync functionality.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4">

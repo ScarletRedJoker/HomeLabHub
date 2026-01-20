@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
+// LOCAL_AI_ONLY mode: When true, NEVER use cloud AI providers
+const LOCAL_AI_ONLY = process.env.LOCAL_AI_ONLY !== "false";
+
 export async function GET() {
   const diagnostics: Record<string, unknown> = {
     timestamp: new Date().toISOString(),
+    localAIOnly: LOCAL_AI_ONLY,
     checks: {} as Record<string, unknown>,
   };
 
@@ -27,7 +31,14 @@ export async function GET() {
     effectiveKeyValid: effectiveKey?.startsWith('sk-') ?? false,
   };
 
-  if (effectiveKey && effectiveKey.startsWith('sk-')) {
+  // LOCAL_AI_ONLY MODE: Skip OpenAI API calls entirely
+  if (LOCAL_AI_ONLY) {
+    diagnostics.openaiTest = {
+      success: false,
+      skipped: true,
+      error: 'Cloud AI providers disabled (LOCAL_AI_ONLY=true)',
+    };
+  } else if (effectiveKey && effectiveKey.startsWith('sk-')) {
     try {
       const client = new OpenAI({ apiKey: effectiveKey });
       const models = await client.models.list();

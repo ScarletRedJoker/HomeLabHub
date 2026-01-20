@@ -47,10 +47,23 @@ export async function GET(
       .where(eq(dnsRecords.domainId, domainId))
       .orderBy(dnsRecords.recordType, dnsRecords.name);
 
+    const hasCloudflareToken = !!(process.env.CLOUDFLARE_API_TOKEN || process.env.CLOUDFLARE_API_KEY);
+    const cloudflareEnabled = !!domain.zoneId && hasCloudflareToken;
+    
     return NextResponse.json({
       domain,
       records,
-      cloudflareEnabled: !!domain.zoneId && !!process.env.CLOUDFLARE_API_TOKEN,
+      cloudflareEnabled,
+      cloudflareStatus: {
+        configured: hasCloudflareToken,
+        zoneLinked: !!domain.zoneId,
+        canSync: cloudflareEnabled,
+        message: !hasCloudflareToken 
+          ? "Cloudflare API credentials not configured" 
+          : !domain.zoneId 
+            ? "Domain not linked to a Cloudflare zone"
+            : null,
+      },
     });
   } catch (error: any) {
     console.error("Domain GET error:", error);

@@ -4,13 +4,34 @@ import OpenAI from "openai";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
+// LOCAL_AI_ONLY mode: When true, NEVER use cloud AI providers
+const LOCAL_AI_ONLY = process.env.LOCAL_AI_ONLY !== "false";
+const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
+
+const LOCAL_AI_TROUBLESHOOTING = [
+  `1. Check if Windows VM is powered on`,
+  `2. Verify Tailscale connection: ping ${WINDOWS_VM_IP}`,
+  `3. Start Ollama: 'ollama serve' in Windows terminal`,
+  `4. Check Windows Firewall allows port 11434`,
+  `5. Test: curl http://${WINDOWS_VM_IP}:11434/api/tags`,
+];
+
 let openai: OpenAI | null = null;
-function getOpenAI(): OpenAI {
+function getOpenAI(): OpenAI | null {
+  // In LOCAL_AI_ONLY mode, never return OpenAI client
+  if (LOCAL_AI_ONLY) {
+    return null;
+  }
+  
   if (!openai) {
     const integrationKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
     const directKey = process.env.OPENAI_API_KEY;
     const apiKey = (integrationKey && integrationKey.startsWith('sk-')) ? integrationKey : directKey;
     const projectId = process.env.OPENAI_PROJECT_ID;
+    
+    if (!apiKey || !apiKey.startsWith('sk-')) {
+      return null;
+    }
     
     openai = new OpenAI({
       apiKey: apiKey?.trim(),
@@ -98,12 +119,31 @@ Provide 5-8 specific, actionable suggestions.`,
 
 export async function POST(request: Request) {
   try {
+    // LOCAL_AI_ONLY MODE: Reject this endpoint entirely since it requires OpenAI
+    if (LOCAL_AI_ONLY) {
+      return NextResponse.json({
+        error: "Code assist is unavailable in local-only mode",
+        errorCode: "LOCAL_AI_ONLY_VIOLATION",
+        localAIOnly: true,
+        details: "This feature requires OpenAI, which is disabled in LOCAL_AI_ONLY mode. Use the main AI chat instead.",
+        troubleshooting: LOCAL_AI_TROUBLESHOOTING,
+      }, { status: 503 });
+    }
+
     const { code, mode, language, targetLanguage, customPrompt }: AssistRequest = await request.json();
 
     if (!code || !mode) {
       return NextResponse.json(
         { error: "Code and mode are required" },
         { status: 400 }
+      );
+    }
+
+    const client = getOpenAI();
+    if (!client) {
+      return NextResponse.json(
+        { error: "OpenAI not configured", details: "OpenAI API key is required for code assist" },
+        { status: 503 }
       );
     }
 
@@ -127,7 +167,7 @@ ${mode === "suggest"
     : "Provide your response as a JSON object with 'code' (the result code) and 'explanation' (brief explanation of changes) fields."
 }`;
 
-    const response = await getOpenAI().chat.completions.create({
+    const response = await client.chat.completions.create({
       model: "gpt-4o",
       messages: [
         {

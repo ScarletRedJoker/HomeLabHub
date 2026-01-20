@@ -28,11 +28,17 @@ export async function POST(
     );
   }
 
-  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+  const apiToken = process.env.CLOUDFLARE_API_TOKEN || process.env.CLOUDFLARE_API_KEY;
   if (!apiToken) {
     return NextResponse.json(
-      { error: "Cloudflare API not configured" },
-      { status: 503 }
+      { 
+        error: "Cloudflare not configured",
+        code: "CLOUDFLARE_NOT_CONFIGURED",
+        message: "Cloudflare API credentials are not configured. Add CLOUDFLARE_API_TOKEN in the Secrets Manager to enable DNS sync.",
+        setupUrl: "/secrets-manager",
+        requiresCloudflare: true,
+      },
+      { status: 400 }
     );
   }
 
@@ -51,7 +57,12 @@ export async function POST(
 
     if (!domain.zoneId) {
       return NextResponse.json(
-        { error: "Domain not linked to Cloudflare zone" },
+        { 
+          error: "Zone not linked",
+          code: "ZONE_NOT_LINKED",
+          message: "This domain is not linked to a Cloudflare zone. Edit the domain to link it to a zone.",
+          requiresCloudflare: true,
+        },
         { status: 400 }
       );
     }
