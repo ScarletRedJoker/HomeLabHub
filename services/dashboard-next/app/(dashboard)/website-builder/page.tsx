@@ -164,6 +164,43 @@ interface ComponentDefinition {
   defaultProps: Record<string, unknown>;
 }
 
+interface DiscoveredSite {
+  id: string;
+  name: string;
+  domain: string;
+  type: "static" | "dynamic" | "container";
+  source: "linode" | "home" | "cloudflare" | "local";
+  serverName?: string;
+  containerName?: string;
+  path?: string;
+  status: "online" | "offline" | "unknown";
+  lastChecked?: string;
+  deploymentTarget?: {
+    host: string;
+    user: string;
+    path: string;
+    port?: number;
+  };
+}
+
+interface DeploymentHistory {
+  id: string;
+  projectId: string;
+  status: "pending" | "deploying" | "success" | "failed" | "rolled_back";
+  startedAt: string;
+  completedAt?: string;
+  logs: string[];
+  version: number;
+}
+
+interface AIMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+  action?: string;
+}
+
 const COMPONENT_LIBRARY: ComponentDefinition[] = [
   {
     id: "navbar-1",
@@ -808,7 +845,7 @@ export default function WebsiteBuilderPage() {
   
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
-  const [rightPanelTab, setRightPanelTab] = useState<"components" | "properties" | "pages">("components");
+  const [rightPanelTab, setRightPanelTab] = useState<"components" | "properties" | "pages" | "deploy" | "ai">("components");
   
   const [projectFilter, setProjectFilter] = useState("all");
   const [projectSearch, setProjectSearch] = useState("");
@@ -834,7 +871,26 @@ export default function WebsiteBuilderPage() {
   
   const [draggedComponent, setDraggedComponent] = useState<ComponentDefinition | null>(null);
   
+  const [discoveredSites, setDiscoveredSites] = useState<DiscoveredSite[]>([]);
+  const [discoveringInProgress, setDiscoveringInProgress] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [selectedSiteToImport, setSelectedSiteToImport] = useState<DiscoveredSite | null>(null);
+  const [importing, setImporting] = useState(false);
+  
+  const [showDeployPanel, setShowDeployPanel] = useState(false);
+  const [deploymentHistory, setDeploymentHistory] = useState<DeploymentHistory[]>([]);
+  const [deploying, setDeploying] = useState(false);
+  const [deployTarget, setDeployTarget] = useState<string>("local");
+  
+  const [showAiChatPanel, setShowAiChatPanel] = useState(false);
+  const [aiMessages, setAiMessages] = useState<AIMessage[]>([]);
+  const [aiChatInput, setAiChatInput] = useState("");
+  const [aiChatLoading, setAiChatLoading] = useState(false);
+  const [seoScore, setSeoScore] = useState<{score: number; issues: string[]; recommendations: string[]} | null>(null);
+  const [accessibilityScore, setAccessibilityScore] = useState<{score: number; issues: string[]; recommendations: string[]} | null>(null);
+  
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const aiChatScrollRef = useRef<HTMLDivElement>(null);
 
   const viewportWidths = {
     desktop: "100%",
@@ -879,6 +935,227 @@ export default function WebsiteBuilderPage() {
   useEffect(() => {
     fetchProjects();
   }, [fetchProjects]);
+
+  const discoverSites = useCallback(async () => {
+    setDiscoveringInProgress(true);
+    try {
+      const res = await fetch("/api/websites/discover?health=true");
+      if (res.ok) {
+        const data = await res.json();
+        setDiscoveredSites(data.sites || []);
+      }
+    } catch (error) {
+      console.error("Failed to discover sites:", error);
+      toast.error("Failed to discover sites");
+    } finally {
+      setDiscoveringInProgress(false);
+    }
+  }, []);
+
+  const handleImportSite = async (site: DiscoveredSite) => {
+    setImporting(true);
+    try {
+      const res = await fetch("/api/websites/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          source: "discovered",
+          domain: site.domain,
+          path: site.path,
+          name: site.name,
+          deploymentTarget: site.deploymentTarget,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.project) {
+          setProjects([data.project, ...projects]);
+          await fetchProjectDetails(data.project.id);
+          toast.success(`Imported ${site.name} successfully!`);
+        } else if (data.preview) {
+          toast.info("Import preview generated. Database connection required for full import.");
+        }
+        setShowImportDialog(false);
+        setSelectedSiteToImport(null);
+      } else {
+        const error = await res.json();
+        toast.error(error.error || "Failed to import site");
+      }
+    } catch (error) {
+      toast.error("Failed to import site");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleDeploy = async () => {
+    if (!selectedProject) return;
+
+    setDeploying(true);
+    try {
+      const settings = selectedProject.settings as Record<string, unknown> || {};
+      const target = deployTarget === "local" ? {
+        type: "local",
+        host: "localhost",
+        path: `static-site/${selectedProject.domain || selectedProject.name.toLowerCase().replace(/\s+/g, "-")}`,
+        method: "local",
+      } : settings.deploymentTarget;
+
+      const res = await fetch(`/api/websites/${selectedProject.id}/deploy`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.deployment) {
+          setDeploymentHistory(prev => [data.deployment, ...prev]);
+        }
+        toast.success("Deployment successful!");
+      } else {
+        const error = await res.json();
+        toast.error(error.error || "Deployment failed");
+      }
+    } catch (error) {
+      toast.error("Deployment failed");
+    } finally {
+      setDeploying(false);
+    }
+  };
+
+  const handleAiChat = async () => {
+    if (!aiChatInput.trim() || !selectedProject || !selectedPage) return;
+
+    const userMessage: AIMessage = {
+      id: `msg-${Date.now()}`,
+      role: "user",
+      content: aiChatInput,
+      timestamp: new Date().toISOString(),
+    };
+    setAiMessages(prev => [...prev, userMessage]);
+    setAiChatInput("");
+    setAiChatLoading(true);
+
+    try {
+      const res = await fetch(`/api/websites/${selectedProject.id}/ai-edit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: aiChatInput,
+          pageId: selectedPage.id,
+          action: "edit",
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        let responseContent = "";
+        
+        if (data.changes && data.changes.length > 0) {
+          responseContent = `I've made the following changes:\n${data.changes.map((c: { description: string }) => `- ${c.description}`).join("\n")}`;
+          
+          for (const change of data.changes) {
+            if (change.type === "html" && change.componentId) {
+              const updatedComponents = selectedPage.components.map(c =>
+                c.id === change.componentId ? { ...c, html: change.after } : c
+              );
+              setSelectedPage({ ...selectedPage, components: updatedComponents });
+            }
+          }
+        } else if (data.suggestions) {
+          responseContent = `Here are my suggestions:\n${data.suggestions.map((s: string, i: number) => `${i + 1}. ${s}`).join("\n")}`;
+        } else {
+          responseContent = "I've processed your request. Check the preview for changes.";
+        }
+
+        const assistantMessage: AIMessage = {
+          id: `msg-${Date.now()}`,
+          role: "assistant",
+          content: responseContent,
+          timestamp: new Date().toISOString(),
+          action: data.changes ? "edit" : undefined,
+        };
+        setAiMessages(prev => [...prev, assistantMessage]);
+      } else {
+        const error = await res.json();
+        const errorMessage: AIMessage = {
+          id: `msg-${Date.now()}`,
+          role: "assistant",
+          content: `Sorry, I encountered an error: ${error.error || "Unknown error"}`,
+          timestamp: new Date().toISOString(),
+        };
+        setAiMessages(prev => [...prev, errorMessage]);
+      }
+    } catch (error) {
+      const errorMessage: AIMessage = {
+        id: `msg-${Date.now()}`,
+        role: "assistant",
+        content: "Sorry, I couldn't process your request. Please try again.",
+        timestamp: new Date().toISOString(),
+      };
+      setAiMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setAiChatLoading(false);
+    }
+  };
+
+  const handleAnalyzeSEO = async () => {
+    if (!selectedProject || !selectedPage) return;
+
+    try {
+      const res = await fetch(`/api/websites/${selectedProject.id}/ai-edit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "seo",
+          pageId: selectedPage.id,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.analysis?.seo) {
+          setSeoScore(data.analysis.seo);
+          toast.success(`SEO Score: ${data.analysis.seo.score}/100`);
+        }
+      }
+    } catch (error) {
+      toast.error("Failed to analyze SEO");
+    }
+  };
+
+  const handleAnalyzeAccessibility = async () => {
+    if (!selectedProject || !selectedPage) return;
+
+    try {
+      const res = await fetch(`/api/websites/${selectedProject.id}/ai-edit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "accessibility",
+          pageId: selectedPage.id,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.analysis?.accessibility) {
+          setAccessibilityScore(data.analysis.accessibility);
+          toast.success(`Accessibility Score: ${data.analysis.accessibility.score}/100`);
+        }
+      }
+    } catch (error) {
+      toast.error("Failed to analyze accessibility");
+    }
+  };
+
+  useEffect(() => {
+    if (aiChatScrollRef.current) {
+      aiChatScrollRef.current.scrollTop = aiChatScrollRef.current.scrollHeight;
+    }
+  }, [aiMessages]);
 
   const pushToHistory = (components: ComponentInstance[]) => {
     const newHistory = history.slice(0, historyIndex + 1);
@@ -1561,13 +1838,132 @@ ${componentsHtml}
                 <div className="p-3 border-b">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-semibold text-sm">Projects</h3>
-                    <Dialog open={showNewProjectDialog} onOpenChange={setShowNewProjectDialog}>
-                      <DialogTrigger asChild>
-                        <Button size="sm" variant="outline" className="h-7">
-                          <Plus className="h-3 w-3 mr-1" />
-                          New
-                        </Button>
-                      </DialogTrigger>
+                    <div className="flex gap-1">
+                      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+                        <DialogTrigger asChild>
+                          <Button size="sm" variant="outline" className="h-7" onClick={() => discoverSites()}>
+                            <Upload className="h-3 w-3 mr-1" />
+                            Import
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl">
+                          <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2">
+                              <Globe className="h-5 w-5 text-primary" />
+                              Import Existing Site
+                            </DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm text-muted-foreground">
+                                Discovered sites from your deployments
+                              </p>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={discoverSites}
+                                disabled={discoveringInProgress}
+                              >
+                                {discoveringInProgress ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </div>
+                            <ScrollArea className="h-[300px] border rounded-lg">
+                              {discoveringInProgress ? (
+                                <div className="flex items-center justify-center h-full py-8">
+                                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                </div>
+                              ) : discoveredSites.length === 0 ? (
+                                <div className="text-center py-8 text-muted-foreground">
+                                  <Globe className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                                  <p className="text-sm">No sites discovered</p>
+                                  <p className="text-xs">Click refresh to scan deployment configs</p>
+                                </div>
+                              ) : (
+                                <div className="p-2 space-y-2">
+                                  {discoveredSites.map((site) => (
+                                    <div
+                                      key={site.id}
+                                      className={cn(
+                                        "p-3 rounded-lg border cursor-pointer transition-colors",
+                                        selectedSiteToImport?.id === site.id
+                                          ? "border-primary bg-primary/5"
+                                          : "hover:bg-muted"
+                                      )}
+                                      onClick={() => setSelectedSiteToImport(site)}
+                                    >
+                                      <div className="flex items-center gap-3">
+                                        <div className={cn(
+                                          "w-2 h-2 rounded-full",
+                                          site.status === "online" ? "bg-green-500" :
+                                          site.status === "offline" ? "bg-red-500" : "bg-yellow-500"
+                                        )} />
+                                        <div className="flex-1 min-w-0">
+                                          <p className="font-medium text-sm truncate">{site.name}</p>
+                                          <p className="text-xs text-muted-foreground">{site.domain}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <Badge variant="outline" className="text-xs">
+                                            {site.source}
+                                          </Badge>
+                                          <Badge variant="secondary" className="text-xs">
+                                            {site.type}
+                                          </Badge>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </ScrollArea>
+                            {selectedSiteToImport && (
+                              <div className="p-3 border rounded-lg bg-muted/30">
+                                <h4 className="font-medium text-sm mb-2">Selected: {selectedSiteToImport.name}</h4>
+                                <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                                  <div>Domain: {selectedSiteToImport.domain}</div>
+                                  <div>Type: {selectedSiteToImport.type}</div>
+                                  <div>Source: {selectedSiteToImport.source}</div>
+                                  <div>Path: {selectedSiteToImport.path || "N/A"}</div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <DialogFooter>
+                            <Button variant="outline" onClick={() => {
+                              setShowImportDialog(false);
+                              setSelectedSiteToImport(null);
+                            }}>
+                              Cancel
+                            </Button>
+                            <Button 
+                              onClick={() => selectedSiteToImport && handleImportSite(selectedSiteToImport)}
+                              disabled={!selectedSiteToImport || importing}
+                            >
+                              {importing ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Importing...
+                                </>
+                              ) : (
+                                <>
+                                  <Upload className="h-4 w-4 mr-2" />
+                                  Import Site
+                                </>
+                              )}
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                      <Dialog open={showNewProjectDialog} onOpenChange={setShowNewProjectDialog}>
+                        <DialogTrigger asChild>
+                          <Button size="sm" variant="outline" className="h-7">
+                            <Plus className="h-3 w-3 mr-1" />
+                            New
+                          </Button>
+                        </DialogTrigger>
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle>Create New Website</DialogTitle>
@@ -1779,19 +2175,22 @@ ${componentsHtml}
                 exit={{ width: 0, opacity: 0 }}
                 className="border-l bg-background overflow-hidden"
               >
-                <Tabs value={rightPanelTab} onValueChange={(v) => setRightPanelTab(v as typeof rightPanelTab)}>
-                  <TabsList className="w-full rounded-none border-b h-10">
-                    <TabsTrigger value="components" className="flex-1 text-xs">
-                      <Box className="h-3 w-3 mr-1" />
-                      Components
+                <Tabs value={rightPanelTab} onValueChange={(v) => setRightPanelTab(v as "components" | "properties" | "pages" | "deploy" | "ai")}>
+                  <TabsList className="w-full rounded-none border-b h-10 grid grid-cols-5">
+                    <TabsTrigger value="components" className="text-xs px-1">
+                      <Box className="h-3 w-3" />
                     </TabsTrigger>
-                    <TabsTrigger value="properties" className="flex-1 text-xs">
-                      <Settings2 className="h-3 w-3 mr-1" />
-                      Properties
+                    <TabsTrigger value="properties" className="text-xs px-1">
+                      <Settings2 className="h-3 w-3" />
                     </TabsTrigger>
-                    <TabsTrigger value="pages" className="flex-1 text-xs">
-                      <File className="h-3 w-3 mr-1" />
-                      Pages
+                    <TabsTrigger value="pages" className="text-xs px-1">
+                      <File className="h-3 w-3" />
+                    </TabsTrigger>
+                    <TabsTrigger value="deploy" className="text-xs px-1">
+                      <Rocket className="h-3 w-3" />
+                    </TabsTrigger>
+                    <TabsTrigger value="ai" className="text-xs px-1">
+                      <Sparkles className="h-3 w-3" />
                     </TabsTrigger>
                   </TabsList>
 
@@ -2205,6 +2604,220 @@ ${componentsHtml}
                         ))}
                       </div>
                     </ScrollArea>
+                  </TabsContent>
+
+                  <TabsContent value="deploy" className="m-0">
+                    <ScrollArea className="h-[calc(100vh-10rem)]">
+                      <div className="p-4 space-y-4">
+                        <div className="text-center space-y-2 py-2">
+                          <Rocket className="h-8 w-8 mx-auto text-primary" />
+                          <h4 className="font-semibold">Deployment Panel</h4>
+                          <p className="text-xs text-muted-foreground">
+                            Deploy your site to various targets
+                          </p>
+                        </div>
+
+                        {selectedProject && (
+                          <>
+                            <div className="space-y-2">
+                              <Label className="text-xs font-semibold">Deploy Target</Label>
+                              <Select value={deployTarget} onValueChange={setDeployTarget}>
+                                <SelectTrigger className="h-9">
+                                  <SelectValue placeholder="Select target" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="local">Local (Static Files)</SelectItem>
+                                  <SelectItem value="linode">Linode Server</SelectItem>
+                                  <SelectItem value="home">Home Server</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <Button
+                              className="w-full bg-gradient-to-r from-green-500 to-emerald-600"
+                              onClick={handleDeploy}
+                              disabled={deploying}
+                            >
+                              {deploying ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Deploying...
+                                </>
+                              ) : (
+                                <>
+                                  <Rocket className="h-4 w-4 mr-2" />
+                                  Deploy Now
+                                </>
+                              )}
+                            </Button>
+
+                            <Separator />
+
+                            <div className="space-y-2">
+                              <Label className="text-xs font-semibold">Deployment History</Label>
+                              {deploymentHistory.length === 0 ? (
+                                <p className="text-xs text-muted-foreground text-center py-4">
+                                  No deployments yet
+                                </p>
+                              ) : (
+                                <div className="space-y-2">
+                                  {deploymentHistory.slice(0, 5).map((deployment) => (
+                                    <div
+                                      key={deployment.id}
+                                      className="p-2 border rounded-lg text-xs"
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <span className="font-medium">v{deployment.version}</span>
+                                        <Badge
+                                          variant={
+                                            deployment.status === "success" ? "default" :
+                                            deployment.status === "failed" ? "destructive" :
+                                            "secondary"
+                                          }
+                                          className="text-xs"
+                                        >
+                                          {deployment.status}
+                                        </Badge>
+                                      </div>
+                                      <p className="text-muted-foreground mt-1">
+                                        {new Date(deployment.startedAt).toLocaleString()}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        )}
+
+                        {!selectedProject && (
+                          <div className="text-center text-muted-foreground py-8">
+                            <Globe className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">Select a project to deploy</p>
+                          </div>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </TabsContent>
+
+                  <TabsContent value="ai" className="m-0 flex flex-col h-[calc(100vh-10rem)]">
+                    <div className="p-3 border-b space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-purple-500" />
+                        <span className="font-semibold text-sm">AI Assistant</span>
+                      </div>
+                      <div className="flex gap-1 flex-wrap">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 text-xs"
+                          onClick={handleAnalyzeSEO}
+                          disabled={!selectedPage}
+                        >
+                          SEO {seoScore && `(${seoScore.score})`}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 text-xs"
+                          onClick={handleAnalyzeAccessibility}
+                          disabled={!selectedPage}
+                        >
+                          A11y {accessibilityScore && `(${accessibilityScore.score})`}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {seoScore && (
+                      <div className="p-2 border-b bg-muted/30 text-xs space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">SEO Score</span>
+                          <Badge variant={seoScore.score >= 70 ? "default" : "destructive"}>
+                            {seoScore.score}/100
+                          </Badge>
+                        </div>
+                        {seoScore.issues.length > 0 && (
+                          <ul className="text-muted-foreground list-disc list-inside">
+                            {seoScore.issues.slice(0, 2).map((issue, i) => (
+                              <li key={i}>{issue}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+
+                    {accessibilityScore && (
+                      <div className="p-2 border-b bg-muted/30 text-xs space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">Accessibility Score</span>
+                          <Badge variant={accessibilityScore.score >= 70 ? "default" : "destructive"}>
+                            {accessibilityScore.score}/100
+                          </Badge>
+                        </div>
+                        {accessibilityScore.issues.length > 0 && (
+                          <ul className="text-muted-foreground list-disc list-inside">
+                            {accessibilityScore.issues.slice(0, 2).map((issue, i) => (
+                              <li key={i}>{issue}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+
+                    <ScrollArea ref={aiChatScrollRef} className="flex-1 p-3">
+                      <div className="space-y-3">
+                        {aiMessages.length === 0 ? (
+                          <div className="text-center text-muted-foreground py-8">
+                            <Wand2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm font-medium">Ask Jarvis to edit your page</p>
+                            <p className="text-xs mt-1">Try: "Make the hero section blue"</p>
+                          </div>
+                        ) : (
+                          aiMessages.map((message) => (
+                            <div
+                              key={message.id}
+                              className={cn(
+                                "p-3 rounded-lg text-sm",
+                                message.role === "user"
+                                  ? "bg-primary text-primary-foreground ml-4"
+                                  : "bg-muted mr-4"
+                              )}
+                            >
+                              <p className="whitespace-pre-wrap">{message.content}</p>
+                              <p className="text-xs opacity-70 mt-1">
+                                {new Date(message.timestamp).toLocaleTimeString()}
+                              </p>
+                            </div>
+                          ))
+                        )}
+                        {aiChatLoading && (
+                          <div className="flex items-center gap-2 text-muted-foreground p-3">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="text-sm">Thinking...</span>
+                          </div>
+                        )}
+                      </div>
+                    </ScrollArea>
+
+                    <div className="p-3 border-t">
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Ask Jarvis to edit..."
+                          value={aiChatInput}
+                          onChange={(e) => setAiChatInput(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleAiChat()}
+                          disabled={!selectedProject || !selectedPage}
+                          className="text-sm"
+                        />
+                        <Button
+                          size="icon"
+                          onClick={handleAiChat}
+                          disabled={aiChatLoading || !aiChatInput.trim() || !selectedPage}
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
                   </TabsContent>
                 </Tabs>
               </motion.div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,6 +57,13 @@ import {
   Users,
   FileImage,
   Package,
+  FolderOpen,
+  Plus,
+  Heart,
+  HeartOff,
+  Zap,
+  Shield,
+  RotateCcw,
 } from "lucide-react";
 
 interface MarketplaceModel {
@@ -78,6 +85,7 @@ interface MarketplaceModel {
   fileSizeFormatted: string | null;
   version: string | null;
   downloadUrl: string | null;
+  baseModel?: string;
 }
 
 interface ModelVersion {
@@ -129,6 +137,7 @@ interface InstalledModel {
   lastUsed: string | null;
   useCount: number;
   thumbnailUrl?: string | null;
+  isFavorite?: boolean;
 }
 
 interface ActiveDownload {
@@ -144,6 +153,18 @@ interface ActiveDownload {
   eta?: number;
   error?: string;
   startedAt?: string;
+  checksumStatus?: string;
+}
+
+interface ModelCollection {
+  id: string;
+  name: string;
+  description?: string;
+  thumbnailUrl?: string;
+  category?: string;
+  modelCount: number;
+  items?: any[];
+  isStarterPack?: boolean;
 }
 
 interface TypeFilter {
@@ -186,6 +207,14 @@ function formatSpeed(bytesPerSecond: number): string {
   return `${bytesPerSecond} B/s`;
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+}
+
 function formatEta(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
@@ -193,10 +222,12 @@ function formatEta(seconds: number): string {
 }
 
 export default function ModelMarketplacePage() {
-  const [activeTab, setActiveTab] = useState<"browse" | "downloads" | "installed">("browse");
+  const [activeTab, setActiveTab] = useState<"browse" | "downloads" | "installed" | "collections">("browse");
   const [models, setModels] = useState<MarketplaceModel[]>([]);
   const [installedModels, setInstalledModels] = useState<InstalledModel[]>([]);
   const [activeDownloads, setActiveDownloads] = useState<ActiveDownload[]>([]);
+  const [collections, setCollections] = useState<ModelCollection[]>([]);
+  const [starterPacks, setStarterPacks] = useState<ModelCollection[]>([]);
   const [types, setTypes] = useState<TypeFilter[]>([]);
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
@@ -206,6 +237,7 @@ export default function ModelMarketplacePage() {
   const [selectedSource, setSelectedSource] = useState("all");
   const [showNsfw, setShowNsfw] = useState(false);
   const [sortBy, setSortBy] = useState("downloads");
+  const [browseCategory, setBrowseCategory] = useState<"search" | "trending" | "new" | "popular">("trending");
   
   const [selectedModel, setSelectedModel] = useState<ModelDetails | null>(null);
   const [modelDetailsLoading, setModelDetailsLoading] = useState(false);
@@ -213,37 +245,87 @@ export default function ModelMarketplacePage() {
   const [selectedVersion, setSelectedVersion] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<string>("");
   const [downloading, setDownloading] = useState(false);
+  const [installTarget, setInstallTarget] = useState<"sd_forge" | "comfyui" | "both">("sd_forge");
   const [imageError, setImageError] = useState<Record<string, boolean>>({});
+  
+  const [showCreateCollection, setShowCreateCollection] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState("");
+  
+  const eventSourceRef = useRef<EventSource | null>(null);
+
+  useEffect(() => {
+    const connectSSE = () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+
+      const es = new EventSource("/api/models/download/progress");
+      eventSourceRef.current = es;
+
+      es.addEventListener("downloads", (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          setActiveDownloads(data.downloads || []);
+        } catch (e) {
+          console.error("SSE parse error:", e);
+        }
+      });
+
+      es.addEventListener("error", () => {
+        es.close();
+        setTimeout(connectSSE, 5000);
+      });
+    };
+
+    connectSSE();
+
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+    };
+  }, []);
 
   const searchMarketplace = useCallback(async () => {
     setSearching(true);
     try {
-      const params = new URLSearchParams();
-      if (searchQuery) params.set("query", searchQuery);
-      if (selectedType !== "all") params.set("type", selectedType);
-      if (selectedSource !== "all") params.set("source", selectedSource);
-      params.set("sort", sortBy);
-      params.set("nsfw", String(showNsfw));
-      params.set("limit", "30");
+      if (browseCategory === "search" || searchQuery) {
+        const params = new URLSearchParams();
+        if (searchQuery) params.set("query", searchQuery);
+        if (selectedType !== "all") params.set("type", selectedType);
+        if (selectedSource !== "all") params.set("source", selectedSource);
+        params.set("sort", sortBy);
+        params.set("nsfw", String(showNsfw));
+        params.set("limit", "30");
 
-      const res = await fetch(`/api/models/marketplace?${params}`);
-      if (!res.ok) throw new Error("Search failed");
+        const res = await fetch(`/api/models/marketplace?${params}`);
+        if (!res.ok) throw new Error("Search failed");
 
-      const data = await res.json();
-      setModels(data.models || []);
-      setTypes(data.types || []);
-      
-      if (data.errors?.length) {
-        data.errors.forEach((err: string) => toast.warning(err));
+        const data = await res.json();
+        setModels(data.models || []);
+        setTypes(data.types || []);
+      } else {
+        const params = new URLSearchParams();
+        params.set("category", browseCategory);
+        if (selectedType !== "all") params.set("type", selectedType);
+        if (selectedSource !== "all") params.set("source", selectedSource);
+        params.set("nsfw", String(showNsfw));
+        params.set("limit", "30");
+
+        const res = await fetch(`/api/models/browse?${params}`);
+        if (!res.ok) throw new Error("Browse failed");
+
+        const data = await res.json();
+        setModels(data.models || []);
       }
     } catch (error: any) {
       console.error("Search error:", error);
-      toast.error("Failed to search marketplace");
+      toast.error("Failed to load models");
     } finally {
       setSearching(false);
       setLoading(false);
     }
-  }, [searchQuery, selectedType, selectedSource, sortBy, showNsfw]);
+  }, [searchQuery, selectedType, selectedSource, sortBy, showNsfw, browseCategory]);
 
   const fetchInstalled = async () => {
     try {
@@ -267,10 +349,23 @@ export default function ModelMarketplacePage() {
     }
   };
 
+  const fetchCollections = async () => {
+    try {
+      const res = await fetch("/api/models/collections");
+      if (!res.ok) throw new Error("Failed to fetch collections");
+      const data = await res.json();
+      setCollections(data.collections || []);
+      setStarterPacks(data.starterPacks || []);
+    } catch (error) {
+      console.error("Fetch collections error:", error);
+    }
+  };
+
   useEffect(() => {
     searchMarketplace();
     fetchInstalled();
     fetchDownloads();
+    fetchCollections();
   }, []);
 
   useEffect(() => {
@@ -278,12 +373,7 @@ export default function ModelMarketplacePage() {
       searchMarketplace();
     }, 500);
     return () => clearTimeout(debounce);
-  }, [searchQuery, selectedType, selectedSource, sortBy, showNsfw]);
-
-  useEffect(() => {
-    const interval = setInterval(fetchDownloads, 3000);
-    return () => clearInterval(interval);
-  }, []);
+  }, [searchQuery, selectedType, selectedSource, sortBy, showNsfw, browseCategory]);
 
   const openModelDetails = async (model: MarketplaceModel) => {
     setShowDetailsDialog(true);
@@ -325,6 +415,11 @@ export default function ModelMarketplacePage() {
 
     setDownloading(true);
     try {
+      if (!version) {
+        toast.error("No version selected");
+        setDownloading(false);
+        return;
+      }
       const downloadUrl = file 
         ? `https://civitai.com/api/download/models/${version.id}?type=${file.type}&format=SafeTensor`
         : version.downloadUrl;
@@ -336,6 +431,9 @@ export default function ModelMarketplacePage() {
           url: downloadUrl,
           type: selectedModel.type,
           filename: file?.name,
+          validateChecksum: true,
+          autoInstall: true,
+          installTarget,
           metadata: {
             modelId: selectedModel.id,
             name: selectedModel.name,
@@ -343,6 +441,9 @@ export default function ModelMarketplacePage() {
             sourceId: selectedModel.sourceId,
             version: version.name,
             checksum: file?.checksum,
+            thumbnailUrl: selectedModel.sampleImages?.[0],
+            creator: selectedModel.creator,
+            fileSize: file?.size,
           },
         }),
       });
@@ -352,6 +453,7 @@ export default function ModelMarketplacePage() {
         throw new Error(error.error || "Download failed");
       }
 
+      const data = await res.json();
       toast.success(`Download started: ${selectedModel.name}`);
       setShowDetailsDialog(false);
       fetchDownloads();
@@ -360,6 +462,23 @@ export default function ModelMarketplacePage() {
       toast.error(error.message || "Failed to start download");
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const handleDownloadAction = async (downloadId: string, action: "pause" | "resume" | "cancel" | "retry") => {
+    try {
+      const res = await fetch("/api/models/download", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ downloadId, action }),
+      });
+
+      if (!res.ok) throw new Error(`Failed to ${action} download`);
+      
+      toast.success(`Download ${action}d`);
+      fetchDownloads();
+    } catch (error: any) {
+      toast.error(error.message);
     }
   };
 
@@ -385,6 +504,74 @@ export default function ModelMarketplacePage() {
     }
   };
 
+  const handleToggleFavorite = async (model: InstalledModel) => {
+    try {
+      const res = await fetch("/api/models/registry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: model.isFavorite ? "unfavorite" : "favorite",
+          modelId: model.id,
+          name: model.name,
+          type: model.type,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to update favorite");
+      
+      toast.success(model.isFavorite ? "Removed from favorites" : "Added to favorites");
+      fetchInstalled();
+    } catch (error) {
+      toast.error("Failed to update favorite");
+    }
+  };
+
+  const handleCreateCollection = async () => {
+    if (!newCollectionName.trim()) return;
+
+    try {
+      const res = await fetch("/api/models/collections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "create",
+          name: newCollectionName,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to create collection");
+      
+      toast.success(`Collection "${newCollectionName}" created`);
+      setNewCollectionName("");
+      setShowCreateCollection(false);
+      fetchCollections();
+    } catch (error) {
+      toast.error("Failed to create collection");
+    }
+  };
+
+  const handleDeleteCollection = async (collectionId: string) => {
+    if (!confirm("Delete this collection?")) return;
+
+    try {
+      const res = await fetch("/api/models/collections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "delete",
+          collectionId,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to delete collection");
+      
+      toast.success("Collection deleted");
+      fetchCollections();
+    } catch (error) {
+      toast.error("Failed to delete collection");
+    }
+  };
+
   const getCurrentVersion = () => {
     if (!selectedModel) return null;
     return selectedModel.versions.find(v => v.id === selectedVersion);
@@ -405,11 +592,11 @@ export default function ModelMarketplacePage() {
             AI Model Marketplace
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground">
-            Browse and download models from Civitai and HuggingFace
+            Browse, download, and manage AI models from Civitai and HuggingFace
           </p>
         </div>
         <Button 
-          onClick={() => { searchMarketplace(); fetchInstalled(); fetchDownloads(); }} 
+          onClick={() => { searchMarketplace(); fetchInstalled(); fetchDownloads(); fetchCollections(); }} 
           variant="outline" 
           size="sm"
           disabled={searching}
@@ -424,7 +611,7 @@ export default function ModelMarketplacePage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-        <TabsList className="grid w-full max-w-md grid-cols-3">
+        <TabsList className="grid w-full max-w-lg grid-cols-4">
           <TabsTrigger value="browse" className="gap-2">
             <LayoutGrid className="h-4 w-4" />
             Browse
@@ -440,18 +627,49 @@ export default function ModelMarketplacePage() {
           </TabsTrigger>
           <TabsTrigger value="installed" className="gap-2">
             <HardDrive className="h-4 w-4" />
-            Installed ({installedModels.length})
+            Installed
+          </TabsTrigger>
+          <TabsTrigger value="collections" className="gap-2">
+            <FolderOpen className="h-4 w-4" />
+            Collections
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="browse" className="space-y-6 mt-6">
+          <div className="flex gap-2 mb-4">
+            <Button 
+              variant={browseCategory === "trending" ? "default" : "outline"}
+              size="sm"
+              onClick={() => { setBrowseCategory("trending"); setSearchQuery(""); }}
+            >
+              <TrendingUp className="h-4 w-4 mr-1" />
+              Trending
+            </Button>
+            <Button 
+              variant={browseCategory === "new" ? "default" : "outline"}
+              size="sm"
+              onClick={() => { setBrowseCategory("new"); setSearchQuery(""); }}
+            >
+              <Zap className="h-4 w-4 mr-1" />
+              New
+            </Button>
+            <Button 
+              variant={browseCategory === "popular" ? "default" : "outline"}
+              size="sm"
+              onClick={() => { setBrowseCategory("popular"); setSearchQuery(""); }}
+            >
+              <Star className="h-4 w-4 mr-1" />
+              Popular
+            </Button>
+          </div>
+
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search models..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => { setSearchQuery(e.target.value); if (e.target.value) setBrowseCategory("search"); }}
                 className="pl-10"
               />
             </div>
@@ -461,11 +679,12 @@ export default function ModelMarketplacePage() {
                   <SelectValue placeholder="Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {types.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name} ({t.count})
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="checkpoint">Checkpoint</SelectItem>
+                  <SelectItem value="lora">LoRA</SelectItem>
+                  <SelectItem value="embedding">Embedding</SelectItem>
+                  <SelectItem value="controlnet">ControlNet</SelectItem>
+                  <SelectItem value="vae">VAE</SelectItem>
                 </SelectContent>
               </Select>
               
@@ -477,17 +696,6 @@ export default function ModelMarketplacePage() {
                   <SelectItem value="all">All Sources</SelectItem>
                   <SelectItem value="civitai">Civitai</SelectItem>
                   <SelectItem value="huggingface">HuggingFace</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Sort" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="downloads">Most Downloads</SelectItem>
-                  <SelectItem value="rating">Highest Rated</SelectItem>
-                  <SelectItem value="newest">Newest</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -589,8 +797,11 @@ export default function ModelMarketplacePage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Download className="h-5 w-5" />
-                Active Downloads
+                Download Queue
               </CardTitle>
+              <CardDescription>
+                Active and completed downloads with real-time progress
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {activeDownloads.length === 0 ? (
@@ -637,23 +848,75 @@ export default function ModelMarketplacePage() {
                                   Pending
                                 </span>
                               )}
+                              {download.status === "paused" && (
+                                <span className="flex items-center gap-1 text-orange-500">
+                                  <Pause className="h-3 w-3" />
+                                  Paused
+                                </span>
+                              )}
                             </span>
+                            {download.checksumStatus === "verified" && (
+                              <span className="flex items-center gap-1 text-green-500">
+                                <Shield className="h-3 w-3" />
+                                Verified
+                              </span>
+                            )}
                           </div>
                         </div>
-                        {download.status === "downloading" && (
-                          <div className="text-right text-sm text-muted-foreground">
-                            {download.speed && <p>{formatSpeed(download.speed)}</p>}
-                            {download.eta && <p>ETA: {formatEta(download.eta)}</p>}
-                          </div>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {download.status === "downloading" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDownloadAction(download.id, "pause")}
+                            >
+                              <Pause className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {download.status === "paused" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDownloadAction(download.id, "resume")}
+                            >
+                              <Play className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {download.status === "failed" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDownloadAction(download.id, "retry")}
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {(download.status === "downloading" || download.status === "paused" || download.status === "pending") && (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleDownloadAction(download.id, "cancel")}
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                       
-                      {download.status === "downloading" && (
+                      {(download.status === "downloading" || download.status === "paused") && (
                         <div className="space-y-1">
                           <Progress value={download.progress} />
-                          <p className="text-xs text-muted-foreground text-right">
-                            {download.progress}%
-                          </p>
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>{formatBytes(download.bytesDownloaded)} / {formatBytes(download.totalBytes)}</span>
+                            <span>{download.progress}%</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {download.status === "downloading" && (
+                        <div className="flex justify-between text-sm text-muted-foreground">
+                          {download.speed && <p>Speed: {formatSpeed(download.speed)}</p>}
+                          {download.eta && <p>ETA: {formatEta(download.eta)}</p>}
                         </div>
                       )}
 
@@ -673,10 +936,10 @@ export default function ModelMarketplacePage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <HardDrive className="h-5 w-5" />
-                Installed Models
+                Installed Models ({installedModels.length})
               </CardTitle>
               <CardDescription>
-                Models installed on your nodes
+                Models installed on your Windows VM
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -691,7 +954,7 @@ export default function ModelMarketplacePage() {
                   {installedModels.map((model) => (
                     <div
                       key={model.id}
-                      className="flex items-center justify-between p-4 border rounded-lg"
+                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
                     >
                       <div className="flex items-center gap-4">
                         <div className="p-2 rounded-lg bg-primary/10">
@@ -709,10 +972,10 @@ export default function ModelMarketplacePage() {
                             {model.fileSizeFormatted && (
                               <span>{model.fileSizeFormatted}</span>
                             )}
-                            {model.nodeId && (
+                            {model.useCount > 0 && (
                               <span className="flex items-center gap-1">
-                                <Cpu className="h-3 w-3" />
-                                {model.nodeId}
+                                <TrendingUp className="h-3 w-3" />
+                                {model.useCount} uses
                               </span>
                             )}
                           </div>
@@ -721,12 +984,14 @@ export default function ModelMarketplacePage() {
                       <div className="flex items-center gap-2">
                         <Button
                           size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            toast.info("Sync feature coming soon");
-                          }}
+                          variant="ghost"
+                          onClick={(e) => { e.stopPropagation(); handleToggleFavorite(model); }}
                         >
-                          <ArrowRightLeft className="h-4 w-4" />
+                          {model.isFavorite ? (
+                            <Heart className="h-4 w-4 fill-red-500 text-red-500" />
+                          ) : (
+                            <HeartOff className="h-4 w-4" />
+                          )}
                         </Button>
                         <Button
                           size="sm"
@@ -742,6 +1007,105 @@ export default function ModelMarketplacePage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="collections" className="space-y-6 mt-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-semibold">Starter Packs</h3>
+              <p className="text-sm text-muted-foreground">Quick-install bundles to get started</p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {starterPacks.map((pack) => (
+              <Card key={pack.id} className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-yellow-500" />
+                    {pack.name}
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    {pack.description}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {pack.items?.slice(0, 3).map((item: any, idx: number) => (
+                      <div key={idx} className="flex items-center gap-2 text-sm">
+                        {typeIcons[item.type] || <Box className="h-3 w-3" />}
+                        <span className="truncate">{item.name}</span>
+                      </div>
+                    ))}
+                    {(pack.items?.length || 0) > 3 && (
+                      <p className="text-xs text-muted-foreground">
+                        +{(pack.items?.length || 0) - 3} more
+                      </p>
+                    )}
+                  </div>
+                  <Button size="sm" className="w-full mt-4" variant="outline">
+                    <Download className="h-4 w-4 mr-2" />
+                    Install Pack
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <div className="flex justify-between items-center mt-8">
+            <div>
+              <h3 className="text-lg font-semibold">My Collections</h3>
+              <p className="text-sm text-muted-foreground">Organize your favorite models</p>
+            </div>
+            <Button size="sm" onClick={() => setShowCreateCollection(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Collection
+            </Button>
+          </div>
+
+          {collections.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <FolderOpen className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">No collections yet</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Create a collection to organize your models
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {collections.map((collection) => (
+                <Card key={collection.id} className="hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start">
+                      <CardTitle className="text-base">{collection.name}</CardTitle>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleDeleteCollection(collection.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                    {collection.description && (
+                      <CardDescription className="text-xs">
+                        {collection.description}
+                      </CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>{collection.modelCount} models</span>
+                      {collection.category && (
+                        <Badge variant="outline">{collection.category}</Badge>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
@@ -816,7 +1180,7 @@ export default function ModelMarketplacePage() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label>Version</Label>
                       <Select value={selectedVersion} onValueChange={setSelectedVersion}>
@@ -850,6 +1214,20 @@ export default function ModelMarketplacePage() {
                         </Select>
                       </div>
                     )}
+
+                    <div className="space-y-2">
+                      <Label>Install To</Label>
+                      <Select value={installTarget} onValueChange={(v) => setInstallTarget(v as any)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select target" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="sd_forge">SD Forge</SelectItem>
+                          <SelectItem value="comfyui">ComfyUI</SelectItem>
+                          <SelectItem value="both">Both</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
                   {getCurrentFile() && (
@@ -862,6 +1240,17 @@ export default function ModelMarketplacePage() {
                         <span className="text-muted-foreground">Type</span>
                         <span className="font-medium">{getCurrentFile()!.type}</span>
                       </div>
+                      {getCurrentFile()!.checksum && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground flex items-center gap-1">
+                            <Shield className="h-3 w-3" />
+                            SHA256
+                          </span>
+                          <span className="font-mono text-xs truncate max-w-[200px]">
+                            {getCurrentFile()!.checksum}
+                          </span>
+                        </div>
+                      )}
                       {selectedModel.license && (
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">License</span>
@@ -889,13 +1278,43 @@ export default function ModelMarketplacePage() {
                   ) : (
                     <>
                       <Download className="h-4 w-4 mr-2" />
-                      Download
+                      Download & Install
                     </>
                   )}
                 </Button>
               </DialogFooter>
             </>
           ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showCreateCollection} onOpenChange={setShowCreateCollection}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Collection</DialogTitle>
+            <DialogDescription>
+              Create a new collection to organize your favorite models
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="collection-name">Collection Name</Label>
+              <Input
+                id="collection-name"
+                placeholder="My Awesome Collection"
+                value={newCollectionName}
+                onChange={(e) => setNewCollectionName(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateCollection(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateCollection} disabled={!newCollectionName.trim()}>
+              Create Collection
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

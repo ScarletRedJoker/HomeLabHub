@@ -1222,3 +1222,55 @@ export type SetupConfiguration = typeof setupConfiguration.$inferSelect;
 export type NewSetupConfiguration = typeof setupConfiguration.$inferInsert;
 export type SetupStepData = typeof setupStepData.$inferSelect;
 export type NewSetupStepData = typeof setupStepData.$inferInsert;
+
+// ============================================
+// Model Collections System
+// ============================================
+
+export const modelCollections = pgTable("model_collections", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  thumbnailUrl: text("thumbnail_url"),
+  isPublic: boolean("is_public").default(false),
+  isStarterPack: boolean("is_starter_pack").default(false),
+  category: varchar("category", { length: 100 }),
+  userId: varchar("user_id", { length: 255 }),
+  modelCount: integer("model_count").default(0),
+  totalSize: decimal("total_size", { precision: 20, scale: 0 }).default("0"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const modelCollectionItems = pgTable("model_collection_items", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  collectionId: uuid("collection_id").references(() => modelCollections.id).notNull(),
+  modelId: uuid("model_id").references(() => aiModels.id),
+  externalSource: varchar("external_source", { length: 50 }),
+  externalId: varchar("external_id", { length: 255 }),
+  name: varchar("name", { length: 255 }),
+  type: varchar("type", { length: 50 }),
+  downloadUrl: text("download_url"),
+  thumbnailUrl: text("thumbnail_url"),
+  sortOrder: integer("sort_order").default(0),
+  addedAt: timestamp("added_at").defaultNow().notNull(),
+});
+
+export const modelFavorites = pgTable("model_favorites", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  modelId: uuid("model_id").references(() => aiModels.id),
+  externalSource: varchar("external_source", { length: 50 }),
+  externalId: varchar("external_id", { length: 255 }),
+  name: varchar("name", { length: 255 }),
+  type: varchar("type", { length: 50 }),
+  thumbnailUrl: text("thumbnail_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type ModelCollection = typeof modelCollections.$inferSelect;
+export type NewModelCollection = typeof modelCollections.$inferInsert;
+export type ModelCollectionItem = typeof modelCollectionItems.$inferSelect;
+export type NewModelCollectionItem = typeof modelCollectionItems.$inferInsert;
+export type ModelFavorite = typeof modelFavorites.$inferSelect;
+export type NewModelFavorite = typeof modelFavorites.$inferInsert;
