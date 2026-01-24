@@ -1,13 +1,59 @@
 /**
  * AI Content Assistant Service
  * Generates stream titles, descriptions, social media posts, and more
+ * Uses Ollama as primary provider with OpenAI fallback
  */
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-});
+const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || '100.118.44.102';
+const OLLAMA_URL = process.env.OLLAMA_URL || `http://${WINDOWS_VM_IP}:11434`;
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2';
+const OLLAMA_CONNECT_TIMEOUT = 5000;
+const OLLAMA_REQUEST_TIMEOUT = 60000;
+
+let openaiClient: OpenAI | null = null;
+
+function getOpenAIClient(): OpenAI | null {
+  if (openaiClient) return openaiClient;
+  
+  const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    console.log('[AI Content] No OpenAI API key configured');
+    return null;
+  }
+  
+  openaiClient = new OpenAI({
+    baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+    apiKey,
+  });
+  
+  return openaiClient;
+}
+
+function getOllamaUrl(): string {
+  return OLLAMA_URL;
+}
+
+function isLocalAIOnly(): boolean {
+  return process.env.LOCAL_AI_ONLY === 'true';
+}
+
+export async function isOllamaAvailable(): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), OLLAMA_CONNECT_TIMEOUT);
+    
+    const response = await fetch(`${getOllamaUrl()}/api/tags`, {
+      method: 'GET',
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeout);
+    return response.ok;
+  } catch (error) {
+    return false;
+  }
+}
 
 export interface ContentGenerationRequest {
   type: 'title' | 'description' | 'social_post' | 'tags' | 'clip_caption' | 'schedule_post';
@@ -25,6 +71,8 @@ export interface GeneratedContent {
   content: string;
   alternatives?: string[];
   error?: string;
+  provider?: string;
+  latencyMs?: number;
 }
 
 const TONE_DESCRIPTORS: Record<string, string> = {
@@ -43,6 +91,141 @@ const PLATFORM_GUIDELINES: Record<string, string> = {
   instagram: 'Visual-focused, use relevant hashtags, emojis encouraged.',
   discord: 'Can be more detailed. Use Discord markdown if helpful.'
 };
+
+interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+interface ChatOptions {
+  temperature?: number;
+  maxTokens?: number;
+}
+
+async function chatWithOllama(
+  messages: ChatMessage[],
+  options: ChatOptions = {}
+): Promise<{ content: string; provider: string }> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), OLLAMA_REQUEST_TIMEOUT);
+  
+  try {
+    const response = await fetch(`${getOllamaUrl()}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: OLLAMA_MODEL,
+        messages,
+        stream: false,
+        options: {
+          temperature: options.temperature ?? 0.8,
+          num_predict: options.maxTokens ?? 500,
+        },
+      }),
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeout);
+    
+    if (!response.ok) {
+      throw new Error(`Ollama error: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    return {
+      content: data.message?.content || '',
+      provider: 'ollama',
+    };
+  } catch (error: any) {
+    clearTimeout(timeout);
+    if (error.name === 'AbortError') {
+      throw new Error('Ollama request timed out');
+    }
+    throw error;
+  }
+}
+
+async function chatWithOpenAI(
+  messages: ChatMessage[],
+  options: ChatOptions = {}
+): Promise<{ content: string; provider: string }> {
+  const client = getOpenAIClient();
+  if (!client) {
+    throw new Error('OpenAI not configured');
+  }
+  
+  const response = await client.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages,
+    temperature: options.temperature ?? 0.8,
+    max_tokens: options.maxTokens ?? 500,
+  });
+  
+  return {
+    content: response.choices[0]?.message?.content?.trim() || '',
+    provider: 'openai',
+  };
+}
+
+async function chatWithFallback(
+  messages: ChatMessage[],
+  options: ChatOptions = {}
+): Promise<{ content: string; provider: string; fallbackUsed: boolean; latencyMs: number }> {
+  const startTime = Date.now();
+  
+  const ollamaAvailable = await isOllamaAvailable();
+  
+  if (ollamaAvailable) {
+    console.log('[AI Content] Using Ollama as primary provider');
+    try {
+      const result = await chatWithOllama(messages, options);
+      const latencyMs = Date.now() - startTime;
+      console.log(`[AI Content] Ollama request completed in ${latencyMs}ms`);
+      return { ...result, fallbackUsed: false, latencyMs };
+    } catch (ollamaError: any) {
+      console.log(`[AI Content] Ollama failed: ${ollamaError.message}`);
+      
+      if (isLocalAIOnly()) {
+        throw new Error(
+          `Local AI (Ollama) failed and LOCAL_AI_ONLY=true prevents cloud fallback. ` +
+          `Error: ${ollamaError.message}. ` +
+          `Please ensure Ollama is running at ${getOllamaUrl()} or set LOCAL_AI_ONLY=false to allow OpenAI fallback.`
+        );
+      }
+      
+      const client = getOpenAIClient();
+      if (client) {
+        console.log('[AI Content] Falling back to OpenAI');
+        const result = await chatWithOpenAI(messages, options);
+        const latencyMs = Date.now() - startTime;
+        console.log(`[AI Content] OpenAI fallback completed in ${latencyMs}ms`);
+        return { ...result, fallbackUsed: true, latencyMs };
+      }
+      
+      throw ollamaError;
+    }
+  }
+  
+  if (isLocalAIOnly()) {
+    throw new Error(
+      `Ollama is not available at ${getOllamaUrl()} and LOCAL_AI_ONLY=true prevents cloud fallback. ` +
+      `Please start Ollama on your Windows VM or set LOCAL_AI_ONLY=false to allow OpenAI fallback.`
+    );
+  }
+  
+  const client = getOpenAIClient();
+  if (client) {
+    console.log('[AI Content] Ollama unavailable, using OpenAI directly');
+    const result = await chatWithOpenAI(messages, options);
+    const latencyMs = Date.now() - startTime;
+    console.log(`[AI Content] OpenAI request completed in ${latencyMs}ms`);
+    return { ...result, fallbackUsed: false, latencyMs };
+  }
+  
+  throw new Error(
+    'No AI provider available. Start Ollama on Windows VM or configure OpenAI API key.'
+  );
+}
 
 export async function generateContent(request: ContentGenerationRequest): Promise<GeneratedContent> {
   try {
@@ -138,30 +321,32 @@ The post should:
         break;
     }
     
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
+    const result = await chatWithFallback(
+      [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
-      temperature: 0.8,
-      max_tokens: 500
-    });
+      { temperature: 0.8, maxTokens: 500 }
+    );
     
-    const content = response.choices[0]?.message?.content?.trim() || '';
+    const content = result.content.trim();
     
     if (request.type === 'title') {
       const lines = content.split('\n').filter(l => l.trim());
       return {
         success: true,
         content: lines[0] || content,
-        alternatives: lines.slice(1)
+        alternatives: lines.slice(1),
+        provider: result.provider,
+        latencyMs: result.latencyMs,
       };
     }
     
     return {
       success: true,
-      content
+      content,
+      provider: result.provider,
+      latencyMs: result.latencyMs,
     };
     
   } catch (error: any) {
@@ -179,9 +364,8 @@ export async function improveContent(
   instruction: string
 ): Promise<GeneratedContent> {
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
+    const result = await chatWithFallback(
+      [
         { 
           role: 'system', 
           content: 'You are a helpful content editor for streamers. Improve the given content based on the instruction. Return only the improved content, no explanations.' 
@@ -191,13 +375,14 @@ export async function improveContent(
           content: `Original content:\n${originalContent}\n\nInstruction: ${instruction}` 
         }
       ],
-      temperature: 0.7,
-      max_tokens: 500
-    });
+      { temperature: 0.7, maxTokens: 500 }
+    );
     
     return {
       success: true,
-      content: response.choices[0]?.message?.content?.trim() || originalContent
+      content: result.content.trim() || originalContent,
+      provider: result.provider,
+      latencyMs: result.latencyMs,
     };
   } catch (error: any) {
     return {
@@ -214,20 +399,18 @@ export async function generateHashtags(
   count: number = 5
 ): Promise<string[]> {
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
+    const result = await chatWithFallback(
+      [
         { 
           role: 'system', 
           content: `Generate ${count} relevant hashtags for the given content. Platform: ${platform}. Return only hashtags, one per line, including the # symbol.` 
         },
         { role: 'user', content: content }
       ],
-      temperature: 0.6,
-      max_tokens: 100
-    });
+      { temperature: 0.6, maxTokens: 100 }
+    );
     
-    const hashtags = response.choices[0]?.message?.content?.trim().split('\n')
+    const hashtags = result.content.trim().split('\n')
       .map(h => h.trim())
       .filter(h => h.startsWith('#'))
       .slice(0, count) || [];
@@ -245,9 +428,8 @@ export async function suggestStreamIdeas(
   audience?: string
 ): Promise<string[]> {
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
+    const result = await chatWithFallback(
+      [
         { 
           role: 'system', 
           content: 'You are a stream content strategist. Suggest creative stream ideas that will engage viewers.' 
@@ -266,11 +448,10 @@ For each idea, provide:
 Format: One idea per paragraph, numbered 1-5.` 
         }
       ],
-      temperature: 0.9,
-      max_tokens: 800
-    });
+      { temperature: 0.9, maxTokens: 800 }
+    );
     
-    return [response.choices[0]?.message?.content?.trim() || ''];
+    return [result.content.trim() || ''];
   } catch (error) {
     console.error('[AI Content] Error suggesting ideas:', error);
     return [];

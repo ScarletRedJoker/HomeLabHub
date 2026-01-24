@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { localAIRuntime } from "@/lib/local-ai-runtime";
 import { getOpenAITools, executeJarvisTool } from "@/lib/jarvis-tools";
 import { demoMode } from "@/lib/demo-mode";
+import { aiOrchestrator } from "@/lib/ai-orchestrator";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -518,6 +519,79 @@ async function chatWithOpenAI(
   };
 }
 
+async function streamChatWithOrchestrator(
+  messages: { role: string; content: string }[],
+  provider: AIProvider,
+  model: string | undefined
+): Promise<Response> {
+  const encoder = new TextEncoder();
+
+  const readable = new ReadableStream({
+    async start(controller) {
+      try {
+        const streamGenerator = aiOrchestrator.streamChat({
+          messages: messages.map((m) => ({
+            role: m.role as "system" | "user" | "assistant",
+            content: m.content,
+          })),
+          config: {
+            provider: provider as "openai" | "ollama" | "auto",
+            model: model,
+            temperature: 0.7,
+            maxTokens: 2000,
+          },
+        });
+
+        for await (const chunk of streamGenerator) {
+          try {
+            const sseData = {
+              content: chunk.content,
+              provider: chunk.provider,
+              model: chunk.model,
+              done: chunk.done,
+            };
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(sseData)}\n\n`));
+          } catch (error: any) {
+            console.error("[AIChat] Error encoding SSE chunk:", error);
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ 
+                error: "Error during streaming",
+                details: error.message 
+              })}\n\n`)
+            );
+          }
+        }
+
+        controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+        controller.close();
+      } catch (error: any) {
+        console.error("[AIChat] Streaming error:", error);
+        try {
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ 
+              error: "Streaming failed",
+              details: error.message,
+              errorCode: error.errorCode || "STREAMING_ERROR"
+            })}\n\n`)
+          );
+          controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+        } catch {
+          // If we can't even send the error, just close
+        }
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(readable, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
+}
+
 const OLLAMA_REQUEST_TIMEOUT = 120000;
 const OLLAMA_CONNECT_TIMEOUT = 10000;
 const MAX_RETRIES = 3;
@@ -912,6 +986,24 @@ export async function POST(request: NextRequest) {
           troubleshooting: LOCAL_AI_TROUBLESHOOTING,
         }, { status: 400 });
       }
+    }
+
+    // Handle streaming requests with the orchestrator
+    if (stream) {
+      if (provider === "custom" && customEndpoint) {
+        const validation = validateCustomEndpoint(customEndpoint);
+        if (!validation.valid) {
+          return NextResponse.json(
+            { error: "Invalid custom endpoint", details: validation.error },
+            { status: 400 }
+          );
+        }
+        const customModel = model || "default";
+        return await chatWithCustomEndpoint(customEndpoint, messages, customModel, true);
+      }
+      
+      console.log(`[AIChat] Streaming request with provider: ${provider}`);
+      return await streamChatWithOrchestrator(messages, provider as AIProvider, model);
     }
 
     if (provider === "custom" && customEndpoint) {

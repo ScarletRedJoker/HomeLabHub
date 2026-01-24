@@ -299,27 +299,461 @@ app.get("/api/services", async (req, res) => {
   res.json({ success: true, services });
 });
 
+const serviceCommands: Record<string, { stop: string; start: string; port: number }> = {
+  ollama: {
+    stop: "net stop ollama",
+    start: "net start ollama",
+    port: 11434,
+  },
+  "stable-diffusion": {
+    stop: 'taskkill /F /IM python.exe /FI "WINDOWTITLE eq Stable*"',
+    start: "cd C:\\AI\\stable-diffusion-webui && start webui.bat",
+    port: 7860,
+  },
+  comfyui: {
+    stop: 'taskkill /F /IM python.exe /FI "WINDOWTITLE eq ComfyUI"',
+    start: "cd C:\\AI\\ComfyUI && start python main.py --listen",
+    port: 8188,
+  },
+  sunshine: {
+    stop: "net stop sunshine",
+    start: "net start sunshine",
+    port: 47989,
+  },
+};
+
+interface WatchdogEvent {
+  id: string;
+  timestamp: string;
+  type: "health_check" | "restart_attempt" | "restart_success" | "restart_failure" | "watchdog_start" | "watchdog_stop";
+  service: string;
+  message: string;
+  details?: Record<string, any>;
+}
+
+interface WatchdogConfig {
+  checkIntervalMs: number;
+  failureThreshold: number;
+  restartTimeoutMs: number;
+  services: string[];
+  cooldownMs?: number;
+  maxRestartsPerWindow?: number;
+  restartWindowMs?: number;
+}
+
+interface ServiceHealth {
+  consecutiveFailures: number;
+  lastCheck: string | null;
+  lastStatus: "online" | "offline" | null;
+  lastRestart: string | null;
+  restartCount: number;
+  lastRestartAttempt: string | null;
+  needsManualIntervention: boolean;
+  restartCountInWindow: number;
+  cooldownUntil: string | null;
+}
+
+class ServiceWatchdog {
+  private config: WatchdogConfig & {
+    cooldownMs: number;
+    maxRestartsPerWindow: number;
+    restartWindowMs: number;
+  };
+  private running: boolean = false;
+  private checkTimer: NodeJS.Timeout | null = null;
+  private serviceHealth: Map<string, ServiceHealth> = new Map();
+  private restartHistory: Map<string, number[]> = new Map();
+  private eventLog: WatchdogEvent[] = [];
+  private readonly MAX_EVENTS = 100;
+
+  constructor(config?: Partial<WatchdogConfig>) {
+    this.config = {
+      checkIntervalMs: config?.checkIntervalMs ?? 60000,
+      failureThreshold: config?.failureThreshold ?? 3,
+      restartTimeoutMs: config?.restartTimeoutMs ?? 60000,
+      services: config?.services ?? ["ollama", "stable-diffusion", "comfyui"],
+      cooldownMs: config?.cooldownMs ?? 300000,
+      maxRestartsPerWindow: config?.maxRestartsPerWindow ?? 3,
+      restartWindowMs: config?.restartWindowMs ?? 3600000,
+    };
+
+    for (const service of this.config.services) {
+      this.serviceHealth.set(service, {
+        consecutiveFailures: 0,
+        lastCheck: null,
+        lastStatus: null,
+        lastRestart: null,
+        restartCount: 0,
+        lastRestartAttempt: null,
+        needsManualIntervention: false,
+        restartCountInWindow: 0,
+        cooldownUntil: null,
+      });
+      this.restartHistory.set(service, []);
+    }
+  }
+
+  private addEvent(event: Omit<WatchdogEvent, "id" | "timestamp">): void {
+    const fullEvent: WatchdogEvent = {
+      id: crypto.randomBytes(8).toString("hex"),
+      timestamp: new Date().toISOString(),
+      ...event,
+    };
+    this.eventLog.unshift(fullEvent);
+    if (this.eventLog.length > this.MAX_EVENTS) {
+      this.eventLog = this.eventLog.slice(0, this.MAX_EVENTS);
+    }
+    console.log(`[Watchdog] ${event.type}: ${event.service} - ${event.message}`);
+  }
+
+  private getRestartCountInWindow(serviceName: string): number {
+    const now = Date.now();
+    const history = this.restartHistory.get(serviceName) || [];
+    return history.filter(timestamp => now - timestamp < this.config.restartWindowMs).length;
+  }
+
+  private updateRestartCountInWindow(serviceName: string): void {
+    const health = this.serviceHealth.get(serviceName);
+    if (health) {
+      health.restartCountInWindow = this.getRestartCountInWindow(serviceName);
+    }
+  }
+
+  private isInCooldown(serviceName: string): boolean {
+    const health = this.serviceHealth.get(serviceName);
+    if (!health || !health.cooldownUntil) return false;
+    return Date.now() < new Date(health.cooldownUntil).getTime();
+  }
+
+  private getCooldownRemainingMs(serviceName: string): number {
+    const health = this.serviceHealth.get(serviceName);
+    if (!health || !health.cooldownUntil) return 0;
+    const remaining = new Date(health.cooldownUntil).getTime() - Date.now();
+    return Math.max(0, remaining);
+  }
+
+  private async checkPort(port: number): Promise<boolean> {
+    try {
+      const cmd = process.platform === "win32"
+        ? `netstat -an | findstr :${port}`
+        : `netstat -an | grep :${port}`;
+      await execAsync(cmd);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private async waitForPort(port: number, timeoutMs: number): Promise<boolean> {
+    const startTime = Date.now();
+    const checkInterval = 2000;
+
+    while (Date.now() - startTime < timeoutMs) {
+      if (await this.checkPort(port)) {
+        return true;
+      }
+      await new Promise(resolve => setTimeout(resolve, checkInterval));
+    }
+    return false;
+  }
+
+  private async restartService(serviceName: string): Promise<boolean> {
+    const cmds = serviceCommands[serviceName];
+    if (!cmds) {
+      this.addEvent({
+        type: "restart_failure",
+        service: serviceName,
+        message: `Unknown service: ${serviceName}`,
+      });
+      return false;
+    }
+
+    const health = this.serviceHealth.get(serviceName);
+    if (!health) return false;
+
+    // Check if we're in cooldown
+    if (this.isInCooldown(serviceName)) {
+      const remainingMs = this.getCooldownRemainingMs(serviceName);
+      this.addEvent({
+        type: "health_check",
+        service: serviceName,
+        message: `Cooldown active - ${Math.ceil(remainingMs / 1000)}s remaining, skipping restart`,
+        details: { cooldownRemainingMs: remainingMs },
+      });
+      return false;
+    }
+
+    // Check restart limit in time window
+    this.updateRestartCountInWindow(serviceName);
+    if (health.restartCountInWindow >= this.config.maxRestartsPerWindow) {
+      health.needsManualIntervention = true;
+      this.addEvent({
+        type: "restart_failure",
+        service: serviceName,
+        message: `Maximum restart attempts exceeded (${health.restartCountInWindow}/${this.config.maxRestartsPerWindow} in last ${this.config.restartWindowMs / 60000}min) - manual intervention needed`,
+        details: { 
+          restartCount: health.restartCountInWindow,
+          maxRestarts: this.config.maxRestartsPerWindow,
+          windowMs: this.config.restartWindowMs,
+        },
+      });
+      return false;
+    }
+
+    health.lastRestartAttempt = new Date().toISOString();
+
+    this.addEvent({
+      type: "restart_attempt",
+      service: serviceName,
+      message: `Attempting restart (failure count: ${health.consecutiveFailures}, restart ${health.restartCountInWindow + 1}/${this.config.maxRestartsPerWindow})`,
+    });
+
+    try {
+      try {
+        await execAsync(cmds.stop, { shell: "cmd.exe", timeout: 10000 });
+      } catch {}
+
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      await execAsync(cmds.start, { shell: "cmd.exe" });
+
+      const cameOnline = await this.waitForPort(cmds.port, this.config.restartTimeoutMs);
+
+      if (cameOnline) {
+        // Success - record restart attempt and clear cooldown
+        const history = this.restartHistory.get(serviceName) || [];
+        history.push(Date.now());
+        this.restartHistory.set(serviceName, history);
+        
+        health.lastRestart = new Date().toISOString();
+        health.restartCount++;
+        health.consecutiveFailures = 0;
+        health.lastStatus = "online";
+        health.cooldownUntil = null;
+        health.needsManualIntervention = false;
+        this.updateRestartCountInWindow(serviceName);
+        
+        this.addEvent({
+          type: "restart_success",
+          service: serviceName,
+          message: `Service restarted and responding on port ${cmds.port}`,
+        });
+        return true;
+      } else {
+        // Failed to start - activate cooldown
+        const history = this.restartHistory.get(serviceName) || [];
+        history.push(Date.now());
+        this.restartHistory.set(serviceName, history);
+        
+        health.lastRestart = new Date().toISOString();
+        health.restartCount++;
+        health.cooldownUntil = new Date(Date.now() + this.config.cooldownMs).toISOString();
+        this.updateRestartCountInWindow(serviceName);
+        
+        this.addEvent({
+          type: "restart_failure",
+          service: serviceName,
+          message: `Service started but not responding on port ${cmds.port} after ${this.config.restartTimeoutMs}ms - cooldown activated for ${this.config.cooldownMs / 1000}s`,
+          details: { cooldownMs: this.config.cooldownMs },
+        });
+        return false;
+      }
+    } catch (error: any) {
+      // Exception during restart - activate cooldown
+      const history = this.restartHistory.get(serviceName) || [];
+      history.push(Date.now());
+      this.restartHistory.set(serviceName, history);
+      
+      health.lastRestart = new Date().toISOString();
+      health.restartCount++;
+      health.cooldownUntil = new Date(Date.now() + this.config.cooldownMs).toISOString();
+      this.updateRestartCountInWindow(serviceName);
+      
+      this.addEvent({
+        type: "restart_failure",
+        service: serviceName,
+        message: `Restart failed: ${error.message} - cooldown activated for ${this.config.cooldownMs / 1000}s`,
+        details: { error: error.message, cooldownMs: this.config.cooldownMs },
+      });
+      return false;
+    }
+  }
+
+  private async performHealthCheck(): Promise<void> {
+    for (const serviceName of this.config.services) {
+      const cmds = serviceCommands[serviceName];
+      if (!cmds) continue;
+
+      const isOnline = await this.checkPort(cmds.port);
+      const health = this.serviceHealth.get(serviceName);
+      
+      if (!health) continue;
+
+      health.lastCheck = new Date().toISOString();
+      health.lastStatus = isOnline ? "online" : "offline";
+
+      if (isOnline) {
+        health.consecutiveFailures = 0;
+        this.addEvent({
+          type: "health_check",
+          service: serviceName,
+          message: `Service healthy (port ${cmds.port})`,
+        });
+      } else {
+        health.consecutiveFailures++;
+        this.addEvent({
+          type: "health_check",
+          service: serviceName,
+          message: `Service offline - failure ${health.consecutiveFailures}/${this.config.failureThreshold}`,
+        });
+
+        if (health.consecutiveFailures >= this.config.failureThreshold) {
+          await this.restartService(serviceName);
+        }
+      }
+    }
+  }
+
+  start(config?: Partial<WatchdogConfig>): void {
+    if (this.running) {
+      this.stop();
+    }
+
+    if (config) {
+      this.config = { ...this.config, ...config };
+      for (const service of this.config.services) {
+        if (!this.serviceHealth.has(service)) {
+          this.serviceHealth.set(service, {
+            consecutiveFailures: 0,
+            lastCheck: null,
+            lastStatus: null,
+            lastRestart: null,
+            restartCount: 0,
+            lastRestartAttempt: null,
+            needsManualIntervention: false,
+            restartCountInWindow: 0,
+            cooldownUntil: null,
+          });
+          this.restartHistory.set(service, []);
+        }
+      }
+    }
+
+    this.running = true;
+    this.addEvent({
+      type: "watchdog_start",
+      service: "watchdog",
+      message: `Started monitoring ${this.config.services.join(", ")} every ${this.config.checkIntervalMs / 1000}s`,
+      details: this.config,
+    });
+
+    this.performHealthCheck();
+
+    this.checkTimer = setInterval(() => {
+      this.performHealthCheck();
+    }, this.config.checkIntervalMs);
+  }
+
+  stop(): void {
+    if (this.checkTimer) {
+      clearInterval(this.checkTimer);
+      this.checkTimer = null;
+    }
+    this.running = false;
+    this.addEvent({
+      type: "watchdog_stop",
+      service: "watchdog",
+      message: "Watchdog stopped",
+    });
+  }
+
+  isRunning(): boolean {
+    return this.running;
+  }
+
+  getConfig(): WatchdogConfig {
+    return { ...this.config };
+  }
+
+  getStatus(): {
+    running: boolean;
+    config: WatchdogConfig;
+    services: Record<string, ServiceHealth>;
+    recentEvents: WatchdogEvent[];
+  } {
+    const services: Record<string, ServiceHealth> = {};
+    for (const [name, health] of this.serviceHealth.entries()) {
+      services[name] = { ...health };
+    }
+
+    return {
+      running: this.running,
+      config: { ...this.config },
+      services,
+      recentEvents: this.eventLog.slice(0, 20),
+    };
+  }
+
+  getEvents(limit: number = 100): WatchdogEvent[] {
+    return this.eventLog.slice(0, limit);
+  }
+
+  async repairService(serviceName: string): Promise<{ success: boolean; message: string; online: boolean }> {
+    const cmds = serviceCommands[serviceName];
+    if (!cmds) {
+      return { success: false, message: `Unknown service: ${serviceName}`, online: false };
+    }
+
+    const wasOnline = await this.checkPort(cmds.port);
+    if (wasOnline) {
+      return { success: true, message: `Service ${serviceName} is already online`, online: true };
+    }
+
+    const restarted = await this.restartService(serviceName);
+    const isNowOnline = await this.checkPort(cmds.port);
+
+    return {
+      success: restarted,
+      message: restarted 
+        ? `Service ${serviceName} repaired and online` 
+        : `Failed to repair service ${serviceName}`,
+      online: isNowOnline,
+    };
+  }
+
+  resetService(serviceName: string): { success: boolean; message: string } {
+    const health = this.serviceHealth.get(serviceName);
+    
+    if (!health) {
+      return { success: false, message: `Service ${serviceName} not found` };
+    }
+
+    // Clear cooldown
+    health.cooldownUntil = null;
+    
+    // Clear restart history and counters
+    this.restartHistory.set(serviceName, []);
+    health.restartCountInWindow = 0;
+    
+    // Clear manual intervention flag
+    health.needsManualIntervention = false;
+    
+    this.addEvent({
+      type: "health_check",
+      service: serviceName,
+      message: `Watchdog reset: cooldown cleared, restart history cleared, manual intervention flag cleared`,
+    });
+
+    return {
+      success: true,
+      message: `Watchdog reset for service ${serviceName} - cooldown cleared, restart counters reset`,
+    };
+  }
+}
+
+const watchdog = new ServiceWatchdog();
+
 app.post("/api/services/:name/restart", async (req, res) => {
   const { name } = req.params;
-
-  const serviceCommands: Record<string, { stop: string; start: string }> = {
-    ollama: {
-      stop: "net stop ollama",
-      start: "net start ollama",
-    },
-    "stable-diffusion": {
-      stop: 'taskkill /F /IM python.exe /FI "WINDOWTITLE eq Stable*"',
-      start: "cd C:\\AI\\stable-diffusion-webui && start webui.bat",
-    },
-    comfyui: {
-      stop: 'taskkill /F /IM python.exe /FI "WINDOWTITLE eq ComfyUI"',
-      start: "cd C:\\AI\\ComfyUI && start python main.py --listen",
-    },
-    sunshine: {
-      stop: "net stop sunshine",
-      start: "net start sunshine",
-    },
-  };
 
   const cmds = serviceCommands[name];
   if (!cmds) {
@@ -339,6 +773,71 @@ app.post("/api/services/:name/restart", async (req, res) => {
   } catch (error: any) {
     res.json({ success: false, error: error.message });
   }
+});
+
+app.post("/api/watchdog/start", (req, res) => {
+  const { checkIntervalMs, failureThreshold, restartTimeoutMs, services } = req.body;
+
+  const config: Partial<WatchdogConfig> = {};
+  if (checkIntervalMs) config.checkIntervalMs = Math.max(10000, checkIntervalMs);
+  if (failureThreshold) config.failureThreshold = Math.max(1, failureThreshold);
+  if (restartTimeoutMs) config.restartTimeoutMs = Math.max(10000, restartTimeoutMs);
+  if (services && Array.isArray(services)) {
+    config.services = services.filter(s => serviceCommands[s]);
+  }
+
+  watchdog.start(Object.keys(config).length > 0 ? config : undefined);
+
+  res.json({
+    success: true,
+    message: "Watchdog started",
+    config: watchdog.getConfig(),
+  });
+});
+
+app.post("/api/watchdog/stop", (req, res) => {
+  watchdog.stop();
+  res.json({ success: true, message: "Watchdog stopped" });
+});
+
+app.get("/api/watchdog/status", (req, res) => {
+  res.json({
+    success: true,
+    ...watchdog.getStatus(),
+  });
+});
+
+app.get("/api/watchdog/events", (req, res) => {
+  const limit = Math.min(100, parseInt(req.query.limit as string) || 100);
+  res.json({
+    success: true,
+    events: watchdog.getEvents(limit),
+  });
+});
+
+app.post("/api/watchdog/reset/:service", (req, res) => {
+  const { service } = req.params;
+  
+  const result = watchdog.resetService(service);
+  
+  res.json({
+    success: result.success,
+    message: result.message,
+    service,
+  });
+});
+
+app.post("/api/services/repair/:name", async (req, res) => {
+  const { name } = req.params;
+  
+  const result = await watchdog.repairService(name);
+  
+  res.json({
+    success: result.success,
+    message: result.message,
+    online: result.online,
+    service: name,
+  });
 });
 
 app.post("/api/git/pull", async (req, res) => {
@@ -1188,9 +1687,13 @@ app.get("/api/sd/disk", async (req, res) => {
 app.get("/", (req, res) => {
   res.json({
     name: "Nebula Agent",
-    version: "1.1.0",
+    version: "1.2.0",
     status: "running",
     nodeId: tokenInfo.nodeId,
+    watchdog: {
+      running: watchdog.isRunning(),
+      config: watchdog.getConfig(),
+    },
     endpoints: [
       "GET  /api/health",
       "GET  /api/token-info",
@@ -1198,6 +1701,11 @@ app.get("/", (req, res) => {
       "GET  /api/models",
       "GET  /api/services",
       "POST /api/services/:name/restart",
+      "POST /api/services/repair/:name",
+      "POST /api/watchdog/start",
+      "POST /api/watchdog/stop",
+      "GET  /api/watchdog/status",
+      "GET  /api/watchdog/events",
       "POST /api/git/pull",
       "GET  /api/sd/status",
       "GET  /api/sd/models",
@@ -1220,13 +1728,15 @@ app.get("/", (req, res) => {
 const server = app.listen(PORT, "0.0.0.0", async () => {
   console.log(`
 ╔════════════════════════════════════════════════╗
-║           Nebula Agent v1.0.0                  ║
+║           Nebula Agent v1.2.0                  ║
 ║   Windows VM Management Service                ║
+║   + Auto-Heal Service Recovery                 ║
 ╠════════════════════════════════════════════════╣
 ║   Listening on: http://0.0.0.0:${PORT}            ║
 ║   Node ID: ${tokenInfo.nodeId.substring(0, 30).padEnd(30)}     ║
 ║   Token: Per-node (loaded from file)           ║
 ║   Token File: ${TOKEN_FILE_PATH.substring(0, 29).padEnd(29)}  ║
+║   Watchdog: Ready (use /api/watchdog/start)    ║
 ╚════════════════════════════════════════════════╝
   `);
 

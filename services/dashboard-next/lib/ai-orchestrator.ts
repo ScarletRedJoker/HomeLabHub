@@ -7,6 +7,8 @@ import OpenAI from "openai";
 import Replicate from "replicate";
 import { readFileSync, existsSync } from "fs";
 import { peerDiscovery, type PeerService } from "./peer-discovery";
+import { withResilience } from "./ai-resilience";
+import { recordChatUsage } from "./ai-metrics";
 
 interface LocalAIState {
   windows_vm?: {
@@ -46,6 +48,19 @@ export interface ChatResponse {
   provider: string;
   model: string;
   fallbackUsed: boolean;
+  usage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+}
+
+export interface StreamingChatChunk {
+  content: string;
+  provider: string;
+  model: string;
+  done: boolean;
+  fallbackUsed?: boolean;
   usage?: {
     promptTokens: number;
     completionTokens: number;
@@ -487,6 +502,274 @@ class AIOrchestrator {
         totalTokens: (data.prompt_eval_count || 0) + (data.eval_count || 0),
       } : undefined,
     };
+  }
+
+  async *streamChatWithOllama(
+    messages: ChatMessage[],
+    config: AIConfig
+  ): AsyncGenerator<StreamingChatChunk, void, unknown> {
+    const model = config.model || "llama3.2";
+    const startTime = Date.now();
+    let totalContent = "";
+    let promptTokens = 0;
+    let completionTokens = 0;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 120000);
+
+    try {
+      const response = await fetch(`${this.ollamaUrl}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model,
+          messages,
+          stream: true,
+          options: {
+            temperature: config.temperature,
+            num_predict: config.maxTokens,
+          },
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        throw new Error(`Ollama error: ${response.statusText}`);
+      }
+
+      if (!response.body) {
+        throw new Error("No response body from Ollama");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+
+          try {
+            const data = JSON.parse(line);
+
+            if (data.message?.content) {
+              totalContent += data.message.content;
+              yield {
+                content: data.message.content,
+                provider: "ollama",
+                model,
+                done: false,
+              };
+            }
+
+            if (data.done) {
+              promptTokens = data.prompt_eval_count || 0;
+              completionTokens = data.eval_count || 0;
+
+              yield {
+                content: "",
+                provider: "ollama",
+                model,
+                done: true,
+                usage: {
+                  promptTokens,
+                  completionTokens,
+                  totalTokens: promptTokens + completionTokens,
+                },
+              };
+            }
+          } catch {
+            console.warn("[Ollama Stream] Failed to parse NDJSON line:", line);
+          }
+        }
+      }
+
+      const latencyMs = Date.now() - startTime;
+      recordChatUsage(
+        "ollama",
+        true,
+        latencyMs,
+        promptTokens || completionTokens
+          ? { prompt: promptTokens, completion: completionTokens, total: promptTokens + completionTokens }
+          : undefined,
+        { model }
+      );
+    } catch (error: any) {
+      clearTimeout(timeout);
+      const latencyMs = Date.now() - startTime;
+
+      if (error.name === "AbortError") {
+        recordChatUsage("ollama", false, latencyMs, undefined, { model });
+        throw new Error("Ollama streaming request timed out after 120 seconds");
+      }
+
+      recordChatUsage("ollama", false, latencyMs, undefined, { model });
+      throw error;
+    }
+  }
+
+  private async *streamChatWithOpenAI(
+    messages: ChatMessage[],
+    config: AIConfig
+  ): AsyncGenerator<StreamingChatChunk, void, unknown> {
+    if (!this.openaiClient) {
+      throw new Error("OpenAI not configured");
+    }
+
+    const model = config.model || "gpt-4o";
+    const startTime = Date.now();
+    let totalContent = "";
+    let promptTokens = 0;
+    let completionTokens = 0;
+
+    try {
+      const stream = await this.openaiClient.chat.completions.create({
+        model,
+        messages,
+        temperature: config.temperature,
+        max_tokens: config.maxTokens,
+        stream: true,
+        stream_options: { include_usage: true },
+      });
+
+      for await (const chunk of stream) {
+        const delta = chunk.choices[0]?.delta?.content;
+
+        if (delta) {
+          totalContent += delta;
+          yield {
+            content: delta,
+            provider: "openai",
+            model,
+            done: false,
+          };
+        }
+
+        if (chunk.usage) {
+          promptTokens = chunk.usage.prompt_tokens || 0;
+          completionTokens = chunk.usage.completion_tokens || 0;
+        }
+
+        if (chunk.choices[0]?.finish_reason) {
+          yield {
+            content: "",
+            provider: "openai",
+            model,
+            done: true,
+            usage: {
+              promptTokens,
+              completionTokens,
+              totalTokens: promptTokens + completionTokens,
+            },
+          };
+        }
+      }
+
+      const latencyMs = Date.now() - startTime;
+      recordChatUsage(
+        "openai",
+        true,
+        latencyMs,
+        { prompt: promptTokens, completion: completionTokens, total: promptTokens + completionTokens },
+        { model }
+      );
+    } catch (error: any) {
+      const latencyMs = Date.now() - startTime;
+      recordChatUsage("openai", false, latencyMs, undefined, { model });
+      throw error;
+    }
+  }
+
+  async *streamChat(
+    request: ChatRequest
+  ): AsyncGenerator<StreamingChatChunk, void, unknown> {
+    const config = { ...DEFAULT_CONFIG, ...request.config };
+    const provider =
+      config.provider === "auto"
+        ? await this.selectBestProvider("chat")
+        : config.provider;
+
+    if (provider === "ollama" || config.provider === "auto") {
+      try {
+        const streamGenerator = await withResilience(
+          "ollama",
+          async () => this.streamChatWithOllama(request.messages, config)
+        );
+
+        let hasYielded = false;
+        for await (const chunk of streamGenerator) {
+          hasYielded = true;
+          yield { ...chunk, fallbackUsed: false };
+        }
+
+        if (hasYielded) {
+          return;
+        }
+      } catch (ollamaError: any) {
+        console.log(`[AI Orchestrator] Ollama streaming failed: ${ollamaError.message}`);
+
+        if (this.canUseFallback() && !this.isLocalAIOnlyStrict()) {
+          console.log(`[AI Orchestrator] Falling back to OpenAI streaming`);
+
+          try {
+            const fallbackStream = await withResilience(
+              "openai",
+              async () => this.streamChatWithOpenAI(request.messages, config)
+            );
+
+            for await (const chunk of fallbackStream) {
+              yield { ...chunk, fallbackUsed: true };
+            }
+            return;
+          } catch (openaiError: any) {
+            throw new Error(
+              `Both Ollama and OpenAI streaming failed. Ollama: ${ollamaError.message}. OpenAI: ${openaiError.message}`
+            );
+          }
+        }
+
+        if (this.isLocalAIOnlyStrict()) {
+          throw new Error(
+            `Local AI streaming failed and LOCAL_AI_ONLY=true prevents cloud fallback. Ollama error: ${ollamaError.message}`
+          );
+        }
+
+        throw ollamaError;
+      }
+    }
+
+    if (provider === "openai") {
+      const streamGenerator = await withResilience(
+        "openai",
+        async () => this.streamChatWithOpenAI(request.messages, config)
+      );
+
+      for await (const chunk of streamGenerator) {
+        yield { ...chunk, fallbackUsed: false };
+      }
+      return;
+    }
+
+    const fallbackStream = await withResilience(
+      "openai",
+      async () => this.streamChatWithOpenAI(request.messages, config)
+    );
+
+    for await (const chunk of fallbackStream) {
+      yield { ...chunk, fallbackUsed: false };
+    }
   }
 
   async generateImage(request: ImageRequest): Promise<ImageResponse> {
