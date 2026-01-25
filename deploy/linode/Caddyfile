@@ -18,7 +18,7 @@ bot.evindrake.net {
 }
 
 stream.evindrake.net {
-    reverse_proxy stream-bot:5000 {
+    reverse_proxy stream-bot:5001 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}
@@ -29,7 +29,7 @@ stream.evindrake.net {
     @websockets {
         header Upgrade websocket
     }
-    reverse_proxy @websockets stream-bot:5000
+    reverse_proxy @websockets stream-bot:5001
 }
 
 discord.evindrake.net {
@@ -64,7 +64,7 @@ n8n.evindrake.net {
 }
 
 host.evindrake.net, dashboard.evindrake.net {
-    reverse_proxy homelab-dashboard:5000 {
+    reverse_proxy dockerhost:5000 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_down Cache-Control "no-cache, no-store, must-revalidate, private"
@@ -184,7 +184,7 @@ dns.evindrake.net {
 }
 
 dash.evindrake.net {
-    reverse_proxy homelab-dashboard:5000
+    reverse_proxy dockerhost:5000
 }
 
 mail.evindrake.net {

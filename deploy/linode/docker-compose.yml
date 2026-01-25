@@ -71,6 +71,8 @@ services:
     restart: unless-stopped
     networks:
       - homelab
+    ports:
+      - "127.0.0.1:6379:6379"
     deploy:
       resources:
         limits:
@@ -96,6 +98,8 @@ services:
       homelab:
         aliases:
           - postgres
+    ports:
+      - "127.0.0.1:5432:5432"
     deploy:
       resources:
         limits:
@@ -127,6 +131,7 @@ services:
       dockerfile: Dockerfile
     container_name: homelab-dashboard
     restart: unless-stopped
+    network_mode: host
     user: "1001:${DOCKER_GID:-999}"
     group_add:
       - "${DOCKER_GID:-999}"
@@ -135,12 +140,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - homelab
-    extra_hosts:
-      - "windows-vm:${WINDOWS_VM_TAILSCALE_IP:-100.118.44.102}"
-      - "ubuntu-home:${TAILSCALE_LOCAL_HOST:-100.66.61.51}"
-      - "host.docker.internal:host-gateway"
     deploy:
       resources:
         limits:
@@ -151,15 +150,16 @@ services:
           memory: 256M
     environment:
       - NODE_ENV=production
+      - PORT=5000
       - ADMIN_USERNAME=${WEB_USERNAME:-admin}
       - ADMIN_PASSWORD=${WEB_PASSWORD}
       - SESSION_SECRET=${SESSION_SECRET}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENAI_PROJECT_ID=${OPENAI_PROJECT_ID:-}
-      - DATABASE_URL=postgresql://jarvis:${JARVIS_DB_PASSWORD}@homelab-postgres:5432/homelab_jarvis
-      - REDIS_URL=redis://redis:6379/0
-      - DISCORD_BOT_URL=http://discord-bot:4000
-      - STREAM_BOT_URL=http://stream-bot:5000
+      - DATABASE_URL=postgresql://jarvis:${JARVIS_DB_PASSWORD}@127.0.0.1:5432/homelab_jarvis
+      - REDIS_URL=redis://127.0.0.1:6379/0
+      - DISCORD_BOT_URL=http://127.0.0.1:4000
+      - STREAM_BOT_URL=http://127.0.0.1:5001
       - SERVICE_AUTH_TOKEN=${SERVICE_AUTH_TOKEN}
       - PLEX_URL=http://${TAILSCALE_LOCAL_HOST}:32400
       - PLEX_TOKEN=${PLEX_TOKEN}
@@ -210,6 +210,8 @@ services:
         condition: service_healthy
     networks:
       - homelab
+    ports:
+      - "127.0.0.1:4000:4000"
     deploy:
       resources:
         limits:
@@ -256,6 +258,8 @@ services:
     restart: unless-stopped
     networks:
       - homelab
+    ports:
+      - "127.0.0.1:5001:5001"
     depends_on:
       homelab-postgres:
         condition: service_healthy
@@ -279,7 +283,7 @@ services:
       OPENAI_BASE_URL: https://api.openai.com/v1
       STREAMBOT_FACT_MODEL: gpt-4o
       NODE_ENV: production
-      PORT: 5000
+      PORT: 5001
       HOST: 0.0.0.0
       APP_URL: https://stream.evindrake.net
       TWITCH_CLIENT_ID: ${TWITCH_CLIENT_ID}
