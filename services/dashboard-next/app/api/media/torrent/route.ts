@@ -106,25 +106,37 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Missing magnet link or torrent URL" }, { status: 400 });
       }
 
+      const link = magnet || torrentUrl;
       let command = "";
+      
       if (TORRENT_CLIENT === "qbittorrent") {
-        if (magnet) {
-          command = `qbittorrent --add-paused="${magnet}"`;
-        } else {
-          // For torrent files, would need to download first
-          command = `qbittorrent --add-paused="${torrentUrl}"`;
-        }
+        // Use qBittorrent Web API to add torrent
+        // Escape special characters in the URL for curl
+        const escapedLink = link.replace(/'/g, "'\\''");
+        command = `curl -s -X POST "http://localhost:8080/api/v2/torrents/add" --data-urlencode "urls=${escapedLink}" -o /dev/null -w '%{http_code}'`;
       } else if (TORRENT_CLIENT === "transmission") {
-        if (magnet) {
-          command = `transmission-remote -a "${magnet}"`;
-        } else {
-          command = `transmission-remote -a "${torrentUrl}"`;
-        }
+        command = `transmission-remote -a "${link}"`;
+      } else if (TORRENT_CLIENT === "aria2") {
+        // aria2 RPC call
+        const escapedLink = link.replace(/"/g, '\\"');
+        command = `curl -s -X POST http://localhost:6800/jsonrpc -d '{"jsonrpc":"2.0","id":"1","method":"aria2.addUri","params":[["${escapedLink}"]]}' | grep -q '"result"' && echo 'success' || echo 'failed'`;
+      }
+
+      if (!command) {
+        return NextResponse.json({ error: "Unknown torrent client configured" }, { status: 400 });
       }
 
       const result = await executeSSHCommand(command);
       if (!result.success) {
         return NextResponse.json({ error: "Failed to add torrent", details: result.error }, { status: 500 });
+      }
+
+      // Check response for qBittorrent (expects 200 status)
+      if (TORRENT_CLIENT === "qbittorrent" && result.output?.trim() !== "200") {
+        return NextResponse.json({ 
+          error: "qBittorrent rejected the torrent", 
+          details: `HTTP ${result.output?.trim() || 'unknown'} - Make sure qBittorrent WebUI is running on port 8080` 
+        }, { status: 500 });
       }
 
       return NextResponse.json({
@@ -155,11 +167,14 @@ export async function GET(request: NextRequest) {
       let command = "";
       
       if (TORRENT_CLIENT === "qbittorrent") {
-        // List torrents using qbittorrent API
-        command = `curl -s "http://localhost:6800/query/torrents?category=&filter=&hashes=&limit=-1&offset=0&sort=name" 2>/dev/null || echo '[]'`;
+        // List torrents using qBittorrent Web API (default port 8080)
+        command = `curl -s "http://localhost:8080/api/v2/torrents/info" 2>/dev/null || echo '[]'`;
       } else if (TORRENT_CLIENT === "transmission") {
         // List torrents using transmission-remote
         command = `transmission-remote -l`;
+      } else if (TORRENT_CLIENT === "aria2") {
+        // aria2 RPC call to list downloads
+        command = `curl -s -X POST http://localhost:6800/jsonrpc -d '{"jsonrpc":"2.0","id":"1","method":"aria2.tellActive","params":[]}' 2>/dev/null || echo '{"result":[]}'`;
       }
 
       if (!command) {
@@ -208,9 +223,11 @@ export async function GET(request: NextRequest) {
 
       let command = "";
       if (TORRENT_CLIENT === "qbittorrent") {
-        command = `curl -s -X POST "http://localhost:6800/api/v2/torrents/delete?hashes=${hash}&deleteFiles=false"`;
+        command = `curl -s -X POST "http://localhost:8080/api/v2/torrents/delete" -d "hashes=${hash}&deleteFiles=false" -o /dev/null -w '%{http_code}'`;
       } else if (TORRENT_CLIENT === "transmission") {
         command = `transmission-remote -t ${hash} -r`;
+      } else if (TORRENT_CLIENT === "aria2") {
+        command = `curl -s -X POST http://localhost:6800/jsonrpc -d '{"jsonrpc":"2.0","id":"1","method":"aria2.remove","params":["${hash}"]}'`;
       }
 
       const result = await executeSSHCommand(command);
