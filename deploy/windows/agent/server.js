@@ -453,6 +453,64 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+const { ServiceOrchestrator } = require('./src/orchestrator');
+const orchestrator = new ServiceOrchestrator({
+  dashboardWebhook: process.env.DASHBOARD_WEBHOOK_URL
+});
+
+app.get('/api/services', async (req, res) => {
+  try {
+    const status = orchestrator.getStatus();
+    res.json(status);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/services/:name/restart', async (req, res) => {
+  const { name } = req.params;
+  console.log(`[API] POST /api/services/${name}/restart`);
+  
+  try {
+    const success = await orchestrator.forceRestart(name);
+    res.json({
+      success,
+      message: success ? `${name} restarted successfully` : `${name} restart failed`,
+      status: orchestrator.getStatus().services.find(s => s.name === name)
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/api/services/:name/reset', (req, res) => {
+  const { name } = req.params;
+  console.log(`[API] POST /api/services/${name}/reset`);
+  
+  try {
+    orchestrator.resetRestartCounts(name);
+    res.json({
+      success: true,
+      message: `Reset restart counter for ${name}`,
+      status: orchestrator.getStatus().services.find(s => s.name === name)
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/api/orchestrator/start', (req, res) => {
+  console.log('[API] POST /api/orchestrator/start');
+  orchestrator.start();
+  res.json({ success: true, message: 'Orchestrator monitoring started' });
+});
+
+app.post('/api/orchestrator/stop', (req, res) => {
+  console.log('[API] POST /api/orchestrator/stop');
+  orchestrator.stop();
+  res.json({ success: true, message: 'Orchestrator monitoring stopped' });
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`=== Nebula Model Agent ===`);
   console.log(`Listening on port ${PORT}`);
