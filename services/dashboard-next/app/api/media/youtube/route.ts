@@ -108,13 +108,14 @@ export async function POST(request: NextRequest) {
     }
 
     const timestamp = Date.now();
-    const filename = type === "audio" ? `youtube_${timestamp}.mp3` : `youtube_${timestamp}.mp4`;
+    const filename = type === "audio" ? `youtube_${timestamp}.flac` : `youtube_${timestamp}.mp4`;
     const outputPath = join(MEDIA_LIBRARY_PATH, filename);
 
     // Build yt-dlp command
     let ytdlpCommand = `yt-dlp "${url}"`;
     if (type === "audio") {
-      ytdlpCommand += ` -x --audio-format mp3 -o "${outputPath}"`;
+      // Use FLAC for lossless audio quality
+      ytdlpCommand += ` -x --audio-format flac --audio-quality 0 -o "${outputPath}"`;
     } else {
       ytdlpCommand += ` -f best -o "${outputPath}"`;
     }
@@ -195,7 +196,7 @@ export async function GET(request: NextRequest) {
               path: filePath,
               size: stats.size,
               modified: stats.mtime,
-              type: file.endsWith(".mp3") ? "audio" : file.endsWith(".mp4") ? "video" : "other",
+              type: (file.endsWith(".flac") || file.endsWith(".mp3")) ? "audio" : file.endsWith(".mp4") ? "video" : "other",
             });
           }
         } catch (error) {
