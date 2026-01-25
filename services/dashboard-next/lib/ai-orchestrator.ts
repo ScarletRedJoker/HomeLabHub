@@ -469,7 +469,7 @@ class AIOrchestrator {
   }
 
   private async chatWithOllama(messages: ChatMessage[], config: AIConfig): Promise<ChatResponse> {
-    const model = config.model || "llama3.2";
+    const model = config.model || process.env.OLLAMA_DEFAULT_MODEL || "qwen2.5:latest";
 
     const response = await fetch(`${this.ollamaUrl}/api/chat`, {
       method: "POST",
@@ -508,7 +508,7 @@ class AIOrchestrator {
     messages: ChatMessage[],
     config: AIConfig
   ): AsyncGenerator<StreamingChatChunk, void, unknown> {
-    const model = config.model || "llama3.2";
+    const model = config.model || process.env.OLLAMA_DEFAULT_MODEL || "qwen2.5:latest";
     const startTime = Date.now();
     let totalContent = "";
     let promptTokens = 0;

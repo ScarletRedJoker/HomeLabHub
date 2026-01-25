@@ -1022,7 +1022,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       // Use Ollama instead (tools won't work as well, but we MUST respect local-only)
       if (LOCAL_AI_ONLY) {
         console.log("[Jarvis] LOCAL_AI_ONLY: Tool intent detected but using Ollama (no OpenAI allowed)");
-        const ollamaModel = model || "llama3.2:latest";
+        const ollamaModel = model || process.env.OLLAMA_DEFAULT_MODEL || "qwen2.5:latest";
         try {
           result = await chatWithOllama(messages, ollamaModel, stream);
           actualProvider = "ollama";
@@ -1049,7 +1049,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       fallbackReason = reason;
       actualProvider = selectedProvider;
 
-      const defaultModel = selectedProvider === "openai" ? "gpt-4o" : "llama3.2:latest";
+      const defaultModel = selectedProvider === "openai" ? "gpt-4o" : (process.env.OLLAMA_DEFAULT_MODEL || "qwen2.5:latest");
       const finalModel = model || defaultModel;
 
       if (selectedProvider === "ollama") {

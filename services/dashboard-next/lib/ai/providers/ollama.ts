@@ -86,7 +86,7 @@ export class OllamaProvider {
 
   async chat(request: ChatRequest): Promise<ChatResponse> {
     const start = Date.now();
-    const model = request.model || 'llama3.2';
+    const model = request.model || process.env.OLLAMA_DEFAULT_MODEL || 'qwen2.5:latest';
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -134,7 +134,7 @@ export class OllamaProvider {
   }
 
   async *chatStream(request: ChatRequest): AsyncGenerator<StreamingChunk> {
-    const model = request.model || 'llama3.2';
+    const model = request.model || process.env.OLLAMA_DEFAULT_MODEL || 'qwen2.5:latest';
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);

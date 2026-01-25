@@ -137,7 +137,7 @@ export class AIAgent {
         throw new Error(`Local AI is currently unavailable. Please ensure Ollama is running on your Windows VM (${WINDOWS_VM_IP}:11434).`);
       }
       
-      return { provider: "ollama", model: this.config.model || "llama3.2:latest" };
+      return { provider: "ollama", model: this.config.model || process.env.OLLAMA_DEFAULT_MODEL || "qwen2.5:latest" };
     }
 
     // Non-LOCAL_AI_ONLY mode: standard provider selection
@@ -146,12 +146,12 @@ export class AIAgent {
     }
 
     if (this.config.provider === "ollama") {
-      return { provider: "ollama", model: this.config.model || "llama3.2:latest" };
+      return { provider: "ollama", model: this.config.model || process.env.OLLAMA_DEFAULT_MODEL || "qwen2.5:latest" };
     }
 
     const ollamaAvailable = await this.isOllamaAvailable();
     if (ollamaAvailable) {
-      return { provider: "ollama", model: this.config.model || "llama3.2:latest" };
+      return { provider: "ollama", model: this.config.model || process.env.OLLAMA_DEFAULT_MODEL || "qwen2.5:latest" };
     }
 
     if (this.openaiClient) {
