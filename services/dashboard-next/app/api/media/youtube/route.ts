@@ -1,32 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySession } from "@/lib/session";
 import { cookies } from "next/headers";
-import { exec } from "child_process";
-import { promisify } from "util";
-import { join } from "path";
-import { existsSync, mkdirSync, readdirSync } from "fs";
-import { stat } from "fs/promises";
 import { Client } from "ssh2";
 import { getSSHPrivateKey } from "@/lib/server-config-store";
 
 export const dynamic = "force-dynamic";
 
-const execAsync = promisify(exec);
+// Home server (Ubuntu) for media downloads - has NAS storage
+const HOME_SERVER_HOST = process.env.HOME_SSH_HOST || process.env.HOME_SERVER_HOST || "192.168.0.185";
+const HOME_SERVER_USER = process.env.HOME_SSH_USER || process.env.HOME_SERVER_USER || "evin";
+// NAS path on home server (where SMB share is mounted)
+const HOME_MEDIA_PATH = process.env.HOME_MEDIA_PATH || "/mnt/networkshare/media";
 
+// Windows VM for AI services
 const WINDOWS_VM_HOST = process.env.WINDOWS_VM_HOST || "100.118.44.102";
 const WINDOWS_VM_USER = process.env.WINDOWS_VM_USER || "Evin";
-
-// Environment-aware media library path
-function getMediaLibraryPath(): string {
-  if (process.env.MEDIA_LIBRARY_PATH) {
-    return process.env.MEDIA_LIBRARY_PATH;
-  }
-  // Docker containers use /app/data, Replit uses /home/runner
-  if (existsSync("/app/data")) {
-    return "/app/data/media-library";
-  }
-  return "/home/runner/media-library";
-}
 
 async function checkAuth() {
   const cookieStore = await cookies();
@@ -35,12 +23,19 @@ async function checkAuth() {
   return await verifySession(session.value);
 }
 
-async function executeSSHCommand(command: string): Promise<{ success: boolean; output?: string; error?: string }> {
+async function executeSSHCommand(
+  command: string, 
+  target: "home" | "windows" = "home",
+  timeoutMs: number = 300000 // 5 min for downloads
+): Promise<{ success: boolean; output?: string; error?: string }> {
   const privateKey = getSSHPrivateKey();
   
   if (!privateKey) {
     return { success: false, error: "SSH private key not found" };
   }
+
+  const host = target === "home" ? HOME_SERVER_HOST : WINDOWS_VM_HOST;
+  const username = target === "home" ? HOME_SERVER_USER : WINDOWS_VM_USER;
 
   return new Promise((resolve) => {
     const conn = new Client();
@@ -49,8 +44,8 @@ async function executeSSHCommand(command: string): Promise<{ success: boolean; o
 
     const timeoutId = setTimeout(() => {
       conn.end();
-      resolve({ success: false, error: "SSH command timeout" });
-    }, 60000);
+      resolve({ success: false, error: `SSH command timeout after ${timeoutMs/1000}s` });
+    }, timeoutMs);
 
     conn.on("ready", () => {
       conn.exec(command, (err: any, stream: any) => {
@@ -64,10 +59,12 @@ async function executeSSHCommand(command: string): Promise<{ success: boolean; o
         stream.on("close", () => {
           clearTimeout(timeoutId);
           conn.end();
-          if (errorOutput) {
+          // yt-dlp outputs progress to stderr, so check for actual errors
+          const hasError = errorOutput && !errorOutput.includes("[download]") && !errorOutput.includes("[ExtractAudio]");
+          if (hasError && !output) {
             resolve({ success: false, error: errorOutput });
           } else {
-            resolve({ success: true, output });
+            resolve({ success: true, output: output || errorOutput });
           }
         });
 
@@ -83,12 +80,12 @@ async function executeSSHCommand(command: string): Promise<{ success: boolean; o
 
     conn.on("error", (err: any) => {
       clearTimeout(timeoutId);
-      resolve({ success: false, error: err.message });
+      resolve({ success: false, error: `SSH to ${host}: ${err.message}` });
     });
 
     conn.connect({
-      host: WINDOWS_VM_HOST,
-      username: WINDOWS_VM_USER,
+      host,
+      username,
       privateKey,
       readyTimeout: 10000,
     });
@@ -113,64 +110,44 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid type. Must be 'audio' or 'video'" }, { status: 400 });
     }
 
-    // Ensure media library directory exists
-    const mediaLibraryPath = getMediaLibraryPath();
-    if (!existsSync(mediaLibraryPath)) {
-      mkdirSync(mediaLibraryPath, { recursive: true });
-    }
-
     const timestamp = Date.now();
     const filename = type === "audio" ? `youtube_${timestamp}.flac` : `youtube_${timestamp}.mp4`;
-    const outputPath = join(mediaLibraryPath, filename);
-
-    // Build yt-dlp command
-    let ytdlpCommand = `yt-dlp "${url}"`;
+    
+    // Download to home server NAS for storage (accessible via SMB)
+    const remoteOutputPath = `${HOME_MEDIA_PATH}/${filename}`;
+    
+    // Build yt-dlp command for remote execution
+    // First ensure directory exists, then download
+    let ytdlpCommand = `mkdir -p "${HOME_MEDIA_PATH}" && yt-dlp "${url}"`;
     if (type === "audio") {
       // Use FLAC for lossless audio quality
-      ytdlpCommand += ` -x --audio-format flac --audio-quality 0 -o "${outputPath}"`;
+      ytdlpCommand += ` -x --audio-format flac --audio-quality 0 -o "${remoteOutputPath}"`;
     } else {
-      ytdlpCommand += ` -f best -o "${outputPath}"`;
+      ytdlpCommand += ` -f best -o "${remoteOutputPath}"`;
     }
 
-    // Check if we need to execute on Windows VM or locally
-    const localYtdlp = process.platform === "win32" || (await checkLocalYtdlp());
-
-    let result;
-    if (localYtdlp) {
-      // Execute locally
-      try {
-        await execAsync(ytdlpCommand, { timeout: 300000 }); // 5 minute timeout
-        result = { success: true, path: outputPath };
-      } catch (error: any) {
-        result = { success: false, error: error.message };
-      }
-    } else {
-      // Execute on Windows VM
-      result = await executeSSHCommand(ytdlpCommand);
-    }
+    console.log(`[YouTube] Downloading to home server: ${remoteOutputPath}`);
+    
+    // Execute on home server via SSH (where NAS storage is)
+    const result = await executeSSHCommand(ytdlpCommand, "home", 600000); // 10 min timeout for large files
 
     if (!result.success) {
+      console.error(`[YouTube] Download failed:`, result.error);
       return NextResponse.json(
         { error: "Download failed", details: result.error },
         { status: 500 }
       );
     }
 
-    // Get file size
-    let fileSize = 0;
-    try {
-      const stats = await stat(outputPath);
-      fileSize = stats.size;
-    } catch (error) {
-      // File might be on remote server, just return path
-    }
+    console.log(`[YouTube] Download complete: ${filename}`);
 
     return NextResponse.json({
       success: true,
-      message: `${type} downloaded successfully`,
+      message: `${type} downloaded successfully to NAS`,
       filename,
-      path: outputPath,
-      fileSize,
+      path: remoteOutputPath,
+      server: "home",
+      smbPath: `smb://192.168.0.185/networkshare/media/${filename}`,
       type,
     });
   } catch (error: any) {
@@ -190,34 +167,36 @@ export async function GET(request: NextRequest) {
     const action = searchParams.get("action");
 
     if (action === "list") {
-      // List all media files
-      const mediaLibraryPath = getMediaLibraryPath();
-      if (!existsSync(mediaLibraryPath)) {
-        return NextResponse.json({ files: [] });
+      // List media files from home server NAS via SSH
+      const listCommand = `ls -la "${HOME_MEDIA_PATH}" 2>/dev/null | tail -n +2 | awk '{print $5, $6, $7, $8, $9}'`;
+      const result = await executeSSHCommand(listCommand, "home", 10000);
+      
+      if (!result.success) {
+        // Directory might not exist yet
+        return NextResponse.json({ files: [], server: "home", path: HOME_MEDIA_PATH });
       }
 
-      const files = readdirSync(mediaLibraryPath);
       const filesList = [];
-
-      for (const file of files) {
-        try {
-          const filePath = join(mediaLibraryPath, file);
-          const stats = await stat(filePath);
-          if (stats.isFile()) {
+      const lines = (result.output || "").trim().split("\n").filter(Boolean);
+      
+      for (const line of lines) {
+        const parts = line.trim().split(/\s+/);
+        if (parts.length >= 5) {
+          const size = parseInt(parts[0]) || 0;
+          const name = parts.slice(4).join(" ");
+          if (name && !name.startsWith(".")) {
             filesList.push({
-              name: file,
-              path: filePath,
-              size: stats.size,
-              modified: stats.mtime,
-              type: (file.endsWith(".flac") || file.endsWith(".mp3")) ? "audio" : file.endsWith(".mp4") ? "video" : "other",
+              name,
+              path: `${HOME_MEDIA_PATH}/${name}`,
+              smbPath: `smb://192.168.0.185/networkshare/media/${name}`,
+              size,
+              type: (name.endsWith(".flac") || name.endsWith(".mp3")) ? "audio" : name.endsWith(".mp4") ? "video" : "other",
             });
           }
-        } catch (error) {
-          console.error(`Failed to stat ${file}:`, error);
         }
       }
 
-      return NextResponse.json({ files: filesList });
+      return NextResponse.json({ files: filesList, server: "home", path: HOME_MEDIA_PATH });
     }
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
@@ -227,11 +206,3 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function checkLocalYtdlp(): Promise<boolean> {
-  try {
-    await execAsync("which yt-dlp || where yt-dlp", { timeout: 5000 });
-    return true;
-  } catch {
-    return false;
-  }
-}
