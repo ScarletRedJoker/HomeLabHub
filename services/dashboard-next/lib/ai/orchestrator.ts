@@ -251,9 +251,65 @@ class AIOrchestrator {
     }
   }
 
+  private isTransientError(error: any): boolean {
+    const message = error?.message?.toLowerCase() || '';
+    const isTransient = 
+      message.includes('timeout') ||
+      message.includes('econnrefused') ||
+      message.includes('econnreset') ||
+      message.includes('temporary') ||
+      message.includes('try again') ||
+      message.includes('temporarily');
+    
+    return isTransient;
+  }
+
+  private emitStreamError(event: {
+    provider: AIProviderName;
+    error: Error;
+    message: string;
+    retryCount?: number;
+  }): void {
+    console.error(
+      `[Orchestrator:StreamError] Provider: ${event.provider}, Message: ${event.message}`,
+      {
+        error: event.error.message,
+        retryCount: event.retryCount || 0,
+        timestamp: new Date().toISOString(),
+      }
+    );
+  }
+
+  private emitProviderSwitched(event: {
+    fromProvider: AIProviderName;
+    toProvider: AIProviderName;
+    reason: string;
+  }): void {
+    console.warn(
+      `[Orchestrator:FallbackTriggered] Switching from ${event.fromProvider} to ${event.toProvider}: ${event.reason}`,
+      { timestamp: new Date().toISOString() }
+    );
+  }
+
+  private trackFallbackUsage(event: {
+    primaryProvider: AIProviderName;
+    fallbackProvider: AIProviderName;
+    success: boolean;
+    retryCount?: number;
+  }): void {
+    console.log(
+      `[Orchestrator:FallbackMetrics] Primary: ${event.primaryProvider}, Fallback: ${event.fallbackProvider}, Success: ${event.success}, Retries: ${event.retryCount || 0}`,
+      { timestamp: new Date().toISOString() }
+    );
+  }
+
   async *chatStream(request: ChatRequest): AsyncGenerator<StreamingChunk & { metadata?: OrchestratorMetadata }> {
     const primaryProvider = this.selectChatProvider();
     const fallbackProvider: AIProviderName = primaryProvider === 'ollama' ? 'openai' : 'ollama';
+
+    let retryCount = 0;
+    let fallbackUsed = false;
+    let streamInitialized = false;
 
     const executeStream = async function* (provider: AIProviderName): AsyncGenerator<StreamingChunk> {
       if (provider === 'ollama') {
@@ -263,32 +319,222 @@ class AIOrchestrator {
       }
     };
 
+    // Primary provider attempt with retry logic
+    let primaryAttempted = false;
+    let primaryError: any = null;
+
     try {
-      const stream = executeStream(primaryProvider);
-      for await (const chunk of stream) {
-        yield chunk;
-      }
-    } catch (primaryError: any) {
-      console.log(`[Orchestrator] Primary stream ${primaryProvider} failed: ${primaryError.message}`);
-      
-      if (!healthChecker.isProviderAvailable(fallbackProvider)) {
-        throw primaryError;
+      // Ensure primary provider is available before attempting
+      if (!healthChecker.isProviderAvailable(primaryProvider)) {
+        throw new Error(`Primary provider ${primaryProvider} is not available`);
       }
 
+      primaryAttempted = true;
+      const stream = executeStream(primaryProvider);
+      
+      for await (const chunk of stream) {
+        streamInitialized = true;
+        yield chunk;
+      }
+      
+      // Successfully completed primary stream
+      return;
+    } catch (error: any) {
+      primaryError = error;
+      console.log(`[Orchestrator] Primary stream ${primaryProvider} failed: ${error.message}`);
+
+      // Emit error event
+      this.emitStreamError({
+        provider: primaryProvider,
+        error,
+        message: `Primary provider ${primaryProvider} failed during streaming`,
+        retryCount,
+      });
+
+      // Attempt retry with exponential backoff for transient errors
+      if (this.isTransientError(error) && retryCount < this.config.retryConfig.maxRetries) {
+        for (let attempt = 1; attempt <= this.config.retryConfig.maxRetries; attempt++) {
+          try {
+            const delayMs = Math.min(
+              this.config.retryConfig.initialDelayMs * 
+              Math.pow(this.config.retryConfig.backoffMultiplier, attempt - 1),
+              this.config.retryConfig.maxDelayMs
+            );
+
+            console.log(
+              `[Orchestrator] Retrying primary stream attempt ${attempt}/${this.config.retryConfig.maxRetries}. Waiting ${delayMs}ms`
+            );
+            await sleep(delayMs);
+
+            retryCount = attempt;
+            const retryStream = executeStream(primaryProvider);
+
+            for await (const chunk of retryStream) {
+              streamInitialized = true;
+              yield chunk;
+            }
+
+            // Successfully recovered on retry
+            return;
+          } catch (retryError: any) {
+            console.log(
+              `[Orchestrator] Primary stream retry ${attempt} failed: ${retryError.message}`
+            );
+            primaryError = retryError;
+
+            if (attempt === this.config.retryConfig.maxRetries) {
+              break; // Fall through to fallback
+            }
+          }
+        }
+      }
+    }
+
+    // Fallback provider attempt (if primary exhausted or not available)
+    try {
+      // Check if fallback provider is available before attempting
+      if (!healthChecker.isProviderAvailable(fallbackProvider)) {
+        throw new Error(
+          `All providers failed. Primary (${primaryProvider}): ${primaryError?.message || 'Not attempted'}. ` +
+          `Fallback ${fallbackProvider} is not available`
+        );
+      }
+
+      fallbackUsed = true;
+
+      // Emit provider switch event
+      this.emitProviderSwitched({
+        fromProvider: primaryProvider,
+        toProvider: fallbackProvider,
+        reason: 'Primary provider failed during streaming',
+      });
+
+      // Yield notification chunk about fallback
       yield {
         content: '',
         done: false,
         provider: fallbackProvider,
         model: request.model,
+        metadata: {
+          provider: fallbackProvider,
+          latency: 0,
+          tokensUsed: 0,
+          fallbackUsed: true,
+          retryCount,
+        },
       };
 
-      const fallbackStream = executeStream(fallbackProvider);
-      for await (const chunk of fallbackStream) {
-        yield {
-          ...chunk,
-          metadata: { provider: fallbackProvider, latency: 0, tokensUsed: 0, fallbackUsed: true },
-        };
+      // Stream from fallback provider with retry logic
+      let fallbackAttempt = 0;
+      let fallbackError: any = null;
+
+      try {
+        const fallbackStream = executeStream(fallbackProvider);
+
+        for await (const chunk of fallbackStream) {
+          streamInitialized = true;
+          yield {
+            ...chunk,
+            metadata: {
+              provider: fallbackProvider,
+              latency: 0,
+              tokensUsed: 0,
+              fallbackUsed: true,
+              retryCount,
+            },
+          };
+        }
+
+        // Successfully completed fallback stream
+        this.trackFallbackUsage({
+          primaryProvider,
+          fallbackProvider,
+          success: true,
+          retryCount,
+        });
+        return;
+      } catch (error: any) {
+        fallbackError = error;
+        console.log(`[Orchestrator] Fallback stream ${fallbackProvider} failed: ${error.message}`);
+
+        // Emit error event for fallback failure
+        this.emitStreamError({
+          provider: fallbackProvider,
+          error,
+          message: `Fallback provider ${fallbackProvider} failed during streaming`,
+          retryCount: fallbackAttempt,
+        });
+
+        // Attempt retry with exponential backoff for transient errors on fallback
+        if (this.isTransientError(error) && fallbackAttempt < this.config.retryConfig.maxRetries) {
+          for (let attempt = 1; attempt <= this.config.retryConfig.maxRetries; attempt++) {
+            try {
+              const delayMs = Math.min(
+                this.config.retryConfig.initialDelayMs * 
+                Math.pow(this.config.retryConfig.backoffMultiplier, attempt - 1),
+                this.config.retryConfig.maxDelayMs
+              );
+
+              console.log(
+                `[Orchestrator] Retrying fallback stream attempt ${attempt}/${this.config.retryConfig.maxRetries}. Waiting ${delayMs}ms`
+              );
+              await sleep(delayMs);
+
+              fallbackAttempt = attempt;
+              const retryFallbackStream = executeStream(fallbackProvider);
+
+              for await (const chunk of retryFallbackStream) {
+                streamInitialized = true;
+                yield {
+                  ...chunk,
+                  metadata: {
+                    provider: fallbackProvider,
+                    latency: 0,
+                    tokensUsed: 0,
+                    fallbackUsed: true,
+                    retryCount: fallbackAttempt,
+                  },
+                };
+              }
+
+              // Successfully recovered fallback on retry
+              this.trackFallbackUsage({
+                primaryProvider,
+                fallbackProvider,
+                success: true,
+                retryCount: fallbackAttempt,
+              });
+              return;
+            } catch (retryError: any) {
+              console.log(
+                `[Orchestrator] Fallback stream retry ${attempt} failed: ${retryError.message}`
+              );
+              fallbackError = retryError;
+
+              if (attempt === this.config.retryConfig.maxRetries) {
+                break;
+              }
+            }
+          }
+        }
+
+        // Track failed fallback usage
+        this.trackFallbackUsage({
+          primaryProvider,
+          fallbackProvider,
+          success: false,
+          retryCount: fallbackAttempt,
+        });
+
+        // Both providers exhausted
+        throw new Error(
+          `All providers failed. Primary (${primaryProvider}): ${primaryError?.message || 'Unknown error'}. ` +
+          `Fallback (${fallbackProvider}): ${fallbackError?.message || 'Unknown error'}`
+        );
       }
+    } catch (error: any) {
+      console.error(`[Orchestrator] ChatStream fatal error: ${error.message}`);
+      throw error;
     }
   }
 
