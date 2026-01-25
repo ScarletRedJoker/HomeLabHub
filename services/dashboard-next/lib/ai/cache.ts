@@ -38,7 +38,7 @@ export class AIResponseCache {
   hashPrompt(messages: Array<{ role: string; content: string }>, model?: string): string {
     const payload = {
       messages: messages.map(m => ({ role: m.role, content: m.content })),
-      model: model || 'default',
+      model: model || 'gpt-4o-mini',
     };
     return this.generateHash(payload);
   }

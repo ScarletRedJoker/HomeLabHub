@@ -185,7 +185,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - studio_projects:/opt/homelab/studio-projects
       - resources_data:/opt/homelab/resources
-      - /opt/homelab/HomeLabHub/deploy/shared/state:/opt/homelab/state:ro
+      - /opt/homelab/HomeLabHub/deploy/shared/state:/opt/homelab/state:rw
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5000/api/health || exit 1"]
       interval: 30s

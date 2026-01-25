@@ -9,6 +9,7 @@ import querystring from "querystring";
 const TWITCH_TOKEN_URL = 'https://id.twitch.tv/oauth2/token';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const KICK_TOKEN_URL = 'https://id.kick.com/oauth/token';
+const SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token';
 
 // Check tokens every 30 minutes
 const REFRESH_INTERVAL = 30 * 60 * 1000;
@@ -139,6 +140,9 @@ export class TokenRefreshService {
           break;
         case 'kick':
           newTokens = await this.refreshKickToken(connection);
+          break;
+        case 'spotify':
+          newTokens = await this.refreshSpotifyToken(connection);
           break;
         default:
           console.warn(`[TokenRefresh] Unknown platform: ${platform}`);
@@ -288,6 +292,46 @@ export class TokenRefreshService {
       return {
         accessToken: access_token,
         refreshToken: new_refresh_token, // CRITICAL: Kick always returns a new refresh token
+        expiresAt: new Date(Date.now() + expires_in * 1000),
+      };
+    });
+  }
+
+  /**
+   * Refresh Spotify access token using refresh_token grant
+   */
+  private async refreshSpotifyToken(connection: any): Promise<{ accessToken: string; refreshToken?: string; expiresAt: Date } | null> {
+    const clientId = getEnv('SPOTIFY_CLIENT_ID');
+    const clientSecret = getEnv('SPOTIFY_CLIENT_SECRET');
+
+    if (!clientId || !clientSecret) {
+      console.error('[TokenRefresh] Spotify OAuth credentials not configured');
+      return null;
+    }
+
+    const refreshToken = decryptToken(connection.refreshToken);
+    const authHeader = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+
+    return await this.retryWithBackoff(async () => {
+      const response = await axios.post(
+        SPOTIFY_TOKEN_URL,
+        querystring.stringify({
+          grant_type: 'refresh_token',
+          refresh_token: refreshToken,
+        }),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': `Basic ${authHeader}`,
+          },
+        }
+      );
+
+      const { access_token, refresh_token: new_refresh_token, expires_in } = response.data;
+
+      return {
+        accessToken: access_token,
+        refreshToken: new_refresh_token, // Spotify may or may not return a new refresh token
         expiresAt: new Date(Date.now() + expires_in * 1000),
       };
     });
