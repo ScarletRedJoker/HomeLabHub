@@ -280,6 +280,16 @@ curl http://localhost:5000/api/setup/step/secrets
 *   **Stable Diffusion/ComfyUI:** Local image generation
 
 ## Recent Changes
+- **January 25, 2026**: Major AI orchestration overhaul:
+  - Refactored AI system into modular `lib/ai/` structure with unified AIProvider interface
+  - New provider clients: ollama.ts, openai.ts, stable-diffusion.ts
+  - Health checker with 30s polling, 3-failure threshold, auto-recovery
+  - Response caching (1 hour TTL) with prompt hashing
+  - Cost tracker with daily spend limits ($5 default), alerts at 80%, auto LOCAL_ONLY mode
+  - Client-side streaming with useAIStream hook and StreamingChat component
+  - CodeAgent for multi-file code generation (components, API routes, Docker, scripts)
+  - Enhanced Windows agent with PowerShell orchestrator, PyTorch CUDA validator, incident reporting
+  - API endpoints: /api/ai/costs, /api/ai/code-gen, /api/incidents
 - **January 24, 2026**: AI resilience and cost optimization enhancements:
   - Added circuit breaker pattern with exponential backoff retry logic for AI services
   - Implemented 80% local / 20% cloud ratio enforcement with deterministic provider selection
