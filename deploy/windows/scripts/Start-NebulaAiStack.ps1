@@ -40,7 +40,7 @@ $Script:Config = @{
     ComfyUIPath = "C:\AI\ComfyUI"
     # A1111 is primary (stable), Forge is secondary (has dependency issues)
     StableDiffusionPath = "C:\AI\stable-diffusion-webui"
-    StableDiffusionForgePath = "C:\AI\stable-diffusion-webui-forge"
+    StableDiffusionForgePath = "C:\AI\stable-diffusion-webui"
     AgentPath = "C:\NebulaCommand\deploy\windows\agent"
     Services = @(
         @{ Name = "Ollama"; Key = "ollama"; Port = 11434 }
@@ -106,7 +106,7 @@ function Test-PythonVersion {
         "C:\Python310\python.exe",
         "C:\Python311\python.exe",
         "C:\Python312\python.exe",
-        "C:\AI\stable-diffusion-webui-forge\venv\Scripts\python.exe",
+        "C:\AI\stable-diffusion-webui\venv\Scripts\python.exe",
         "C:\AI\stable-diffusion-webui\venv\Scripts\python.exe",
         "C:\AI\ComfyUI\venv\Scripts\python.exe",
         "$env:LOCALAPPDATA\Programs\Python\Python310\python.exe",
