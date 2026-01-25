@@ -15,7 +15,18 @@ const execAsync = promisify(exec);
 
 const WINDOWS_VM_HOST = process.env.WINDOWS_VM_HOST || "100.118.44.102";
 const WINDOWS_VM_USER = process.env.WINDOWS_VM_USER || "Evin";
-const MEDIA_LIBRARY_PATH = process.env.MEDIA_LIBRARY_PATH || "/home/runner/media-library";
+
+// Environment-aware media library path
+function getMediaLibraryPath(): string {
+  if (process.env.MEDIA_LIBRARY_PATH) {
+    return process.env.MEDIA_LIBRARY_PATH;
+  }
+  // Docker containers use /app/data, Replit uses /home/runner
+  if (existsSync("/app/data")) {
+    return "/app/data/media-library";
+  }
+  return "/home/runner/media-library";
+}
 
 async function checkAuth() {
   const cookieStore = await cookies();
@@ -103,13 +114,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Ensure media library directory exists
-    if (!existsSync(MEDIA_LIBRARY_PATH)) {
-      mkdirSync(MEDIA_LIBRARY_PATH, { recursive: true });
+    const mediaLibraryPath = getMediaLibraryPath();
+    if (!existsSync(mediaLibraryPath)) {
+      mkdirSync(mediaLibraryPath, { recursive: true });
     }
 
     const timestamp = Date.now();
     const filename = type === "audio" ? `youtube_${timestamp}.flac` : `youtube_${timestamp}.mp4`;
-    const outputPath = join(MEDIA_LIBRARY_PATH, filename);
+    const outputPath = join(mediaLibraryPath, filename);
 
     // Build yt-dlp command
     let ytdlpCommand = `yt-dlp "${url}"`;
@@ -179,16 +191,17 @@ export async function GET(request: NextRequest) {
 
     if (action === "list") {
       // List all media files
-      if (!existsSync(MEDIA_LIBRARY_PATH)) {
+      const mediaLibraryPath = getMediaLibraryPath();
+      if (!existsSync(mediaLibraryPath)) {
         return NextResponse.json({ files: [] });
       }
 
-      const files = readdirSync(MEDIA_LIBRARY_PATH);
+      const files = readdirSync(mediaLibraryPath);
       const filesList = [];
 
       for (const file of files) {
         try {
-          const filePath = join(MEDIA_LIBRARY_PATH, file);
+          const filePath = join(mediaLibraryPath, file);
           const stats = await stat(filePath);
           if (stats.isFile()) {
             filesList.push({
