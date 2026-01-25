@@ -280,6 +280,13 @@ curl http://localhost:5000/api/setup/step/secrets
 *   **Stable Diffusion/ComfyUI:** Local image generation
 
 ## Recent Changes
+- **January 25, 2026 (latest)**: Enhanced AI reliability and Windows service management:
+  - Fixed chatStream method with robust mid-stream error handling and provider fallback
+  - Added transient error detection with exponential backoff retry (3 retries, 1s-4s delays)
+  - Implemented streaming fallback metrics: emitStreamError, emitProviderSwitched, trackFallbackUsage
+  - Created Windows service watchdog daemon (`deploy/windows/scripts/service-watchdog.ps1`)
+  - Watchdog features: 30s health checks, 60s cooldown, 5 restarts/hour limit, state persistence
+  - Added health webhook reporting and CLI actions (start/stop/status/reset)
 - **January 25, 2026**: Major AI orchestration overhaul:
   - Refactored AI system into modular `lib/ai/` structure with unified AIProvider interface
   - New provider clients: ollama.ts, openai.ts, stable-diffusion.ts
