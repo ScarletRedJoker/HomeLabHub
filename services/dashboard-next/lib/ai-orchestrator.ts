@@ -2421,3 +2421,39 @@ class AIOrchestrator {
 }
 
 export const aiOrchestrator = new AIOrchestrator();
+
+// Re-export the new orchestrator and all its providers for backward compatibility
+export {
+  aiOrchestrator as newAIOrchestrator,
+  ollamaProvider,
+  openaiProvider,
+  stableDiffusionProvider,
+  healthChecker,
+  responseCache,
+  costTracker,
+  recordAIUsage,
+  shouldBlockCloudUsage,
+  getCostSummary,
+  isLocalOnlyMode,
+} from './ai/orchestrator';
+
+// Re-export types from the new type system for backward compatibility
+export type {
+  AIProviderName,
+  AIProviderCapabilities,
+  OrchestratorMetadata,
+  RetryConfig,
+  ProviderHealthStatus,
+  AIProvider as NewAIProvider,
+  ChatMessage as NewChatMessage,
+  ChatRequest as NewChatRequest,
+  ChatResponse as NewChatResponse,
+  StreamingChunk,
+  EmbeddingRequest,
+  EmbeddingResponse,
+  ImageGenerationRequest,
+  ImageGenerationResponse,
+} from './ai/types';
+
+// Re-export RoutingStrategy and OrchestratorConfig from the new orchestrator
+export type { RoutingStrategy, OrchestratorConfig } from './ai/orchestrator';

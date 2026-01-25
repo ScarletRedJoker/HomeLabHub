@@ -4,11 +4,12 @@
 
 param(
     [Parameter(Position=0)]
-    [ValidateSet("start", "stop", "status", "repair", "install", "validate")]
+    [ValidateSet("start", "stop", "restart", "status", "repair", "install", "validate")]
     [string]$Action = "start",
     
     [switch]$SkipValidation,
-    [switch]$Force
+    [switch]$Force,
+    [switch]$SkipPyTorchValidation
 )
 
 $ErrorActionPreference = "Continue"
@@ -103,10 +104,148 @@ function Test-PythonVersion {
             Write-Log "Using Python $($info.Version) at $p" "OK"
             return $info
         }
+        if ($info.IsValid -and $info.Minor -ge 14) {
+            Write-Log "Python $($info.Version) at $p is NOT supported (3.14+ breaks AI frameworks)" "WARN"
+        }
     }
     Write-Log "No compatible Python 3.10-3.12 found" "ERROR"
-    Write-Log "Install Python 3.10 from python.org" "WARN"
+    Write-Log "Install Python 3.10 from python.org (NOT 3.14+)" "WARN"
     return $null
+}
+
+function Test-PyTorchCuda {
+    param([string]$PythonPath = "python")
+    Write-Log "Validating PyTorch CUDA..." "STEP"
+    
+    $validatorScript = Join-Path $PSScriptRoot "validate_pytorch.py"
+    if (-not (Test-Path $validatorScript)) {
+        Write-Log "PyTorch validator script not found at $validatorScript" "WARN"
+        try {
+            $result = & $PythonPath -c "import torch; print('cuda=' + str(torch.cuda.is_available()) + ',version=' + torch.__version__)" 2>&1
+            if ($result -match "cuda=True") {
+                Write-Log "PyTorch CUDA is available" "OK"
+                return @{ Valid = $true; CudaAvailable = $true }
+            } else {
+                Write-Log "PyTorch CUDA not available: $result" "WARN"
+                return @{ Valid = $false; CudaAvailable = $false }
+            }
+        } catch {
+            Write-Log "PyTorch not installed or error: $_" "WARN"
+            return @{ Valid = $false; CudaAvailable = $false; Error = $_.Exception.Message }
+        }
+    }
+    
+    try {
+        $result = & $PythonPath $validatorScript --json 2>&1
+        $jsonResult = $result | ConvertFrom-Json
+        
+        if ($jsonResult.overall_valid) {
+            $gpuName = if ($jsonResult.pytorch.gpus.Count -gt 0) { $jsonResult.pytorch.gpus[0].name } else { "Unknown" }
+            Write-Log "PyTorch $($jsonResult.pytorch.version) with CUDA $($jsonResult.pytorch.cuda_version) - GPU: $gpuName" "OK"
+            return @{ 
+                Valid = $true
+                CudaAvailable = $true
+                Version = $jsonResult.pytorch.version
+                CudaVersion = $jsonResult.pytorch.cuda_version
+                GpuName = $gpuName
+            }
+        } else {
+            Write-Log "PyTorch validation failed - CUDA not available or PyTorch not installed" "WARN"
+            return @{ Valid = $false; CudaAvailable = $false }
+        }
+    } catch {
+        Write-Log "PyTorch validation error: $_" "WARN"
+        return @{ Valid = $false; CudaAvailable = $false; Error = $_.Exception.Message }
+    }
+}
+
+function Repair-PyTorch {
+    param([string]$PythonPath = "python", [string]$CudaVersion = "cu121")
+    Write-Log "Attempting PyTorch CUDA repair..." "STEP"
+    
+    $validatorScript = Join-Path $PSScriptRoot "validate_pytorch.py"
+    if (Test-Path $validatorScript) {
+        try {
+            $result = & $PythonPath $validatorScript --repair --cuda $CudaVersion 2>&1
+            if ($LASTEXITCODE -eq 0) {
+                Write-Log "PyTorch repaired successfully" "OK"
+                return $true
+            } else {
+                Write-Log "PyTorch repair failed: $result" "ERROR"
+                return $false
+            }
+        } catch {
+            Write-Log "PyTorch repair error: $_" "ERROR"
+            return $false
+        }
+    } else {
+        try {
+            Write-Log "Reinstalling PyTorch with CUDA $CudaVersion..." "INFO"
+            & $PythonPath -m pip uninstall -y torch torchvision torchaudio 2>&1 | Out-Null
+            & $PythonPath -m pip install torch torchvision torchaudio --index-url "https://download.pytorch.org/whl/$CudaVersion" 2>&1 | Out-Null
+            if ($LASTEXITCODE -eq 0) {
+                Write-Log "PyTorch reinstalled with CUDA" "OK"
+                return $true
+            }
+        } catch {
+            Write-Log "PyTorch reinstall failed: $_" "ERROR"
+        }
+        return $false
+    }
+}
+
+function Get-ServiceStatus {
+    Write-Host ""
+    Write-Host "=== Nebula AI Stack Status ===" -ForegroundColor Cyan
+    Write-Host ""
+    
+    $results = @{}
+    $onlineCount = 0
+    $totalCount = $Script:Config.Services.Count
+    
+    foreach ($svc in $Script:Config.Services) {
+        $running = Test-ServiceRunning -Port $svc.Port
+        $results[$svc.Key] = @{
+            Name = $svc.Name
+            Port = $svc.Port
+            Online = $running
+        }
+        
+        if ($running) {
+            $onlineCount++
+            Write-Host "  [" -NoNewline
+            Write-Host "OK" -ForegroundColor Green -NoNewline
+            Write-Host "]  $($svc.Name)" -NoNewline
+            Write-Host " - http://localhost:$($svc.Port)" -ForegroundColor Gray
+        } else {
+            Write-Host "  [" -NoNewline
+            Write-Host "--" -ForegroundColor Red -NoNewline
+            Write-Host "]  $($svc.Name)" -NoNewline
+            Write-Host " - offline (port $($svc.Port))" -ForegroundColor DarkGray
+        }
+    }
+    
+    Write-Host ""
+    Write-Host "─────────────────────────────────" -ForegroundColor DarkGray
+    
+    $statusColor = if ($onlineCount -eq $totalCount) { "Green" } elseif ($onlineCount -gt 0) { "Yellow" } else { "Red" }
+    Write-Host "  Services Online: " -NoNewline
+    Write-Host "$onlineCount/$totalCount" -ForegroundColor $statusColor
+    Write-Host ""
+    
+    $state = @{
+        timestamp = (Get-Date).ToString("o")
+        hostname = $env:COMPUTERNAME
+        services = $results
+        summary = @{
+            online = $onlineCount
+            total = $totalCount
+            healthy = ($onlineCount -eq $totalCount)
+        }
+    }
+    $state | ConvertTo-Json -Depth 4 | Set-Content -Path $Script:Config.StateFile -Force -ErrorAction SilentlyContinue
+    
+    return $results
 }
 
 function Test-ServiceRunning {
@@ -383,32 +522,13 @@ function Stop-AllServices {
     Write-Log "Services stopped" "OK"
 }
 
-function Get-StackStatus {
-    Write-Host ""
-    Write-Host "=== Nebula AI Stack Status ===" -ForegroundColor Cyan
-    $results = @{}
-    foreach ($svc in $Script:Config.Services) {
-        $running = Test-ServiceRunning -Port $svc.Port
-        $sym = if ($running) { "[OK]" } else { "[--]" }
-        $col = if ($running) { "Green" } else { "Red" }
-        Write-Host "  $sym $($svc.Name): http://localhost:$($svc.Port)" -ForegroundColor $col
-        $results[$svc.Key] = $running
-    }
-    Write-Host ""
-    
-    $state = @{
-        timestamp = (Get-Date).ToString("o")
-        services = $results
-    }
-    $state | ConvertTo-Json | Set-Content -Path $Script:Config.StateFile -Force -ErrorAction SilentlyContinue
-    
-    return $results
-}
 
 function Main {
     Initialize-Environment
     Write-Host ""
-    Write-Host "=== Nebula Command AI Stack ===" -ForegroundColor Cyan
+    Write-Host "╔══════════════════════════════════════╗" -ForegroundColor Cyan
+    Write-Host "║    Nebula Command AI Stack           ║" -ForegroundColor Cyan
+    Write-Host "╚══════════════════════════════════════╝" -ForegroundColor Cyan
     Write-Log "Action: $Action" "INFO"
     Write-Host ""
     
@@ -426,6 +546,15 @@ function Main {
             }
             $pyPath = if ($py) { $py.Path } else { "python" }
             
+            if (-not $SkipPyTorchValidation) {
+                $pytorchResult = Test-PyTorchCuda -PythonPath $pyPath
+                if (-not $pytorchResult.Valid) {
+                    Write-Log "PyTorch CUDA validation failed - some AI services may not work properly" "WARN"
+                }
+            }
+            
+            Write-Log "Starting AI services..." "STEP"
+            
             $ollamaOk = Start-Ollama
             Start-Sleep -Seconds 2
             
@@ -440,10 +569,9 @@ function Main {
             Write-Host ""
             Write-Log "Startup complete!" "OK"
             
-            $status = Get-StackStatus
+            $status = Get-ServiceStatus
             
-            $upCount = ($status.Values | Where-Object { $_ -eq $true }).Count
-            Write-Log "Services online: $upCount/4" "INFO"
+            $upCount = ($status.Values | Where-Object { $_.Online -eq $true }).Count
             
             if ($upCount -lt 4) {
                 Write-Log "Some services failed - check logs in $($Script:Config.LogDir)" "WARN"
@@ -452,11 +580,50 @@ function Main {
         "stop" { 
             Stop-AllServices 
         }
+        "restart" {
+            Write-Log "Restarting AI stack..." "STEP"
+            Stop-AllServices
+            Start-Sleep -Seconds 3
+            
+            $py = Test-PythonVersion
+            $pyPath = if ($py) { $py.Path } else { "python" }
+            
+            $ollamaOk = Start-Ollama
+            Start-Sleep -Seconds 2
+            
+            $sdOk = Start-StableDiffusion
+            Start-Sleep -Seconds 3
+            
+            $comfyOk = Start-ComfyUI -PythonPath $pyPath
+            Start-Sleep -Seconds 2
+            
+            $agentOk = Start-NebulaAgent
+            
+            Write-Host ""
+            Write-Log "Restart complete!" "OK"
+            Get-ServiceStatus | Out-Null
+        }
         "status" { 
-            Get-StackStatus | Out-Null
+            Get-ServiceStatus | Out-Null
         }
         "repair" {
             Write-Log "Running repairs..." "STEP"
+            
+            $py = Test-PythonVersion
+            $pyPath = if ($py) { $py.Path } else { "python" }
+            
+            $pytorchResult = Test-PyTorchCuda -PythonPath $pyPath
+            if (-not $pytorchResult.Valid) {
+                Write-Log "PyTorch needs repair..." "WARN"
+                $repaired = Repair-PyTorch -PythonPath $pyPath -CudaVersion "cu121"
+                if ($repaired) {
+                    Write-Log "PyTorch repaired" "OK"
+                } else {
+                    Write-Log "PyTorch repair failed - may need manual intervention" "ERROR"
+                }
+            } else {
+                Write-Log "PyTorch CUDA is working correctly" "OK"
+            }
             
             $comfyVenv = "C:\AI\ComfyUI\venv\Scripts\python.exe"
             if (Test-Path $comfyVenv) {
@@ -481,7 +648,10 @@ function Main {
             Write-Log "All repairs complete" "OK"
         }
         "validate" { 
-            Test-PythonVersion | Out-Null 
+            $py = Test-PythonVersion
+            if ($py) {
+                Test-PyTorchCuda -PythonPath $py.Path | Out-Null
+            }
         }
         "install" {
             Write-Log "Installing scheduled task..." "STEP"

@@ -325,11 +325,29 @@ const serviceCommands: Record<string, { stop: string; start: string; port: numbe
 interface WatchdogEvent {
   id: string;
   timestamp: string;
-  type: "health_check" | "restart_attempt" | "restart_success" | "restart_failure" | "watchdog_start" | "watchdog_stop";
+  type: "health_check" | "restart_attempt" | "restart_success" | "restart_failure" | "watchdog_start" | "watchdog_stop" | "incident_created";
   service: string;
   message: string;
   details?: Record<string, any>;
 }
+
+interface Incident {
+  id: string;
+  timestamp: string;
+  service: string;
+  severity: "low" | "medium" | "high" | "critical";
+  message: string;
+  nodeId: string;
+  hostname: string;
+  acknowledged: boolean;
+  resolved: boolean;
+  resolvedAt?: string;
+  details?: Record<string, any>;
+}
+
+const DASHBOARD_API_URL = process.env.DASHBOARD_API_URL || "https://dashboard.evindrake.net/api";
+const incidentLog: Incident[] = [];
+const MAX_INCIDENTS = 50;
 
 interface WatchdogConfig {
   checkIntervalMs: number;
@@ -497,6 +515,7 @@ class ServiceWatchdog {
           windowMs: this.config.restartWindowMs,
         },
       });
+      this.createIncidentOnMaxRestarts(serviceName);
       return false;
     }
 
@@ -748,6 +767,75 @@ class ServiceWatchdog {
       message: `Watchdog reset for service ${serviceName} - cooldown cleared, restart counters reset`,
     };
   }
+
+  async notifyDashboard(serviceName: string, severity: "low" | "medium" | "high" | "critical", message: string, details?: Record<string, any>): Promise<{ success: boolean; incidentId: string; message: string }> {
+    const incident: Incident = {
+      id: crypto.randomBytes(8).toString("hex"),
+      timestamp: new Date().toISOString(),
+      service: serviceName,
+      severity,
+      message,
+      nodeId: tokenInfo.nodeId,
+      hostname: os.hostname(),
+      acknowledged: false,
+      resolved: false,
+      details,
+    };
+
+    incidentLog.unshift(incident);
+    if (incidentLog.length > MAX_INCIDENTS) {
+      incidentLog.splice(MAX_INCIDENTS);
+    }
+
+    this.addEvent({
+      type: "incident_created",
+      service: serviceName,
+      message: `Incident created: ${message}`,
+      details: { incidentId: incident.id, severity },
+    });
+
+    try {
+      const response = await fetch(`${DASHBOARD_API_URL}/incidents`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(AUTH_TOKEN ? { "Authorization": `Bearer ${AUTH_TOKEN}` } : {}),
+        },
+        body: JSON.stringify({
+          source: "nebula-agent",
+          nodeId: tokenInfo.nodeId,
+          hostname: os.hostname(),
+          incident,
+        }),
+      });
+
+      if (response.ok) {
+        console.log(`[Incident] Reported to dashboard: ${incident.id}`);
+        return { success: true, incidentId: incident.id, message: "Incident reported to dashboard" };
+      } else {
+        console.warn(`[Incident] Dashboard notification failed: ${response.status}`);
+        return { success: false, incidentId: incident.id, message: `Dashboard returned ${response.status}` };
+      }
+    } catch (error: any) {
+      console.warn(`[Incident] Dashboard notification error: ${error.message}`);
+      return { success: false, incidentId: incident.id, message: `Failed to notify dashboard: ${error.message}` };
+    }
+  }
+
+  async createIncidentOnMaxRestarts(serviceName: string): Promise<void> {
+    const health = this.serviceHealth.get(serviceName);
+    if (!health) return;
+
+    const message = `Service ${serviceName} exceeded maximum restart attempts (${health.restartCountInWindow}/${this.config.maxRestartsPerWindow}). Manual intervention required.`;
+    
+    await this.notifyDashboard(serviceName, "critical", message, {
+      restartCount: health.restartCountInWindow,
+      maxRestarts: this.config.maxRestartsPerWindow,
+      windowMs: this.config.restartWindowMs,
+      lastRestartAttempt: health.lastRestartAttempt,
+      consecutiveFailures: health.consecutiveFailures,
+    });
+  }
 }
 
 const watchdog = new ServiceWatchdog();
@@ -837,6 +925,87 @@ app.post("/api/services/repair/:name", async (req, res) => {
     message: result.message,
     online: result.online,
     service: name,
+  });
+});
+
+app.get("/api/incidents", (req, res) => {
+  const limit = Math.min(MAX_INCIDENTS, parseInt(req.query.limit as string) || 50);
+  const service = req.query.service as string | undefined;
+  const unresolved = req.query.unresolved === "true";
+  
+  let incidents = incidentLog.slice(0, limit);
+  
+  if (service) {
+    incidents = incidents.filter(i => i.service === service);
+  }
+  
+  if (unresolved) {
+    incidents = incidents.filter(i => !i.resolved);
+  }
+  
+  res.json({
+    success: true,
+    nodeId: tokenInfo.nodeId,
+    hostname: os.hostname(),
+    incidents,
+    total: incidentLog.length,
+  });
+});
+
+app.post("/api/incidents/:id/acknowledge", (req, res) => {
+  const { id } = req.params;
+  const incident = incidentLog.find(i => i.id === id);
+  
+  if (!incident) {
+    return res.status(404).json({ success: false, error: "Incident not found" });
+  }
+  
+  incident.acknowledged = true;
+  
+  res.json({
+    success: true,
+    incident,
+  });
+});
+
+app.post("/api/incidents/:id/resolve", (req, res) => {
+  const { id } = req.params;
+  const incident = incidentLog.find(i => i.id === id);
+  
+  if (!incident) {
+    return res.status(404).json({ success: false, error: "Incident not found" });
+  }
+  
+  incident.resolved = true;
+  incident.resolvedAt = new Date().toISOString();
+  
+  res.json({
+    success: true,
+    incident,
+  });
+});
+
+app.post("/api/services/:name/notify", async (req, res) => {
+  const { name } = req.params;
+  const { severity = "medium", message, details } = req.body;
+  
+  if (!message) {
+    return res.status(400).json({ success: false, error: "Message is required" });
+  }
+  
+  const validSeverities = ["low", "medium", "high", "critical"];
+  if (!validSeverities.includes(severity)) {
+    return res.status(400).json({ success: false, error: "Invalid severity. Must be: low, medium, high, or critical" });
+  }
+  
+  const result = await watchdog.notifyDashboard(name, severity, message, details);
+  
+  res.json({
+    success: result.success,
+    incidentId: result.incidentId,
+    message: result.message,
+    service: name,
+    severity,
   });
 });
 

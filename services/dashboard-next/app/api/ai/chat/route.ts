@@ -892,7 +892,7 @@ async function chatWithCustomEndpoint(
   };
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<Response> {
   const user = await checkAuth();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -944,7 +944,8 @@ export async function POST(request: NextRequest) {
 
     const messages = [...history, { role: "user", content: message }];
 
-    let result: Response | { content: string; provider: string; model: string; toolResults?: any[] };
+    type ChatResult = { content: string; provider: string; model: string; toolResults?: any[] };
+    let result: Response | ChatResult | undefined;
     let usedFallback = false;
     let fallbackReason = "";
     let actualProvider = "";
@@ -999,7 +1000,7 @@ export async function POST(request: NextRequest) {
           );
         }
         const customModel = model || "default";
-        return await chatWithCustomEndpoint(customEndpoint, messages, customModel, true);
+        return await chatWithCustomEndpoint(customEndpoint, messages, customModel, true) as Response;
       }
       
       console.log(`[AIChat] Streaming request with provider: ${provider}`);
@@ -1107,6 +1108,10 @@ export async function POST(request: NextRequest) {
 
     if (result instanceof Response) {
       return result;
+    }
+
+    if (!result) {
+      return NextResponse.json({ error: "No response from AI provider" }, { status: 500 });
     }
 
     const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
