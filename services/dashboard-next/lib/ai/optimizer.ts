@@ -2,6 +2,7 @@ import { responseCache, getCacheKey, type AIResponseCache } from './cache';
 import { promptOptimizer, type OptimizationResult } from './prompt-optimizer';
 import { modelRouter, selectModel, detectTaskType, type ModelConfig, type TaskType, type RouterOptions } from './model-router';
 import { costTracker, type CostSummary, type UsageRecord } from './cost-tracker';
+import type { AIProviderName } from './types';
 
 export interface OptimizedRequest {
   messages: Array<{ role: string; content: string }>;
@@ -122,8 +123,8 @@ class AIOptimizer {
   ): Promise<void> {
     if (!this.config.enableCostTracking) return;
     
-    await costTracker.logUsage({
-      provider: model.provider,
+    costTracker.recordUsage({
+      provider: model.provider as AIProviderName,
       model: model.model,
       inputTokens,
       outputTokens,
@@ -133,7 +134,7 @@ class AIOptimizer {
   }
   
   async getCostSummary(): Promise<CostSummary> {
-    return costTracker.getSummary();
+    return costTracker.getCostSummary();
   }
   
   async shouldSwitchToLocal(): Promise<boolean> {

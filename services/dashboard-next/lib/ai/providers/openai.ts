@@ -181,9 +181,10 @@ export class OpenAIProvider {
         size,
       });
 
+      const imageData = response.data?.[0];
       return {
-        url: response.data[0]?.url || '',
-        revisedPrompt: response.data[0]?.revised_prompt,
+        url: imageData?.url || '',
+        revisedPrompt: imageData?.revised_prompt,
         latency: Date.now() - start,
       };
     } catch (error: any) {
