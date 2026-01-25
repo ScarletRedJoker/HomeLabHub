@@ -12,7 +12,10 @@
     "start:next": "next start -p 5000 -H 0.0.0.0",
     "lint": "next lint",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "test": "vitest",
+    "test:ai": "vitest run tests/ai-integration.test.ts",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.3",
@@ -88,6 +91,8 @@
     "zustand": "^4.5.2"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/bcryptjs": "^2.4.6",
     "@types/express": "^5.0.6",
     "@types/http-proxy-middleware": "^0.19.3",
@@ -102,10 +107,12 @@
     "drizzle-kit": "^0.22.7",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.3",
+    "happy-dom": "^20.3.7",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.4",
     "tailwindcss-animate": "^1.0.7",
     "tsx": "^4.21.0",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "vitest": "^4.0.18"
   }
 }
