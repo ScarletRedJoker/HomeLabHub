@@ -1,4 +1,5 @@
 #Requires -Version 5.1
+#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
     Nebula Command - Unified AI Stack Startup
@@ -18,21 +19,14 @@
 
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $false, Position = 0)]
+    [Parameter(Mandatory = $true, Position = 0, HelpMessage = "Action to perform")]
     [ValidateSet('start', 'stop', 'restart', 'status', 'repair', 'install', 'validate')]
-    [string]$Action = 'start',
+    [string]$Action,
     
     [switch]$SkipValidation,
     [switch]$Force,
     [switch]$SkipPyTorchValidation
 )
-
-# Prevent shell verb interpretation
-if ($MyInvocation.InvocationName -match 'install|start|stop') {
-    Write-Host "USAGE: .\Start-NebulaAiStack.ps1 -Action <action>" -ForegroundColor Yellow
-    Write-Host "Actions: start, stop, restart, status, repair, install, validate" -ForegroundColor Cyan
-    exit 0
-}
 
 $ErrorActionPreference = "Continue"
 
