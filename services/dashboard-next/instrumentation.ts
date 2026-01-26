@@ -14,6 +14,27 @@ export async function register() {
     }
 
     try {
+      const { autoMigrateDatabase, testDatabaseConnection } = await import("./lib/db/auto-migrate");
+      
+      const dbConnected = await testDatabaseConnection();
+      if (dbConnected) {
+        const result = await autoMigrateDatabase();
+        if (result.success) {
+          console.log("[Instrumentation] Database auto-migration completed");
+          if (result.adminCreated) {
+            console.log("[Instrumentation] Admin user created (username: admin, password: admin123)");
+          }
+        } else {
+          console.warn("[Instrumentation] Database auto-migration warning:", result.message);
+        }
+      } else {
+        console.warn("[Instrumentation] Database connection failed, skipping auto-migration");
+      }
+    } catch (error: any) {
+      console.warn("[Instrumentation] Database auto-migration skipped:", error.message);
+    }
+
+    try {
       const { registerSelfWithCapabilities } = await import("./lib/peer-discovery");
       
       const port = parseInt(process.env.PORT || "5000", 10);
