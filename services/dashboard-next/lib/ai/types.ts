@@ -1,4 +1,4 @@
-export type AIProviderName = 'ollama' | 'openai' | 'stable-diffusion';
+export type AIProviderName = 'ollama' | 'openai' | 'stable-diffusion' | 'comfyui';
 
 export interface AIProviderCapabilities {
   chat: boolean;

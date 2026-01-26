@@ -5,10 +5,19 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { verifySession } from '@/lib/session';
+import { cookies } from 'next/headers';
 
 const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || '100.118.44.102';
 const AGENT_PORT = process.env.WINDOWS_AGENT_PORT || '9765';
 const AGENT_TOKEN = process.env.KVM_AGENT_TOKEN;
+
+async function checkAuth() {
+  const cookieStore = await cookies();
+  const session = cookieStore.get('session');
+  if (!session?.value) return null;
+  return await verifySession(session.value);
+}
 
 if (!AGENT_TOKEN) {
   console.warn('[AI Control] KVM_AGENT_TOKEN not set - control API will be disabled');
@@ -46,7 +55,11 @@ async function callWindowsAgent(endpoint: string, method: 'GET' | 'POST' = 'POST
 
 export async function POST(request: NextRequest) {
   try {
-    // Security check - require token to be configured
+    const user = await checkAuth();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     if (!AGENT_TOKEN) {
       return NextResponse.json({
         success: false,

@@ -190,6 +190,8 @@ export default function JarvisPage() {
   const [selectedChangeId, setSelectedChangeId] = useState<string | null>(null);
   const [diffContent, setDiffContent] = useState<string[]>([]);
   const [applyingChange, setApplyingChange] = useState(false);
+  const [restartingServices, setRestartingServices] = useState(false);
+  const [restartResult, setRestartResult] = useState<{ success: boolean; message: string } | null>(null);
 
   useEffect(() => {
     fetchStatus();
@@ -337,6 +339,31 @@ export default function JarvisPage() {
       }
     } catch (error) {
       console.error("Failed to reject change:", error);
+    }
+  }
+
+  async function handleRestartServices() {
+    setRestartingServices(true);
+    setRestartResult(null);
+    try {
+      const res = await fetch("/api/ai/control", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "restart", service: "all" }),
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        setRestartResult({ success: true, message: "Services restarting - please wait 30-60 seconds" });
+        setTimeout(() => handleRefresh(true), 30000);
+      } else {
+        setRestartResult({ success: false, message: data.error || "Failed to restart services" });
+      }
+    } catch (error) {
+      setRestartResult({ success: false, message: "Unable to reach Windows VM agent" });
+    } finally {
+      setRestartingServices(false);
+      setTimeout(() => setRestartResult(null), 10000);
     }
   }
 
@@ -503,6 +530,36 @@ export default function JarvisPage() {
                     </span>
                   </div>
                 </div>
+                {!anyLocalAIOnline && (
+                  <div className="mt-3 flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRestartServices}
+                      disabled={restartingServices}
+                    >
+                      {restartingServices ? (
+                        <>
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          Restarting...
+                        </>
+                      ) : (
+                        <>
+                          <RotateCcw className="h-3 w-3 mr-1" />
+                          Restart AI Services
+                        </>
+                      )}
+                    </Button>
+                    {restartResult && (
+                      <span className={cn(
+                        "text-xs",
+                        restartResult.success ? "text-green-600" : "text-red-600"
+                      )}>
+                        {restartResult.message}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
