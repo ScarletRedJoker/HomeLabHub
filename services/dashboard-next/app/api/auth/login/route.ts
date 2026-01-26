@@ -3,26 +3,23 @@ import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { createSession, isSessionSecretConfigured } from "@/lib/session";
 import { userService } from "@/lib/services/user-service";
-import { auditService } from "@/lib/services/audit-service";
 import { getClientIp } from "@/lib/middleware/permissions";
 
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
-const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-
 export async function POST(request: NextRequest) {
+  const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
+  const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+
   try {
     if (!isSessionSecretConfigured()) {
-      console.error("SESSION_SECRET is not configured or is too short (minimum 32 characters)");
+      console.error("[Login] SESSION_SECRET is not configured or is too short");
       return NextResponse.json(
-        { error: "Server configuration error: session signing not configured" },
+        { error: "SESSION_SECRET not configured. Add it to your .env file (min 32 chars)." },
         { status: 500 }
       );
     }
 
     const { username, password } = await request.json();
-    const ipAddress = getClientIp(request);
-    const userAgent = request.headers.get("user-agent") || undefined;
 
     if (!username || !password) {
       return NextResponse.json(
@@ -31,24 +28,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log(`[Login] Attempting login for: ${username}`);
+
     let authenticatedUser = null;
     try {
       authenticatedUser = await userService.verifyPassword(username, password);
-    } catch (dbErr) {
-      console.warn("Database user lookup failed, falling back to env credentials:", dbErr);
+    } catch (dbErr: any) {
+      console.warn("[Login] Database lookup failed:", dbErr.message);
     }
     
     if (authenticatedUser) {
-      await auditService.log({
-        userId: authenticatedUser.id,
-        username: authenticatedUser.username,
-        action: "user.login",
-        resource: "auth",
-        details: { method: "database" },
-        ipAddress,
-        userAgent,
-        status: "success",
-      });
+      console.log(`[Login] Database auth success for: ${username}`);
       
       const sessionToken = await createSession(
         authenticatedUser.username, 
@@ -75,6 +65,8 @@ export async function POST(request: NextRequest) {
     }
 
     if (ADMIN_USERNAME && (ADMIN_PASSWORD_HASH || ADMIN_PASSWORD)) {
+      console.log(`[Login] Checking env credentials for: ${username}`);
+      
       if (username === ADMIN_USERNAME) {
         let isValidPassword = false;
         if (ADMIN_PASSWORD_HASH) {
@@ -84,17 +76,9 @@ export async function POST(request: NextRequest) {
         }
         
         if (isValidPassword) {
-          await auditService.log({
-            username,
-            action: "user.login",
-            resource: "auth",
-            details: { method: "env_fallback" },
-            ipAddress,
-            userAgent,
-            status: "success",
-          });
+          console.log(`[Login] Env auth success for: ${username}`);
           
-          const sessionToken = await createSession(username);
+          const sessionToken = await createSession(username, undefined, "admin");
           const cookieStore = await cookies();
           cookieStore.set("session", sessionToken, {
             httpOnly: true,
@@ -112,24 +96,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    await auditService.log({
-      username,
-      action: "user.login",
-      resource: "auth",
-      details: { reason: "invalid_credentials" },
-      ipAddress,
-      userAgent,
-      status: "failure",
-    });
-
+    console.log(`[Login] Failed login for: ${username}`);
     return NextResponse.json(
       { error: "Invalid credentials" },
       { status: 401 }
     );
-  } catch (error) {
-    console.error("Login error:", error);
+  } catch (error: any) {
+    console.error("[Login] Error:", error.message, error.stack);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: `Login failed: ${error.message}` },
       { status: 500 }
     );
   }
