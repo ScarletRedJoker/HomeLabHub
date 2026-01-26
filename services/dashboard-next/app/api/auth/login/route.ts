@@ -31,7 +31,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let authenticatedUser = await userService.verifyPassword(username, password);
+    let authenticatedUser = null;
+    try {
+      authenticatedUser = await userService.verifyPassword(username, password);
+    } catch (dbErr) {
+      console.warn("Database user lookup failed, falling back to env credentials:", dbErr);
+    }
     
     if (authenticatedUser) {
       await auditService.log({

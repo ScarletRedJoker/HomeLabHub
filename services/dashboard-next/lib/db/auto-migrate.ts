@@ -94,11 +94,24 @@ async function ensureAdminUser(): Promise<boolean> {
   
   try {
     const existingAdmin = await db.execute(sql`
-      SELECT id, username FROM users WHERE username = ${adminUsername} LIMIT 1
+      SELECT id, username, password_hash FROM users WHERE username = ${adminUsername} LIMIT 1
     `);
     
     if (existingAdmin.rows.length > 0) {
-      console.log(`[AutoMigrate] Admin user '${adminUsername}' exists`);
+      const row = existingAdmin.rows[0] as { id: string; username: string; password_hash: string | null };
+      
+      if (!row.password_hash) {
+        console.log(`[AutoMigrate] Admin user exists but has no password - fixing...`);
+        const passwordHash = await bcryptjs.hash(adminPassword, SALT_ROUNDS);
+        await db.execute(sql`
+          UPDATE users SET password_hash = ${passwordHash}, role = 'admin', is_active = true 
+          WHERE id = ${row.id}
+        `);
+        console.log(`[AutoMigrate] Fixed admin user password`);
+        return true;
+      }
+      
+      console.log(`[AutoMigrate] Admin user '${adminUsername}' exists with password`);
       return false;
     }
     
