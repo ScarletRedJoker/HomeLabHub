@@ -61,10 +61,11 @@ function Install-Agent {
     
     $agentScript = Join-Path $InstallPath "windows-agent.ps1"
     
-    $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-    $localAgent = Join-Path $scriptDir "windows-agent.ps1"
+    # Use PSScriptRoot which is more reliable than MyInvocation.MyCommand.Path
+    $scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Definition }
+    $localAgent = if ($scriptDir) { Join-Path $scriptDir "windows-agent.ps1" } else { $null }
     
-    if (Test-Path $localAgent) {
+    if ($localAgent -and (Test-Path $localAgent)) {
         Write-Status "Copying agent from local directory..."
         Copy-Item -Path $localAgent -Destination $agentScript -Force
     } elseif ($AgentScriptUrl) {
