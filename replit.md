@@ -7,7 +7,7 @@ Nebula Command is a creation engine designed for comprehensive homelab managemen
 
 ### 1. Run the Setup Wizard
 Navigate to `/setup` to run the interactive OOTB Setup Wizard. The wizard guides you through:
-- Environment detection (Replit/Linode/Home)
+- Environment detection (Linode/Home)
 - Secrets configuration (API keys for Discord, Twitch, YouTube, etc.)
 - Database setup and migrations
 - AI services configuration (Ollama, ComfyUI)
@@ -23,9 +23,9 @@ After setup, access the main dashboard at `/` to manage all services.
 - **AI Services**: Manage models at `/ai-models`
 
 ## User Preferences
-- **Development Workflow:** Edit in Replit → Push to GitHub → Pull on servers
+- **Development Workflow:** Edit locally → Push to GitHub → Pull on servers
 - **Database:** Shared PostgreSQL (Neon in dev, self-hosted in prod)
-- **Secrets:** .env file (never commit), Replit Secrets in dev
+- **Secrets:** .env file (never commit)
 
 ## Features
 
@@ -131,11 +131,6 @@ Node.js/Express agent on Windows VM (port 9765 via Tailscale):
 
 ### Deployment Targets
 
-#### Replit (Development)
-- Automatic configuration via Replit environment
-- Uses Replit Secrets for credentials
-- Database via Replit PostgreSQL or Neon
-
 #### Linode (Production)
 ```bash
 ./deploy/scripts/bootstrap-linode.sh
@@ -209,7 +204,6 @@ Node.js/Express agent on Windows VM (port 9765 via Tailscale):
 1. Verify `DATABASE_URL` is set correctly
 2. Check database server is running
 3. Ensure network connectivity to database host
-4. For Replit: Check PostgreSQL addon is enabled
 
 #### AI Services Unavailable
 **Symptoms**: Ollama/ComfyUI not detected

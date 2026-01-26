@@ -145,9 +145,8 @@ Unified interface for hybrid cloud/local AI processing.
 | Location | Services | Purpose |
 |----------|----------|---------|
 | **Linode** | Dashboard, Discord Bot, Stream Bot, PostgreSQL, Redis, n8n, Caddy | Always-on cloud services |
-| **Ubuntu Host** | Plex, Home Assistant, MinIO, VNC, KVM orchestrator | Local resources, media, VM management |
+| **Ubuntu Host** | Plex, Home Assistant, MinIO, VNC, KVM orchestrator, NAS storage, qBittorrent | Local resources, media, VM management |
 | **Windows VM** | Ollama, Stable Diffusion, ComfyUI, Nebula Agent | GPU-accelerated AI |
-| **Replit** | All services (development mode) | Development & testing |
 
 ### Database Schema
 
@@ -195,11 +194,6 @@ PostgreSQL Instance
 
 ```bash
 # ═══════════════════════════════════════════════════════════════
-# REPLIT (Development)
-# ═══════════════════════════════════════════════════════════════
-# Fork this repo, click "Run" - Replit handles everything
-
-# ═══════════════════════════════════════════════════════════════
 # LINODE CLOUD SERVER (Production)
 # ═══════════════════════════════════════════════════════════════
 curl -fsSL https://raw.githubusercontent.com/ScarletRedJoker/HomeLabHub/main/deploy/scripts/bootstrap.sh | bash -s -- --role cloud --generate-secrets
@@ -222,31 +216,7 @@ powershell -ExecutionPolicy Bypass -Command "& { irm https://raw.githubuserconte
 
 ## Deployment Targets
 
-### 1. Replit (Development)
-
-**Best for:** Development, testing, quick demos
-
-**Steps:**
-1. Fork this repository to your Replit account
-2. Replit automatically detects the project type
-3. Create a PostgreSQL database using Replit's database panel
-4. Add secrets in the Secrets panel (see [Environment Variables](#environment-variables-reference))
-5. Click "Run" - workflows start automatically
-
-**Features in Replit:**
-- Automatic modelfarm AI integration (no OpenAI key needed for basic use)
-- Built-in PostgreSQL database
-- Instant preview URLs
-- Edit → Push → Deploy workflow
-
-**Replit Modelfarm Notes:**
-- Uses `gpt-4o`, `gpt-4o-mini` (NOT `gpt-3.5-turbo` or `gpt-4-turbo`)
-- Image generation uses `gpt-image-1` (NOT `dall-e-3`)
-- No style/quality parameters for images
-
----
-
-### 2. Linode (Cloud Production)
+### 1. Linode (Cloud Production)
 
 **Best for:** Production deployment, always-on services
 
@@ -292,7 +262,7 @@ docker compose up -d
 
 ---
 
-### 3. Ubuntu Homelab
+### 2. Ubuntu Homelab
 
 **Best for:** Local services requiring hardware access (Plex GPU transcoding, Home Assistant)
 
@@ -330,7 +300,7 @@ docker compose -f deploy/local/docker-compose.yml up -d
 
 ---
 
-### 4. Windows AI VM
+### 3. Windows AI VM
 
 **Best for:** GPU-accelerated AI (Stable Diffusion, Ollama, ComfyUI)
 
