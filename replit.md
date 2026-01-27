@@ -37,7 +37,15 @@ Nebula Command provides a comprehensive suite of features including:
 - **Windows VM & Domains:** GPU server management and DNS/SSL management.
 - **Marketplace:** Docker package installation.
 - **AI Developer:** An autonomous code modification system with human approval gates.
-- **AI Influencer / Video Automation Pipeline:** Tools for character persistence, script-to-video generation, prompt chaining, batch content, and scheduled jobs.
+- **AI Influencer / Video Automation Pipeline:** Fully automated content generation system with:
+  - ComfyUI-based image sequences with LoRA/embedding support for style consistency
+  - AnimateDiff video frame generation with persona-aware prompting
+  - Script-to-video workflows with automated prompt chaining
+  - Batch generation with priority queue (max 100 items, 2 concurrent)
+  - Cron-based scheduling with timezone support (auto-starts on server boot)
+  - FFmpeg video assembly with TTS audio mixing and thumbnail generation
+  - Structured asset storage at `storage/ai/influencer/{projectId}/`
+  - Dashboard UI for pipeline controls, queue monitoring, and persona management
 - **Automated Deployment and Node Auto-Configuration:** Bootstrap scripts for dynamic, hardware-aware configuration of AI services (Ollama, ComfyUI, Stable Diffusion) on various nodes.
 
 ### Architectural Principles
