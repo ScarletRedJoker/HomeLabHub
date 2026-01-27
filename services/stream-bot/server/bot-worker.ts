@@ -17,6 +17,7 @@ import { PollsService } from "./polls-service";
 import { AlertsService } from "./alerts-service";
 import { ChatbotService } from "./chatbot-service";
 import { shoutoutService } from "./shoutout-service";
+import { handleAICommand, aiScheduler, type AICommandContext } from "./ai";
 import { refreshTwitchToken } from "./oauth-twitch";
 import { decryptToken } from "./crypto-utils";
 import { db } from "./db";
@@ -109,6 +110,8 @@ export class BotWorker {
   private isBotModerator: boolean = false; // Whether bot has mod privileges (affects Twitch rate limits)
   private channelName: string | null = null; // Current channel name for variable substitution
 
+  private aiSchedulerStarted: boolean = false;
+
   constructor(
     private userId: string,
     private storage: UserStorage,
@@ -134,6 +137,9 @@ export class BotWorker {
 
       // Set stream start time for uptime tracking
       this.streamStartTime = new Date();
+
+      // Initialize AI scheduler for automated content
+      this.initializeAIScheduler();
 
       // Start Twitch client if connected (needed for posting facts)
       // Chat triggers are handled separately within the client
@@ -358,6 +364,12 @@ export class BotWorker {
         this.kickReconnectInProgress = false;
       }
 
+      // Stop AI scheduler
+      if (this.aiSchedulerStarted) {
+        aiScheduler.stop();
+        this.aiSchedulerStarted = false;
+      }
+
       // Stop cron job
       if (this.cronJob) {
         this.cronJob.stop();
@@ -416,6 +428,57 @@ export class BotWorker {
   async restart(): Promise<void> {
     await this.stop();
     await this.start();
+  }
+
+  private initializeAIScheduler(): void {
+    if (this.aiSchedulerStarted) return;
+
+    const sendToChat = async (message: string): Promise<void> => {
+      if (this.twitchClient) {
+        try {
+          await this.twitchClient.say(this.channelName || '', message);
+        } catch (e) {
+          console.error('[BotWorker] Failed to send AI scheduled message to Twitch:', e);
+        }
+      }
+      if (this.kickClient && this.kickClientReady) {
+        try {
+          this.kickClient.sendMessage?.(message);
+        } catch (e) {
+          console.error('[BotWorker] Failed to send AI scheduled message to Kick:', e);
+        }
+      }
+    };
+
+    aiScheduler.setCallback({
+      onTextGenerated: async (text: string, taskId: string) => {
+        console.log(`[BotWorker] AI scheduler generated text for task ${taskId}`);
+        await sendToChat(text);
+      },
+      onImageGenerated: async (imageBase64: string, taskId: string) => {
+        console.log(`[BotWorker] AI scheduler generated image for task ${taskId}`);
+        await sendToChat(`AI generated an image for task ${taskId}! View on dashboard.`);
+      },
+      onError: (error: string, taskId: string) => {
+        console.error(`[BotWorker] AI scheduler error for task ${taskId}: ${error}`);
+      },
+    });
+
+    aiScheduler.addTask({
+      id: 'ai_tip',
+      type: 'text',
+      cronExpression: '0 */2 * * *',
+      config: {
+        prompt: 'Generate a fun tip about AI features available in chat',
+        personality: 'helpful',
+        maxTokens: 100,
+      },
+      enabled: true,
+    });
+
+    aiScheduler.start();
+    this.aiSchedulerStarted = true;
+    console.log(`[BotWorker] AI scheduler started for user ${this.userId}`);
   }
 
   async reloadConfig(): Promise<void> {
@@ -1394,6 +1457,31 @@ export class BotWorker {
             }
           }
 
+          // Check for AI commands (!imagine, !ask, !workflow, !ai-status)
+          if (["!imagine", "!ask", "!workflow", "!ai-status", "!aistatus"].includes(commandName)) {
+            const isMod = !!tags.mod || !!tags.badges?.moderator || !!tags.badges?.broadcaster;
+            const isSub = !!tags.subscriber || !!tags.badges?.subscriber;
+            
+            const aiContext: AICommandContext = {
+              platform: "twitch",
+              username,
+              channelId: channel,
+              isModerator: isMod,
+              isSubscriber: isSub,
+            };
+            
+            const aiResult = await handleAICommand(trimmedMessage, aiContext);
+            
+            if (aiResult && this.twitchClient) {
+              if (aiResult.cooldownMessage) {
+                await this.twitchClient.say(channel, aiResult.cooldownMessage);
+              } else if (aiResult.response) {
+                await this.twitchClient.say(channel, aiResult.response);
+              }
+              return;
+            }
+          }
+
           // Check for game commands (!8ball, !trivia, !duel, !slots, !roulette)
           if (["!8ball", "!trivia", "!duel", "!slots", "!roulette"].includes(commandName)) {
             const gameResult = await this.handleGameCommand(trimmedMessage, username, "twitch");
@@ -1776,7 +1864,33 @@ export class BotWorker {
       
       // Check for custom commands (starts with !)
       if (trimmedContent.startsWith("!")) {
-        const commandName = trimmedContent.split(" ")[0];
+        const commandName = trimmedContent.split(" ")[0].toLowerCase();
+        
+        // Check for AI commands (!imagine, !ask, !workflow, !ai-status)
+        if (["!imagine", "!ask", "!workflow", "!ai-status", "!aistatus"].includes(commandName)) {
+          const isMod = message.sender?.badges?.some((b: any) => b.type === "moderator" || b.type === "broadcaster") || false;
+          const isSub = message.sender?.badges?.some((b: any) => b.type === "subscriber") || false;
+          
+          const aiContext: AICommandContext = {
+            platform: "kick",
+            username,
+            channelId: this.kickChannelSlug || "unknown",
+            isModerator: isMod,
+            isSubscriber: isSub,
+          };
+          
+          const aiResult = await handleAICommand(trimmedContent, aiContext);
+          
+          if (aiResult) {
+            if (aiResult.cooldownMessage) {
+              await this.sendKickMessage(aiResult.cooldownMessage);
+            } else if (aiResult.response) {
+              await this.sendKickMessage(aiResult.response);
+            }
+            return;
+          }
+        }
+        
         const response = await this.executeCustomCommand(commandName, username, undefined, this.kickChannelSlug || undefined);
         
         if (response) {
