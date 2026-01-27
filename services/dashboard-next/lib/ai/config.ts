@@ -2,6 +2,9 @@
  * AI Service Configuration - Production-safe environment-aware configuration
  * Removes all hardcoded localhost/IP assumptions
  * Build-time safe: No database connections, no side effects during build
+ * 
+ * IMPORTANT: All services must use this config module instead of hardcoding IPs.
+ * This ensures Docker, Windows, Linux, Tailscale, LAN, and remote access all work.
  */
 
 export interface AIEndpointConfig {
@@ -10,6 +13,15 @@ export interface AIEndpointConfig {
   healthCheckInterval: number;
   maxRetries: number;
   retryDelayMs: number;
+}
+
+export interface WindowsVMConfig {
+  ip: string | null;
+  isConfigured: boolean;
+  nebulaAgentUrl: string | null;
+  nebulaAgentPort: number;
+  sshPort: number;
+  sunshinePort: number;
 }
 
 export interface AIConfig {
@@ -26,7 +38,10 @@ export interface AIConfig {
     order: ('ollama' | 'openai')[];
     localOnlyMode: boolean;
   };
+  windowsVM: WindowsVMConfig;
 }
+
+const fallbackWarnings: Set<string> = new Set();
 
 function isBuildTime(): boolean {
   return process.env.NEXT_PHASE === 'phase-production-build' ||
@@ -47,10 +62,37 @@ function getWindowsVMIP(): string | null {
   return getEnvOrNull('WINDOWS_VM_TAILSCALE_IP');
 }
 
+function warnFallback(service: string, message: string): void {
+  if (isBuildTime()) return;
+  const key = `${service}:${message}`;
+  if (!fallbackWarnings.has(key)) {
+    fallbackWarnings.add(key);
+    console.warn(`[AIConfig] Warning: ${service} - ${message}`);
+  }
+}
+
 function buildLocalAIUrl(port: number, path = ''): string | null {
   const windowsIP = getWindowsVMIP();
   if (!windowsIP) return null;
   return `http://${windowsIP}:${port}${path}`;
+}
+
+function getWindowsVMConfig(): WindowsVMConfig {
+  const ip = getWindowsVMIP();
+  const agentPort = parseInt(getEnvOrDefault('NEBULA_AGENT_PORT', '9765'));
+  
+  if (!ip) {
+    warnFallback('WindowsVM', 'WINDOWS_VM_TAILSCALE_IP not set. Windows VM services unavailable.');
+  }
+  
+  return {
+    ip,
+    isConfigured: !!ip,
+    nebulaAgentUrl: ip ? `http://${ip}:${agentPort}` : null,
+    nebulaAgentPort: agentPort,
+    sshPort: parseInt(getEnvOrDefault('WINDOWS_VM_SSH_PORT', '22')),
+    sunshinePort: parseInt(getEnvOrDefault('WINDOWS_VM_SUNSHINE_PORT', '47990')),
+  };
 }
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -62,6 +104,7 @@ function getOllamaUrl(): string {
   const localUrl = buildLocalAIUrl(11434);
   if (localUrl) return localUrl;
   
+  warnFallback('Ollama', 'Using localhost fallback. Set OLLAMA_URL or WINDOWS_VM_TAILSCALE_IP.');
   return 'http://localhost:11434';
 }
 
@@ -72,6 +115,7 @@ function getStableDiffusionUrl(): string {
   const localUrl = buildLocalAIUrl(7860);
   if (localUrl) return localUrl;
   
+  warnFallback('StableDiffusion', 'Using localhost fallback. Set STABLE_DIFFUSION_URL or WINDOWS_VM_TAILSCALE_IP.');
   return 'http://localhost:7860';
 }
 
@@ -82,6 +126,7 @@ function getComfyUIUrl(): string {
   const localUrl = buildLocalAIUrl(8188);
   if (localUrl) return localUrl;
   
+  warnFallback('ComfyUI', 'Using localhost fallback. Set COMFYUI_URL or WINDOWS_VM_TAILSCALE_IP.');
   return 'http://localhost:8188';
 }
 
@@ -112,6 +157,7 @@ export function getAIConfig(): AIConfig {
   const sdUrl = getStableDiffusionUrl();
   const comfyUrl = getComfyUIUrl();
   const openaiKey = getOpenAIApiKey();
+  const vmConfig = getWindowsVMConfig();
   
   return {
     ollama: {
@@ -145,7 +191,32 @@ export function getAIConfig(): AIConfig {
       order: isLocalOnlyMode() ? ['ollama'] : ['ollama', 'openai'],
       localOnlyMode: isLocalOnlyMode(),
     },
+    windowsVM: vmConfig,
   };
+}
+
+export function getWindowsVMIP_safe(): string | null {
+  return getWindowsVMIP();
+}
+
+export function requireWindowsVMIP(): string {
+  const ip = getWindowsVMIP();
+  if (!ip) {
+    throw new Error('WINDOWS_VM_TAILSCALE_IP is required but not configured');
+  }
+  return ip;
+}
+
+export function buildServiceUrl(port: number, path = ''): string | null {
+  return buildLocalAIUrl(port, path);
+}
+
+export function requireServiceUrl(port: number, serviceName: string, path = ''): string {
+  const url = buildLocalAIUrl(port, path);
+  if (!url) {
+    throw new Error(`${serviceName} URL cannot be constructed: WINDOWS_VM_TAILSCALE_IP not set`);
+  }
+  return url;
 }
 
 export function validateAIConfig(options: { strict?: boolean } = {}): { valid: boolean; warnings: string[]; errors: string[] } {
