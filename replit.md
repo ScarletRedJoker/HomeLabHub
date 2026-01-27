@@ -125,3 +125,32 @@ This multi-agent AI system manages a job queue and subagents, supporting local-f
   - Debug panel with latency, GPU VRAM, troubleshooting steps
   - Non-technical UX: "AI Chat Ready", "All Systems Operational"
   - Fixed TypeScript build errors for production deployment
+
+- **January 27, 2026**: Build-time Safety for Production Deployment:
+  - Made database connection lazy-initialized (`lib/db/index.ts`): Uses Proxy pattern to defer connection
+  - Added `isBuildTime()` check: Detects `NEXT_PHASE=phase-production-build` or missing DATABASE_URL
+  - Suppressed AI config warnings during build: No more "[AIConfig] ... not set" spam in build logs
+  - Fixed instrumentation.ts: Skips all initialization during build phase
+  - Fixed ai-orchestrator.ts, speech/tts.ts, speech/stt.ts: Build-time guards on console logs
+  - Result: Clean Linode Docker builds without database/service connection errors
+
+- **January 27, 2026**: Deploy Script Consolidation:
+  - Removed 7 duplicate/deprecated bootstrap scripts (~5,700 lines)
+  - Removed: `deploy/scripts/bootstrap.sh`, `bootstrap-linode.sh`, `bootstrap-local.sh`
+  - Removed: `deploy/local/scripts/bootstrap-local.sh`, `deploy/linode/bootstrap.sh`
+  - Removed: Root-level `deploy-production.sh`, `bootstrap-homelab.sh`
+  - Kept: `deploy/linode/deploy.sh`, `deploy/local/deploy.sh`, `deploy/unified/bootstrap.sh`
+  - Audit report: `var/reports/deploy-scripts-audit.md`
+
+- **January 27, 2026**: AI Influencer / Video Automation Pipeline:
+  - Database schema: `influencer_personas`, `content_pipelines`, `video_projects`, `content_pipeline_runs`, `content_templates`, `monetization_events`, `scheduled_jobs`
+  - Pipeline Orchestrator (`lib/ai/influencer-pipeline.ts`): Script generation, prompt chaining, frame generation, batch processing
+  - API Endpoints (`/api/ai/influencer/*`): personas CRUD, pipelines CRUD, projects CRUD, execute endpoint
+  - Dashboard UI (`/influencer`): Persona management, pipeline configuration, video project tracking
+  - Features:
+    - Character persistence via LoRA/embeddings and style prompts
+    - Script-to-video pipelines with ComfyUI integration
+    - Prompt chaining for multi-shot video generation
+    - Batch content generation with concurrency control
+    - Cron-based scheduling for automated content
+    - Monetization hooks for revenue tracking

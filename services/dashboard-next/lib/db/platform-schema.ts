@@ -1675,3 +1675,290 @@ export type AIDevRun = typeof aiDevRuns.$inferSelect;
 export type NewAIDevRun = typeof aiDevRuns.$inferInsert;
 export type AIDevProvider = typeof aiDevProviders.$inferSelect;
 export type NewAIDevProvider = typeof aiDevProviders.$inferInsert;
+
+// ============================================================================
+// AI INFLUENCER / VIDEO AUTOMATION PIPELINE
+// ============================================================================
+
+/**
+ * AI Influencer Personas - Define consistent character identities
+ * Stores character reference images, style parameters, personality traits
+ */
+export const influencerPersonas = pgTable("influencer_personas", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  displayName: varchar("display_name", { length: 255 }),
+  description: text("description"),
+  
+  // Character consistency
+  referenceImages: text("reference_images").array(), // URLs/paths to character reference images
+  stylePrompt: text("style_prompt"), // Base prompt for consistent style
+  negativePrompt: text("negative_prompt"),
+  
+  // LoRA/embedding for character persistence
+  loraPath: text("lora_path"), // Path to trained LoRA model
+  loraWeight: decimal("lora_weight", { precision: 3, scale: 2 }).default("0.8"),
+  embeddingName: varchar("embedding_name", { length: 255 }),
+  
+  // ComfyUI workflow template for this persona
+  workflowTemplateId: uuid("workflow_template_id").references(() => comfyuiWorkflows.id),
+  
+  // Voice settings (for TTS)
+  voiceId: varchar("voice_id", { length: 100 }),
+  voiceSettings: jsonb("voice_settings"), // pitch, speed, etc.
+  
+  // Personality for LLM-generated scripts
+  personalityTraits: text("personality_traits").array(),
+  writingStyle: text("writing_style"),
+  topicFocus: text("topic_focus").array(),
+  
+  // Platform config
+  platforms: text("platforms").array(), // ['youtube', 'tiktok', 'instagram']
+  
+  // Status
+  isActive: boolean("is_active").default(true),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+/**
+ * Content Pipelines - Define automated content generation workflows
+ * Connects scripts → images → video → publishing
+ */
+export const contentPipelines = pgTable("content_pipelines", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  
+  personaId: uuid("persona_id").references(() => influencerPersonas.id),
+  
+  // Pipeline type
+  pipelineType: varchar("pipeline_type", { length: 50 }).notNull(), // 'script_to_video', 'image_series', 'shorts', 'static_posts'
+  
+  // Stage configuration (ordered)
+  stages: jsonb("stages").notNull(), // [{type: 'script_gen', config: {}}, {type: 'image_gen', ...}, ...]
+  
+  // ComfyUI integration
+  workflowId: uuid("workflow_id").references(() => comfyuiWorkflows.id),
+  workflowOverrides: jsonb("workflow_overrides"), // Parameter overrides for the workflow
+  
+  // Output configuration
+  outputFormat: varchar("output_format", { length: 50 }).default("mp4"), // mp4, webm, gif, png
+  outputResolution: varchar("output_resolution", { length: 20 }).default("1080p"),
+  aspectRatio: varchar("aspect_ratio", { length: 10 }).default("16:9"), // 16:9, 9:16, 1:1
+  
+  // Batch settings
+  batchSize: integer("batch_size").default(1),
+  parallelExecution: boolean("parallel_execution").default(false),
+  
+  // Scheduling
+  isScheduled: boolean("is_scheduled").default(false),
+  cronExpression: varchar("cron_expression", { length: 100 }),
+  timezone: varchar("timezone", { length: 50 }).default("UTC"),
+  nextRunAt: timestamp("next_run_at"),
+  lastRunAt: timestamp("last_run_at"),
+  
+  // Status
+  isActive: boolean("is_active").default(true),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+/**
+ * Video Projects - Individual video generation jobs
+ */
+export const videoProjects = pgTable("video_projects", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  pipelineId: uuid("pipeline_id").references(() => contentPipelines.id),
+  personaId: uuid("persona_id").references(() => influencerPersonas.id),
+  
+  // Content
+  title: varchar("title", { length: 500 }),
+  description: text("description"),
+  script: text("script"), // Full script/narration text
+  
+  // Prompt chain (for multi-shot videos)
+  promptChain: jsonb("prompt_chain"), // [{shot: 1, prompt: '...', duration: 5}, ...]
+  
+  // Generated assets
+  generatedFrames: jsonb("generated_frames"), // [{path, thumbnail, shotIndex}, ...]
+  audioPath: text("audio_path"), // TTS-generated audio
+  musicPath: text("music_path"), // Background music
+  finalVideoPath: text("final_video_path"),
+  thumbnailPath: text("thumbnail_path"),
+  
+  // Metadata for publishing
+  hashtags: text("hashtags").array(),
+  targetPlatform: varchar("target_platform", { length: 50 }),
+  publishConfig: jsonb("publish_config"), // Platform-specific settings
+  
+  // Status
+  status: varchar("status", { length: 50 }).default("draft"), // draft, generating, review, approved, published, failed
+  currentStage: varchar("current_stage", { length: 100 }),
+  progress: integer("progress").default(0), // 0-100
+  errorMessage: text("error_message"),
+  
+  // Metrics (post-publish)
+  views: integer("views").default(0),
+  likes: integer("likes").default(0),
+  comments: integer("comments").default(0),
+  shares: integer("shares").default(0),
+  revenue: decimal("revenue", { precision: 10, scale: 2 }).default("0.00"),
+  
+  // Scheduling
+  scheduledPublishAt: timestamp("scheduled_publish_at"),
+  publishedAt: timestamp("published_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+/**
+ * Content Pipeline Runs - Execution history for content pipelines
+ */
+export const contentPipelineRuns = pgTable("content_pipeline_runs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  pipelineId: uuid("pipeline_id").references(() => contentPipelines.id).notNull(),
+  videoProjectId: uuid("video_project_id").references(() => videoProjects.id),
+  
+  // Batch info
+  batchId: varchar("batch_id", { length: 100 }),
+  batchIndex: integer("batch_index"),
+  batchTotal: integer("batch_total"),
+  
+  // Trigger
+  triggeredBy: varchar("triggered_by", { length: 50 }).notNull(), // 'schedule', 'manual', 'api', 'webhook'
+  
+  // Stage progress
+  stages: jsonb("stages"), // [{name, status, startedAt, completedAt, output}, ...]
+  currentStageIndex: integer("current_stage_index").default(0),
+  
+  // ComfyUI jobs
+  comfyuiJobIds: text("comfyui_job_ids").array(),
+  
+  // Status
+  status: varchar("status", { length: 50 }).default("pending"), // pending, running, paused, completed, failed, cancelled
+  errorMessage: text("error_message"),
+  errorStage: varchar("error_stage", { length: 100 }),
+  
+  // Metrics
+  totalDurationMs: integer("total_duration_ms"),
+  gpuTimeMs: integer("gpu_time_ms"),
+  tokensUsed: integer("tokens_used"),
+  
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+/**
+ * Content Templates - Reusable templates for content generation
+ */
+export const contentTemplates = pgTable("content_templates", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  
+  // Template type
+  templateType: varchar("template_type", { length: 50 }).notNull(), // 'script', 'prompt_chain', 'video_structure'
+  
+  // Content
+  content: text("content").notNull(), // Template with {{variables}}
+  variables: jsonb("variables"), // [{name, type, default, description}, ...]
+  
+  // Category
+  category: varchar("category", { length: 100 }),
+  tags: text("tags").array(),
+  
+  // Usage
+  usageCount: integer("usage_count").default(0),
+  
+  isPublic: boolean("is_public").default(false),
+  createdBy: uuid("created_by").references(() => users.id),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+/**
+ * Monetization Hooks - Track revenue and monetization events
+ */
+export const monetizationEvents = pgTable("monetization_events", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  videoProjectId: uuid("video_project_id").references(() => videoProjects.id),
+  personaId: uuid("persona_id").references(() => influencerPersonas.id),
+  
+  // Event type
+  eventType: varchar("event_type", { length: 50 }).notNull(), // 'ad_revenue', 'sponsorship', 'affiliate', 'donation', 'subscription'
+  platform: varchar("platform", { length: 50 }),
+  
+  // Amount
+  amount: decimal("amount", { precision: 12, scale: 4 }).notNull(),
+  currency: varchar("currency", { length: 10 }).default("USD"),
+  
+  // Source details
+  sourceId: varchar("source_id", { length: 255 }), // External ID from platform
+  sourceData: jsonb("source_data"), // Raw data from platform
+  
+  // Attribution
+  attributionWindow: varchar("attribution_window", { length: 50 }), // '7d', '28d', etc.
+  
+  eventAt: timestamp("event_at").notNull(),
+  recordedAt: timestamp("recorded_at").defaultNow(),
+});
+
+/**
+ * Scheduled Jobs - Cron-style scheduling for pipeline automation
+ */
+export const scheduledJobs = pgTable("scheduled_jobs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  
+  // Job type
+  jobType: varchar("job_type", { length: 50 }).notNull(), // 'pipeline_run', 'publish', 'analytics_sync', 'cleanup'
+  
+  // Target
+  targetId: uuid("target_id"), // Pipeline ID, Video ID, etc.
+  targetType: varchar("target_type", { length: 50 }), // 'pipeline', 'video', 'persona'
+  
+  // Schedule
+  cronExpression: varchar("cron_expression", { length: 100 }).notNull(),
+  timezone: varchar("timezone", { length: 50 }).default("UTC"),
+  
+  // Execution params
+  params: jsonb("params"),
+  
+  // Status
+  isEnabled: boolean("is_enabled").default(true),
+  lastRunAt: timestamp("last_run_at"),
+  nextRunAt: timestamp("next_run_at"),
+  lastRunStatus: varchar("last_run_status", { length: 50 }),
+  lastRunError: text("last_run_error"),
+  consecutiveFailures: integer("consecutive_failures").default(0),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Type exports for AI Influencer Pipeline
+export type InfluencerPersona = typeof influencerPersonas.$inferSelect;
+export type NewInfluencerPersona = typeof influencerPersonas.$inferInsert;
+export type ContentPipeline = typeof contentPipelines.$inferSelect;
+export type NewContentPipeline = typeof contentPipelines.$inferInsert;
+export type VideoProject = typeof videoProjects.$inferSelect;
+export type NewVideoProject = typeof videoProjects.$inferInsert;
+export type ContentPipelineRun = typeof contentPipelineRuns.$inferSelect;
+export type NewContentPipelineRun = typeof contentPipelineRuns.$inferInsert;
+export type ContentTemplate = typeof contentTemplates.$inferSelect;
+export type NewContentTemplate = typeof contentTemplates.$inferInsert;
+export type MonetizationEvent = typeof monetizationEvents.$inferSelect;
+export type NewMonetizationEvent = typeof monetizationEvents.$inferInsert;
+export type ScheduledJob = typeof scheduledJobs.$inferSelect;
+export type NewScheduledJob = typeof scheduledJobs.$inferInsert;
