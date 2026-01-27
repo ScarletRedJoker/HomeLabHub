@@ -20,6 +20,8 @@ import { providerRegistry, type ChatMessage, type CompletionResponse } from './p
 import { TOOL_DEFINITIONS, executeTool, type ToolResult } from './tools';
 import { repoManager, type FilePatch } from './repo-manager';
 import { aiLogger } from '../logger';
+import { contextManager, type ContextSummary } from './context-manager';
+import { remoteExecutor, type RemoteExecutionConfig } from './remote-executor';
 
 export type JobStatus = 
   | 'pending'
@@ -34,6 +36,62 @@ export type JobStatus =
 
 export type JobType = 'feature' | 'bugfix' | 'refactor' | 'test' | 'docs';
 
+export interface AutoApprovalRule {
+  id: string;
+  name: string;
+  enabled: boolean;
+  conditions: {
+    maxFilesChanged?: number;
+    maxLinesChanged?: number;
+    allowedPaths?: string[];
+    excludedPaths?: string[];
+    requireTestsPass?: boolean;
+    requireBuildPass?: boolean;
+    jobTypes?: string[];
+  };
+}
+
+export interface BuildVerificationResult {
+  success: boolean;
+  output: string;
+  errors: string[];
+  buildSystem: 'npm' | 'cargo' | 'go' | 'python' | 'unknown';
+}
+
+export const DEFAULT_AUTO_APPROVAL_RULES: AutoApprovalRule[] = [
+  {
+    id: 'docs-only',
+    name: 'Documentation Only',
+    enabled: true,
+    conditions: {
+      allowedPaths: ['**/*.md', '**/README*', '**/docs/**'],
+      jobTypes: ['docs'],
+    },
+  },
+  {
+    id: 'test-only',
+    name: 'Test Only Changes',
+    enabled: true,
+    conditions: {
+      allowedPaths: ['**/*.test.ts', '**/*.test.tsx', '**/*.spec.ts', '**/*.spec.tsx', '**/tests/**', '**/__tests__/**'],
+      jobTypes: ['test'],
+      requireTestsPass: true,
+    },
+  },
+  {
+    id: 'small-changes',
+    name: 'Small Safe Changes',
+    enabled: true,
+    conditions: {
+      maxFilesChanged: 2,
+      maxLinesChanged: 50,
+      excludedPaths: ['**/lib/db/**', '**/lib/auth/**', '**/migrations/**', '**/*.sql'],
+      requireTestsPass: true,
+      requireBuildPass: true,
+    },
+  },
+];
+
 export interface CreateJobParams {
   title: string;
   description?: string;
@@ -42,6 +100,15 @@ export interface CreateJobParams {
   provider?: string;
   model?: string;
   createdBy?: string;
+  useBranchIsolation?: boolean;
+  branchPrefix?: string;
+  remoteConfig?: RemoteExecutionConfig;
+}
+
+export interface BranchIsolationMetadata {
+  branchName?: string;
+  originalBranch?: string;
+  branchMerged?: boolean;
 }
 
 export interface JobExecutionResult {
@@ -49,9 +116,15 @@ export interface JobExecutionResult {
   patches: FilePatch[];
   testsRun: boolean;
   testsPassed: boolean;
+  buildRun: boolean;
+  buildPassed: boolean;
+  buildOutput?: string;
+  autoApproved: boolean;
+  autoApprovalRule?: string;
   tokensUsed: number;
   durationMs: number;
   error?: string;
+  contextSummary?: ContextSummary;
 }
 
 const SYSTEM_PROMPT = `You are an expert software engineer working on the Nebula Command platform.
@@ -125,12 +198,20 @@ export class AIDevOrchestrator {
       .where(eq(aiDevJobs.id, jobId));
   }
 
-  async executeJob(jobId: string): Promise<JobExecutionResult> {
-    const context = aiLogger.startRequest('ollama', 'execute_job', { jobId });
+  async executeJob(jobId: string, options?: { useBranchIsolation?: boolean; branchPrefix?: string; remoteConfig?: RemoteExecutionConfig }): Promise<JobExecutionResult> {
+    const logContext = aiLogger.startRequest('ollama', 'execute_job', { jobId });
     const startTime = Date.now();
     const abortController = new AbortController();
     
     this.activeJobs.set(jobId, abortController);
+
+    const useBranchIsolation = options?.useBranchIsolation ?? true;
+    const branchPrefix = options?.branchPrefix ?? 'ai-dev';
+    const remoteConfig = options?.remoteConfig;
+    let originalBranch: string | undefined;
+    let jobBranchName: string | undefined;
+
+    contextManager.createContext(jobId);
 
     try {
       const job = await this.getJob(jobId);
@@ -139,6 +220,27 @@ export class AIDevOrchestrator {
       }
 
       await this.updateJobStatus(jobId, 'planning');
+
+      if (useBranchIsolation) {
+        originalBranch = await repoManager.getCurrentBranch();
+        const branchResult = await repoManager.createJobBranch(jobId, branchPrefix);
+        
+        if (!branchResult.success) {
+          throw new Error(`Failed to create job branch: ${branchResult.error}`);
+        }
+        
+        jobBranchName = branchResult.branchName;
+        
+        const branchMetadata: BranchIsolationMetadata = {
+          branchName: jobBranchName,
+          originalBranch,
+          branchMerged: false,
+        };
+        
+        await this.updateJobStatus(jobId, 'planning', {
+          branchMetadata: branchMetadata as any,
+        });
+      }
 
       const provider = providerRegistry.getProvider(job.provider || undefined);
       const patches: FilePatch[] = [];
@@ -176,7 +278,7 @@ export class AIDevOrchestrator {
           });
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'AI provider error';
-          aiLogger.logError(context, new Error(errorMessage));
+          aiLogger.logError(logContext, new Error(errorMessage));
           throw error;
         }
 
@@ -209,7 +311,30 @@ export class AIDevOrchestrator {
 
         for (const toolCall of response.toolCalls) {
           const args = JSON.parse(toolCall.function.arguments);
-          const toolResult = await executeTool(toolCall.function.name, args);
+          const toolResult = await executeTool(toolCall.function.name, args, remoteConfig);
+
+          await contextManager.recordDecision(
+            jobId,
+            iterations,
+            toolCall.function.name,
+            `Called ${toolCall.function.name} with args: ${JSON.stringify(args).substring(0, 200)}`
+          );
+
+          if (toolCall.function.name === 'read_file' && toolResult.success) {
+            await contextManager.recordFileRead(
+              jobId,
+              args.path,
+              typeof toolResult.output === 'string' ? toolResult.output : JSON.stringify(toolResult.output)
+            );
+          }
+
+          if ((toolCall.function.name === 'search_code' || toolCall.function.name === 'search_files') && toolResult.success) {
+            await contextManager.recordSearch(
+              jobId,
+              args.query || args.pattern || '',
+              Array.isArray(toolResult.output) ? toolResult.output : []
+            );
+          }
 
           if (toolCall.function.name === 'write_file' && toolResult.success) {
             const patch = await repoManager.generatePatch(
@@ -240,11 +365,20 @@ export class AIDevOrchestrator {
 
       let testsRun = false;
       let testsPassed = true;
+      let buildRun = false;
+      let buildPassed = true;
+      let buildOutput = '';
 
       if (patches.length > 0) {
         const testResult = await executeTool('run_tests', {});
         testsRun = true;
         testsPassed = testResult.success && (testResult.output as { passed?: boolean })?.passed !== false;
+
+        const targetDir = job.targetRepo || 'services/dashboard-next';
+        const buildResult = await this.runBuildVerification(targetDir);
+        buildRun = true;
+        buildPassed = buildResult.success;
+        buildOutput = buildResult.output.substring(0, 10000);
       }
 
       const filesModified = patches.map(p => p.filePath);
@@ -253,15 +387,47 @@ export class AIDevOrchestrator {
         filesModified,
         testsRun,
         testsPassed,
+        buildRun,
+        buildPassed,
+        buildOutput,
         tokensUsed: totalTokens,
         durationMs: Date.now() - startTime,
         completedAt: new Date(),
       });
 
-      aiLogger.endRequest(context, true, {
+      const jobPatches = await this.getJobPatches(jobId);
+      const updatedJob = await this.getJob(jobId);
+      
+      const autoApprovalResult = this.evaluateAutoApprovalRules(
+        updatedJob!,
+        jobPatches,
+        testsRun,
+        testsPassed,
+        buildRun,
+        buildPassed
+      );
+
+      let autoApproved = false;
+      let autoApprovalRule: string | undefined;
+
+      if (autoApprovalResult.approved && autoApprovalResult.rule) {
+        const approvalSuccess = await this.autoApproveJob(jobId, autoApprovalResult.rule);
+        if (approvalSuccess) {
+          autoApproved = true;
+          autoApprovalRule = autoApprovalResult.rule.id;
+        }
+      }
+
+      const ctxSummary = await contextManager.summarizeContext(jobId);
+
+      aiLogger.endRequest(logContext, true, {
         patchCount: patches.length,
         testsRun,
         testsPassed,
+        buildRun,
+        buildPassed,
+        autoApproved,
+        autoApprovalRule,
         tokensUsed: totalTokens,
         durationMs: Date.now() - startTime,
       });
@@ -271,8 +437,14 @@ export class AIDevOrchestrator {
         patches,
         testsRun,
         testsPassed,
+        buildRun,
+        buildPassed,
+        buildOutput,
+        autoApproved,
+        autoApprovalRule,
         tokensUsed: totalTokens,
         durationMs: Date.now() - startTime,
+        contextSummary: ctxSummary || undefined,
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -282,19 +454,23 @@ export class AIDevOrchestrator {
         durationMs: Date.now() - startTime,
       });
 
-      aiLogger.logError(context, error as Error);
+      aiLogger.logError(logContext, error as Error);
 
       return {
         success: false,
         patches: [],
         testsRun: false,
         testsPassed: false,
+        buildRun: false,
+        buildPassed: false,
+        autoApproved: false,
         tokensUsed: 0,
         durationMs: Date.now() - startTime,
         error: errorMessage,
       };
     } finally {
       this.activeJobs.delete(jobId);
+      await contextManager.clearContext(jobId);
     }
   }
 
@@ -310,13 +486,15 @@ export class AIDevOrchestrator {
     return false;
   }
 
-  async approveJob(jobId: string, reviewerId?: string, comments?: string): Promise<boolean> {
+  async approveJob(jobId: string, reviewerId?: string, comments?: string, options?: { mergeBranch?: boolean }): Promise<boolean> {
     const job = await this.getJob(jobId);
     if (!job || job.status !== 'review') {
       return false;
     }
 
     const patches = await this.getJobPatches(jobId);
+    const branchMetadata = job.branchMetadata as BranchIsolationMetadata | null;
+    const shouldMergeBranch = options?.mergeBranch ?? true;
 
     for (const patch of patches) {
       const filePatch: FilePatch = {
@@ -342,7 +520,24 @@ export class AIDevOrchestrator {
         .where(eq(aiDevPatches.id, patch.id));
     }
 
-    // Create approval record
+    if (branchMetadata?.branchName && branchMetadata?.originalBranch && shouldMergeBranch) {
+      const mergeResult = await repoManager.mergeJobBranch(
+        branchMetadata.branchName,
+        branchMetadata.originalBranch
+      );
+      
+      if (mergeResult.success) {
+        const updatedMetadata: BranchIsolationMetadata = {
+          ...branchMetadata,
+          branchMerged: true,
+        };
+        
+        await this.updateJobStatus(jobId, job.status as JobStatus, {
+          branchMetadata: updatedMetadata as any,
+        });
+      }
+    }
+
     await db.insert(aiDevApprovals).values({
       jobId,
       decision: 'approved',
@@ -382,13 +577,15 @@ export class AIDevOrchestrator {
     return true;
   }
 
-  async rollbackJob(jobId: string): Promise<boolean> {
+  async rollbackJob(jobId: string, options?: { deleteBranch?: boolean }): Promise<boolean> {
     const job = await this.getJob(jobId);
     if (!job || job.status !== 'applied') {
       return false;
     }
 
     const patches = await this.getJobPatches(jobId);
+    const branchMetadata = job.branchMetadata as BranchIsolationMetadata | null;
+    const shouldDeleteBranch = options?.deleteBranch ?? false;
 
     for (const patch of patches.reverse()) {
       const filePatch: FilePatch = {
@@ -411,7 +608,247 @@ export class AIDevOrchestrator {
         .where(eq(aiDevPatches.id, patch.id));
     }
 
+    if (branchMetadata?.originalBranch) {
+      await repoManager.switchBranch(branchMetadata.originalBranch);
+    }
+
+    if (branchMetadata?.branchName && shouldDeleteBranch) {
+      await repoManager.deleteJobBranch(branchMetadata.branchName);
+    }
+
     await this.updateJobStatus(jobId, 'rolled_back');
+    return true;
+  }
+
+  async runBuildVerification(targetDir: string = 'services/dashboard-next'): Promise<BuildVerificationResult> {
+    const context = aiLogger.startRequest('ollama', 'build_verification', { targetDir });
+    
+    try {
+      const checkFile = async (filePath: string): Promise<boolean> => {
+        const result = await executeTool('run_command', { 
+          command: `test -f "${filePath}" && echo "exists"`,
+          timeout: 5000 
+        });
+        return result.success && (result.output as { stdout?: string })?.stdout?.includes('exists');
+      };
+
+      const hasPackageJson = await checkFile(`${targetDir}/package.json`);
+      const hasCargoToml = await checkFile(`${targetDir}/Cargo.toml`);
+      const hasGoMod = await checkFile(`${targetDir}/go.mod`);
+      const hasPyProject = await checkFile(`${targetDir}/pyproject.toml`) || await checkFile(`${targetDir}/setup.py`);
+
+      let buildCommand: string;
+      let buildSystem: BuildVerificationResult['buildSystem'];
+
+      if (hasPackageJson) {
+        buildSystem = 'npm';
+        const pkgJsonResult = await executeTool('read_file', { path: `${targetDir}/package.json` });
+        if (pkgJsonResult.success) {
+          const pkgJson = JSON.parse(pkgJsonResult.output as string);
+          if (pkgJson.scripts?.typecheck) {
+            buildCommand = `cd ${targetDir} && npm run typecheck`;
+          } else if (pkgJson.scripts?.build) {
+            buildCommand = `cd ${targetDir} && npm run build`;
+          } else {
+            buildCommand = `cd ${targetDir} && npx tsc --noEmit`;
+          }
+        } else {
+          buildCommand = `cd ${targetDir} && npx tsc --noEmit`;
+        }
+      } else if (hasCargoToml) {
+        buildSystem = 'cargo';
+        buildCommand = `cd ${targetDir} && cargo build --release`;
+      } else if (hasGoMod) {
+        buildSystem = 'go';
+        buildCommand = `cd ${targetDir} && go build ./...`;
+      } else if (hasPyProject) {
+        buildSystem = 'python';
+        buildCommand = `cd ${targetDir} && python -m py_compile *.py`;
+      } else {
+        buildSystem = 'unknown';
+        aiLogger.endRequest(context, true, { buildSystem, skipped: true });
+        return { success: true, output: 'No build system detected, skipping build verification', errors: [], buildSystem };
+      }
+
+      const result = await executeTool('run_command', {
+        command: buildCommand,
+        timeout: 300000,
+      });
+
+      const output = result.output as { stdout?: string; stderr?: string } | null;
+      const stdout = output?.stdout || '';
+      const stderr = output?.stderr || '';
+      const errors: string[] = [];
+
+      if (!result.success) {
+        const errorLines = stderr.split('\n').filter(line => 
+          line.toLowerCase().includes('error') || 
+          line.includes('TS') ||
+          line.includes('cannot find')
+        );
+        errors.push(...errorLines.slice(0, 20));
+      }
+
+      aiLogger.endRequest(context, result.success, { buildSystem, errorCount: errors.length });
+
+      return {
+        success: result.success,
+        output: stdout + '\n' + stderr,
+        errors,
+        buildSystem,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown build error';
+      aiLogger.logError(context, errorMessage);
+      return {
+        success: false,
+        output: errorMessage,
+        errors: [errorMessage],
+        buildSystem: 'unknown',
+      };
+    }
+  }
+
+  private matchesGlobPattern(filePath: string, pattern: string): boolean {
+    const regexPattern = pattern
+      .replace(/\*\*/g, '{{GLOBSTAR}}')
+      .replace(/\*/g, '[^/]*')
+      .replace(/\{\{GLOBSTAR\}\}/g, '.*')
+      .replace(/\?/g, '.');
+    
+    const regex = new RegExp(`^${regexPattern}$`);
+    return regex.test(filePath);
+  }
+
+  evaluateAutoApprovalRules(
+    job: AIDevJob,
+    patches: AIDevPatch[],
+    testsRun: boolean,
+    testsPassed: boolean,
+    buildRun: boolean,
+    buildPassed: boolean,
+    rules: AutoApprovalRule[] = DEFAULT_AUTO_APPROVAL_RULES
+  ): { approved: boolean; rule?: AutoApprovalRule } {
+    for (const rule of rules) {
+      if (!rule.enabled) continue;
+
+      const { conditions } = rule;
+      let matches = true;
+
+      if (conditions.jobTypes?.length) {
+        if (!conditions.jobTypes.includes(job.type || '')) {
+          matches = false;
+          continue;
+        }
+      }
+
+      if (conditions.maxFilesChanged !== undefined) {
+        if (patches.length > conditions.maxFilesChanged) {
+          matches = false;
+          continue;
+        }
+      }
+
+      if (conditions.maxLinesChanged !== undefined) {
+        const totalLines = patches.reduce((sum, patch) => {
+          const stats = patch.diffStats as { additions?: number; deletions?: number } | null;
+          return sum + (stats?.additions || 0) + (stats?.deletions || 0);
+        }, 0);
+        if (totalLines > conditions.maxLinesChanged) {
+          matches = false;
+          continue;
+        }
+      }
+
+      if (conditions.allowedPaths?.length) {
+        const allFilesMatch = patches.every(patch => 
+          conditions.allowedPaths!.some(pattern => this.matchesGlobPattern(patch.filePath, pattern))
+        );
+        if (!allFilesMatch) {
+          matches = false;
+          continue;
+        }
+      }
+
+      if (conditions.excludedPaths?.length) {
+        const anyFileExcluded = patches.some(patch => 
+          conditions.excludedPaths!.some(pattern => this.matchesGlobPattern(patch.filePath, pattern))
+        );
+        if (anyFileExcluded) {
+          matches = false;
+          continue;
+        }
+      }
+
+      if (conditions.requireTestsPass) {
+        if (!testsRun || !testsPassed) {
+          matches = false;
+          continue;
+        }
+      }
+
+      if (conditions.requireBuildPass) {
+        if (!buildRun || !buildPassed) {
+          matches = false;
+          continue;
+        }
+      }
+
+      if (matches) {
+        return { approved: true, rule };
+      }
+    }
+
+    return { approved: false };
+  }
+
+  async autoApproveJob(jobId: string, rule: AutoApprovalRule): Promise<boolean> {
+    const job = await this.getJob(jobId);
+    if (!job || job.status !== 'review') {
+      return false;
+    }
+
+    const patches = await this.getJobPatches(jobId);
+
+    for (const patch of patches) {
+      const filePatch: FilePatch = {
+        filePath: patch.filePath,
+        patchType: patch.patchType as 'create' | 'modify' | 'delete' | 'rename',
+        originalContent: patch.originalContent,
+        newContent: patch.newContent,
+        diffUnified: patch.diffUnified || '',
+        diffStats: (patch.diffStats as { additions: number; deletions: number; hunks: number; files: number }) || { additions: 0, deletions: 0, hunks: 0, files: 0 },
+      };
+
+      const result = await repoManager.applyPatch(filePatch);
+      
+      if (!result.success) {
+        await this.updateJobStatus(jobId, 'failed', {
+          errorMessage: `Auto-approval failed: ${result.error}`,
+        });
+        return false;
+      }
+
+      await db.update(aiDevPatches)
+        .set({ status: 'applied', appliedAt: new Date() })
+        .where(eq(aiDevPatches.id, patch.id));
+    }
+
+    await db.insert(aiDevApprovals).values({
+      jobId,
+      decision: 'approved',
+      comments: `Auto-approved by rule: ${rule.name}`,
+      reviewedPatches: patches.map(p => p.id),
+      reviewedBy: null,
+      reviewedAt: new Date(),
+      isAutoApproved: true,
+      autoApprovalRule: rule.id,
+    });
+
+    await this.updateJobStatus(jobId, 'applied', {
+      autoApprovalRule: rule.id,
+    });
+
     return true;
   }
 
@@ -450,6 +887,12 @@ Begin by reading the relevant files to understand the codebase.`;
     action: string;
     status: string | null;
     durationMs: number | null;
+    tokensUsed: number | null;
+    input: unknown;
+    output: unknown;
+    errorMessage: string | null;
+    startedAt: Date | null;
+    completedAt: Date | null;
     createdAt: Date | null;
   }>> {
     return db.select({
@@ -459,6 +902,12 @@ Begin by reading the relevant files to understand the codebase.`;
       action: aiDevRuns.action,
       status: aiDevRuns.status,
       durationMs: aiDevRuns.durationMs,
+      tokensUsed: aiDevRuns.tokensUsed,
+      input: aiDevRuns.input,
+      output: aiDevRuns.output,
+      errorMessage: aiDevRuns.errorMessage,
+      startedAt: aiDevRuns.startedAt,
+      completedAt: aiDevRuns.completedAt,
       createdAt: aiDevRuns.createdAt,
     })
     .from(aiDevRuns)

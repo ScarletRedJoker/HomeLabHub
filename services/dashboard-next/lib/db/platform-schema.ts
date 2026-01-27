@@ -1551,7 +1551,16 @@ export const aiDevJobs = pgTable("ai_dev_jobs", {
   filesModified: text("files_modified").array(),
   testsRun: boolean("tests_run").default(false),
   testsPassed: boolean("tests_passed"),
+  buildRun: boolean("build_run").default(false),
+  buildPassed: boolean("build_passed"),
+  buildOutput: text("build_output"),
   errorMessage: text("error_message"),
+  
+  // Branch isolation
+  branchMetadata: jsonb("branch_metadata"),
+  
+  // Auto-approval
+  autoApprovalRule: varchar("auto_approval_rule", { length: 100 }),
   
   // Metrics
   tokensUsed: integer("tokens_used"),

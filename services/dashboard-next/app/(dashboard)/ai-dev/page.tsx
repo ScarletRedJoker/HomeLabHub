@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,13 +12,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   Bot, 
   Play, 
   CheckCircle, 
   XCircle, 
   Clock, 
-  RotateCcw,
   Plus,
   FileCode,
   GitBranch,
@@ -28,8 +29,24 @@ import {
   ThumbsUp,
   ThumbsDown,
   Undo2,
-  Activity
+  ChevronDown,
+  ChevronRight,
+  Terminal,
+  Zap,
+  Timer,
+  Sparkles,
+  GitMerge,
+  AlertCircle,
+  FileText,
+  Code,
+  Settings
 } from 'lucide-react';
+
+interface BranchMetadata {
+  branchName?: string;
+  originalBranch?: string;
+  branchMerged?: boolean;
+}
 
 interface Job {
   id: string;
@@ -43,9 +60,16 @@ interface Job {
   filesModified: string[] | null;
   testsRun: boolean | null;
   testsPassed: boolean | null;
+  buildRun: boolean | null;
+  buildPassed: boolean | null;
+  buildOutput: string | null;
   tokensUsed: number | null;
   durationMs: number | null;
   errorMessage: string | null;
+  branchMetadata: BranchMetadata | null;
+  autoApprovalRule: string | null;
+  context: unknown;
+  plan: unknown;
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
@@ -65,6 +89,31 @@ interface Patch {
   status: string;
   appliedAt: string | null;
   rolledBackAt: string | null;
+}
+
+interface ExecutionRun {
+  id: string;
+  stepIndex: number | null;
+  stepName: string | null;
+  action: string;
+  status: string | null;
+  durationMs: number | null;
+  tokensUsed: number | null;
+  input: unknown;
+  output: unknown;
+  errorMessage: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string | null;
+}
+
+interface Approval {
+  id: string;
+  decision: string;
+  comments: string | null;
+  isAutoApproved: boolean;
+  autoApprovalRule: string | null;
+  reviewedAt: string | null;
 }
 
 interface Provider {
@@ -97,15 +146,135 @@ const typeIcons: Record<string, React.ReactNode> = {
   docs: <FileCode className="h-4 w-4" />,
 };
 
+function DiffViewer({ diff }: { diff: string }) {
+  const lines = diff.split('\n');
+  
+  return (
+    <pre className="text-xs font-mono overflow-x-auto p-3 bg-muted rounded-lg">
+      {lines.map((line, index) => {
+        let className = '';
+        if (line.startsWith('+') && !line.startsWith('+++')) {
+          className = 'text-green-500 bg-green-500/10';
+        } else if (line.startsWith('-') && !line.startsWith('---')) {
+          className = 'text-red-500 bg-red-500/10';
+        } else if (line.startsWith('@@')) {
+          className = 'text-blue-400 bg-blue-500/10';
+        } else if (line.startsWith('diff') || line.startsWith('index')) {
+          className = 'text-muted-foreground';
+        }
+        
+        return (
+          <div key={index} className={`${className} whitespace-pre`}>
+            {line}
+          </div>
+        );
+      })}
+    </pre>
+  );
+}
+
+function ExecutionProgress({ job, runs }: { job: Job; runs: ExecutionRun[] }) {
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const isExecuting = ['planning', 'executing'].includes(job.status);
+  
+  useEffect(() => {
+    if (!isExecuting) return;
+    
+    const startTime = new Date(job.createdAt).getTime();
+    const interval = setInterval(() => {
+      setElapsedTime(Date.now() - startTime);
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [isExecuting, job.createdAt]);
+
+  const currentStep = runs.length;
+  const maxSteps = 20;
+  const progress = Math.min((currentStep / maxSteps) * 100, 95);
+  const totalTokens = runs.reduce((sum, run) => sum + (run.tokensUsed || 0), 0);
+  const latestRun = runs[runs.length - 1];
+
+  const formatElapsed = (ms: number) => {
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  if (!isExecuting && !job.durationMs) return null;
+
+  return (
+    <Card className="border-yellow-500/50 bg-yellow-500/5">
+      <CardContent className="pt-4">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {isExecuting ? (
+                <Loader2 className="h-4 w-4 animate-spin text-yellow-500" />
+              ) : (
+                <CheckCircle className="h-4 w-4 text-green-500" />
+              )}
+              <span className="font-medium">
+                {isExecuting ? 'Executing...' : 'Completed'}
+              </span>
+            </div>
+            <Badge variant="outline">
+              Step {currentStep} of ~{maxSteps}
+            </Badge>
+          </div>
+
+          <Progress value={isExecuting ? progress : 100} className="h-2" />
+
+          <div className="grid grid-cols-3 gap-4 text-sm">
+            <div className="flex items-center gap-2">
+              <Timer className="h-4 w-4 text-muted-foreground" />
+              <span>
+                {isExecuting ? formatElapsed(elapsedTime) : formatDuration(job.durationMs)}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Zap className="h-4 w-4 text-muted-foreground" />
+              <span>{totalTokens.toLocaleString()} tokens</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Terminal className="h-4 w-4 text-muted-foreground" />
+              <span>{currentStep} steps</span>
+            </div>
+          </div>
+
+          {isExecuting && latestRun && (
+            <div className="text-sm text-muted-foreground bg-muted/50 rounded p-2">
+              <span className="font-medium">Current: </span>
+              {latestRun.action === 'tool_calls' ? 'Executing tools' : 'Processing response'}
+              {latestRun.stepName && ` (${latestRun.stepName})`}
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function formatDuration(ms: number | null) {
+  if (!ms) return '-';
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${(ms / 60000).toFixed(1)}m`;
+}
+
 export default function AIDevPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [jobPatches, setJobPatches] = useState<Patch[]>([]);
+  const [jobRuns, setJobRuns] = useState<ExecutionRun[]>([]);
+  const [jobApprovals, setJobApprovals] = useState<Approval[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [expandedRuns, setExpandedRuns] = useState<Set<string>>(new Set());
+  const [expandedPatches, setExpandedPatches] = useState<Set<string>>(new Set());
 
   const [newJob, setNewJob] = useState({
     title: '',
@@ -115,6 +284,10 @@ export default function AIDevPage() {
     provider: 'ollama',
     autoExecute: false,
   });
+
+  const hasExecutingJob = useMemo(() => {
+    return jobs.some(job => ['planning', 'executing'].includes(job.status));
+  }, [jobs]);
 
   const fetchJobs = useCallback(async () => {
     try {
@@ -146,7 +319,9 @@ export default function AIDevPage() {
       const data = await response.json();
       if (data.success) {
         setSelectedJob(data.job);
-        setJobPatches(data.patches);
+        setJobPatches(data.patches || []);
+        setJobRuns(data.runs || []);
+        setJobApprovals(data.approvals || []);
       }
     } catch (error) {
       console.error('Failed to fetch job details:', error);
@@ -160,10 +335,21 @@ export default function AIDevPage() {
       setLoading(false);
     };
     loadData();
-
-    const interval = setInterval(fetchJobs, 5000);
-    return () => clearInterval(interval);
   }, [fetchJobs, fetchProviders]);
+
+  useEffect(() => {
+    const interval = setInterval(fetchJobs, hasExecutingJob ? 2000 : 5000);
+    return () => clearInterval(interval);
+  }, [fetchJobs, hasExecutingJob]);
+
+  useEffect(() => {
+    if (selectedJob && detailDialogOpen && ['planning', 'executing'].includes(selectedJob.status)) {
+      const interval = setInterval(() => {
+        fetchJobDetails(selectedJob.id);
+      }, 2000);
+      return () => clearInterval(interval);
+    }
+  }, [selectedJob, detailDialogOpen, fetchJobDetails]);
 
   const handleCreateJob = async () => {
     setActionLoading('create');
@@ -218,11 +404,28 @@ export default function AIDevPage() {
     }
   };
 
-  const formatDuration = (ms: number | null) => {
-    if (!ms) return '-';
-    if (ms < 1000) return `${ms}ms`;
-    if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-    return `${(ms / 60000).toFixed(1)}m`;
+  const toggleRunExpanded = (runId: string) => {
+    setExpandedRuns(prev => {
+      const next = new Set(prev);
+      if (next.has(runId)) {
+        next.delete(runId);
+      } else {
+        next.add(runId);
+      }
+      return next;
+    });
+  };
+
+  const togglePatchExpanded = (patchId: string) => {
+    setExpandedPatches(prev => {
+      const next = new Set(prev);
+      if (next.has(patchId)) {
+        next.delete(patchId);
+      } else {
+        next.add(patchId);
+      }
+      return next;
+    });
   };
 
   if (loading) {
@@ -367,14 +570,25 @@ export default function AIDevPage() {
               </Card>
             ) : (
               jobs.map((job) => (
-                <Card key={job.id} className="hover:border-primary/50 transition-colors">
+                <Card key={job.id} className={`hover:border-primary/50 transition-colors ${['planning', 'executing'].includes(job.status) ? 'border-yellow-500/50' : ''}`}>
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">
                         {typeIcons[job.type] || <FileCode className="h-4 w-4" />}
                         <CardTitle className="text-lg">{job.title}</CardTitle>
+                        {job.autoApprovalRule && (
+                          <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600">
+                            <Sparkles className="h-3 w-3 mr-1" />
+                            Auto-approved
+                          </Badge>
+                        )}
                       </div>
-                      <Badge className={statusColors[job.status]}>{job.status}</Badge>
+                      <div className="flex items-center gap-2">
+                        {['planning', 'executing'].includes(job.status) && (
+                          <Loader2 className="h-4 w-4 animate-spin text-yellow-500" />
+                        )}
+                        <Badge className={statusColors[job.status]}>{job.status}</Badge>
+                      </div>
                     </div>
                     {job.description && (
                       <CardDescription className="mt-1">{job.description}</CardDescription>
@@ -388,14 +602,27 @@ export default function AIDevPage() {
                           {formatDuration(job.durationMs)}
                         </span>
                         {job.tokensUsed && (
-                          <span>{job.tokensUsed.toLocaleString()} tokens</span>
+                          <span className="flex items-center gap-1">
+                            <Zap className="h-3 w-3" />
+                            {job.tokensUsed.toLocaleString()} tokens
+                          </span>
                         )}
                         {job.filesModified && (
-                          <span>{job.filesModified.length} files modified</span>
+                          <span className="flex items-center gap-1">
+                            <FileCode className="h-3 w-3" />
+                            {job.filesModified.length} files
+                          </span>
                         )}
                         {job.testsRun && (
-                          <span className={job.testsPassed ? 'text-green-500' : 'text-red-500'}>
+                          <span className={`flex items-center gap-1 ${job.testsPassed ? 'text-green-500' : 'text-red-500'}`}>
+                            <CheckCircle className="h-3 w-3" />
                             Tests {job.testsPassed ? 'passed' : 'failed'}
+                          </span>
+                        )}
+                        {job.branchMetadata?.branchName && (
+                          <span className="flex items-center gap-1">
+                            <GitBranch className="h-3 w-3" />
+                            {job.branchMetadata.branchName}
                           </span>
                         )}
                         <span>{job.provider || 'ollama'}</span>
@@ -489,7 +716,8 @@ export default function AIDevPage() {
                       </div>
                     </div>
                     {job.errorMessage && (
-                      <div className="mt-2 text-sm text-red-500 bg-red-500/10 p-2 rounded">
+                      <div className="mt-2 text-sm text-red-500 bg-red-500/10 p-2 rounded flex items-start gap-2">
+                        <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                         {job.errorMessage}
                       </div>
                     )}
@@ -549,104 +777,365 @@ export default function AIDevPage() {
       </Tabs>
 
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh]">
+        <DialogContent className="max-w-4xl max-h-[85vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {selectedJob && typeIcons[selectedJob.type]}
               {selectedJob?.title}
+              {selectedJob?.autoApprovalRule && (
+                <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600">
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  Auto-approved: {selectedJob.autoApprovalRule}
+                </Badge>
+              )}
             </DialogTitle>
             <DialogDescription>{selectedJob?.description}</DialogDescription>
           </DialogHeader>
-          <ScrollArea className="max-h-[60vh]">
-            <div className="space-y-4 p-1">
-              {selectedJob && (
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Status:</span>
-                    <Badge className={`ml-2 ${statusColors[selectedJob.status]}`}>
-                      {selectedJob.status}
-                    </Badge>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Type:</span>
-                    <span className="ml-2 capitalize">{selectedJob.type}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Provider:</span>
-                    <span className="ml-2">{selectedJob.provider || 'ollama'}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Duration:</span>
-                    <span className="ml-2">{formatDuration(selectedJob.durationMs)}</span>
-                  </div>
-                  {selectedJob.tokensUsed && (
-                    <div>
-                      <span className="text-muted-foreground">Tokens:</span>
-                      <span className="ml-2">{selectedJob.tokensUsed.toLocaleString()}</span>
-                    </div>
-                  )}
-                  {selectedJob.testsRun && (
-                    <div>
-                      <span className="text-muted-foreground">Tests:</span>
-                      <span className={`ml-2 ${selectedJob.testsPassed ? 'text-green-500' : 'text-red-500'}`}>
-                        {selectedJob.testsPassed ? 'Passed' : 'Failed'}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
 
-              {jobPatches.length > 0 && (
-                <>
-                  <Separator />
-                  <div>
-                    <h4 className="font-medium mb-2">Patches ({jobPatches.length})</h4>
-                    <div className="space-y-2">
-                      {jobPatches.map((patch) => (
-                        <div key={patch.id} className="border rounded p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <code className="text-sm">{patch.filePath}</code>
+          {selectedJob && ['planning', 'executing'].includes(selectedJob.status) && (
+            <ExecutionProgress job={selectedJob} runs={jobRuns} />
+          )}
+
+          <Tabs defaultValue="overview" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="overview" className="flex items-center gap-1">
+                <FileText className="h-4 w-4" />
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="patches" className="flex items-center gap-1">
+                <Code className="h-4 w-4" />
+                Patches ({jobPatches.length})
+              </TabsTrigger>
+              <TabsTrigger value="logs" className="flex items-center gap-1">
+                <Terminal className="h-4 w-4" />
+                Logs ({jobRuns.length})
+              </TabsTrigger>
+              <TabsTrigger value="context" className="flex items-center gap-1">
+                <Settings className="h-4 w-4" />
+                Context
+              </TabsTrigger>
+            </TabsList>
+
+            <ScrollArea className="h-[50vh] mt-4">
+              <TabsContent value="overview" className="space-y-4 p-1">
+                {selectedJob && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Status:</span>
+                        <Badge className={`ml-2 ${statusColors[selectedJob.status]}`}>
+                          {selectedJob.status}
+                        </Badge>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Type:</span>
+                        <span className="ml-2 capitalize">{selectedJob.type}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Provider:</span>
+                        <span className="ml-2">{selectedJob.provider || 'ollama'}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Duration:</span>
+                        <span className="ml-2">{formatDuration(selectedJob.durationMs)}</span>
+                      </div>
+                      {selectedJob.tokensUsed && (
+                        <div>
+                          <span className="text-muted-foreground">Tokens:</span>
+                          <span className="ml-2">{selectedJob.tokensUsed.toLocaleString()}</span>
+                        </div>
+                      )}
+                      {selectedJob.testsRun && (
+                        <div>
+                          <span className="text-muted-foreground">Tests:</span>
+                          <span className={`ml-2 ${selectedJob.testsPassed ? 'text-green-500' : 'text-red-500'}`}>
+                            {selectedJob.testsPassed ? 'Passed' : 'Failed'}
+                          </span>
+                        </div>
+                      )}
+                      {selectedJob.buildRun && (
+                        <div>
+                          <span className="text-muted-foreground">Build:</span>
+                          <span className={`ml-2 ${selectedJob.buildPassed ? 'text-green-500' : 'text-red-500'}`}>
+                            {selectedJob.buildPassed ? 'Passed' : 'Failed'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {selectedJob.branchMetadata && (
+                      <>
+                        <Separator />
+                        <div>
+                          <h4 className="font-medium mb-2 flex items-center gap-2">
+                            <GitBranch className="h-4 w-4" />
+                            Branch Information
+                          </h4>
+                          <div className="grid grid-cols-2 gap-4 text-sm bg-muted/50 rounded p-3">
+                            {selectedJob.branchMetadata.branchName && (
+                              <div>
+                                <span className="text-muted-foreground">Current Branch:</span>
+                                <code className="ml-2 bg-muted px-1 rounded">{selectedJob.branchMetadata.branchName}</code>
+                              </div>
+                            )}
+                            {selectedJob.branchMetadata.originalBranch && (
+                              <div>
+                                <span className="text-muted-foreground">Original Branch:</span>
+                                <code className="ml-2 bg-muted px-1 rounded">{selectedJob.branchMetadata.originalBranch}</code>
+                              </div>
+                            )}
+                            <div>
+                              <span className="text-muted-foreground">Merge Status:</span>
+                              <Badge variant="outline" className={`ml-2 ${selectedJob.branchMetadata.branchMerged ? 'bg-green-500/10 text-green-600' : ''}`}>
+                                {selectedJob.branchMetadata.branchMerged ? (
+                                  <>
+                                    <GitMerge className="h-3 w-3 mr-1" />
+                                    Merged
+                                  </>
+                                ) : 'Not Merged'}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {jobApprovals.length > 0 && (
+                      <>
+                        <Separator />
+                        <div>
+                          <h4 className="font-medium mb-2">Approvals</h4>
+                          <div className="space-y-2">
+                            {jobApprovals.map((approval) => (
+                              <div key={approval.id} className="border rounded p-3 text-sm">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant={approval.decision === 'approved' ? 'default' : 'destructive'}>
+                                      {approval.decision}
+                                    </Badge>
+                                    {approval.isAutoApproved && (
+                                      <Badge variant="outline" className="bg-green-500/10 text-green-600">
+                                        <Sparkles className="h-3 w-3 mr-1" />
+                                        Auto: {approval.autoApprovalRule}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <span className="text-muted-foreground">
+                                    {approval.reviewedAt && new Date(approval.reviewedAt).toLocaleString()}
+                                  </span>
+                                </div>
+                                {approval.comments && (
+                                  <p className="mt-2 text-muted-foreground">{approval.comments}</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {selectedJob.errorMessage && (
+                      <>
+                        <Separator />
+                        <div>
+                          <h4 className="font-medium mb-2 text-red-500 flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4" />
+                            Error
+                          </h4>
+                          <div className="bg-red-500/10 p-3 rounded text-sm text-red-500">
+                            {selectedJob.errorMessage}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+              </TabsContent>
+
+              <TabsContent value="patches" className="space-y-4 p-1">
+                {jobPatches.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No patches generated yet
+                  </div>
+                ) : (
+                  jobPatches.map((patch) => (
+                    <Collapsible
+                      key={patch.id}
+                      open={expandedPatches.has(patch.id)}
+                      onOpenChange={() => togglePatchExpanded(patch.id)}
+                    >
+                      <div className="border rounded-lg">
+                        <CollapsibleTrigger asChild>
+                          <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-muted/50">
+                            <div className="flex items-center gap-2">
+                              {expandedPatches.has(patch.id) ? (
+                                <ChevronDown className="h-4 w-4" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4" />
+                              )}
+                              <FileCode className="h-4 w-4" />
+                              <code className="text-sm">{patch.filePath}</code>
+                            </div>
                             <div className="flex items-center gap-2">
                               <Badge variant="outline">{patch.patchType}</Badge>
                               <Badge variant={patch.status === 'applied' ? 'default' : 'secondary'}>
                                 {patch.status}
                               </Badge>
+                              {patch.diffStats && (
+                                <div className="text-xs text-muted-foreground">
+                                  <span className="text-green-500">+{patch.diffStats.additions}</span>
+                                  {' / '}
+                                  <span className="text-red-500">-{patch.diffStats.deletions}</span>
+                                </div>
+                              )}
                             </div>
                           </div>
-                          {patch.diffStats && (
-                            <div className="text-xs text-muted-foreground">
-                              <span className="text-green-500">+{patch.diffStats.additions}</span>
-                              {' / '}
-                              <span className="text-red-500">-{patch.diffStats.deletions}</span>
-                              {' / '}
-                              <span>{patch.diffStats.hunks} hunks</span>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          {patch.diffUnified && (
+                            <div className="border-t p-3">
+                              <DiffViewer diff={patch.diffUnified} />
                             </div>
                           )}
-                          {patch.diffUnified && (
-                            <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-x-auto max-h-48">
-                              {patch.diffUnified}
-                            </pre>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
+                        </CollapsibleContent>
+                      </div>
+                    </Collapsible>
+                  ))
+                )}
+              </TabsContent>
 
-              {selectedJob?.errorMessage && (
-                <>
-                  <Separator />
-                  <div>
-                    <h4 className="font-medium mb-2 text-red-500">Error</h4>
-                    <div className="bg-red-500/10 p-3 rounded text-sm text-red-500">
-                      {selectedJob.errorMessage}
-                    </div>
+              <TabsContent value="logs" className="space-y-4 p-1">
+                {jobRuns.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No execution logs yet
                   </div>
-                </>
-              )}
-            </div>
-          </ScrollArea>
+                ) : (
+                  <>
+                    <div className="text-sm text-muted-foreground mb-2">
+                      Total: {jobRuns.length} steps, {jobRuns.reduce((sum, r) => sum + (r.tokensUsed || 0), 0).toLocaleString()} tokens
+                    </div>
+                    {jobRuns.map((run) => (
+                      <Collapsible
+                        key={run.id}
+                        open={expandedRuns.has(run.id)}
+                        onOpenChange={() => toggleRunExpanded(run.id)}
+                      >
+                        <div className="border rounded-lg">
+                          <CollapsibleTrigger asChild>
+                            <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-muted/50">
+                              <div className="flex items-center gap-2">
+                                {expandedRuns.has(run.id) ? (
+                                  <ChevronDown className="h-4 w-4" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4" />
+                                )}
+                                <Badge variant="outline">Step {run.stepIndex}</Badge>
+                                <span className="text-sm font-medium">
+                                  {run.action === 'tool_calls' ? 'Tool Calls' : 'Response'}
+                                </span>
+                                {run.stepName && (
+                                  <span className="text-sm text-muted-foreground">({run.stepName})</span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                  <Timer className="h-3 w-3" />
+                                  {formatDuration(run.durationMs)}
+                                </span>
+                                {run.tokensUsed && (
+                                  <span className="flex items-center gap-1">
+                                    <Zap className="h-3 w-3" />
+                                    {run.tokensUsed.toLocaleString()}
+                                  </span>
+                                )}
+                                <Badge variant={run.status === 'completed' ? 'default' : 'destructive'} className="text-xs">
+                                  {run.status}
+                                </Badge>
+                              </div>
+                            </div>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className="border-t p-3 space-y-3">
+                              {run.errorMessage && (
+                                <div className="bg-red-500/10 p-2 rounded text-sm text-red-500">
+                                  {run.errorMessage}
+                                </div>
+                              )}
+                              {run.output && (
+                                <div>
+                                  <h5 className="text-sm font-medium mb-1">Output</h5>
+                                  <pre className="text-xs bg-muted p-2 rounded overflow-x-auto max-h-60">
+                                    {JSON.stringify(run.output, null, 2)}
+                                  </pre>
+                                </div>
+                              )}
+                            </div>
+                          </CollapsibleContent>
+                        </div>
+                      </Collapsible>
+                    ))}
+                  </>
+                )}
+              </TabsContent>
+
+              <TabsContent value="context" className="space-y-4 p-1">
+                {selectedJob && (
+                  <>
+                    {selectedJob.targetPaths && selectedJob.targetPaths.length > 0 && (
+                      <div>
+                        <h4 className="font-medium mb-2">Target Paths</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedJob.targetPaths.map((path, index) => (
+                            <Badge key={index} variant="outline">
+                              {path}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedJob.filesModified && selectedJob.filesModified.length > 0 && (
+                      <div>
+                        <h4 className="font-medium mb-2">Files Modified</h4>
+                        <div className="bg-muted rounded p-3 space-y-1">
+                          {selectedJob.filesModified.map((file, index) => (
+                            <code key={index} className="block text-sm">{file}</code>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedJob.plan && (
+                      <div>
+                        <h4 className="font-medium mb-2">Execution Plan</h4>
+                        <pre className="text-xs bg-muted p-3 rounded overflow-x-auto max-h-60">
+                          {JSON.stringify(selectedJob.plan, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+
+                    {selectedJob.context && (
+                      <div>
+                        <h4 className="font-medium mb-2">Job Context</h4>
+                        <pre className="text-xs bg-muted p-3 rounded overflow-x-auto max-h-60">
+                          {JSON.stringify(selectedJob.context, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+
+                    {selectedJob.buildOutput && (
+                      <div>
+                        <h4 className="font-medium mb-2">Build Output</h4>
+                        <pre className="text-xs bg-muted p-3 rounded overflow-x-auto max-h-60">
+                          {selectedJob.buildOutput}
+                        </pre>
+                      </div>
+                    )}
+                  </>
+                )}
+              </TabsContent>
+            </ScrollArea>
+          </Tabs>
         </DialogContent>
       </Dialog>
     </div>

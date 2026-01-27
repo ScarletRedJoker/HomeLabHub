@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { aiDevOrchestrator } from '@/lib/ai/ai-dev/orchestrator';
+import { aiDevOrchestrator, type BranchIsolationMetadata } from '@/lib/ai/ai-dev/orchestrator';
+import { contextManager } from '@/lib/ai/ai-dev/context-manager';
 
 export async function GET(
   request: NextRequest,
@@ -19,13 +20,25 @@ export async function GET(
     const patches = await aiDevOrchestrator.getJobPatches(id);
     const approvals = await aiDevOrchestrator.getJobApprovals(id);
     const runs = await aiDevOrchestrator.getJobRuns(id);
+    
+    const branchMetadata = (job.branchMetadata as BranchIsolationMetadata | null) || undefined;
+    
+    const contextSummary = await contextManager.summarizeContext(id);
 
     return NextResponse.json({
       success: true,
-      job,
+      job: {
+        ...job,
+        branchMetadata: branchMetadata ? {
+          branchName: branchMetadata.branchName,
+          originalBranch: branchMetadata.originalBranch,
+          branchMerged: branchMetadata.branchMerged,
+        } : undefined,
+      },
       patches,
       approvals,
       runs,
+      contextSummary: contextSummary || undefined,
     });
   } catch (error) {
     console.error('[AI Dev Jobs] Error getting job:', error);

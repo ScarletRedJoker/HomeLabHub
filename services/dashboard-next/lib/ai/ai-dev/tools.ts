@@ -9,6 +9,7 @@ import { promisify } from 'util';
 import path from 'path';
 import { aiLogger } from '../logger';
 import type { ToolDefinition } from './provider-registry';
+import { remoteExecutor, type RemoteExecutionConfig } from './remote-executor';
 
 const execAsync = promisify(exec);
 
@@ -598,7 +599,22 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   },
 ];
 
-export async function executeTool(name: string, args: Record<string, unknown>): Promise<ToolResult> {
+export async function executeTool(
+  name: string, 
+  args: Record<string, unknown>,
+  remoteConfig?: RemoteExecutionConfig
+): Promise<ToolResult> {
+  if (remoteConfig) {
+    const remoteResult = await executeToolRemote(name, args, remoteConfig);
+    if (remoteResult.success || !remoteResult.error?.includes('Connection')) {
+      return remoteResult;
+    }
+  }
+  
+  return executeToolLocal(name, args);
+}
+
+async function executeToolLocal(name: string, args: Record<string, unknown>): Promise<ToolResult> {
   switch (name) {
     case 'read_file':
       return readFile(args as unknown as FileReadParams);
@@ -623,5 +639,71 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
         error: `Unknown tool: ${name}`,
         durationMs: 0,
       };
+  }
+}
+
+async function executeToolRemote(
+  name: string, 
+  args: Record<string, unknown>,
+  remoteConfig: RemoteExecutionConfig
+): Promise<ToolResult> {
+  const startTime = Date.now();
+  
+  try {
+    let result;
+    
+    switch (name) {
+      case 'read_file':
+        result = await remoteExecutor.readRemoteFile(remoteConfig, args.path as string);
+        break;
+      case 'write_file':
+        result = await remoteExecutor.writeRemoteFile(
+          remoteConfig, 
+          args.path as string, 
+          args.content as string
+        );
+        break;
+      case 'search_code':
+        result = await remoteExecutor.searchRemoteCode(
+          remoteConfig,
+          args.query as string,
+          args.directory as string | undefined,
+          args.filePattern as string | undefined
+        );
+        break;
+      case 'run_command':
+        result = await remoteExecutor.executeRemoteCommand(
+          remoteConfig,
+          args.command as string,
+          args.cwd as string | undefined,
+          args.timeout as number | undefined
+        );
+        break;
+      case 'list_directory':
+        result = await remoteExecutor.listRemoteDirectory(remoteConfig, args.path as string);
+        break;
+      default:
+        return {
+          success: false,
+          output: null,
+          error: `Tool ${name} not supported for remote execution, falling back to local`,
+          durationMs: Date.now() - startTime,
+        };
+    }
+    
+    return {
+      success: result.success,
+      output: result.output,
+      error: result.error,
+      durationMs: result.durationMs,
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown remote execution error';
+    return {
+      success: false,
+      output: null,
+      error: errorMessage,
+      durationMs: Date.now() - startTime,
+    };
   }
 }

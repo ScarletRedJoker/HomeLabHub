@@ -360,6 +360,67 @@ export class RepoManager {
       return [];
     }
   }
+
+  async createJobBranch(jobId: string, prefix: string = 'ai-dev'): Promise<{ success: boolean; branchName?: string; error?: string }> {
+    const context = aiLogger.startRequest('ollama', 'create_job_branch', { jobId, prefix });
+
+    try {
+      const timestamp = Date.now();
+      const branchName = `${prefix}/${jobId}-${timestamp}`;
+      
+      await execAsync(`git checkout -b "${branchName}"`, { cwd: this.workingDir });
+      
+      aiLogger.endRequest(context, true, { branchName });
+
+      return { success: true, branchName };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      aiLogger.logError(context, errorMessage);
+      return { success: false, error: errorMessage };
+    }
+  }
+
+  async mergeJobBranch(branchName: string, targetBranch: string): Promise<{ success: boolean; error?: string }> {
+    const context = aiLogger.startRequest('ollama', 'merge_job_branch', { branchName, targetBranch });
+
+    try {
+      await execAsync(`git checkout "${targetBranch}"`, { cwd: this.workingDir });
+      await execAsync(`git merge "${branchName}" --no-ff -m "Merge AI Developer job branch: ${branchName}"`, { cwd: this.workingDir });
+      
+      aiLogger.endRequest(context, true, {});
+
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      aiLogger.logError(context, errorMessage);
+      return { success: false, error: errorMessage };
+    }
+  }
+
+  async deleteJobBranch(branchName: string): Promise<{ success: boolean; error?: string }> {
+    const context = aiLogger.startRequest('ollama', 'delete_job_branch', { branchName });
+
+    try {
+      await execAsync(`git branch -D "${branchName}"`, { cwd: this.workingDir });
+      
+      aiLogger.endRequest(context, true, {});
+
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      aiLogger.logError(context, errorMessage);
+      return { success: false, error: errorMessage };
+    }
+  }
+
+  async branchExists(branchName: string): Promise<boolean> {
+    try {
+      const { stdout } = await execAsync(`git rev-parse --verify "${branchName}"`, { cwd: this.workingDir });
+      return stdout.trim().length > 0;
+    } catch {
+      return false;
+    }
+  }
 }
 
 export const repoManager = new RepoManager();
