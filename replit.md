@@ -76,6 +76,18 @@ This multi-agent AI system manages a job queue and subagents, supporting local-f
 
 ## Recent Changes
 
+- **January 27, 2026**: ComfyUI Service Supervisor (Production Stability):
+  - New supervisor module (`lib/ai/comfyui-supervisor.ts`): Port collision prevention, startup locking, process lifecycle management
+  - Windows Agent integration: Uses existing `/ai/start/comfyui`, `/ai/stop/comfyui`, `/ai/restart/comfyui` endpoints
+  - HTTP-based health checks instead of local port binding (works with remote Windows VM)
+  - Lock file mechanism (`/tmp/comfyui-supervisor.lock`) to prevent duplicate instances
+  - Automatic restart on crash (max 3 attempts with 5s cooldown)
+  - Supervisor states: IDLE, CHECKING_HEALTH, ACQUIRING_LOCK, STARTING, RUNNING, RESTARTING, STOPPING, ERROR
+  - API endpoint (`/api/ai/comfyui/supervisor`): ensure-running, check-agent, start/stop/restart-service, health-check
+  - Safe wrapper functions in comfyui-manager.ts: safeCheckHealth(), safeGetReadinessInfo(), safeWaitForReady()
+  - Works headlessly on Windows and Linux without manual intervention
+  - Event emitter for running, starting, stopping, restarting, unhealthy, recovered, degraded, error events
+
 - **January 27, 2026**: Centralized IP Configuration (Zero Hardcoded IPs):
   - Enhanced `lib/ai/config.ts` with WindowsVMConfig interface: ip, nebulaAgentUrl, nebulaAgentPort, isConfigured
   - Added helper functions: getWindowsVMIP_safe(), requireWindowsVMIP(), buildServiceUrl(), requireServiceUrl()

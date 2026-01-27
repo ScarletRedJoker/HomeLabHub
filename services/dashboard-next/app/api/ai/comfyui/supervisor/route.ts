@@ -67,17 +67,59 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         });
       }
 
-      case 'check-port': {
-        const port = body.port || 8188;
+      case 'check-agent': {
         const result = await safeComfyUIOperation(
-          () => supervisor.checkPort(port),
-          { available: false, error: 'Check failed' },
-          'check_port'
+          () => supervisor.checkAgentAvailability(),
+          false,
+          'check_agent'
         );
 
         return NextResponse.json({
           success: result.success,
-          portCheck: result.result,
+          agentAvailable: result.result,
+          status: supervisor.getStatus(),
+        });
+      }
+
+      case 'start-service': {
+        const result = await safeComfyUIOperation(
+          () => supervisor.startService(),
+          { success: false, error: 'Operation failed' },
+          'start_service'
+        );
+
+        return NextResponse.json({
+          success: result.success,
+          result: result.result,
+          status: supervisor.getStatus(),
+        });
+      }
+
+      case 'stop-service': {
+        const result = await safeComfyUIOperation(
+          () => supervisor.stopService(),
+          { success: false, error: 'Operation failed' },
+          'stop_service'
+        );
+
+        return NextResponse.json({
+          success: result.success,
+          result: result.result,
+          status: supervisor.getStatus(),
+        });
+      }
+
+      case 'restart-service': {
+        const result = await safeComfyUIOperation(
+          () => supervisor.restartService(),
+          { success: false, error: 'Operation failed' },
+          'restart_service'
+        );
+
+        return NextResponse.json({
+          success: result.success,
+          result: result.result,
+          status: supervisor.getStatus(),
         });
       }
 
@@ -160,7 +202,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           error: `Unknown action: ${action}`,
           validActions: [
             'ensure-running',
-            'check-port',
+            'check-agent',
+            'start-service',
+            'stop-service',
+            'restart-service',
             'detect-instance',
             'acquire-lock',
             'release-lock',

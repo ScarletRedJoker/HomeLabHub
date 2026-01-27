@@ -2,7 +2,6 @@ import { EventEmitter } from 'events';
 import { getAIConfig } from './config';
 import { aiLogger } from './logger';
 import { ComfyUIServiceManager, ComfyUIServiceState, ReadinessInfo } from './comfyui-manager';
-import * as net from 'net';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -16,11 +15,13 @@ export interface SupervisorConfig {
   maxRestartAttempts: number;
   restartCooldownMs: number;
   gracefulShutdownTimeoutMs: number;
+  agentPort: number;
+  agentToken: string | null;
 }
 
 export enum SupervisorState {
   IDLE = 'IDLE',
-  CHECKING_PORT = 'CHECKING_PORT',
+  CHECKING_HEALTH = 'CHECKING_HEALTH',
   ACQUIRING_LOCK = 'ACQUIRING_LOCK',
   STARTING = 'STARTING',
   RUNNING = 'RUNNING',
@@ -35,7 +36,7 @@ export interface SupervisorStatus {
   processId: number | null;
   port: number;
   host: string;
-  isPortAvailable: boolean;
+  isHealthy: boolean;
   hasLock: boolean;
   lastStartTime: Date | null;
   restartCount: number;
@@ -43,16 +44,16 @@ export interface SupervisorStatus {
   uptime: number | null;
   readinessInfo: ReadinessInfo | null;
   error: string | null;
+  agentAvailable: boolean;
 }
 
-export interface PortCheckResult {
-  available: boolean;
-  existingProcessId?: number;
+export interface HealthCheckResult {
+  healthy: boolean;
+  latencyMs?: number;
   error?: string;
 }
 
 export interface LockInfo {
-  pid: number;
   host: string;
   port: number;
   startTime: string;
@@ -68,6 +69,8 @@ const DEFAULT_CONFIG: SupervisorConfig = {
   maxRestartAttempts: 3,
   restartCooldownMs: 5000,
   gracefulShutdownTimeoutMs: 30000,
+  agentPort: 3456,
+  agentToken: null,
 };
 
 export class ComfyUISupervisor extends EventEmitter {
@@ -82,6 +85,7 @@ export class ComfyUISupervisor extends EventEmitter {
   private healthCheckInterval: NodeJS.Timeout | null = null;
   private error: string | null = null;
   private isShuttingDown: boolean = false;
+  private agentAvailable: boolean = false;
 
   constructor(config?: Partial<SupervisorConfig>) {
     super();
@@ -91,6 +95,8 @@ export class ComfyUISupervisor extends EventEmitter {
       host: aiConfig.windowsVM.ip || 'localhost',
       healthCheckIntervalMs: aiConfig.comfyui.healthCheckInterval,
       startupTimeoutMs: aiConfig.comfyui.timeout,
+      agentPort: aiConfig.windowsVM.nebulaAgentPort,
+      agentToken: process.env.KVM_AGENT_TOKEN || process.env.NEBULA_AGENT_TOKEN || null,
       ...config,
     };
     this.serviceManager = new ComfyUIServiceManager();
@@ -107,7 +113,7 @@ export class ComfyUISupervisor extends EventEmitter {
       processId: this.processId,
       port: this.config.port,
       host: this.config.host,
-      isPortAvailable: true,
+      isHealthy: this.serviceManager.getServiceState() !== ComfyUIServiceState.OFFLINE,
       hasLock: this.hasLock,
       lastStartTime: this.lastStartTime,
       restartCount: this.restartCount,
@@ -115,73 +121,99 @@ export class ComfyUISupervisor extends EventEmitter {
       uptime,
       readinessInfo: this.serviceManager.getReadinessInfo(),
       error: this.error,
+      agentAvailable: this.agentAvailable,
     };
   }
 
-  async checkPort(port?: number): Promise<PortCheckResult> {
-    const targetPort = port || this.config.port;
-    const ctx = aiLogger.startRequest('comfyui', 'supervisor_check_port', { port: targetPort });
+  private async callWindowsAgent(endpoint: string, method: 'GET' | 'POST' = 'POST'): Promise<unknown> {
+    if (!this.config.agentToken) {
+      throw new Error('Windows Agent token not configured (set KVM_AGENT_TOKEN or NEBULA_AGENT_TOKEN)');
+    }
 
-    return new Promise((resolve) => {
-      const server = net.createServer();
-      
-      server.once('error', (err: NodeJS.ErrnoException) => {
-        if (err.code === 'EADDRINUSE') {
-          aiLogger.endRequest(ctx, true, { available: false, reason: 'port_in_use' });
-          resolve({ 
-            available: false, 
-            error: `Port ${targetPort} is already in use` 
-          });
-        } else {
-          aiLogger.endRequest(ctx, false, { error: err.message });
-          resolve({ 
-            available: false, 
-            error: `Port check failed: ${err.message}` 
-          });
-        }
-      });
-
-      server.once('listening', () => {
-        server.close(() => {
-          aiLogger.endRequest(ctx, true, { available: true });
-          resolve({ available: true });
-        });
-      });
-
-      server.listen(targetPort, '127.0.0.1');
+    const url = `http://${this.config.host}:${this.config.agentPort}${endpoint}`;
+    
+    const response = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.config.agentToken}`,
+        'Content-Length': '0',
+      },
+      signal: AbortSignal.timeout(30000),
     });
+    
+    if (!response.ok) {
+      throw new Error(`Agent returned ${response.status}: ${await response.text()}`);
+    }
+    
+    const text = await response.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { raw: text };
+    }
   }
 
-  async detectExistingInstance(): Promise<{ running: boolean; healthy: boolean; pid?: number }> {
+  async checkAgentAvailability(): Promise<boolean> {
+    if (!this.config.agentToken) {
+      this.agentAvailable = false;
+      return false;
+    }
+
+    try {
+      await this.callWindowsAgent('/health', 'GET');
+      this.agentAvailable = true;
+      return true;
+    } catch {
+      this.agentAvailable = false;
+      return false;
+    }
+  }
+
+  async checkHealth(): Promise<HealthCheckResult> {
+    const ctx = aiLogger.startRequest('comfyui', 'supervisor_check_health');
+    const startTime = Date.now();
+    this.state = SupervisorState.CHECKING_HEALTH;
+
+    try {
+      const serviceState = await this.serviceManager.checkHealth();
+      const latencyMs = Date.now() - startTime;
+      
+      const healthy = serviceState !== ComfyUIServiceState.OFFLINE;
+      
+      aiLogger.endRequest(ctx, true, { healthy, latencyMs, state: serviceState });
+      
+      if (healthy && this.state === SupervisorState.CHECKING_HEALTH) {
+        this.state = SupervisorState.RUNNING;
+      }
+      
+      return { healthy, latencyMs };
+    } catch (error) {
+      const latencyMs = Date.now() - startTime;
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      aiLogger.endRequest(ctx, false, { error: errorMessage, latencyMs });
+      return { healthy: false, latencyMs, error: errorMessage };
+    }
+  }
+
+  async detectExistingInstance(): Promise<{ running: boolean; healthy: boolean }> {
     const ctx = aiLogger.startRequest('comfyui', 'supervisor_detect_instance');
 
     try {
       const lockInfo = this.readLockFile();
+      const healthResult = await this.checkHealth();
+      
+      if (healthResult.healthy) {
+        aiLogger.endRequest(ctx, true, { running: true, healthy: true, hasLock: !!lockInfo });
+        return { running: true, healthy: true };
+      }
+      
       if (lockInfo) {
-        const isHealthy = await this.serviceManager.checkHealth();
-        
-        if (isHealthy !== ComfyUIServiceState.OFFLINE) {
-          aiLogger.endRequest(ctx, true, { running: true, healthy: true, pid: lockInfo.pid });
-          return { running: true, healthy: true, pid: lockInfo.pid };
-        } else {
-          await this.cleanupStaleLock();
-          aiLogger.endRequest(ctx, true, { running: false, staleLockCleaned: true });
-          return { running: false, healthy: false };
-        }
+        await this.cleanupStaleLock();
       }
-
-      const portCheck = await this.checkPort();
-      if (!portCheck.available) {
-        const isHealthy = await this.serviceManager.checkHealth();
-        if (isHealthy !== ComfyUIServiceState.OFFLINE) {
-          aiLogger.endRequest(ctx, true, { running: true, healthy: true, noLockFile: true });
-          return { running: true, healthy: true };
-        }
-        aiLogger.endRequest(ctx, true, { running: false, portBlocked: true });
-        return { running: false, healthy: false };
-      }
-
-      aiLogger.endRequest(ctx, true, { running: false });
+      
+      aiLogger.endRequest(ctx, true, { running: false, healthy: false });
       return { running: false, healthy: false };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -197,17 +229,16 @@ export class ComfyUISupervisor extends EventEmitter {
     try {
       const existingLock = this.readLockFile();
       if (existingLock) {
-        const isAlive = await this.isProcessAlive(existingLock.pid);
-        if (isAlive) {
-          this.error = `Another instance is already running (PID: ${existingLock.pid})`;
-          aiLogger.endRequest(ctx, false, { reason: 'lock_held', pid: existingLock.pid });
+        const healthResult = await this.checkHealth();
+        if (healthResult.healthy) {
+          this.error = 'Another instance is already running and healthy';
+          aiLogger.endRequest(ctx, false, { reason: 'instance_running' });
           return false;
         }
         await this.cleanupStaleLock();
       }
 
       const lockInfo: LockInfo = {
-        pid: process.pid,
         host: this.config.host,
         port: this.config.port,
         startTime: new Date().toISOString(),
@@ -217,7 +248,7 @@ export class ComfyUISupervisor extends EventEmitter {
       fs.writeFileSync(this.config.lockFilePath, JSON.stringify(lockInfo, null, 2), { mode: 0o644 });
       this.hasLock = true;
       
-      aiLogger.endRequest(ctx, true, { lockAcquired: true, pid: process.pid });
+      aiLogger.endRequest(ctx, true, { lockAcquired: true });
       return true;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -231,10 +262,7 @@ export class ComfyUISupervisor extends EventEmitter {
     if (this.hasLock) {
       try {
         if (fs.existsSync(this.config.lockFilePath)) {
-          const lockInfo = this.readLockFile();
-          if (lockInfo && lockInfo.pid === process.pid) {
-            fs.unlinkSync(this.config.lockFilePath);
-          }
+          fs.unlinkSync(this.config.lockFilePath);
         }
         this.hasLock = false;
       } catch (error) {
@@ -266,12 +294,72 @@ export class ComfyUISupervisor extends EventEmitter {
     }
   }
 
-  private async isProcessAlive(pid: number): Promise<boolean> {
+  async startService(): Promise<{ success: boolean; error?: string }> {
+    const ctx = aiLogger.startRequest('comfyui', 'supervisor_start_service');
+
     try {
-      process.kill(pid, 0);
-      return true;
-    } catch {
-      return false;
+      if (!this.config.agentToken) {
+        aiLogger.endRequest(ctx, false, { error: 'agent_not_configured' });
+        return { 
+          success: false, 
+          error: 'Windows Agent not configured. Cannot start ComfyUI remotely.' 
+        };
+      }
+
+      await this.callWindowsAgent('/ai/start/comfyui');
+      
+      aiLogger.endRequest(ctx, true, { action: 'start' });
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      aiLogger.endRequest(ctx, false, { error: errorMessage });
+      return { success: false, error: errorMessage };
+    }
+  }
+
+  async stopService(): Promise<{ success: boolean; error?: string }> {
+    const ctx = aiLogger.startRequest('comfyui', 'supervisor_stop_service');
+
+    try {
+      if (!this.config.agentToken) {
+        aiLogger.endRequest(ctx, false, { error: 'agent_not_configured' });
+        return { 
+          success: false, 
+          error: 'Windows Agent not configured. Cannot stop ComfyUI remotely.' 
+        };
+      }
+
+      await this.callWindowsAgent('/ai/stop/comfyui');
+      
+      aiLogger.endRequest(ctx, true, { action: 'stop' });
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      aiLogger.endRequest(ctx, false, { error: errorMessage });
+      return { success: false, error: errorMessage };
+    }
+  }
+
+  async restartService(): Promise<{ success: boolean; error?: string }> {
+    const ctx = aiLogger.startRequest('comfyui', 'supervisor_restart_service');
+
+    try {
+      if (!this.config.agentToken) {
+        aiLogger.endRequest(ctx, false, { error: 'agent_not_configured' });
+        return { 
+          success: false, 
+          error: 'Windows Agent not configured. Cannot restart ComfyUI remotely.' 
+        };
+      }
+
+      await this.callWindowsAgent('/ai/restart/comfyui');
+      
+      aiLogger.endRequest(ctx, true, { action: 'restart' });
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      aiLogger.endRequest(ctx, false, { error: errorMessage });
+      return { success: false, error: errorMessage };
     }
   }
 
@@ -282,27 +370,34 @@ export class ComfyUISupervisor extends EventEmitter {
       const existingInstance = await this.detectExistingInstance();
       
       if (existingInstance.running && existingInstance.healthy) {
-        this.processId = existingInstance.pid || null;
         this.state = SupervisorState.RUNNING;
-        this.lastStartTime = new Date();
+        this.lastStartTime = this.lastStartTime || new Date();
         this.startHealthMonitoring();
         
-        aiLogger.endRequest(ctx, true, { reused: true, pid: this.processId });
+        aiLogger.endRequest(ctx, true, { reused: true });
         this.emit('running', { reused: true });
         return { success: true, reused: true };
       }
 
-      const portCheck = await this.checkPort();
-      if (!portCheck.available) {
-        this.error = portCheck.error || 'Port unavailable';
+      const lockAcquired = await this.acquireLock();
+      if (!lockAcquired) {
         this.state = SupervisorState.ERROR;
-        aiLogger.endRequest(ctx, false, { error: this.error });
-        this.emit('error', { error: this.error });
-        return { success: false, reused: false, error: this.error };
+        aiLogger.endRequest(ctx, false, { error: 'lock_failed' });
+        return { success: false, reused: false, error: this.error || 'Failed to acquire lock' };
       }
 
       this.state = SupervisorState.STARTING;
       this.emit('starting');
+
+      const startResult = await this.startService();
+      if (!startResult.success) {
+        this.releaseLock();
+        this.state = SupervisorState.ERROR;
+        this.error = startResult.error || 'Failed to start ComfyUI';
+        aiLogger.endRequest(ctx, false, { error: this.error });
+        this.emit('error', { error: this.error });
+        return { success: false, reused: false, error: this.error };
+      }
 
       const waitResult = await this.serviceManager.waitForReady(this.config.startupTimeoutMs);
       
@@ -327,6 +422,7 @@ export class ComfyUISupervisor extends EventEmitter {
           return { success: true, reused: false };
         }
 
+        this.releaseLock();
         this.error = 'ComfyUI failed to become ready within timeout';
         this.state = SupervisorState.ERROR;
         this.consecutiveFailures++;
@@ -337,6 +433,7 @@ export class ComfyUISupervisor extends EventEmitter {
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.releaseLock();
       this.error = errorMessage;
       this.state = SupervisorState.ERROR;
       this.consecutiveFailures++;
@@ -356,9 +453,9 @@ export class ComfyUISupervisor extends EventEmitter {
       if (this.isShuttingDown) return;
 
       try {
-        const state = await this.serviceManager.checkHealth();
+        const healthResult = await this.checkHealth();
         
-        if (state === ComfyUIServiceState.OFFLINE) {
+        if (!healthResult.healthy) {
           this.consecutiveFailures++;
           
           if (this.consecutiveFailures >= 3) {
@@ -378,8 +475,9 @@ export class ComfyUISupervisor extends EventEmitter {
           }
           this.consecutiveFailures = 0;
           
-          if (state === ComfyUIServiceState.DEGRADED) {
-            this.emit('degraded', { state });
+          const serviceState = this.serviceManager.getServiceState();
+          if (serviceState === ComfyUIServiceState.DEGRADED) {
+            this.emit('degraded', { state: serviceState });
           }
         }
       } catch (error) {
@@ -398,13 +496,24 @@ export class ComfyUISupervisor extends EventEmitter {
     await new Promise(resolve => setTimeout(resolve, this.config.restartCooldownMs));
 
     try {
-      const result = await this.ensureRunning();
+      const restartResult = await this.restartService();
       
-      if (result.success) {
+      if (!restartResult.success) {
+        aiLogger.endRequest(ctx, false, { error: restartResult.error });
+        return false;
+      }
+
+      const waitResult = await this.serviceManager.waitForReady(this.config.startupTimeoutMs);
+      
+      if (waitResult) {
+        this.state = SupervisorState.RUNNING;
+        this.lastStartTime = new Date();
+        this.consecutiveFailures = 0;
         aiLogger.endRequest(ctx, true, { restartSuccessful: true });
+        this.emit('running', { restarted: true });
         return true;
       } else {
-        aiLogger.endRequest(ctx, false, { restartFailed: true, error: result.error });
+        aiLogger.endRequest(ctx, false, { restartFailed: true, error: 'Timeout waiting for ready' });
         return false;
       }
     } catch (error) {
