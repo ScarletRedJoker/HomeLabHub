@@ -100,7 +100,7 @@ export class SchedulerService {
   /**
    * Start the scheduler service
    */
-  start(): void {
+  async start(): Promise<void> {
     if (this.isRunning) {
       log('warn', 'start', 'Scheduler is already running');
       return;
@@ -111,15 +111,49 @@ export class SchedulerService {
       return;
     }
 
+    const tablesExist = await this.verifyTablesExist();
+    if (!tablesExist) {
+      log('warn', 'start', 'Required tables do not exist yet, scheduler will start but polling may fail');
+    }
+
     this.isRunning = true;
     this.startedAt = new Date();
     log('info', 'start', 'Starting pipeline scheduler', { config: this.config });
 
-    this.poll();
+    try {
+      await this.poll();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      log('warn', 'start', `Initial poll failed (non-fatal): ${errorMessage}`);
+    }
+
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+    }
 
     this.pollInterval = setInterval(() => {
-      this.poll();
+      this.poll().catch(err => {
+        log('error', 'poll-interval', `Poll error: ${err instanceof Error ? err.message : 'Unknown'}`);
+      });
     }, this.config.pollIntervalMs);
+  }
+
+  /**
+   * Verify that required database tables exist
+   */
+  private async verifyTablesExist(): Promise<boolean> {
+    try {
+      await db.select().from(contentPipelines).limit(1);
+      return true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMessage.includes('does not exist') || errorMessage.includes('relation') || errorMessage.includes('no such table')) {
+        log('warn', 'verifyTablesExist', 'content_pipelines table does not exist');
+        return false;
+      }
+      log('error', 'verifyTablesExist', `Table verification failed: ${errorMessage}`);
+      return false;
+    }
   }
 
   /**
@@ -244,7 +278,12 @@ export class SchedulerService {
    * Poll for due pipelines and add to queue
    */
   private async poll(): Promise<number> {
-    if (!this.isRunning || !isDbConnected()) {
+    if (!this.isRunning) {
+      return 0;
+    }
+    
+    if (!isDbConnected()) {
+      log('debug', 'poll', 'Database not connected, skipping poll');
       return 0;
     }
 
@@ -282,6 +321,12 @@ export class SchedulerService {
       return addedCount;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      if (errorMessage.includes('does not exist') || errorMessage.includes('relation') || errorMessage.includes('no such table')) {
+        log('debug', 'poll', 'Table not ready yet, will retry on next poll');
+        return 0;
+      }
+      
       log('error', 'poll', `Failed to poll pipelines: ${errorMessage}`);
       return 0;
     }

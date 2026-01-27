@@ -248,6 +248,9 @@ class AIOrchestrator {
   private static readonly DISCOVERY_CACHE_TTL = 60000;
   private static readonly STATE_FILE_PATH = process.env.LOCAL_AI_STATE_FILE || "/opt/homelab/HomeLabHub/deploy/shared/state/local-ai.json";
 
+  private serviceDiscoveryInitialized = false;
+  private serviceDiscoveryInProgress = false;
+
   constructor() {
     const config = getAIConfig();
     this.ollamaUrl = config.ollama.url;
@@ -256,14 +259,34 @@ class AIOrchestrator {
     this.initOpenAI();
     this.initReplicate();
     this.loadLocalAIState();
-    this.initServiceDiscovery();
+    this.scheduleServiceDiscovery();
+  }
+
+  private scheduleServiceDiscovery(): void {
+    if (this.serviceDiscoveryInProgress) return;
+    
+    setImmediate(() => {
+      this.initServiceDiscovery().catch(error => {
+        console.warn("[AI Orchestrator] Service discovery initialization failed:", error);
+      });
+    });
   }
 
   private async initServiceDiscovery(): Promise<void> {
+    if (this.serviceDiscoveryInitialized || this.serviceDiscoveryInProgress) {
+      return;
+    }
+    
+    this.serviceDiscoveryInProgress = true;
+    
     try {
       await this.discoverAIServices();
+      this.serviceDiscoveryInitialized = true;
+      console.log("[AI Orchestrator] Service discovery initialized");
     } catch (error) {
       console.warn("[AI Orchestrator] Service discovery initialization skipped:", error);
+    } finally {
+      this.serviceDiscoveryInProgress = false;
     }
   }
 
@@ -315,7 +338,19 @@ class AIOrchestrator {
 
   async refreshEndpoints(): Promise<void> {
     this.lastDiscoveryTime = 0;
+    this.serviceDiscoveryInitialized = false;
     await this.discoverAIServices();
+    console.log("[AI Orchestrator] Endpoints refreshed");
+  }
+
+  async ensureServiceDiscovery(): Promise<void> {
+    if (!this.serviceDiscoveryInitialized) {
+      await this.initServiceDiscovery();
+    }
+  }
+
+  isServiceDiscoveryReady(): boolean {
+    return this.serviceDiscoveryInitialized;
   }
 
   getDiscoveredServices(): PeerService[] {

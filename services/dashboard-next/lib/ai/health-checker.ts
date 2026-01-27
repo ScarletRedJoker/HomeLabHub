@@ -37,6 +37,7 @@ class AIHealthChecker {
   private intervalId: NodeJS.Timeout | null = null;
   private state: HealthMonitorState;
   private agentConfig = getAgentConfig();
+  private shutdownHandlerRegistered = false;
 
   constructor() {
     this.state = {
@@ -49,6 +50,26 @@ class AIHealthChecker {
       lastFullCheck: new Date(0),
       isRunning: false,
     };
+    
+    this.registerShutdownHandler();
+  }
+  
+  private registerShutdownHandler(): void {
+    if (this.shutdownHandlerRegistered || typeof process === 'undefined') {
+      return;
+    }
+    
+    this.shutdownHandlerRegistered = true;
+    
+    const shutdown = () => {
+      if (this.state.isRunning) {
+        console.log('[HealthChecker] Graceful shutdown triggered');
+        this.stop();
+      }
+    };
+    
+    process.on('SIGTERM', shutdown);
+    process.on('SIGINT', shutdown);
   }
 
   async checkProvider(name: AIProviderName): Promise<ProviderHealthStatus> {
@@ -192,7 +213,7 @@ class AIHealthChecker {
 
   start(): void {
     if (this.state.isRunning) {
-      console.log('[HealthChecker] Already running');
+      console.log('[HealthChecker] Already running, skipping start');
       return;
     }
 
@@ -210,11 +231,23 @@ class AIHealthChecker {
     
     this.state.isRunning = true;
 
-    this.checkAllProviders().catch(err => {
-      console.error('[HealthChecker] Initial check failed:', err);
-    });
+    this.checkAllProviders()
+      .then(results => {
+        const available = Object.entries(results)
+          .filter(([_, status]) => status.available)
+          .map(([name]) => name);
+        console.log(`[HealthChecker] Initial check complete, available: ${available.length > 0 ? available.join(', ') : 'none'}`);
+      })
+      .catch(err => {
+        console.error('[HealthChecker] Initial check failed:', err);
+      });
+
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+    }
 
     this.intervalId = setInterval(async () => {
+      if (!this.state.isRunning) return;
       try {
         await this.checkAllProviders();
       } catch (error) {
@@ -224,12 +257,24 @@ class AIHealthChecker {
   }
 
   stop(): void {
+    if (!this.state.isRunning && !this.intervalId) {
+      console.log('[HealthChecker] Already stopped');
+      return;
+    }
+    
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
     }
     this.state.isRunning = false;
     console.log('[HealthChecker] Stopped health monitoring');
+  }
+
+  restart(): void {
+    console.log('[HealthChecker] Restarting...');
+    this.stop();
+    this.agentConfig = getAgentConfig();
+    this.start();
   }
 
   getState(): HealthMonitorState {
