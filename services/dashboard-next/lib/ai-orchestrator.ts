@@ -389,7 +389,11 @@ class AIOrchestrator {
         ...(projectId && { project: projectId.trim() }),
       });
     } else {
-      console.log("[AI Orchestrator] No valid OpenAI API key configured");
+      const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' || 
+                          (!process.env.DATABASE_URL && process.env.NODE_ENV === 'production');
+      if (!isBuildTime) {
+        console.log("[AI Orchestrator] No valid OpenAI API key configured");
+      }
     }
   }
 

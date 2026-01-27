@@ -1,4 +1,11 @@
 export async function register() {
+  const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build' ||
+                       !process.env.DATABASE_URL;
+  
+  if (isBuildPhase) {
+    return;
+  }
+  
   if (process.env.NEXT_RUNTIME === "nodejs") {
     try {
       const { bootstrapSecrets } = await import("./lib/secrets-manager");

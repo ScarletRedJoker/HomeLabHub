@@ -48,9 +48,17 @@ class TextToSpeechService {
         apiKey: apiKey.trim(),
         ...(projectId && { project: projectId.trim() }),
       });
-      console.log("[TTS] OpenAI initialized as fallback provider");
+      const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' || 
+                          (!process.env.DATABASE_URL && process.env.NODE_ENV === 'production');
+      if (!isBuildTime) {
+        console.log("[TTS] OpenAI initialized as fallback provider");
+      }
     } else {
-      console.log("[TTS] No valid OpenAI API key configured - cloud fallback unavailable");
+      const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' || 
+                          (!process.env.DATABASE_URL && process.env.NODE_ENV === 'production');
+      if (!isBuildTime) {
+        console.log("[TTS] No valid OpenAI API key configured - cloud fallback unavailable");
+      }
     }
   }
 

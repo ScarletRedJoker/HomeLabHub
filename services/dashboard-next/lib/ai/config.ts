@@ -1,6 +1,7 @@
 /**
  * AI Service Configuration - Production-safe environment-aware configuration
  * Removes all hardcoded localhost/IP assumptions
+ * Build-time safe: No database connections, no side effects during build
  */
 
 export interface AIEndpointConfig {
@@ -25,6 +26,12 @@ export interface AIConfig {
     order: ('ollama' | 'openai')[];
     localOnlyMode: boolean;
   };
+}
+
+function isBuildTime(): boolean {
+  return process.env.NEXT_PHASE === 'phase-production-build' ||
+         process.argv.some(arg => arg.includes('next') && arg.includes('build')) ||
+         (!process.env.DATABASE_URL && process.env.NODE_ENV === 'production');
 }
 
 function getEnvOrNull(key: string): string | null {
@@ -55,9 +62,6 @@ function getOllamaUrl(): string {
   const localUrl = buildLocalAIUrl(11434);
   if (localUrl) return localUrl;
   
-  if (isProduction) {
-    console.warn('[AIConfig] OLLAMA_URL not set in production - service may be unreachable');
-  }
   return 'http://localhost:11434';
 }
 
@@ -68,9 +72,6 @@ function getStableDiffusionUrl(): string {
   const localUrl = buildLocalAIUrl(7860);
   if (localUrl) return localUrl;
   
-  if (isProduction) {
-    console.warn('[AIConfig] STABLE_DIFFUSION_URL not set in production - service may be unreachable');
-  }
   return 'http://localhost:7860';
 }
 
@@ -81,9 +82,6 @@ function getComfyUIUrl(): string {
   const localUrl = buildLocalAIUrl(8188);
   if (localUrl) return localUrl;
   
-  if (isProduction) {
-    console.warn('[AIConfig] COMFYUI_URL not set in production - service may be unreachable');
-  }
   return 'http://localhost:8188';
 }
 
@@ -200,6 +198,10 @@ export function validateAIConfig(options: { strict?: boolean } = {}): { valid: b
 }
 
 export function logConfigStatus(): void {
+  if (isBuildTime()) {
+    return;
+  }
+  
   const config = getAIConfig();
   const validation = validateAIConfig();
   
@@ -214,5 +216,7 @@ export function logConfigStatus(): void {
   validation.warnings.forEach(w => console.warn(`[AIConfig] Warning: ${w}`));
   validation.errors.forEach(e => console.error(`[AIConfig] Error: ${e}`));
 }
+
+export { isBuildTime };
 
 export default getAIConfig;
