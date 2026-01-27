@@ -1,0 +1,33 @@
+[Unit]
+Description=Nebula Command Dashboard (Next.js)
+Documentation=https://github.com/nebula-command/nebula-command
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nebula
+Group=nebula
+WorkingDirectory=/opt/nebula-command/services/dashboard-next
+ExecStartPre=/usr/bin/npm install --production
+ExecStart=/usr/bin/npm run start
+Restart=always
+RestartSec=5
+TimeoutStartSec=60
+TimeoutStopSec=30
+
+Environment="NODE_ENV=production"
+Environment="PORT=5000"
+EnvironmentFile=-/opt/nebula-command/config/dashboard.conf
+
+LimitNOFILE=65535
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nebula-dashboard
+
+WatchdogSec=120
+NotifyAccess=main
+
+[Install]
+WantedBy=multi-user.target

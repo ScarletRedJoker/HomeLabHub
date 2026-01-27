@@ -1,0 +1,45 @@
+{
+  "node": {
+    "type": "worker",
+    "platform": "linux"
+  },
+  "services": {
+    "ollama": {
+      "enabled": false,
+      "port": 11434,
+      "host": "0.0.0.0"
+    },
+    "comfyui": {
+      "enabled": false,
+      "port": 8188,
+      "host": "0.0.0.0"
+    },
+    "stable-diffusion": {
+      "enabled": false,
+      "port": 7860,
+      "host": "0.0.0.0"
+    },
+    "dashboard": {
+      "enabled": true,
+      "port": 5000,
+      "host": "0.0.0.0"
+    }
+  },
+  "gpu": {
+    "vendor": "none",
+    "vram": 0,
+    "cudaVersion": null
+  },
+  "network": {
+    "tailscaleEnabled": true,
+    "wireguardEnabled": false
+  },
+  "database": {
+    "url": "postgresql://localhost:5432/homelab",
+    "poolSize": 10
+  },
+  "redis": {
+    "url": "redis://localhost:6379",
+    "db": 0
+  }
+}

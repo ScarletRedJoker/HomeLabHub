@@ -1,0 +1,50 @@
+[Unit]
+Description=Nebula Command Agent - Node Health Daemon
+Documentation=https://github.com/nebula-command/agent
+After=network.target network-online.target ollama.service
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=nebula
+Group=nebula
+WorkingDirectory=/opt/nebula-command/services
+
+ExecStartPre=/bin/bash -c 'which node >/dev/null 2>&1 || (echo "Node.js not found" && exit 1)'
+ExecStartPre=/bin/bash -c 'test -f /opt/nebula-command/services/health-daemon.js || (echo "health-daemon.js not found" && exit 1)'
+
+ExecStart=/usr/bin/node /opt/nebula-command/services/health-daemon.js
+
+Restart=always
+RestartSec=5
+TimeoutStartSec=30
+TimeoutStopSec=15
+
+Environment="NODE_ENV=production"
+Environment="HEALTH_PORT=3500"
+Environment="HEARTBEAT_INTERVAL=60000"
+Environment="METRICS_INTERVAL=10000"
+
+StandardOutput=append:/opt/nebula-command/logs/nebula-agent.log
+StandardError=append:/opt/nebula-command/logs/nebula-agent-error.log
+
+LimitNOFILE=8192
+LimitNPROC=512
+
+ProtectSystem=strict
+ReadWritePaths=/opt/nebula-command/logs
+ReadWritePaths=/opt/nebula-command/state
+ReadOnlyPaths=/opt/nebula-command/config
+PrivateTmp=true
+NoNewPrivileges=true
+
+OOMScoreAdjust=-100
+Nice=-5
+
+MemoryMax=512M
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target

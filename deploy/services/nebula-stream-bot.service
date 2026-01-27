@@ -1,0 +1,33 @@
+[Unit]
+Description=Nebula Command Stream Bot
+Documentation=https://github.com/nebula-command/nebula-command
+After=network-online.target postgresql.service nebula-dashboard.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nebula
+Group=nebula
+WorkingDirectory=/opt/nebula-command/services/stream-bot
+ExecStartPre=/usr/bin/npm install --production
+ExecStart=/usr/bin/npm run start
+Restart=always
+RestartSec=5
+TimeoutStartSec=30
+TimeoutStopSec=15
+
+Environment="NODE_ENV=production"
+Environment="PORT=3000"
+EnvironmentFile=-/opt/nebula-command/config/stream-bot.conf
+
+LimitNOFILE=65535
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nebula-stream-bot
+
+WatchdogSec=60
+NotifyAccess=main
+
+[Install]
+WantedBy=multi-user.target

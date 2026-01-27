@@ -1,0 +1,57 @@
+[Unit]
+Description=Stable Diffusion WebUI (AUTOMATIC1111)
+Documentation=https://github.com/AUTOMATIC1111/stable-diffusion-webui
+After=network.target network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=nebula
+Group=nebula
+WorkingDirectory=/opt/nebula-command/stable-diffusion-webui
+
+ExecStartPre=/bin/bash -c 'test -d /opt/nebula-command/stable-diffusion-webui/venv || (echo "Virtual environment not found" && exit 1)'
+
+ExecStart=/opt/nebula-command/stable-diffusion-webui/venv/bin/python launch.py \
+    --listen \
+    --port 7860 \
+    --api \
+    --enable-insecure-extension-access \
+    --xformers \
+    --no-half-vae \
+    --skip-version-check \
+    --skip-python-version-check
+
+Restart=always
+RestartSec=15
+TimeoutStartSec=300
+TimeoutStopSec=60
+
+Environment="PYTHONUNBUFFERED=1"
+Environment="PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512"
+Environment="CUDA_VISIBLE_DEVICES=0"
+Environment="COMMANDLINE_ARGS=--api --listen"
+
+StandardOutput=append:/opt/nebula-command/logs/stable-diffusion.log
+StandardError=append:/opt/nebula-command/logs/stable-diffusion-error.log
+
+LimitNOFILE=65536
+LimitNPROC=4096
+
+ProtectSystem=strict
+ReadWritePaths=/opt/nebula-command/stable-diffusion-webui
+ReadWritePaths=/opt/nebula-command/logs
+ReadWritePaths=/opt/nebula-command/models
+PrivateTmp=true
+NoNewPrivileges=true
+
+OOMScoreAdjust=100
+Nice=10
+
+MemoryMax=85%
+TasksMax=256
+
+[Install]
+WantedBy=multi-user.target

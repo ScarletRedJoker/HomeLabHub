@@ -1,0 +1,23 @@
+version: "1.0"
+node:
+  id: "{{NODE_ID}}"
+  hostname: "{{HOSTNAME}}"
+  tailscale_ip: "{{TAILSCALE_IP}}"
+  
+services:
+  ollama:
+    enabled: {{OLLAMA_ENABLED}}
+    port: 11434
+    models: {{OLLAMA_MODELS}}
+  
+  comfyui:
+    enabled: {{COMFYUI_ENABLED}}
+    port: 8188
+    
+  stable-diffusion:
+    enabled: {{SD_ENABLED}}
+    port: 7860
+    
+  dashboard:
+    enabled: {{DASHBOARD_ENABLED}}
+    port: 5000

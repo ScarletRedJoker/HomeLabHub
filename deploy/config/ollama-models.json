@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "low": { "maxVram": 4096, "models": ["phi", "tinyllama"] },
+    "medium": { "maxVram": 8192, "models": ["llama2", "mistral", "codellama"] },
+    "high": { "maxVram": 16384, "models": ["llama2:13b", "mixtral"] },
+    "ultra": { "maxVram": 999999, "models": ["llama2:70b", "codellama:70b"] }
+  }
+}

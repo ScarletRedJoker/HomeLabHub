@@ -1,0 +1,35 @@
+[Unit]
+Description=Ollama AI Service (Nebula Command Wrapper)
+Documentation=https://ollama.ai
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ollama
+Group=ollama
+ExecStart=/usr/local/bin/ollama serve
+Restart=always
+RestartSec=3
+TimeoutStartSec=0
+TimeoutStopSec=30
+
+Environment="OLLAMA_HOST=0.0.0.0:11434"
+Environment="OLLAMA_ORIGINS=*"
+Environment="OLLAMA_KEEP_ALIVE=5m"
+EnvironmentFile=-/opt/nebula-command/config/ollama.conf
+
+LimitNOFILE=65535
+LimitNPROC=65535
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/ollama /home/ollama/.ollama
+
+WatchdogSec=60
+NotifyAccess=main
+
+[Install]
+WantedBy=multi-user.target

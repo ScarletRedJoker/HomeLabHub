@@ -56,6 +56,52 @@ Nebula Command provides a comprehensive suite of features including:
   - Dashboard UI for pipeline controls, queue monitoring, and persona management
 - **Automated Deployment and Node Auto-Configuration:** Bootstrap scripts for dynamic, hardware-aware configuration of AI services (Ollama, ComfyUI, Stable Diffusion) on various nodes.
 
+## Deployment System
+
+### One-Command Deployment
+```bash
+# Linux
+curl -fsSL https://raw.githubusercontent.com/.../install.sh | bash
+
+# Windows (PowerShell as Admin)
+irm https://raw.githubusercontent.com/.../install.ps1 | iex
+```
+
+### Hardware Auto-Detection
+The deployment system automatically detects:
+- **GPU:** NVIDIA (via nvidia-smi), AMD (via rocm-smi), Intel, or CPU-only
+- **VRAM:** GPU memory in MB for model selection
+- **CUDA/ROCm:** Version detection for PyTorch compatibility
+- **System:** CPU cores, RAM, disk space, Tailscale IP
+
+### Service Auto-Configuration
+Based on detected hardware, the system automatically:
+- **Configures Ollama** with appropriate models:
+  - < 4GB VRAM: phi, tinyllama
+  - 4-8GB VRAM: llama2, mistral, codellama
+  - 8-16GB VRAM: llama2:13b, mixtral
+  - > 16GB VRAM: llama2:70b, codellama:70b
+- **Configures ComfyUI** with --lowvram/--highvram flags
+- **Configures Stable Diffusion** with xformers optimization
+- **Generates service-map.yml** for service discovery
+
+### Service Supervision
+- **Windows:** Task Scheduler jobs with watchdog script
+- **Linux:** Systemd units with auto-restart and health monitoring
+- **Health Daemon:** Node.js service exposing /health, /metrics, /services, /gpu endpoints
+- **Dashboard Integration:** Automatic node registration and periodic heartbeats
+
+### Deployment Files
+- `deploy/unified/bootstrap.ps1` - Windows PowerShell bootstrap (1500+ lines)
+- `deploy/unified/bootstrap.sh` - Linux Bash bootstrap (1900+ lines)
+- `deploy/install.sh` / `deploy/install.ps1` - One-liner installers
+- `deploy/update.sh` / `deploy/update.ps1` - Update scripts
+- `deploy/uninstall.sh` / `deploy/uninstall.ps1` - Uninstall scripts
+- `deploy/services/*.service` - Systemd unit files
+- `deploy/services/nebula-watchdog.*` - Service supervision scripts
+- `deploy/services/health-daemon.js` - Health monitoring daemon
+- `deploy/config/*` - Configuration templates
+
 ### Architectural Principles
 The architecture is designed for future extensibility with core interfaces for services, rendering, pipelines, and extensions, facilitating integration with game engines, AR/VR runtimes, and simulation engines through a dynamic service registry and plugin system.
 
