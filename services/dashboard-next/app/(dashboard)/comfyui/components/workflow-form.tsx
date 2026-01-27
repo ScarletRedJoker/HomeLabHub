@@ -26,7 +26,7 @@ interface Workflow {
   id?: string;
   name: string;
   description: string | null;
-  workflowJson: any;
+  workflowJson?: any;
   category: string | null;
   tags: string[];
 }

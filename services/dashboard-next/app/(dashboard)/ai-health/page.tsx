@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
+import { AIServiceStatus } from "@/app/(dashboard)/components/ai-service-status";
 
 interface ServiceStatus {
   name: string;
@@ -303,6 +304,8 @@ export default function AIHealthPage() {
           </Button>
         </div>
       </div>
+
+      <AIServiceStatus />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>

@@ -40,7 +40,7 @@ interface WorkflowData {
   id: string;
   name: string;
   description: string | null;
-  workflowJson: any;
+  workflowJson?: any;
   category: string | null;
   tags: string[];
   thumbnailUrl: string | null;

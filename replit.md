@@ -112,3 +112,16 @@ This multi-agent AI system manages a job queue and subagents, supporting local-f
   - Node registration API: `/api/nodes/register` for multi-node service discovery
   - Supports GPU (8GB+, 4-8GB, <4GB VRAM) and CPU-only deployments
   - One-command deployment: works on Windows and Linux with no cloud dependency
+
+- **January 27, 2026**: Dashboard Reliability & Observability (Production UI):
+  - AI Service Status component (`app/(dashboard)/components/ai-service-status.tsx`): Real-time status indicators for Ollama, SD, ComfyUI, OpenAI
+  - Retry hook (`lib/hooks/use-retry-fetch.ts`): Exponential backoff (2s→4s→8s), max 3 retries, 10s timeout
+  - Service availability context (`lib/hooks/use-service-availability.tsx`): Provider for feature availability state
+  - Feature gating components (`components/feature-gate.tsx`): FeatureGate, FeatureGatedButton, FeatureStatusBadge
+  - Auto-refresh every 30s with countdown timer
+  - No silent failures: all errors surface with clear messages
+  - No infinite loading: timeout after 10 seconds with explanation
+  - Progressive loading states with skeletons and spinners
+  - Debug panel with latency, GPU VRAM, troubleshooting steps
+  - Non-technical UX: "AI Chat Ready", "All Systems Operational"
+  - Fixed TypeScript build errors for production deployment

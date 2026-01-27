@@ -74,7 +74,7 @@ export class AIDevOrchestrator {
   private activeJobs: Map<string, AbortController> = new Map();
 
   async createJob(params: CreateJobParams): Promise<AIDevJob> {
-    const context = aiLogger.startRequest('ollama', 'create_job', params);
+    const context = aiLogger.startRequest('ollama', 'create_job', { ...params } as Record<string, unknown>);
 
     const [job] = await db.insert(aiDevJobs).values({
       title: params.title,
