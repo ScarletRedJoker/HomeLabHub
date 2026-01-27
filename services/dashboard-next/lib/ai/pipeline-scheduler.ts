@@ -10,10 +10,10 @@
 
 import { randomUUID } from 'crypto';
 import { eq, and, lte, isNotNull } from 'drizzle-orm';
-import parser from 'cron-parser';
+import { CronExpressionParser } from 'cron-parser';
 import { db, isDbConnected } from '../db';
 import { contentPipelines, type ContentPipeline } from '../db/platform-schema';
-import { influencerPipeline, type PipelineRunResult } from './influencer-pipeline';
+import { influencerPipelineOrchestrator as influencerPipeline, type PipelineRunResult } from './influencer-pipeline';
 import { recordJobExecution, recordQueueDepth } from '@/lib/observability/metrics-collector';
 
 function log(level: 'info' | 'warn' | 'error' | 'debug', operation: string, message: string, metadata?: Record<string, unknown>): void {
@@ -385,7 +385,7 @@ export class SchedulerService {
         status: result.status,
       });
 
-      recordJobExecution('pipeline', 'completed', durationMs, { pipelineId: queued.pipelineId, runId: result.runId });
+      recordJobExecution('pipeline', 'success', durationMs);
 
       return {
         queuedPipeline: queued,
@@ -423,7 +423,7 @@ export class SchedulerService {
           maxRetries: this.config.maxRetries,
         });
         
-        recordJobExecution('pipeline', 'failed', durationMs, { pipelineId: queued.pipelineId, error: errorMessage });
+        recordJobExecution('pipeline', 'failure', durationMs);
       }
 
       return {
@@ -478,7 +478,7 @@ export class SchedulerService {
    */
   private calculateNextRun(cronExpression: string, timezone: string): Date | null {
     try {
-      const interval = parser.parseExpression(cronExpression, {
+      const interval = CronExpressionParser.parse(cronExpression, {
         tz: timezone,
         currentDate: new Date(),
       });

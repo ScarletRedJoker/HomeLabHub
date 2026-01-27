@@ -4,7 +4,7 @@ import { db, isDbConnected } from "@/lib/db";
 import { contentPipelines, influencerPersonas } from "@/lib/db/platform-schema";
 import { pipelineScheduler } from "@/lib/ai/pipeline-scheduler";
 import { eq, desc, and } from "drizzle-orm";
-import parser from "cron-parser";
+import { CronExpressionParser } from "cron-parser";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
 
     if (isScheduled && cronExpression) {
       try {
-        const interval = parser.parseExpression(cronExpression, {
+        const interval = CronExpressionParser.parse(cronExpression, {
           tz: timezone || "UTC",
           currentDate: new Date(),
         });
@@ -208,7 +208,7 @@ export async function PATCH(request: NextRequest) {
 
     if (effectiveScheduled && effectiveCron) {
       try {
-        const interval = parser.parseExpression(effectiveCron, {
+        const interval = CronExpressionParser.parse(effectiveCron, {
           tz: effectiveTimezone,
           currentDate: new Date(),
         });

@@ -26,7 +26,7 @@ export { aiLogger } from './logger';
 export type { AILogEntry, AIRequestContext, LogLevel } from './logger';
 
 // Influencer Pipeline
-export { influencerPipeline } from './influencer-pipeline';
+export { influencerPipelineOrchestrator, influencerPipelineOrchestrator as influencerPipeline } from './influencer-pipeline';
 export type { 
   PipelineRunStatus, 
   VideoProjectStatus, 
@@ -42,10 +42,9 @@ export type {
 // Pipeline Scheduler
 export { pipelineScheduler } from './pipeline-scheduler';
 export type { 
-  QueueItem, 
+  QueuedPipeline, 
   SchedulerConfig, 
   SchedulerStats, 
-  QueueAddResult, 
   ExecutionResult 
 } from './pipeline-scheduler';
 

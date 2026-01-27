@@ -279,7 +279,7 @@ class InfluencerPipelineOrchestrator {
           return {
             videoPath: assemblyResult.videoPath,
             thumbnailPath: assemblyResult.thumbnailPath,
-            duration: assemblyResult.durationSeconds,
+            duration: assemblyResult.duration,
             success: assemblyResult.success,
           };
         });
@@ -560,14 +560,14 @@ Respond in JSON format:
       if (persona) {
         const sequenceParams = createImageSequenceParams(persona, promptChain, {
           baseSeed: Date.now(),
-          consistentLatent: true,
+          useSharedLatent: true,
         });
-        paramsList = sequenceParams.map(params => ({
+        paramsList = sequenceParams.shots.map(params => ({
           prompt: params.prompt,
           negative_prompt: params.negativePrompt,
           seed: params.seed,
-          lora_name: params.loraConfig?.name,
-          lora_weight: params.loraConfig?.weight,
+          lora_name: params.lora?.modelPath,
+          lora_weight: params.lora?.weight,
           shot_index: params.shotIndex,
         }));
       } else {

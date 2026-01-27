@@ -1061,11 +1061,11 @@ export default function AIDevPage() {
                                   {run.errorMessage}
                                 </div>
                               )}
-                              {run.output && (
+                              {run.output !== undefined && run.output !== null && (
                                 <div>
                                   <h5 className="text-sm font-medium mb-1">Output</h5>
                                   <pre className="text-xs bg-muted p-2 rounded overflow-x-auto max-h-60">
-                                    {JSON.stringify(run.output, null, 2)}
+                                    {typeof run.output === 'string' ? run.output : JSON.stringify(run.output, null, 2)}
                                   </pre>
                                 </div>
                               )}

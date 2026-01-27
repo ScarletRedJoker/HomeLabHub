@@ -34,7 +34,7 @@ export {
   type Incident,
   type IncidentSeverity,
   type IncidentStatus,
-  type IncidentTimeline,
+  type IncidentEventRecord,
 } from './incident-tracker';
 
 interface ServiceHealthCheck {
@@ -133,7 +133,7 @@ function setupGlobalErrorHandler(): void {
       await incidentTracker.createIncident({
         title: 'Unhandled Promise Rejection',
         description: reason instanceof Error ? reason.message : String(reason),
-        severity: 'warning',
+        severity: 'medium',
         source: 'global-error-handler',
         metadata: {
           reason: reason instanceof Error ? { message: reason.message, stack: reason.stack } : reason,

@@ -435,7 +435,7 @@ export class AIDevOrchestrator {
         durationMs,
       });
 
-      recordJobExecution('ai-dev', 'completed', durationMs, { jobId, patchCount: patches.length, autoApproved });
+      recordJobExecution('ai-dev', 'success', durationMs);
 
       return {
         success: true,
@@ -462,7 +462,7 @@ export class AIDevOrchestrator {
 
       aiLogger.logError(logContext, error as Error);
       
-      recordJobExecution('ai-dev', 'failed', durationMs, { jobId, error: errorMessage });
+      recordJobExecution('ai-dev', 'failure', durationMs);
 
       return {
         success: false,
@@ -637,7 +637,7 @@ export class AIDevOrchestrator {
           command: `test -f "${filePath}" && echo "exists"`,
           timeout: 5000 
         });
-        return result.success && (result.output as { stdout?: string })?.stdout?.includes('exists');
+        return result.success && ((result.output as { stdout?: string })?.stdout?.includes('exists') ?? false);
       };
 
       const hasPackageJson = await checkFile(`${targetDir}/package.json`);
