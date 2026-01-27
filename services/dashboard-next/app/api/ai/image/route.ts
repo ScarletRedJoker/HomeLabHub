@@ -3,6 +3,7 @@ import { aiOrchestrator } from "@/lib/ai-orchestrator";
 import { verifySession } from "@/lib/session";
 import { cookies } from "next/headers";
 import { demoMode } from "@/lib/demo-mode";
+import { getAIConfig } from "@/lib/ai/config";
 
 function isMotionModule(modelName: string): boolean {
   if (!modelName) return false;
@@ -189,7 +190,8 @@ export async function POST(request: NextRequest) {
     }
 
     if (result.url) {
-      const isInternalUrl = result.url.includes("100.118.44.102") || 
+      const config = getAIConfig();
+      const isInternalUrl = (config.windowsVM.ip && result.url.includes(config.windowsVM.ip)) || 
                             result.url.includes("100.66.61.51") ||
                             result.url.includes("localhost") ||
                             result.url.includes("127.0.0.1");

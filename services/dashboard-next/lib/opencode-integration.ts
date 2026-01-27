@@ -11,6 +11,7 @@ import { exec, spawn } from "child_process";
 import { promisify } from "util";
 import * as fs from "fs/promises";
 import * as path from "path";
+import { getAIConfig } from "@/lib/ai/config";
 
 const execAsync = promisify(exec);
 
@@ -108,11 +109,10 @@ class OpenCodeIntegration {
   private ollamaEndpoints: string[];
 
   constructor() {
-    // Windows VM is the primary AI host - connects from Linode dashboard via Tailscale
-    const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
+    const config = getAIConfig();
 
     this.ollamaEndpoints = [
-      process.env.OLLAMA_URL || `http://${WINDOWS_VM_IP}:11434`,
+      config.ollama.url,
     ];
 
     this.defaultConfig = {

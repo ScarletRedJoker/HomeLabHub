@@ -4,6 +4,7 @@
  */
 
 import { discoverService } from "./service-registry";
+import { getAIConfig } from "@/lib/ai/config";
 
 export type DeploymentTarget = "windows-vm" | "linode" | "ubuntu-home";
 export type ServiceType = "ollama" | "stable-diffusion" | "comfyui" | "whisper" | "agent";
@@ -21,11 +22,12 @@ export interface ConnectionTestResult {
   error?: string;
 }
 
+const aiConfig = getAIConfig();
 const DEPLOYMENT_CONFIGS: Record<DeploymentTarget, { name: string; host: string; port: number }> = {
   "windows-vm": {
     name: "Windows AI VM",
-    host: process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102",
-    port: parseInt(process.env.WINDOWS_AGENT_PORT || "9765", 10),
+    host: aiConfig.windowsVM.ip || "localhost",
+    port: aiConfig.windowsVM.nebulaAgentPort,
   },
   "linode": {
     name: "Linode Production",

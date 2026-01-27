@@ -8,8 +8,10 @@ import {
   setStatusCache, 
   STATUS_CACHE_TTL_MS 
 } from "@/lib/ai-status";
+import { getAIConfig } from "@/lib/ai/config";
 
-const LOCAL_AI_ONLY = process.env.LOCAL_AI_ONLY !== "false";
+const aiConfig = getAIConfig();
+const LOCAL_AI_ONLY = aiConfig.fallback.localOnlyMode;
 
 interface AIProviderStatus {
   name: string;
@@ -88,12 +90,12 @@ async function checkOpenAI(): Promise<AIProviderStatus> {
 }
 
 async function checkOllama(): Promise<AIProviderStatus> {
-  const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
-  const ollamaUrl = process.env.OLLAMA_URL || `http://${WINDOWS_VM_IP}:11434`;
+  const ollamaUrl = aiConfig.ollama.url;
+  const windowsVMIP = aiConfig.windowsVM.ip;
 
   const troubleshootingSteps = [
     "Check if Windows VM is powered on",
-    "Verify Tailscale connection (ping 100.118.44.102)",
+    `Verify Tailscale connection${windowsVMIP ? ` (ping ${windowsVMIP})` : ""}`,
     "Start Ollama: 'ollama serve' in Windows terminal",
     "Check Windows Firewall allows port 11434",
     `Test: curl ${ollamaUrl}/api/tags`,
@@ -141,7 +143,7 @@ async function checkOllama(): Promise<AIProviderStatus> {
     } else if (error.code === "ECONNREFUSED") {
       errorMsg = `Connection refused - Ollama not running at ${ollamaUrl}`;
     } else if (error.code === "ENOTFOUND" || error.code === "ENETUNREACH") {
-      errorMsg = `Cannot reach ${WINDOWS_VM_IP} - check Tailscale connection`;
+      errorMsg = `Cannot reach Windows VM - check Tailscale connection`;
     } else {
       errorMsg = error.message || "Ollama not reachable";
     }
@@ -215,8 +217,7 @@ async function checkImageGeneration(): Promise<AIProviderStatus> {
 }
 
 async function checkStableDiffusion(): Promise<AIProviderStatus> {
-  const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
-  const sdUrl = process.env.STABLE_DIFFUSION_URL || `http://${WINDOWS_VM_IP}:7860`;
+  const sdUrl = aiConfig.stableDiffusion.url;
 
   const endpoints = [
     { url: `${sdUrl}/sdapi/v1/sd-models`, parseModels: true },
@@ -268,8 +269,7 @@ async function checkStableDiffusion(): Promise<AIProviderStatus> {
 }
 
 async function checkComfyUI(): Promise<AIProviderStatus> {
-  const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
-  const comfyUrl = process.env.COMFYUI_URL || `http://${WINDOWS_VM_IP}:8188`;
+  const comfyUrl = aiConfig.comfyui.url;
 
   try {
     const controller = new AbortController();

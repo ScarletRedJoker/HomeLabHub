@@ -5,8 +5,11 @@ import { verifySession } from "@/lib/session";
 import { cookies } from "next/headers";
 import { eq } from "drizzle-orm";
 import { getVideoJob } from "@/lib/ai-video-pipeline";
+import { getAIConfig } from "@/lib/ai/config";
 
 export const dynamic = "force-dynamic";
+
+const config = getAIConfig();
 
 async function checkAuth() {
   const cookieStore = await cookies();
@@ -87,7 +90,7 @@ export async function GET(
     }
 
     const isInternalUrl = job.outputUrl && (
-      job.outputUrl.includes("100.118.44.102") ||
+      (config.windowsVM.ip && job.outputUrl.includes(config.windowsVM.ip)) ||
       job.outputUrl.includes("100.66.61.51") ||
       job.outputUrl.includes("localhost") ||
       job.outputUrl.includes("127.0.0.1")

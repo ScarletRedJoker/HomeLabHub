@@ -269,7 +269,7 @@ export default function AINodesPage() {
                 AI Node Manager
               </h1>
               <p className="text-muted-foreground text-sm">
-                NebulaAI Windows GPU Node • {data?.vm_ip || "100.118.44.102"}
+                NebulaAI Windows GPU Node • {data?.vm_ip || "Not configured"}
               </p>
             </div>
           </div>

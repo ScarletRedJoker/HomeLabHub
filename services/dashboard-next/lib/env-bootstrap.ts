@@ -150,6 +150,9 @@ function getRegistryUrl(env: Environment): string | null {
 }
 
 function getDefaultPeers(env: Environment, role: ServiceRole): PeerConfig[] {
+  const { getAIConfig } = require("@/lib/ai/config");
+  const aiConfig = getAIConfig();
+  const windowsAgentEndpoint = aiConfig.windowsVM.nebulaAgentUrl || "http://localhost:9765";
   const peers: PeerConfig[] = [];
 
   switch (env) {
@@ -157,7 +160,7 @@ function getDefaultPeers(env: Environment, role: ServiceRole): PeerConfig[] {
       peers.push({
         name: "windows-agent",
         environment: "windows-vm",
-        endpoint: `http://${process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102"}:9765`,
+        endpoint: windowsAgentEndpoint,
         capabilities: ["ai", "ollama", "comfyui", "stable-diffusion"],
       });
       peers.push({
@@ -172,7 +175,7 @@ function getDefaultPeers(env: Environment, role: ServiceRole): PeerConfig[] {
       peers.push({
         name: "windows-vm",
         environment: "windows-vm",
-        endpoint: `http://${process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102"}:9765`,
+        endpoint: windowsAgentEndpoint,
         capabilities: ["ai", "ollama", "comfyui", "stable-diffusion"],
       });
       peers.push({
@@ -311,8 +314,12 @@ function getServiceEndpoint(config: EnvironmentConfig): string {
       return `https://${process.env.LINODE_SSH_HOST || "linode.evindrake.net"}`;
     case "ubuntu-home":
       return `http://${config.hostname}:${port}`;
-    case "windows-vm":
-      return `http://${process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102"}:${port}`;
+    case "windows-vm": {
+      const { getAIConfig } = require("@/lib/ai/config");
+      const aiConfig = getAIConfig();
+      const vmIp = aiConfig.windowsVM.ip || "localhost";
+      return `http://${vmIp}:${port}`;
+    }
     default:
       return `http://localhost:${port}`;
   }

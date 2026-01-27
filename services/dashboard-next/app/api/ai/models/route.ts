@@ -3,9 +3,10 @@ import { verifySession } from "@/lib/session";
 import { cookies } from "next/headers";
 import { localAIRuntime } from "@/lib/local-ai-runtime";
 import { modelRegistry } from "@/lib/model-registry";
+import { getAIConfig } from "@/lib/ai/config";
 
-const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
-const OLLAMA_URL = process.env.OLLAMA_URL || `http://${WINDOWS_VM_IP}:11434`;
+const config = getAIConfig();
+const OLLAMA_URL = config.ollama.url;
 
 async function checkAuth() {
   const cookieStore = await cookies();

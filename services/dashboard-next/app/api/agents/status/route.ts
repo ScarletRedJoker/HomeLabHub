@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifySession } from "@/lib/session";
 import { cookies } from "next/headers";
+import { getAIConfig } from "@/lib/ai/config";
 
 async function checkAuth() {
   const cookieStore = await cookies();
@@ -79,8 +80,9 @@ async function checkServiceHealth(
 }
 
 async function checkWindowsVMAgent(): Promise<AgentStatus> {
-  const host = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
-  const agentPort = 9765;
+  const config = getAIConfig();
+  const host = config.windowsVM.ip || "localhost";
+  const agentPort = config.windowsVM.nebulaAgentPort;
   
   const services: ServiceStatus[] = [];
   let gpuAvailable = false;

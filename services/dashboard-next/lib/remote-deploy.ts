@@ -550,11 +550,16 @@ export class RemoteDeployer {
         { name: "plex", url: "http://localhost:32400/web" },
         { name: "docker", url: "http://localhost:2375/version" },
       ],
-      "windows-vm": [
-        { name: "nebula-agent", url: `http://${process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102"}:9765/api/health` },
-        { name: "ollama", url: `http://${process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102"}:11434/api/tags` },
-        { name: "comfyui", url: `http://${process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102"}:8188/system_stats` },
-      ],
+      "windows-vm": (() => {
+        const { getAIConfig } = require("@/lib/ai/config");
+        const aiConfig = getAIConfig();
+        const vmIp = aiConfig.windowsVM.ip || "localhost";
+        return [
+          { name: "nebula-agent", url: `http://${vmIp}:${aiConfig.windowsVM.nebulaAgentPort}/api/health` },
+          { name: "ollama", url: `${aiConfig.ollama.url}/api/tags` },
+          { name: "comfyui", url: `${aiConfig.comfyui.url}/system_stats` },
+        ];
+      })(),
     };
 
     const probes = probeConfigs[environment] || [];

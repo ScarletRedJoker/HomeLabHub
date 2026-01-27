@@ -78,11 +78,14 @@ export interface ComfyUISystemStats {
   }>;
 }
 
+import { getAIConfig } from "@/lib/ai/config";
+
+const aiConfig = getAIConfig();
 const DEFAULT_CONFIG: ComfyUIConfig = {
-  host: process.env.WINDOWS_VM_TAILSCALE_IP || '100.118.44.102',
+  host: aiConfig.windowsVM.ip || 'localhost',
   port: 8188,
   useSSL: false,
-  timeout: 300000,
+  timeout: aiConfig.comfyui.timeout,
 };
 
 const ANIMATEDIFF_WORKFLOW_TEMPLATE = {

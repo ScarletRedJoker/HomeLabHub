@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySession } from "@/lib/session";
 import { cookies } from "next/headers";
+import { getAIConfig } from "@/lib/ai/config";
 
-const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
-const NEBULA_AGENT_URL = `http://${WINDOWS_VM_IP}:9765`;
-const SD_WEBUI_URL = `http://${WINDOWS_VM_IP}:7860`;
+const config = getAIConfig();
+const WINDOWS_VM_IP = config.windowsVM.ip;
+const NEBULA_AGENT_URL = config.windowsVM.nebulaAgentUrl;
+const SD_WEBUI_URL = config.stableDiffusion.url;
 const AGENT_TOKEN = process.env.NEBULA_AGENT_TOKEN || "";
 
 async function checkAuth() {

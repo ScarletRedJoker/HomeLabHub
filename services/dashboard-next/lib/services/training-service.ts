@@ -7,8 +7,10 @@ import {
 } from "@/lib/db/platform-schema";
 import { eq, desc, and, sql, gte, lte } from "drizzle-orm";
 import { auditService } from "./audit-service";
+import { getAIConfig } from "@/lib/ai/config";
 
-const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
+const aiConfig = getAIConfig();
+const WINDOWS_VM_IP = aiConfig.windowsVM.ip;
 const WINDOWS_VM_API_PORT = process.env.WINDOWS_VM_API_PORT || "8765";
 
 export interface DatasetUploadOptions {

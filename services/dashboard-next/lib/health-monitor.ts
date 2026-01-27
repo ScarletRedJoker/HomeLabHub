@@ -139,11 +139,14 @@ const THRESHOLDS = {
   responseTime: { warning: 2000, critical: 5000 },
 };
 
+import { getAIConfig } from "@/lib/ai/config";
+
+const aiConfig = getAIConfig();
 const DEPLOYMENT_CONFIGS: Record<DeploymentTarget, { name: string; host?: string; port?: number }> = {
   "windows-vm": {
     name: "Windows AI VM",
-    host: process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102",
-    port: 9765,
+    host: aiConfig.windowsVM.ip || undefined,
+    port: aiConfig.windowsVM.nebulaAgentPort,
   },
   "linode": {
     name: "Linode Production",

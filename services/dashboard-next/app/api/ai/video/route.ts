@@ -12,9 +12,12 @@ import {
   type VideoGenerationJob
 } from "@/lib/ai-video-pipeline";
 import { demoMode } from "@/lib/demo-mode";
+import { getAIConfig } from "@/lib/ai/config";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
+
+const config = getAIConfig();
 
 async function checkAuth() {
   const cookieStore = await cookies();
@@ -130,7 +133,7 @@ export async function POST(request: NextRequest) {
     console.log(`[Video API] Generation complete, URL: ${result.url}`);
 
     const isInternalUrl = result.url && (
-      result.url.includes("100.118.44.102") || 
+      (config.windowsVM.ip && result.url.includes(config.windowsVM.ip)) || 
       result.url.includes("100.66.61.51") ||
       result.url.includes("localhost") ||
       result.url.includes("127.0.0.1")
@@ -245,7 +248,7 @@ export async function GET(request: NextRequest) {
 
     if (job.status === "completed" && job.outputUrl) {
       const isInternalUrl = job.outputUrl && (
-        job.outputUrl.includes("100.118.44.102") || 
+        (config.windowsVM.ip && job.outputUrl.includes(config.windowsVM.ip)) || 
         job.outputUrl.includes("100.66.61.51") ||
         job.outputUrl.includes("localhost") ||
         job.outputUrl.includes("127.0.0.1")

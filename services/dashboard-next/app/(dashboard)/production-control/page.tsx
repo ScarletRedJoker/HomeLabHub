@@ -556,7 +556,7 @@ export default function ProductionControlPage() {
                 <Server className="h-3 w-3" /> Tailscale IP
               </p>
               <code className="text-sm bg-secondary px-2 py-1 rounded block">
-                {agentTest?.config.host || windowsNode?.tailscaleIp || "100.118.44.102"}
+                {agentTest?.config.host || windowsNode?.tailscaleIp || "Not configured"}
               </code>
             </div>
             <div className="space-y-1">

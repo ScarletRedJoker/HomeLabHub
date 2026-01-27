@@ -6,23 +6,23 @@ import { localAIRuntime } from "@/lib/local-ai-runtime";
 import { getOpenAITools, executeJarvisTool } from "@/lib/jarvis-tools";
 import { demoMode } from "@/lib/demo-mode";
 import { aiOrchestrator } from "@/lib/ai-orchestrator";
+import { getAIConfig } from "@/lib/ai/config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const config = getAIConfig();
 // LOCAL_AI_ONLY mode: When explicitly set to "true", NEVER use cloud AI providers (OpenAI, etc.)
 // All requests must use Ollama running locally on the Windows VM
 // When not set or set to any other value, cloud fallback is allowed
-const LOCAL_AI_ONLY = process.env.LOCAL_AI_ONLY === "true";
-const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
-
-// Standard troubleshooting steps for local AI errors
+const LOCAL_AI_ONLY = config.fallback.localOnlyMode;
+const WINDOWS_VM_IP = config.windowsVM.ip || "Windows VM";
 const LOCAL_AI_TROUBLESHOOTING = [
-  `1. Check if Windows VM is powered on`,
-  `2. Verify Tailscale connection: ping ${WINDOWS_VM_IP}`,
-  `3. Start Ollama: 'ollama serve' in Windows terminal`,
-  `4. Check Windows Firewall allows port 11434`,
-  `5. Test: curl http://${WINDOWS_VM_IP}:11434/api/tags`,
+  `1. Verify Windows VM is running and accessible${config.windowsVM.ip ? ` (${config.windowsVM.ip})` : ''}`,
+  "2. Verify Tailscale connection is active",
+  "3. Check that Ollama is running: ollama list",
+  "4. Restart Ollama: ollama serve",
+  `5. Try: curl ${config.ollama.url}/api/tags`,
 ];
 
 type AIProvider = "openai" | "ollama" | "auto" | "custom";
@@ -37,20 +37,16 @@ interface ChatRequestBody {
 }
 
 function getOllamaEndpoints(): string[] {
-  const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
-  const UBUNTU_IP = process.env.UBUNTU_TAILSCALE_IP || "100.66.61.51";
-  
   const endpoints: string[] = [];
   
-  if (process.env.OLLAMA_URL) {
-    endpoints.push(process.env.OLLAMA_URL);
-  } else {
-    endpoints.push(`http://${WINDOWS_VM_IP}:11434`);
-  }
+  // Primary endpoint from centralized config
+  endpoints.push(config.ollama.url);
   
+  // Fallback endpoint
   if (process.env.OLLAMA_FALLBACK_URL) {
     endpoints.push(process.env.OLLAMA_FALLBACK_URL);
   } else {
+    const UBUNTU_IP = process.env.UBUNTU_TAILSCALE_IP || "100.66.61.51";
     endpoints.push(`http://${UBUNTU_IP}:11434`);
   }
   
@@ -964,10 +960,10 @@ export async function POST(request: NextRequest): Promise<Response> {
           details: healthCheck.ollamaError || "Ollama is not responding",
           troubleshooting: [
             "1. Check if the Windows VM is powered on",
-            "2. Verify Tailscale connection is active (100.118.44.102)",
+            `2. Verify Tailscale connection is active${config.windowsVM.ip ? ` (${config.windowsVM.ip})` : ""}`,
             "3. Start Ollama: 'ollama serve' in Windows terminal",
             "4. Check Windows Firewall allows port 11434",
-            "5. Try: curl http://100.118.44.102:11434/api/tags",
+            `5. Try: curl ${config.ollama.url}/api/tags`,
           ],
           retryable: true,
           retryAfterMs: 5000,
@@ -984,7 +980,13 @@ export async function POST(request: NextRequest): Promise<Response> {
           errorCode: "LOCAL_AI_ONLY_VIOLATION",
           localAIOnly: true,
           details: "LOCAL_AI_ONLY=true. Cloud providers (OpenAI, custom endpoints) are not allowed. Use local Ollama only.",
-          troubleshooting: LOCAL_AI_TROUBLESHOOTING,
+          troubleshooting: [
+            "1. Check if the Windows VM is powered on",
+            `2. Verify Tailscale connection${config.windowsVM.ip ? ` (${config.windowsVM.ip})` : ""}`,
+            "3. Start Ollama: 'ollama serve' in Windows terminal",
+            "4. Check Windows Firewall allows port 11434",
+            `5. Try: curl ${config.ollama.url}/api/tags`,
+          ],
         }, { status: 400 });
       }
     }

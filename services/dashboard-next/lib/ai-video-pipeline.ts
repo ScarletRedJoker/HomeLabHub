@@ -405,9 +405,12 @@ export interface NebulaAgentConfig {
   timeout?: number;
 }
 
+import { getAIConfig } from "@/lib/ai/config";
+
+const aiConfig = getAIConfig();
 const DEFAULT_AGENT_CONFIG: NebulaAgentConfig = {
-  host: process.env.NEBULA_AGENT_HOST || '100.118.44.102',
-  port: parseInt(process.env.NEBULA_AGENT_PORT || '9765', 10),
+  host: aiConfig.windowsVM.ip || 'localhost',
+  port: aiConfig.windowsVM.nebulaAgentPort,
   token: process.env.NEBULA_AGENT_TOKEN,
   timeout: 120000,
 };

@@ -12,11 +12,13 @@ import type {
   ModelInstallJob,
   LocalModelInventory,
 } from "@/types/models";
+import { getAIConfig } from "@/lib/ai/config";
 
 const HUGGINGFACE_API_BASE = "https://huggingface.co/api";
 const CIVITAI_API_BASE = "https://civitai.com/api/v1";
 
-const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
+const aiConfig = getAIConfig();
+const WINDOWS_VM_IP = aiConfig.windowsVM.ip;
 const AGENT_PORT = process.env.WINDOWS_AGENT_PORT || "9765";
 const AGENT_TOKEN = process.env.NEBULA_AGENT_TOKEN;
 

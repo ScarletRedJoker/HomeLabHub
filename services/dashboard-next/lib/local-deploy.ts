@@ -7,6 +7,7 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import { getServerById, getAllServers, ServerConfig } from "./server-config-store";
 import { checkServerOnline, sendWolViaRelay } from "./wol-relay";
+import { getAIConfig } from "@/lib/ai/config";
 
 const execAsync = promisify(exec);
 
@@ -116,8 +117,9 @@ export interface RemoteAccessConfig {
 }
 
 export function getRemoteAccessConfigs(): Record<string, RemoteAccessConfig[]> {
+  const config = getAIConfig();
   const UBUNTU_IP = process.env.UBUNTU_TAILSCALE_IP || "100.66.61.51";
-  const WINDOWS_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
+  const WINDOWS_IP = config.windowsVM.ip || "localhost";
   
   return {
     ubuntu: [

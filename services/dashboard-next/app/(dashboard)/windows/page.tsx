@@ -493,7 +493,7 @@ export default function WindowsVMPage() {
                       <span className="font-medium">Connection</span>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Sunshine streams via Tailscale: {status?.vmIp || "100.118.44.102"}
+                      Sunshine streams via Tailscale: {status?.vmIp || "Not configured"}
                     </p>
                   </Card>
                 </div>

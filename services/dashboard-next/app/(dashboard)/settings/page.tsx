@@ -816,7 +816,7 @@ function SettingsPageContent() {
                       id="windowsVmIp"
                       value={aiSettings.windowsVmIp}
                       onChange={(e) => setAiSettings({ ...aiSettings, windowsVmIp: e.target.value })}
-                      placeholder="100.118.44.102"
+                      placeholder="e.g. 100.x.x.x"
                       className="flex-1"
                     />
                   </div>
@@ -832,7 +832,7 @@ function SettingsPageContent() {
                       id="ollamaUrl"
                       value={aiSettings.ollamaUrl}
                       onChange={(e) => setAiSettings({ ...aiSettings, ollamaUrl: e.target.value })}
-                      placeholder="http://100.118.44.102:11434"
+                      placeholder="e.g. http://100.x.x.x:11434"
                       className="flex-1"
                     />
                     <Button
@@ -872,7 +872,7 @@ function SettingsPageContent() {
                       id="sdUrl"
                       value={aiSettings.stableDiffusionUrl}
                       onChange={(e) => setAiSettings({ ...aiSettings, stableDiffusionUrl: e.target.value })}
-                      placeholder="http://100.118.44.102:7860"
+                      placeholder="e.g. http://100.x.x.x:7860"
                       className="flex-1"
                     />
                     <Button

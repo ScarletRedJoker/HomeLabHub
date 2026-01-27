@@ -280,7 +280,7 @@ export default function AIHealthPage() {
                 Windows AI Health
               </h1>
               <p className="text-muted-foreground text-sm">
-                NebulaAI Stack • {data?.vmIp || "100.118.44.102"}
+                NebulaAI Stack • {data?.vmIp || "Not configured"}
               </p>
             </div>
           </div>

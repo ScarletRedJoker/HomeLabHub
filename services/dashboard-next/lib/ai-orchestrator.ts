@@ -9,6 +9,7 @@ import { readFileSync, existsSync } from "fs";
 import { peerDiscovery, type PeerService } from "./peer-discovery";
 import { withResilience } from "./ai-resilience";
 import { recordChatUsage } from "./ai-metrics";
+import { getAIConfig } from "@/lib/ai/config";
 
 interface LocalAIState {
   windows_vm?: {
@@ -247,10 +248,10 @@ class AIOrchestrator {
   private static readonly STATE_FILE_PATH = process.env.LOCAL_AI_STATE_FILE || "/opt/homelab/HomeLabHub/deploy/shared/state/local-ai.json";
 
   constructor() {
-    const WINDOWS_VM_IP = process.env.WINDOWS_VM_TAILSCALE_IP || "100.118.44.102";
-    this.ollamaUrl = process.env.OLLAMA_URL || `http://${WINDOWS_VM_IP}:11434`;
-    this.comfyuiUrl = process.env.COMFYUI_URL || `http://${WINDOWS_VM_IP}:8188`;
-    this.stableDiffusionUrl = process.env.STABLE_DIFFUSION_URL || `http://${WINDOWS_VM_IP}:7860`;
+    const config = getAIConfig();
+    this.ollamaUrl = config.ollama.url;
+    this.comfyuiUrl = config.comfyui.url;
+    this.stableDiffusionUrl = config.stableDiffusion.url;
     this.initOpenAI();
     this.initReplicate();
     this.loadLocalAIState();
