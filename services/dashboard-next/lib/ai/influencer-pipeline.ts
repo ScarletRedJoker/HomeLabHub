@@ -980,4 +980,7 @@ Respond in JSON format:
 
 export const influencerPipelineOrchestrator = new InfluencerPipelineOrchestrator();
 
+// Alias for backward compatibility
+export const influencerPipeline = influencerPipelineOrchestrator;
+
 export default influencerPipelineOrchestrator;

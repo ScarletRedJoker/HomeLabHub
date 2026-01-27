@@ -13,7 +13,7 @@ import { eq, and, lte, isNotNull } from 'drizzle-orm';
 import { CronExpressionParser } from 'cron-parser';
 import { db, isDbConnected } from '../db';
 import { contentPipelines, type ContentPipeline } from '../db/platform-schema';
-import { influencerPipelineOrchestrator as influencerPipeline, type PipelineRunResult } from './influencer-pipeline';
+import { influencerPipeline, type PipelineRunResult } from './influencer-pipeline';
 import { recordJobExecution, recordQueueDepth } from '@/lib/observability/metrics-collector';
 
 function log(level: 'info' | 'warn' | 'error' | 'debug', operation: string, message: string, metadata?: Record<string, unknown>): void {
