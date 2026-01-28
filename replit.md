@@ -40,6 +40,15 @@ Smart resource management preventing OOM errors by ensuring only compatible serv
 - **3D Asset Pipeline:** Texture generation via Stable Diffusion, UV map workflows, normal/height/AO map generation, material library.
 - **ComfyUI Integration:** 633-line client for video generation, AnimateDiff, progress tracking, queue management.
 
+### Progress Sync & Cloud Storage
+- **Cross-Device Progress Sync:** Pick up exactly where you left off from any device
+- **User Progress Table:** Stores current module, active project, UI state, workspace state, recent assets
+- **Auto-Save:** Debounced saves (2s delay) + periodic sync (every 30s) + saves on page close
+- **Cloud Asset Storage:** Photos and generated images sync to Replit Object Storage (GCS-backed)
+- **Asset Ownership:** All creative assets tied to user accounts for secure access
+- **Session Restoration:** Automatically restores last active module, project, and UI state on login
+- **API Endpoints:** `/api/sync/progress` (GET/POST/DELETE), `/api/sync/assets` (upload URL generation)
+
 ### Key Features
 - **OOTB Setup Wizard:** Guided platform configuration.
 - **Command Center & Deploy Center:** Unified control and remote deployment.
