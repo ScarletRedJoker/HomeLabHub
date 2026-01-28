@@ -97,6 +97,28 @@ Smart resource management preventing OOM errors by ensuring only compatible serv
 - **Connectivity Testing:** Ping nodes to verify connectivity
 - **API Endpoints:** `/api/network/status`, `/api/network/nodes`
 
+### Website Designer Hosting
+- **Project Manager:** Full CRUD operations for website projects with version history
+- **Page Management:** Create, update, delete pages with component-based design
+- **Static HTML Generation:** Compiles components to production-ready HTML/CSS with Google Fonts, meta tags
+- **Object Storage Publishing:** Deploys sites to cloud storage for hosting
+- **API Endpoints:** `/api/designer/projects`, `/api/designer/projects/[id]`, `/api/designer/projects/[id]/publish`
+
+### Video Generation Pipeline
+- **Prompt-to-Video:** Generate videos from text descriptions
+- **Influencer Pipeline Integration:** Script generation, shot breakdown, ComfyUI frame generation
+- **Multi-Platform Support:** YouTube, TikTok, Instagram, Twitter aspect ratios
+- **Voice & Music:** TTS integration with configurable voice and music styles
+- **Demo Mode:** Fallback sample videos when AI services unavailable
+- **API Endpoints:** `/api/video/generate`, `/api/video/projects`
+
+### Bot Token Configuration
+- **Credentials Management:** Secure token storage via secrets API
+- **Connection Testing:** Validate Discord/Twitch tokens against APIs
+- **Bot Info Display:** Shows connected bot username, guilds, status
+- **Multi-Platform:** Discord, Twitch, YouTube, Kick token support
+- **API Endpoints:** `/api/bots/config`, `/api/bots/test`
+
 ### Key Features
 - **OOTB Setup Wizard:** Guided platform configuration.
 - **Command Center & Deploy Center:** Unified control and remote deployment.
