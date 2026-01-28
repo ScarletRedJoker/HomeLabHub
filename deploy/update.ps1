@@ -61,7 +61,7 @@ function Write-Err {
 function Test-Installation {
     if (-not (Test-Path $NebulaHome)) {
         Write-Err "Nebula Command not found at $NebulaHome"
-        Write-Info "Run the installer first: irm https://raw.githubusercontent.com/yourusername/nebula-command/main/deploy/install.ps1 | iex"
+        Write-Info "Run the installer first: irm https://raw.githubusercontent.com/ScarletRedJoker/Nebula-Command/main/deploy/install.ps1 | iex"
         exit 1
     }
 
@@ -145,9 +145,9 @@ function Invoke-Bootstrap {
 
 # Main execution
 Write-Host ""
-Write-Host "╔═══════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║               Nebula Command - Updater                        ║" -ForegroundColor Cyan
-Write-Host "╚═══════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "======================================================================" -ForegroundColor Cyan
+Write-Host "               Nebula Command - Updater                               " -ForegroundColor Cyan
+Write-Host "======================================================================" -ForegroundColor Cyan
 Write-Host ""
 
 Write-Info "Target version: $Version"
