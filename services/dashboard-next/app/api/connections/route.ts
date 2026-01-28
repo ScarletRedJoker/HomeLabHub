@@ -155,31 +155,58 @@ async function testSSHConnection(
   port: number = 22,
   timeout: number = 10000
 ): Promise<{ success: boolean; error?: string; latency?: number }> {
+  console.log(`[SSH] Testing connection to ${user}@${host}:${port}`);
+  
   const privateKey = getSSHPrivateKey();
   
   if (!privateKey) {
+    console.log(`[SSH] No private key available for ${host}`);
     return { success: false, error: "SSH key not configured" };
   }
   
+  console.log(`[SSH] Private key loaded (${privateKey.length} bytes) for ${host}`);
   const startTime = Date.now();
   
   return new Promise((resolve) => {
     const conn = new Client();
+    let resolved = false;
+    
     const timeoutHandle = setTimeout(() => {
-      conn.end();
-      resolve({ success: false, error: "Connection timeout" });
+      if (!resolved) {
+        resolved = true;
+        console.log(`[SSH] Connection to ${host} timed out after ${timeout}ms`);
+        conn.end();
+        resolve({ success: false, error: "Connection timeout" });
+      }
     }, timeout);
     
     conn.on("ready", () => {
-      const latency = Date.now() - startTime;
-      clearTimeout(timeoutHandle);
-      conn.end();
-      resolve({ success: true, latency });
+      if (!resolved) {
+        resolved = true;
+        const latency = Date.now() - startTime;
+        clearTimeout(timeoutHandle);
+        console.log(`[SSH] Successfully connected to ${host} in ${latency}ms`);
+        conn.end();
+        resolve({ success: true, latency });
+      }
     });
     
     conn.on("error", (err) => {
-      clearTimeout(timeoutHandle);
-      resolve({ success: false, error: err.message });
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeoutHandle);
+        console.log(`[SSH] Connection to ${host} failed: ${err.message}`);
+        resolve({ success: false, error: err.message });
+      }
+    });
+    
+    conn.on("close", () => {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeoutHandle);
+        console.log(`[SSH] Connection to ${host} closed unexpectedly`);
+        resolve({ success: false, error: "Connection closed unexpectedly" });
+      }
     });
     
     try {
@@ -191,8 +218,12 @@ async function testSSHConnection(
         readyTimeout: timeout - 1000,
       });
     } catch (err: any) {
-      clearTimeout(timeoutHandle);
-      resolve({ success: false, error: err.message });
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeoutHandle);
+        console.log(`[SSH] Failed to initiate connection to ${host}: ${err.message}`);
+        resolve({ success: false, error: err.message });
+      }
     }
   });
 }
@@ -223,12 +254,13 @@ async function getLinodeNodeInfo(): Promise<NodeInfo> {
   
   const sshResult = await testSSHConnection(host, user, 22, 8000);
   
+  const serviceStatus = sshResult.success ? "online" : "offline";
   const services: ServiceInfo[] = [
-    { name: "Dashboard", type: "docker", status: sshResult.success ? "online" : "unknown", port: 443, node: "linode" },
-    { name: "Discord Bot", type: "pm2", status: sshResult.success ? "online" : "unknown", port: 3001, node: "linode" },
-    { name: "Stream Bot", type: "pm2", status: sshResult.success ? "online" : "unknown", port: 3000, node: "linode" },
-    { name: "Caddy", type: "docker", status: sshResult.success ? "online" : "unknown", port: 443, node: "linode" },
-    { name: "PostgreSQL", type: "docker", status: sshResult.success ? "online" : "unknown", port: 5432, node: "linode" },
+    { name: "Dashboard", type: "docker", status: serviceStatus, port: 443, node: "linode" },
+    { name: "Discord Bot", type: "pm2", status: serviceStatus, port: 3001, node: "linode" },
+    { name: "Stream Bot", type: "pm2", status: serviceStatus, port: 3000, node: "linode" },
+    { name: "Caddy", type: "docker", status: serviceStatus, port: 443, node: "linode" },
+    { name: "PostgreSQL", type: "docker", status: serviceStatus, port: 5432, node: "linode" },
   ];
   
   return {
@@ -260,12 +292,13 @@ async function getUbuntuHomeNodeInfo(): Promise<NodeInfo> {
   
   const sshResult = await testSSHConnection(host, user, 22, 8000);
   
+  const serviceStatus = sshResult.success ? "online" : "offline";
   const services: ServiceInfo[] = [
-    { name: "Plex", type: "docker", status: sshResult.success ? "online" : "unknown", port: 32400, node: "ubuntu-home" },
-    { name: "Jellyfin", type: "docker", status: sshResult.success ? "online" : "unknown", port: 8096, node: "ubuntu-home" },
-    { name: "Home Assistant", type: "docker", status: sshResult.success ? "online" : "unknown", port: 8123, node: "ubuntu-home" },
-    { name: "Caddy", type: "docker", status: sshResult.success ? "online" : "unknown", port: 443, node: "ubuntu-home" },
-    { name: "Cloudflared", type: "docker", status: sshResult.success ? "online" : "unknown", node: "ubuntu-home" },
+    { name: "Plex", type: "docker", status: serviceStatus, port: 32400, node: "ubuntu-home" },
+    { name: "Jellyfin", type: "docker", status: serviceStatus, port: 8096, node: "ubuntu-home" },
+    { name: "Home Assistant", type: "docker", status: serviceStatus, port: 8123, node: "ubuntu-home" },
+    { name: "Caddy", type: "docker", status: serviceStatus, port: 443, node: "ubuntu-home" },
+    { name: "Cloudflared", type: "docker", status: serviceStatus, node: "ubuntu-home" },
   ];
   
   return {
@@ -297,10 +330,11 @@ async function getWindowsVMNodeInfo(): Promise<NodeInfo> {
   
   const agentResult = await testAgentConnection("windows-vm");
   
+  const serviceStatus = agentResult.reachable ? "online" : "offline";
   const services: ServiceInfo[] = [
-    { name: "Ollama", type: "agent", status: agentResult.reachable ? "online" : "unknown", port: 11434, node: "windows-vm" },
-    { name: "Stable Diffusion", type: "agent", status: agentResult.reachable ? "online" : "unknown", port: 7860, node: "windows-vm" },
-    { name: "ComfyUI", type: "agent", status: agentResult.reachable ? "online" : "unknown", port: 8188, node: "windows-vm" },
+    { name: "Ollama", type: "agent", status: serviceStatus, port: 11434, node: "windows-vm" },
+    { name: "Stable Diffusion", type: "agent", status: serviceStatus, port: 7860, node: "windows-vm" },
+    { name: "ComfyUI", type: "agent", status: serviceStatus, port: 8188, node: "windows-vm" },
     { name: "Nebula Agent", type: "agent", status: agentResult.reachable && agentResult.authValid ? "online" : "offline", port: 9765, node: "windows-vm" },
   ];
   
