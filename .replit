@@ -103,6 +103,8 @@ COMFYUI_URL = "http://100.118.44.102:8188"
 OLLAMA_URL = "http://100.118.44.102:11434"
 USE_LOCAL_AI = "true"
 LOCAL_AI_PRIORITY = "true"
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "admin123"
 
 [userenv.development]
 TWITCH_REDIRECT_URI = "https://3acc42cf-91e9-40f1-90e8-761e2c391cdf-00-17v3bbf5unhyf.picard.replit.dev/auth/twitch/callback"

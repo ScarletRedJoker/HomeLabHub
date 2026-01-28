@@ -2098,3 +2098,86 @@ export type CreativeProject = typeof creativeProjects.$inferSelect;
 export type NewCreativeProject = typeof creativeProjects.$inferInsert;
 export type CreativeProjectAsset = typeof creativeProjectAssets.$inferSelect;
 export type NewCreativeProjectAsset = typeof creativeProjectAssets.$inferInsert;
+
+// ============================================
+// Email Campaigns & Marketing
+// ============================================
+
+export const emailCampaigns = pgTable("email_campaigns", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  subject: varchar("subject", { length: 500 }).notNull(),
+  bodyText: text("body_text"),
+  bodyHtml: text("body_html"),
+  recipients: text("recipients").array(),
+  recipientCount: integer("recipient_count").default(0),
+  status: varchar("status", { length: 50 }).default("draft"),
+  scheduledFor: timestamp("scheduled_for"),
+  sentAt: timestamp("sent_at"),
+  sentCount: integer("sent_count").default(0),
+  failedCount: integer("failed_count").default(0),
+  openCount: integer("open_count").default(0),
+  clickCount: integer("click_count").default(0),
+  createdBy: varchar("created_by", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const emailTemplates = pgTable("email_templates", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  subject: varchar("subject", { length: 500 }).notNull(),
+  bodyText: text("body_text").notNull(),
+  bodyHtml: text("body_html"),
+  category: varchar("category", { length: 100 }).default("general"),
+  variables: text("variables").array(),
+  createdBy: varchar("created_by", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type EmailCampaign = typeof emailCampaigns.$inferSelect;
+export type NewEmailCampaign = typeof emailCampaigns.$inferInsert;
+export type EmailTemplate = typeof emailTemplates.$inferSelect;
+export type NewEmailTemplate = typeof emailTemplates.$inferInsert;
+
+// ============================================
+// Client Management
+// ============================================
+
+export const clients = pgTable("clients", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 50 }),
+  company: varchar("company", { length: 255 }),
+  status: varchar("status", { length: 50 }).default("active"),
+  notes: text("notes"),
+  tags: text("tags").array(),
+  metadata: jsonb("metadata").default({}),
+  createdBy: varchar("created_by", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const clientProjects = pgTable("client_projects", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: uuid("client_id").references(() => clients.id),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 50 }).default("pending"),
+  startDate: timestamp("start_date"),
+  dueDate: timestamp("due_date"),
+  completedAt: timestamp("completed_at"),
+  budget: decimal("budget", { precision: 12, scale: 2 }),
+  websiteId: uuid("website_id"),
+  metadata: jsonb("metadata").default({}),
+  createdBy: varchar("created_by", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type Client = typeof clients.$inferSelect;
+export type NewClient = typeof clients.$inferInsert;
+export type ClientProject = typeof clientProjects.$inferSelect;
+export type NewClientProject = typeof clientProjects.$inferInsert;
