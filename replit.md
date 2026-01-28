@@ -25,6 +25,12 @@ A three-layer design (Experience, Control Plane, Execution Plane) supports a Mar
 ### AI Node Management & Creative Engine
 The system monitors AI node health and performance, featuring APIs for Speech, Job Scheduling, Training, and Embeddings/RAG. The Creative Studio supports advanced AI image generation (text-to-image, image-to-image, inpainting, ControlNet, upscaling, face swap) with job persistence. A ComfyUI Service Supervisor ensures robust operation of the image generation pipeline.
 
+### AR/VR & 3D Development
+- **AR/VR Studio:** Immersive content creation hub with motion capture, 3D asset pipeline, and VR/AR platform targeting (Quest, SteamVR, Vision Pro, WebXR).
+- **Motion Capture Bridge:** 933-line library supporting MediaPipe, OpenPose, mocap devices, pose/hands/face/holistic tracking for ControlNet/AnimateDiff.
+- **3D Asset Pipeline:** Texture generation via Stable Diffusion, UV map workflows, normal/height/AO map generation, material library.
+- **ComfyUI Integration:** 633-line client for video generation, AnimateDiff, progress tracking, queue management.
+
 ### Key Features
 - **OOTB Setup Wizard:** Guided platform configuration.
 - **Command Center & Deploy Center:** Unified control and remote deployment.
