@@ -25,6 +25,18 @@ A three-layer design (Experience, Control Plane, Execution Plane) supports a Mar
 ### AI Node Management & Creative Engine
 The system monitors AI node health and performance, featuring APIs for Speech, Job Scheduling, Training, and Embeddings/RAG. The Creative Studio supports advanced AI image generation (text-to-image, image-to-image, inpainting, ControlNet, upscaling, face swap) with job persistence. A ComfyUI Service Supervisor ensures robust operation of the image generation pipeline.
 
+### AI Training System (Database-Backed)
+- **Training Run Manager:** Full lifecycle management for LoRA, QLoRA, SDXL, and DreamBooth training jobs with database persistence
+- **Progress Tracking:** Real-time epoch/step progress, loss metrics, and checkpoint management stored in PostgreSQL
+- **Event Bus:** SSE-based real-time event streaming with persistent event history
+- **Run Lifecycle:** Create, start, update, complete, fail, cancel operations with full audit trail
+
+### GPU Job Scheduler (Database-Backed)
+- **Job Queue:** PostgreSQL-backed priority queue with status tracking (queued, running, completed, failed)
+- **VRAM Manager:** Lock-based VRAM allocation with automatic cleanup of stale locks
+- **Fair Scheduling:** Multi-node support with utilization-aware job assignment
+- **Heartbeat System:** Automatic detection and release of orphaned GPU locks
+
 ### GPU VRAM Orchestrator (RTX 3060 12GB)
 Smart resource management preventing OOM errors by ensuring only compatible services run simultaneously:
 - **VRAM Tracking:** Real-time monitoring of GPU memory usage
