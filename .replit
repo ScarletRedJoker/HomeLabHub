@@ -1,11 +1,11 @@
 modules = ["python-3.11", "nodejs-20", "postgresql-16"]
 [agent]
 expertMode = true
-integrations = ["python_openai_ai_integrations:1.0.0", "spotify:1.0.0", "google-calendar:1.0.0", "google-mail:1.0.0", "discord:1.0.0", "javascript_openai_ai_integrations:1.0.0", "youtube:1.0.0", "github:1.0.0", "javascript_object_storage:2.0.0"]
+integrations = ["python_openai_ai_integrations:1.0.0", "spotify:1.0.0", "google-calendar:1.0.0", "google-mail:1.0.0", "discord:1.0.0", "javascript_openai_ai_integrations:1.0.0", "youtube:1.0.0", "github:1.0.0", "javascript_object_storage:2.0.0", "stripe:2.0.0"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["cacert", "cargo", "iana-etc", "libiconv", "libxcrypt", "libyaml", "openssl", "pkg-config", "rustc", "sshpass", "unzip", "xcodebuild", "zlib", "openssh"]
+packages = ["cacert", "cargo", "iana-etc", "libiconv", "libxcrypt", "libyaml", "openssh", "openssl", "pkg-config", "rustc", "sshpass", "unzip", "xcodebuild", "zlib"]
 
 [workflows]
 runButton = "Project"

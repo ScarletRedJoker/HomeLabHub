@@ -109,6 +109,8 @@
     "replicate": "^1.4.0",
     "sonner": "^2.0.7",
     "ssh2-sftp-client": "^12.0.1",
+    "stripe": "^20.2.0",
+    "stripe-replit-sync": "^1.0.0",
     "supertest": "^7.1.4",
     "tailwindcss-animate": "^1.0.7",
     "vitest": "^4.0.16",
