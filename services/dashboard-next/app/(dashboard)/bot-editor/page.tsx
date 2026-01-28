@@ -50,6 +50,12 @@ import {
   BarChart3,
   Clock,
   Server,
+  Key,
+  Eye,
+  EyeOff,
+  CheckCircle2,
+  XCircle,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -80,6 +86,19 @@ interface BotConfig {
   welcomeChannel: string;
   welcomeMessage: string;
   autoRole: string;
+}
+
+interface CredentialsState {
+  discordToken: string;
+  applicationId: string;
+  showToken: boolean;
+  hasStoredToken: boolean;
+  isConnected: boolean;
+  lastSync: string | null;
+  botInfo: {
+    username: string;
+    guilds: number;
+  } | null;
 }
 
 const DEFAULT_COMMANDS: BotCommand[] = [
@@ -165,6 +184,106 @@ export default function BotEditorPage() {
     "[INFO] Loaded 3 commands",
     "[INFO] Ready to receive commands",
   ]);
+  const [credentials, setCredentials] = useState<CredentialsState>({
+    discordToken: "",
+    applicationId: "",
+    showToken: false,
+    hasStoredToken: false,
+    isConnected: false,
+    lastSync: null,
+    botInfo: null,
+  });
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [isSavingToken, setIsSavingToken] = useState(false);
+
+  useEffect(() => {
+    fetchBotConfigStatus();
+  }, [activeBot]);
+
+  const fetchBotConfigStatus = async () => {
+    try {
+      const response = await fetch("/api/bots/config");
+      if (response.ok) {
+        const data = await response.json();
+        if (activeBot === "discord") {
+          setCredentials((prev) => ({
+            ...prev,
+            hasStoredToken: data.discord?.hasToken || false,
+            applicationId: data.discord?.applicationId || "",
+            isConnected: data.discord?.isConnected || false,
+            lastSync: data.discord?.lastSync || null,
+          }));
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch bot config status:", error);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    setIsTestingConnection(true);
+    try {
+      const response = await fetch("/api/bots/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          botType: activeBot,
+          token: credentials.discordToken || undefined,
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setCredentials((prev) => ({
+          ...prev,
+          isConnected: true,
+          botInfo: data.botInfo,
+        }));
+        setLogs((prev) => [
+          ...prev,
+          `[INFO] Connection test successful: ${data.botInfo?.username} (${data.botInfo?.guilds} guilds)`,
+        ]);
+      } else {
+        setCredentials((prev) => ({ ...prev, isConnected: false, botInfo: null }));
+        setLogs((prev) => [...prev, `[ERROR] Connection test failed: ${data.message}`]);
+      }
+    } catch (error) {
+      setLogs((prev) => [...prev, `[ERROR] Connection test failed`]);
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
+
+  const handleSaveToken = async () => {
+    if (!credentials.discordToken) return;
+    setIsSavingToken(true);
+    try {
+      const response = await fetch("/api/secrets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          keyName: "DISCORD_BOT_TOKEN",
+          category: "api_keys",
+          targets: ["all"],
+          value: credentials.discordToken,
+        }),
+      });
+      if (response.ok) {
+        setCredentials((prev) => ({
+          ...prev,
+          hasStoredToken: true,
+          discordToken: "",
+        }));
+        setLogs((prev) => [...prev, `[INFO] Discord token saved successfully`]);
+      } else {
+        const data = await response.json();
+        setLogs((prev) => [...prev, `[ERROR] Failed to save token: ${data.error}`]);
+      }
+    } catch (error) {
+      setLogs((prev) => [...prev, `[ERROR] Failed to save token`]);
+    } finally {
+      setIsSavingToken(false);
+    }
+  };
 
   const handleSaveConfig = async () => {
     setIsSaving(true);
@@ -355,6 +474,10 @@ export default function BotEditorPage() {
                 <TabsTrigger value="config" className="gap-1.5">
                   <Settings2 className="h-3.5 w-3.5" />
                   Bot Config
+                </TabsTrigger>
+                <TabsTrigger value="credentials" className="gap-1.5">
+                  <Key className="h-3.5 w-3.5" />
+                  Credentials
                 </TabsTrigger>
                 <TabsTrigger value="logs" className="gap-1.5">
                   <Terminal className="h-3.5 w-3.5" />
@@ -555,6 +678,193 @@ export default function BotEditorPage() {
                     )}
                   </CardContent>
                 </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="credentials" className="flex-1 m-0 p-4 overflow-auto">
+              <div className="max-w-2xl space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Key className="h-5 w-5" />
+                      Tokens & Credentials
+                    </CardTitle>
+                    <CardDescription>
+                      Configure bot tokens and API credentials securely
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                      <div
+                        className={cn(
+                          "h-3 w-3 rounded-full",
+                          credentials.isConnected
+                            ? "bg-green-500 animate-pulse"
+                            : credentials.hasStoredToken
+                            ? "bg-yellow-500"
+                            : "bg-gray-400"
+                        )}
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">
+                          {credentials.isConnected
+                            ? "Connected"
+                            : credentials.hasStoredToken
+                            ? "Token Configured"
+                            : "Not Configured"}
+                        </p>
+                        {credentials.botInfo && (
+                          <p className="text-xs text-muted-foreground">
+                            Bot: {credentials.botInfo.username} | {credentials.botInfo.guilds} guilds
+                          </p>
+                        )}
+                        {credentials.lastSync && (
+                          <p className="text-xs text-muted-foreground">
+                            Last checked: {new Date(credentials.lastSync).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                      {credentials.isConnected ? (
+                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <XCircle className="h-5 w-5 text-muted-foreground" />
+                      )}
+                    </div>
+
+                    {activeBot === "discord" && (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="discord-token">Discord Bot Token</Label>
+                          <div className="relative">
+                            <Input
+                              id="discord-token"
+                              type={credentials.showToken ? "text" : "password"}
+                              value={credentials.discordToken}
+                              onChange={(e) =>
+                                setCredentials((prev) => ({
+                                  ...prev,
+                                  discordToken: e.target.value,
+                                }))
+                              }
+                              placeholder={
+                                credentials.hasStoredToken
+                                  ? "••••••••••••••••••••"
+                                  : "Enter your Discord bot token"
+                              }
+                              className="pr-10"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                              onClick={() =>
+                                setCredentials((prev) => ({
+                                  ...prev,
+                                  showToken: !prev.showToken,
+                                }))
+                              }
+                            >
+                              {credentials.showToken ? (
+                                <EyeOff className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <Eye className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Get your bot token from the{" "}
+                            <a
+                              href="https://discord.com/developers/applications"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline"
+                            >
+                              Discord Developer Portal
+                            </a>
+                          </p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="app-id">Application ID</Label>
+                          <Input
+                            id="app-id"
+                            value={credentials.applicationId}
+                            onChange={(e) =>
+                              setCredentials((prev) => ({
+                                ...prev,
+                                applicationId: e.target.value,
+                              }))
+                            }
+                            placeholder="Enter your Discord application ID"
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    <div className="flex gap-2 pt-4">
+                      <Button
+                        onClick={handleSaveToken}
+                        disabled={!credentials.discordToken || isSavingToken}
+                        className="bg-gradient-to-r from-indigo-500 to-purple-600"
+                      >
+                        {isSavingToken ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Save className="h-4 w-4 mr-2" />
+                        )}
+                        Save Token
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={handleTestConnection}
+                        disabled={isTestingConnection}
+                      >
+                        {isTestingConnection ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Zap className="h-4 w-4 mr-2" />
+                        )}
+                        Test Connection
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {activeBot === "stream" && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Stream Platform Tokens</CardTitle>
+                      <CardDescription>
+                        Configure tokens for streaming platforms
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Twitch Access Token</Label>
+                        <Input
+                          type="password"
+                          placeholder="Configure in Secrets Manager"
+                          disabled
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>YouTube API Key</Label>
+                        <Input
+                          type="password"
+                          placeholder="Configure in Secrets Manager"
+                          disabled
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Stream platform tokens can be configured in the{" "}
+                        <a href="/secrets-manager" className="text-primary hover:underline">
+                          Secrets Manager
+                        </a>
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             </TabsContent>
 
