@@ -174,6 +174,115 @@ CREATE INDEX IF NOT EXISTS idx_activity_logs_timestamp ON activity_logs(timestam
 CREATE INDEX IF NOT EXISTS idx_events_created_at ON events(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_homelab_servers_slug ON homelab_servers(slug);
 
+-- System Metrics for Observability
+CREATE TABLE IF NOT EXISTS system_metrics (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    value VARCHAR(100) NOT NULL,
+    tags JSONB,
+    timestamp TIMESTAMP DEFAULT NOW(),
+    metric_type VARCHAR(20) NOT NULL
+);
+
+-- System Alerts for Production Alerting
+CREATE TABLE IF NOT EXISTS system_alerts (
+    id VARCHAR(100) PRIMARY KEY,
+    category VARCHAR(50) NOT NULL,
+    severity VARCHAR(20) NOT NULL,
+    title VARCHAR(500) NOT NULL,
+    message TEXT NOT NULL,
+    source VARCHAR(255) NOT NULL,
+    timestamp TIMESTAMP DEFAULT NOW() NOT NULL,
+    acknowledged BOOLEAN DEFAULT FALSE,
+    acknowledged_by VARCHAR(255),
+    acknowledged_at TIMESTAMP,
+    resolved_at TIMESTAMP,
+    metadata JSONB DEFAULT '{}',
+    deduplication_key VARCHAR(500) NOT NULL,
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Incidents table (must exist before references)
+CREATE TABLE IF NOT EXISTS incidents (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    service_name VARCHAR(255) NOT NULL,
+    severity VARCHAR(50) NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    title VARCHAR(500) NOT NULL,
+    description TEXT,
+    runbook_id VARCHAR(255),
+    resolution TEXT,
+    acknowledged_by VARCHAR(255),
+    created_at TIMESTAMP DEFAULT NOW(),
+    acknowledged_at TIMESTAMP,
+    resolved_at TIMESTAMP
+);
+
+-- Incident Events
+CREATE TABLE IF NOT EXISTS incident_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    incident_id UUID REFERENCES incidents(id) NOT NULL,
+    event_type VARCHAR(50) NOT NULL,
+    actor VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    data JSONB DEFAULT '{}',
+    timestamp TIMESTAMP DEFAULT NOW() NOT NULL
+);
+
+-- Failure Records
+CREATE TABLE IF NOT EXISTS failure_records (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    failure_type VARCHAR(50) NOT NULL,
+    service VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    stack TEXT,
+    fingerprint VARCHAR(64),
+    context JSONB DEFAULT '{}',
+    incident_id UUID REFERENCES incidents(id),
+    acknowledged BOOLEAN DEFAULT FALSE,
+    acknowledged_by VARCHAR(255),
+    acknowledged_at TIMESTAMP,
+    timestamp TIMESTAMP DEFAULT NOW() NOT NULL
+);
+
+-- Failure Aggregates
+CREATE TABLE IF NOT EXISTS failure_aggregates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    fingerprint VARCHAR(64) NOT NULL UNIQUE,
+    service VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    occurrence_count INTEGER DEFAULT 1,
+    first_seen_at TIMESTAMP DEFAULT NOW() NOT NULL,
+    last_seen_at TIMESTAMP DEFAULT NOW() NOT NULL,
+    incident_id UUID REFERENCES incidents(id),
+    metadata JSONB DEFAULT '{}'
+);
+
+-- Content Pipelines for AI Influencer
+CREATE TABLE IF NOT EXISTS content_pipelines (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    persona_id UUID,
+    template_id UUID,
+    schedule_cron VARCHAR(100),
+    is_enabled BOOLEAN DEFAULT TRUE,
+    config JSONB DEFAULT '{}',
+    last_run_at TIMESTAMP,
+    next_run_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Indexes for observability tables
+CREATE INDEX IF NOT EXISTS idx_system_metrics_name ON system_metrics(name);
+CREATE INDEX IF NOT EXISTS idx_system_metrics_timestamp ON system_metrics(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_system_alerts_category ON system_alerts(category);
+CREATE INDEX IF NOT EXISTS idx_system_alerts_timestamp ON system_alerts(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_incidents_status ON incidents(status);
+CREATE INDEX IF NOT EXISTS idx_failure_records_fingerprint ON failure_records(fingerprint);
+CREATE INDEX IF NOT EXISTS idx_content_pipelines_enabled ON content_pipelines(is_enabled);
+
 -- Grant permissions
 GRANT ALL ON ALL TABLES IN SCHEMA public TO jarvis;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO jarvis;
