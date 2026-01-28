@@ -10,7 +10,7 @@ const nextConfig = {
     ignoreDuringBuilds: process.env.SKIP_TYPE_CHECK === 'true',
   },
   experimental: {
-    serverComponentsExternalPackages: ['simple-git', 'ssh2', 'node-ssh', 'cpu-features', 'ssh2-sftp-client', 'ioredis'],
+    serverComponentsExternalPackages: ['simple-git', 'ssh2', 'node-ssh', 'cpu-features', 'ssh2-sftp-client', 'ioredis', 'stripe-replit-sync'],
     instrumentationHook: true,
   },
   webpack: (config, { isServer }) => {
@@ -22,6 +22,7 @@ const nextConfig = {
         'cpu-features': 'commonjs cpu-features',
         'ssh2-sftp-client': 'commonjs ssh2-sftp-client',
         'ioredis': 'commonjs ioredis',
+        'stripe-replit-sync': 'commonjs stripe-replit-sync',
       });
     } else {
       config.resolve = config.resolve || {};
