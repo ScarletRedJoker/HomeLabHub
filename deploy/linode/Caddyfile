@@ -43,6 +43,14 @@ discord.evindrake.net {
     }
 }
 
+rig-city.com {
+    reverse_proxy rig-city-site:80
+}
+
+www.rig-city.com {
+    redir https://rig-city.com{uri} permanent
+}
+
 n8n.evindrake.net {
     reverse_proxy n8n:5678
     

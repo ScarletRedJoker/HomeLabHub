@@ -505,7 +505,7 @@ services:
       - homelab
     environment:
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
-      - MANAGED_DOMAINS=evindrake.net,scarletredjoker.com
+      - MANAGED_DOMAINS=evindrake.net,rig-city.com,scarletredjoker.com
       - SERVICE_CATALOG_PATH=/orchestration/services.yaml
       - SYNC_INTERVAL=300
     volumes:
