@@ -376,13 +376,20 @@ export async function discoverByCapabilityViaRemoteApi(capability: string): Prom
       return [];
     }
 
+    // Validate content-type before parsing JSON to avoid errors from HTML error pages
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      console.warn("[ServiceRegistry] Remote API returned non-JSON response, skipping");
+      return [];
+    }
+
     const result = await response.json();
     if (result.success && Array.isArray(result.services)) {
       return result.services.map(parseRemoteService);
     }
     return [];
   } catch (error) {
-    console.error("[ServiceRegistry] Remote API discover by capability error:", error);
+    // Silently return empty for remote API errors (expected when remote is unreachable)
     return [];
   }
 }

@@ -368,24 +368,27 @@ class PeerDiscovery {
 
   private async discoverByCapabilityViaRemoteApi(capability: string): Promise<PeerService[]> {
     try {
-      console.log(`[PeerDiscovery] Trying remote registry API for capability ${capability}`);
       const response = await fetchRemoteRegistryDirect(`?capability=${encodeURIComponent(capability)}`, {
         method: "GET",
       });
 
       if (!response.ok) {
-        console.warn(`[PeerDiscovery] Remote registry API returned ${response.status}`);
+        return [];
+      }
+
+      // Validate content-type before parsing JSON to avoid errors from HTML error pages
+      const contentType = response.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
         return [];
       }
 
       const result = await response.json();
       if (result.success && Array.isArray(result.services)) {
-        console.log(`[PeerDiscovery] Found ${result.services.length} services for ${capability} via remote API`);
         return result.services.map(parseRemoteServiceToPeer);
       }
       return [];
     } catch (error) {
-      console.warn(`[PeerDiscovery] Remote registry API error for capability ${capability}:`, error);
+      // Silently return empty for remote API errors (expected when remote is unreachable)
       return [];
     }
   }
