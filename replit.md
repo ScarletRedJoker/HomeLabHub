@@ -61,6 +61,42 @@ Smart resource management preventing OOM errors by ensuring only compatible serv
 - **Session Restoration:** Automatically restores last active module, project, and UI state on login
 - **API Endpoints:** `/api/sync/progress` (GET/POST/DELETE), `/api/sync/assets` (upload URL generation)
 
+### Payment Processing (Stripe)
+- **Stripe Integration:** Full payment processing via Replit Stripe connector
+- **Checkout Sessions:** Create checkout sessions for subscriptions and one-time payments
+- **Webhook Handling:** Automatic sync with stripe-replit-sync for products, prices, subscriptions
+- **Customer Portal:** Billing management for subscribers
+- **API Endpoints:** `/api/stripe/checkout`, `/api/stripe/products`, `/api/stripe/webhook`
+
+### Notification System
+- **Email Notifications:** Gmail integration via Replit connector with MIME support
+- **Discord Webhooks:** Rich embed notifications to Discord channels
+- **Template System:** Built-in templates (alert, success, info, warning) with interpolation
+- **Multi-Channel Dispatch:** Send to multiple channels in a single call
+- **API Endpoint:** `/api/notifications/send`
+
+### Jarvis AI Chat System
+- **Conversational AI:** Natural language chat interface with tool execution
+- **Multi-Step Autonomy:** Up to 5 autonomous steps per request with planning
+- **GPU Model Switching:** "Switch to Stable Diffusion" via chat
+- **Session Management:** Persistent conversation history with 30-minute TTL
+- **Streaming Responses:** Real-time SSE updates during execution
+- **API Endpoints:** `/api/jarvis/chat`, `/api/jarvis/status`, `/api/jarvis/switch`
+
+### Game Development Module
+- **Project Management:** Create and manage game projects (Godot, Unity, Unreal, Custom)
+- **AI Asset Generation:** Sprites, textures, characters, backgrounds, icons, UI, tilesets
+- **Object Storage:** Generated assets saved to cloud storage (GCS)
+- **Provider Fallback:** Uses SD WebUI with ComfyUI fallback
+- **Database Tables:** `game_projects`, `game_assets`
+- **API Endpoints:** `/api/game-dev/projects`, `/api/game-dev/assets`
+
+### VPN/Network Management
+- **Tailscale Integration:** CLI and API-based Tailscale status and control
+- **Node Discovery:** List all Tailscale nodes with status and latencies
+- **Connectivity Testing:** Ping nodes to verify connectivity
+- **API Endpoints:** `/api/network/status`, `/api/network/nodes`
+
 ### Key Features
 - **OOTB Setup Wizard:** Guided platform configuration.
 - **Command Center & Deploy Center:** Unified control and remote deployment.
@@ -72,7 +108,8 @@ Smart resource management preventing OOM errors by ensuring only compatible serv
 - **Agent Builder & Pipelines:** Custom AI agent configuration and deployment automation.
 - **Bot Editor & Servers:** Discord bot customization and server monitoring.
 - **Windows VM & AI Deployment:** GPU server management with one-click AI service deployment (Ollama, ComfyUI, Stable Diffusion), model management, GPU health monitoring, and auto-start configuration.
-- **Marketplace:** Docker package installation.
+- **Marketplace:** Docker package installation with SSH-based deployment.
+- **Model Marketplace:** CivitAI/HuggingFace model browsing and one-click download to Windows VM.
 - **AI Developer:** Autonomous code modification with local LLM (Ollama), Git branch isolation, auto-approval rules, build verification, remote execution, context management, and human approval gates.
 - **AI Influencer / Video Automation Pipeline:** Fully automated content generation with ComfyUI-based image sequences, AnimateDiff video generation, script-to-video workflows, batch generation, cron-based scheduling, FFmpeg video assembly, and structured asset storage.
 - **Automated Deployment and Node Auto-Configuration:** Bootstrap scripts for dynamic, hardware-aware configuration of AI services (Ollama, ComfyUI, Stable Diffusion) on various nodes.

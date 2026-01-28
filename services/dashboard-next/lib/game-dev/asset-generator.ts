@@ -1,5 +1,6 @@
 import { ComfyUIClient } from '@/lib/ai/providers/comfyui';
 import { StableDiffusionProvider } from '@/lib/ai/providers/stable-diffusion';
+import { ObjectStorageService } from '@/lib/integrations/object_storage';
 import { projectManager } from './project-manager';
 import type { 
   AssetType, 
@@ -8,6 +9,7 @@ import type {
   GameAsset 
 } from './types';
 import { ASSET_TYPE_CONFIGS } from './types';
+import { randomUUID } from 'crypto';
 
 export interface GenerationOptions {
   width?: number;
@@ -22,10 +24,12 @@ export interface GenerationOptions {
 export class GameAssetGenerator {
   private comfyClient: ComfyUIClient;
   private sdProvider: StableDiffusionProvider;
+  private storage: ObjectStorageService;
 
   constructor() {
     this.comfyClient = new ComfyUIClient();
     this.sdProvider = new StableDiffusionProvider();
+    this.storage = new ObjectStorageService();
   }
 
   private buildPrompt(basePrompt: string, type: AssetType, style?: string): string {
@@ -59,6 +63,49 @@ export class GameAssetGenerator {
     };
   }
 
+  private async uploadToStorage(imageBase64: string, projectId: string, assetName: string): Promise<{ url: string; fileSize: number }> {
+    const buffer = Buffer.from(imageBase64, 'base64');
+    const fileSize = buffer.length;
+    const fileName = `game-assets/${projectId}/${assetName.replace(/[^a-zA-Z0-9-_]/g, '_')}_${randomUUID()}.png`;
+    
+    try {
+      const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+      if (!bucketId) {
+        throw new Error('Object storage not configured');
+      }
+      
+      const { Storage } = await import('@google-cloud/storage');
+      const storage = new Storage({
+        credentials: {
+          audience: "replit",
+          subject_token_type: "access_token",
+          token_url: "http://127.0.0.1:1106/token",
+          type: "external_account",
+          credential_source: {
+            url: "http://127.0.0.1:1106/credential",
+            format: { type: "json", subject_token_field_name: "access_token" },
+          },
+          universe_domain: "googleapis.com",
+        } as any,
+        projectId: "",
+      });
+      
+      const bucket = storage.bucket(bucketId);
+      const file = bucket.file(fileName);
+      
+      await file.save(buffer, {
+        contentType: 'image/png',
+        metadata: { cacheControl: 'public, max-age=31536000' },
+      });
+      
+      const publicUrl = `https://storage.googleapis.com/${bucketId}/${fileName}`;
+      return { url: publicUrl, fileSize };
+    } catch (error) {
+      console.error('[GameAssetGenerator] Storage upload failed:', error);
+      throw error;
+    }
+  }
+
   async generateAsset(request: AssetGenerationRequest): Promise<AssetGenerationResult> {
     try {
       const config = ASSET_TYPE_CONFIGS[request.type];
@@ -68,34 +115,80 @@ export class GameAssetGenerator {
       const prompt = this.buildPrompt(request.prompt, request.type, request.style);
       const negativePrompt = this.buildNegativePrompt(request.type, request.negativePrompt);
 
-      const sdAvailable = await this.sdProvider.checkHealth();
+      const [sdAvailable, comfyAvailable] = await Promise.all([
+        this.sdProvider.checkHealth(),
+        this.comfyClient.health(),
+      ]);
       
-      if (!sdAvailable) {
+      if (!sdAvailable && !comfyAvailable) {
         return {
           success: false,
-          error: 'Stable Diffusion is not available. Please ensure the Windows VM is running.',
+          error: 'No AI image generators available. Please ensure the Windows VM is running with Stable Diffusion or ComfyUI.',
         };
       }
 
-      const result = await this.sdProvider.txt2img({
-        prompt,
-        negativePrompt,
-        width,
-        height,
-        steps: 30,
-        cfgScale: 7,
-        samplerName: 'DPM++ 2M Karras',
-      });
+      let imageBase64: string;
+      let generatedWith: string;
+      let seed: number | undefined;
 
-      if (!result.images || result.images.length === 0) {
-        return {
-          success: false,
-          error: 'No images were generated',
-        };
+      if (sdAvailable) {
+        const result = await this.sdProvider.txt2img({
+          prompt,
+          negativePrompt,
+          width,
+          height,
+          steps: 30,
+          cfgScale: 7,
+          samplerName: 'DPM++ 2M Karras',
+        });
+
+        if (!result.images || result.images.length === 0) {
+          if (comfyAvailable) {
+            console.log('[GameAssetGenerator] SD failed, falling back to ComfyUI');
+          } else {
+            return { success: false, error: 'No images were generated' };
+          }
+        } else {
+          imageBase64 = result.images[0];
+          generatedWith = 'stable-diffusion';
+          seed = result.info?.seed;
+        }
       }
 
-      const imageBase64 = result.images[0];
-      const fileSize = Math.round((imageBase64.length * 3) / 4);
+      if (!imageBase64! && comfyAvailable) {
+        const result = await this.comfyClient.generateImage({
+          prompt,
+          negativePrompt,
+          width,
+          height,
+          steps: 30,
+          cfg: 7,
+        });
+
+        if (!result.images || result.images.length === 0) {
+          return { success: false, error: 'No images were generated' };
+        }
+        
+        imageBase64 = result.images[0];
+        generatedWith = 'comfyui';
+      }
+
+      if (!imageBase64!) {
+        return { success: false, error: 'Image generation failed' };
+      }
+
+      let filePath: string;
+      let fileSize: number;
+      
+      try {
+        const uploadResult = await this.uploadToStorage(imageBase64, request.projectId, request.name);
+        filePath = uploadResult.url;
+        fileSize = uploadResult.fileSize;
+      } catch (storageError) {
+        console.warn('[GameAssetGenerator] Object storage unavailable, using data URL');
+        filePath = `data:image/png;base64,${imageBase64}`;
+        fileSize = Math.round((imageBase64.length * 3) / 4);
+      }
 
       const asset = await projectManager.createAsset({
         projectId: request.projectId,
@@ -103,13 +196,13 @@ export class GameAssetGenerator {
         type: request.type,
         prompt: request.prompt,
         style: request.style,
-        filePath: `data:image/png;base64,${imageBase64}`,
+        filePath,
         fileSize,
         width,
         height,
         metadata: {
-          generatedWith: 'stable-diffusion',
-          seed: result.info?.seed,
+          generatedWith: generatedWith!,
+          seed,
           fullPrompt: prompt,
           negativePrompt,
         },
