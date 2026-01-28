@@ -2,6 +2,13 @@
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
+  // Skip type checking during Docker builds (SKIP_TYPE_CHECK=true)
+  typescript: {
+    ignoreBuildErrors: process.env.SKIP_TYPE_CHECK === 'true',
+  },
+  eslint: {
+    ignoreDuringBuilds: process.env.SKIP_TYPE_CHECK === 'true',
+  },
   experimental: {
     serverComponentsExternalPackages: ['simple-git', 'ssh2', 'node-ssh', 'cpu-features', 'ssh2-sftp-client', 'ioredis'],
     instrumentationHook: true,

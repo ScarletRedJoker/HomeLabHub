@@ -21,9 +21,10 @@ COPY . .
 # Set environment for build
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+ENV NODE_OPTIONS="--max-old-space-size=8192"
 
-# Build the application
-RUN npm run build
+# Build the application - skip type checking for faster builds (done in CI)
+RUN SKIP_TYPE_CHECK=true npm run build
 
 # Prune dev dependencies after build for smaller production image
 RUN npm prune --omit=dev
