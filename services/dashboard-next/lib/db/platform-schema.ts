@@ -2069,3 +2069,32 @@ export type MonetizationEvent = typeof monetizationEvents.$inferSelect;
 export type NewMonetizationEvent = typeof monetizationEvents.$inferInsert;
 export type ScheduledJob = typeof scheduledJobs.$inferSelect;
 export type NewScheduledJob = typeof scheduledJobs.$inferInsert;
+
+// ============================================
+// Creative Studio Projects
+// ============================================
+
+export const creativeProjects = pgTable("creative_projects", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 255 }),
+  name: varchar("name", { length: 255 }).notNull(),
+  type: varchar("type", { length: 50 }).notNull(), // image, video, chat
+  data: jsonb("data").default({}),
+  thumbnail: text("thumbnail"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const creativeProjectAssets = pgTable("creative_project_assets", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: uuid("project_id").references(() => creativeProjects.id).notNull(),
+  type: varchar("type", { length: 50 }).notNull(), // image, video, prompt
+  data: text("data"), // base64 or file path
+  metadata: jsonb("metadata").default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type CreativeProject = typeof creativeProjects.$inferSelect;
+export type NewCreativeProject = typeof creativeProjects.$inferInsert;
+export type CreativeProjectAsset = typeof creativeProjectAssets.$inferSelect;
+export type NewCreativeProjectAsset = typeof creativeProjectAssets.$inferInsert;

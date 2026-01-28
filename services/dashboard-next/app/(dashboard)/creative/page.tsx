@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,8 +31,31 @@ import {
   XCircle,
   Loader2,
   Box,
+  Paintbrush,
+  Upload,
 } from "lucide-react";
 import { ModelManager } from "@/components/ai/model-manager";
+import { PaintOverlay } from "@/components/ai/PaintOverlay";
+import { ProjectsSidebar } from "@/components/creative/ProjectsSidebar";
+
+interface Project {
+  id: string;
+  name: string;
+  type: string;
+  data: any;
+  thumbnail?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Asset {
+  id: string;
+  projectId: string;
+  type: string;
+  data: string;
+  metadata: any;
+  createdAt: string;
+}
 
 interface AIStatus {
   status: string;
@@ -114,17 +137,48 @@ export default function CreativeStudioPage() {
   const [saveVideoLocally, setSaveVideoLocally] = useState(true);
   const [generatingVideo, setGeneratingVideo] = useState(false);
   const [generatedVideo, setGeneratedVideo] = useState<GeneratedVideo | null>(null);
+  const [comfyuiStatus, setComfyuiStatus] = useState<{ online: boolean; error?: string } | null>(null);
+  const [replicateAvailable, setReplicateAvailable] = useState(false);
 
   const [chatMessage, setChatMessage] = useState("");
   const [chatHistory, setChatHistory] = useState<{ role: string; content: string }[]>([]);
   const [chatProvider, setChatProvider] = useState("auto");
   const [sendingChat, setSendingChat] = useState(false);
 
+  const [inpaintSourceImage, setInpaintSourceImage] = useState<string | null>(null);
+  const [inpaintMask, setInpaintMask] = useState<string | null>(null);
+
+  const [currentProject, setCurrentProject] = useState<Project | null>(null);
+  const [projectAssets, setProjectAssets] = useState<Asset[]>([]);
+  const [inpaintPrompt, setInpaintPrompt] = useState("");
+  const [inpaintNegativePrompt, setInpaintNegativePrompt] = useState("blurry, low quality, distorted, ugly, deformed");
+  const [inpaintDenoisingStrength, setInpaintDenoisingStrength] = useState(0.75);
+  const [inpaintSteps, setInpaintSteps] = useState(30);
+  const [generatingInpaint, setGeneratingInpaint] = useState(false);
+  const [inpaintResult, setInpaintResult] = useState<GeneratedImage | null>(null);
+  const inpaintFileInputRef = React.useRef<HTMLInputElement>(null);
+  const inpaintCanvasRef = React.useRef<HTMLCanvasElement>(null);
+
   useEffect(() => {
     fetchAIStatus();
     fetchImageProviders();
     fetchSDModels();
+    fetchVideoStatus();
   }, []);
+
+  async function fetchVideoStatus() {
+    try {
+      const res = await fetch("/api/ai/video?action=status");
+      if (res.ok) {
+        const data = await res.json();
+        setComfyuiStatus(data.comfyui || { online: false });
+        setReplicateAvailable(data.providers?.some((p: any) => p.id === "replicate" && p.available) || false);
+      }
+    } catch (error) {
+      console.error("Failed to fetch video status:", error);
+      setComfyuiStatus({ online: false, error: "Failed to check status" });
+    }
+  }
 
   async function fetchSDModels() {
     try {
@@ -290,16 +344,55 @@ export default function CreativeStudioPage() {
         const blobUrl = URL.createObjectURL(blob);
         const provider = res.headers.get("x-provider") || "unknown";
         setGeneratedImage({ url: blobUrl, provider, isBlob: true });
+        
+        if (currentProject) {
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+            const base64 = (reader.result as string).split(",")[1];
+            try {
+              await fetch(`/api/creative-projects/${currentProject.id}/assets`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  type: "image",
+                  data: base64,
+                  metadata: { provider, prompt: imagePrompt, size: imageSize },
+                }),
+              });
+            } catch (e) {
+              console.error("Failed to save asset:", e);
+            }
+          };
+          reader.readAsDataURL(blob);
+        }
+        
         toast({
           title: "Success",
-          description: "Image generated successfully",
+          description: currentProject ? "Image generated and saved to project" : "Image generated successfully",
         });
       } else if (res.ok) {
         const data = await safeParseJSON(res);
         setGeneratedImage(data);
+        
+        if (currentProject && data.base64) {
+          try {
+            await fetch(`/api/creative-projects/${currentProject.id}/assets`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                type: "image",
+                data: data.base64,
+                metadata: { provider: data.provider, prompt: imagePrompt, size: imageSize },
+              }),
+            });
+          } catch (e) {
+            console.error("Failed to save asset:", e);
+          }
+        }
+        
         toast({
           title: "Success",
-          description: "Image generated successfully",
+          description: currentProject ? "Image generated and saved to project" : "Image generated successfully",
         });
       } else {
         try {
@@ -425,6 +518,122 @@ export default function CreativeStudioPage() {
     }
   }
 
+  function handleInpaintImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      setInpaintSourceImage(result);
+      setInpaintResult(null);
+      setInpaintMask(null);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function useGeneratedImageForInpaint() {
+    if (generatedImage?.url) {
+      setInpaintSourceImage(generatedImage.url);
+      setInpaintResult(null);
+      setInpaintMask(null);
+      setActiveTab("inpaint");
+      toast({
+        title: "Image Selected",
+        description: "Your generated image has been loaded for inpainting",
+      });
+    } else if (generatedImage?.base64) {
+      setInpaintSourceImage(`data:image/png;base64,${generatedImage.base64}`);
+      setInpaintResult(null);
+      setInpaintMask(null);
+      setActiveTab("inpaint");
+      toast({
+        title: "Image Selected",
+        description: "Your generated image has been loaded for inpainting",
+      });
+    }
+  }
+
+  async function handleMaskExport(maskBase64: string) {
+    setInpaintMask(maskBase64);
+  }
+
+  async function generateInpaint() {
+    if (!inpaintSourceImage || !inpaintMask || !inpaintPrompt.trim()) {
+      toast({
+        title: "Missing Requirements",
+        description: "Please upload an image, paint a mask, and enter a prompt",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setGeneratingInpaint(true);
+    setInpaintResult(null);
+
+    try {
+      let imageBase64 = inpaintSourceImage;
+      if (inpaintSourceImage.startsWith("data:")) {
+        imageBase64 = inpaintSourceImage.split(",")[1];
+      } else if (inpaintSourceImage.startsWith("blob:")) {
+        const response = await fetch(inpaintSourceImage);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        imageBase64 = await new Promise<string>((resolve) => {
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            resolve(result.split(",")[1]);
+          };
+          reader.readAsDataURL(blob);
+        });
+      }
+
+      const res = await fetch("/api/ai/inpaint", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image: imageBase64,
+          mask: inpaintMask,
+          prompt: inpaintPrompt,
+          negativePrompt: inpaintNegativePrompt,
+          denoisingStrength: inpaintDenoisingStrength,
+          steps: inpaintSteps,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await safeParseJSON(res);
+        if (data.success && data.image) {
+          setInpaintResult({
+            base64: data.image,
+            provider: "stable-diffusion",
+          });
+          toast({
+            title: "Success",
+            description: "Inpainting completed successfully",
+          });
+        } else {
+          throw new Error(data.error || "Failed to generate inpainted image");
+        }
+      } else {
+        const error = await safeParseJSON(res);
+        toast({
+          title: "Inpainting Failed",
+          description: error.details || error.error || "An unknown error occurred",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Inpainting Failed",
+        description: error.message || "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingInpaint(false);
+    }
+  }
+
   function StatusBadge({ status }: { status: string }) {
     if (status === "connected") {
       return (
@@ -458,19 +667,98 @@ export default function CreativeStudioPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Sparkles className="h-6 w-6 text-purple-500" />
-            Creative Studio
-          </h1>
-          <p className="text-muted-foreground">
-            AI-powered content creation for next-gen creators
-          </p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <Sparkles className="h-6 w-6 text-purple-500" />
+              Creative Studio
+              {currentProject && (
+                <span className="text-lg font-normal text-muted-foreground">
+                  — {currentProject.name}
+                </span>
+              )}
+            </h1>
+            <p className="text-muted-foreground">
+              AI-powered content creation for next-gen creators
+            </p>
+          </div>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchAIStatus}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh Status
-        </Button>
+        <div className="flex items-center gap-2">
+          <ProjectsSidebar
+            currentProjectId={currentProject?.id}
+            currentProjectData={currentProject ? {
+              name: currentProject.name,
+              type: currentProject.type,
+              data: {
+                imagePrompt,
+                negativePrompt,
+                imageSize,
+                imageStyle,
+                videoPrompt,
+                videoModel,
+                chatHistory,
+              },
+              thumbnail: generatedImage?.url || generatedImage?.base64 ? 
+                (generatedImage.url || `data:image/png;base64,${generatedImage.base64}`) : 
+                currentProject.thumbnail,
+            } : undefined}
+            onProjectLoad={(project, assets) => {
+              setCurrentProject(project);
+              setProjectAssets(assets);
+              if (project.data) {
+                const data = project.data as any;
+                if (data.imagePrompt) setImagePrompt(data.imagePrompt);
+                if (data.negativePrompt) setNegativePrompt(data.negativePrompt);
+                if (data.imageSize) setImageSize(data.imageSize);
+                if (data.imageStyle) setImageStyle(data.imageStyle);
+                if (data.videoPrompt) setVideoPrompt(data.videoPrompt);
+                if (data.videoModel) setVideoModel(data.videoModel);
+                if (data.chatHistory) setChatHistory(data.chatHistory);
+              }
+              const lastImage = assets.find(a => a.type === "image");
+              if (lastImage?.data) {
+                setGeneratedImage({ 
+                  base64: lastImage.data.startsWith("data:") ? 
+                    lastImage.data.split(",")[1] : lastImage.data, 
+                  provider: (lastImage.metadata as any)?.provider || "loaded" 
+                });
+              }
+              setActiveTab(project.type);
+            }}
+            onProjectCreate={(project) => {
+              setCurrentProject(project);
+              setProjectAssets([]);
+              setGeneratedImage(null);
+              setGeneratedVideo(null);
+              setChatHistory([]);
+            }}
+            onAutoSave={async (projectId) => {
+              try {
+                await fetch(`/api/creative-projects/${projectId}`, {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    data: {
+                      imagePrompt,
+                      negativePrompt,
+                      imageSize,
+                      imageStyle,
+                      videoPrompt,
+                      videoModel,
+                      chatHistory,
+                    },
+                  }),
+                });
+              } catch (error) {
+                console.error("Auto-save failed:", error);
+              }
+            }}
+          />
+          <Button variant="outline" size="sm" onClick={fetchAIStatus}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh Status
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -638,10 +926,14 @@ export default function CreativeStudioPage() {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-5 w-full max-w-xl">
+        <TabsList className="grid grid-cols-6 w-full max-w-2xl">
           <TabsTrigger value="image" className="flex items-center gap-2">
             <ImageIcon className="h-4 w-4" />
             Images
+          </TabsTrigger>
+          <TabsTrigger value="inpaint" className="flex items-center gap-2">
+            <Paintbrush className="h-4 w-4" />
+            Inpaint
           </TabsTrigger>
           <TabsTrigger value="video" className="flex items-center gap-2">
             <Video className="h-4 w-4" />
@@ -805,6 +1097,14 @@ export default function CreativeStudioPage() {
                       <Button
                         size="sm"
                         variant="secondary"
+                        onClick={useGeneratedImageForInpaint}
+                        title="Edit with Inpainting"
+                      >
+                        <Paintbrush className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
                         onClick={async () => {
                           const link = document.createElement('a');
                           if (generatedImage.isBlob) {
@@ -842,9 +1142,254 @@ export default function CreativeStudioPage() {
           </div>
         </TabsContent>
 
+        <TabsContent value="inpaint" className="mt-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Source Image</Label>
+                <div className="flex gap-2">
+                  <input
+                    type="file"
+                    ref={inpaintFileInputRef}
+                    onChange={handleInpaintImageUpload}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => inpaintFileInputRef.current?.click()}
+                    className="flex-1"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload Image
+                  </Button>
+                  {generatedImage && (
+                    <Button
+                      variant="outline"
+                      onClick={useGeneratedImageForInpaint}
+                      className="flex-1"
+                    >
+                      <ImageIcon className="h-4 w-4 mr-2" />
+                      Use Generated
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {inpaintSourceImage ? (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Paint Mask (white = areas to regenerate)</Label>
+                    <PaintOverlay
+                      imageUrl={inpaintSourceImage}
+                      width={512}
+                      height={512}
+                      onMaskExport={handleMaskExport}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Prompt (describe what to generate in masked area)</Label>
+                    <Textarea
+                      placeholder="Describe what you want to appear in the masked area..."
+                      value={inpaintPrompt}
+                      onChange={(e) => setInpaintPrompt(e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Negative Prompt (optional)</Label>
+                    <Input
+                      placeholder="What to avoid..."
+                      value={inpaintNegativePrompt}
+                      onChange={(e) => setInpaintNegativePrompt(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Denoising: {inpaintDenoisingStrength.toFixed(2)}</Label>
+                      <input
+                        type="range"
+                        min="0.1"
+                        max="1"
+                        step="0.05"
+                        value={inpaintDenoisingStrength}
+                        onChange={(e) => setInpaintDenoisingStrength(parseFloat(e.target.value))}
+                        className="w-full"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Higher = more change, Lower = preserve original
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Steps: {inpaintSteps}</Label>
+                      <input
+                        type="range"
+                        min="10"
+                        max="50"
+                        step="5"
+                        value={inpaintSteps}
+                        onChange={(e) => setInpaintSteps(parseInt(e.target.value))}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={generateInpaint}
+                    disabled={generatingInpaint || !inpaintPrompt.trim() || !inpaintMask}
+                    className="w-full"
+                  >
+                    {generatingInpaint ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Inpainting...
+                      </>
+                    ) : (
+                      <>
+                        <Paintbrush className="h-4 w-4 mr-2" />
+                        Generate Inpaint
+                      </>
+                    )}
+                  </Button>
+
+                  {!inpaintMask && (
+                    <p className="text-xs text-amber-500">
+                      Paint on the image to create a mask, then click Generate
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="border rounded-lg bg-muted/50 p-8 text-center">
+                  <Paintbrush className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                  <p className="text-muted-foreground mb-2">Upload or select an image to start inpainting</p>
+                  <p className="text-xs text-muted-foreground">
+                    You can also use a generated image from the Images tab
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-4">
+              <Label>Inpainted Result</Label>
+              <div className="border rounded-lg bg-muted/50 min-h-[400px] flex items-center justify-center">
+                {generatingInpaint ? (
+                  <div className="text-center">
+                    <Loader2 className="h-12 w-12 animate-spin mx-auto mb-2 text-purple-500" />
+                    <p className="text-muted-foreground">Creating your inpainted image...</p>
+                    <p className="text-xs text-muted-foreground mt-1">This may take 15-30 seconds</p>
+                  </div>
+                ) : inpaintResult?.base64 ? (
+                  <div className="relative w-full">
+                    <img
+                      src={`data:image/png;base64,${inpaintResult.base64}`}
+                      alt="Inpainted"
+                      className="w-full rounded-lg"
+                    />
+                    <div className="absolute bottom-2 right-2 flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          setInpaintSourceImage(`data:image/png;base64,${inpaintResult.base64}`);
+                          setInpaintMask(null);
+                          toast({
+                            title: "Image Updated",
+                            description: "Result loaded as new source for further editing",
+                          });
+                        }}
+                        title="Use as New Source"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = `data:image/png;base64,${inpaintResult.base64}`;
+                          link.download = `inpainted-${Date.now()}.png`;
+                          link.click();
+                        }}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : inpaintResult?.url ? (
+                  <div className="relative w-full">
+                    <img
+                      src={inpaintResult.url}
+                      alt="Inpainted"
+                      className="w-full rounded-lg"
+                    />
+                    <div className="absolute bottom-2 right-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = inpaintResult.url!;
+                          link.download = `inpainted-${Date.now()}.png`;
+                          link.click();
+                        }}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center text-muted-foreground">
+                    <Paintbrush className="h-16 w-16 mx-auto mb-2 opacity-50" />
+                    <p>Your inpainted image will appear here</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
         <TabsContent value="video" className="mt-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-4">
+              <div className="p-3 rounded-lg border bg-card/50 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Cpu className="h-4 w-4 text-purple-500" />
+                    <span className="text-sm font-medium">ComfyUI (Local Video)</span>
+                  </div>
+                  {comfyuiStatus ? (
+                    comfyuiStatus.online ? (
+                      <span className="flex items-center gap-1 text-xs text-green-400">
+                        <CheckCircle2 className="h-3 w-3" /> Ready
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-xs text-red-400">
+                        <XCircle className="h-3 w-3" /> Offline
+                      </span>
+                    )
+                  ) : (
+                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                  )}
+                </div>
+                {comfyuiStatus && !comfyuiStatus.online && (
+                  <p className="text-xs text-muted-foreground">
+                    Windows VM at 100.118.44.102:8188 is not reachable. Start ComfyUI or check Tailscale connection.
+                  </p>
+                )}
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full h-7 text-xs"
+                  onClick={fetchVideoStatus}
+                >
+                  <RefreshCw className="h-3 w-3 mr-1" /> Refresh Status
+                </Button>
+              </div>
+
               <div className="space-y-2">
                 <Label>Model</Label>
                 <Select value={videoModel} onValueChange={setVideoModel}>
@@ -937,7 +1482,11 @@ export default function CreativeStudioPage() {
 
               <Button
                 onClick={generateVideo}
-                disabled={generatingVideo || (!videoPrompt.trim() && !inputImageUrl.trim())}
+                disabled={
+                  generatingVideo || 
+                  (!videoPrompt.trim() && !inputImageUrl.trim()) ||
+                  ((videoModel === "animatediff" || videoModel === "svd-local") && comfyuiStatus && !comfyuiStatus.online)
+                }
                 className="w-full"
               >
                 {generatingVideo ? (
@@ -952,6 +1501,13 @@ export default function CreativeStudioPage() {
                   </>
                 )}
               </Button>
+
+              {(videoModel === "animatediff" || videoModel === "svd-local") && comfyuiStatus && !comfyuiStatus.online && (
+                <p className="text-xs text-amber-400 flex items-center gap-1">
+                  <XCircle className="h-3 w-3" />
+                  ComfyUI is offline - local video generation unavailable. Switch to cloud model or start ComfyUI.
+                </p>
+              )}
 
               <p className="text-xs text-muted-foreground">
                 {videoModel === "animatediff" || videoModel === "svd-local" ? (
