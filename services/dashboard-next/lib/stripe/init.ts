@@ -1,7 +1,10 @@
-import { runMigrations } from 'stripe-replit-sync';
 import { getStripeSync } from './client';
 
 let initialized = false;
+
+function isReplitEnvironment(): boolean {
+  return !!(process.env.REPLIT_CONNECTORS_HOSTNAME && (process.env.REPL_IDENTITY || process.env.WEB_REPL_RENEWAL));
+}
 
 export async function initStripe(): Promise<void> {
   if (initialized) {
@@ -16,7 +19,16 @@ export async function initStripe(): Promise<void> {
     return;
   }
 
+  if (!isReplitEnvironment()) {
+    console.log('[Stripe] Running outside Replit - using direct Stripe API');
+    console.log('[Stripe] Ensure STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET are set');
+    initialized = true;
+    return;
+  }
+
   try {
+    const { runMigrations } = await import('stripe-replit-sync');
+    
     console.log('[Stripe] Running migrations...');
     await runMigrations({ 
       databaseUrl,
@@ -25,6 +37,12 @@ export async function initStripe(): Promise<void> {
     console.log('[Stripe] Migrations complete');
 
     const stripeSync = await getStripeSync();
+    
+    if (!stripeSync) {
+      console.warn('[Stripe] StripeSync not available, skipping webhook setup');
+      initialized = true;
+      return;
+    }
 
     console.log('[Stripe] Setting up managed webhook...');
     const domains = process.env.REPLIT_DOMAINS?.split(',') || [];
@@ -51,7 +69,7 @@ export async function initStripe(): Promise<void> {
     console.log('[Stripe] Initialization complete');
   } catch (error) {
     console.error('[Stripe] Initialization failed:', error);
-    throw error;
+    initialized = true;
   }
 }
 
