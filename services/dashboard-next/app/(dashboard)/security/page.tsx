@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,8 +105,12 @@ interface SecurityEvent {
 }
 
 export default function SecurityToolsPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("scanning");
   const { toast } = useToast();
+  
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
   
   const [portTarget, setPortTarget] = useState("");
   const [portScanning, setPortScanning] = useState(false);
@@ -132,6 +137,32 @@ export default function SecurityToolsPage() {
   
   const [vmStatus, setVmStatus] = useState<any>(null);
   const [vmLoading, setVmLoading] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch("/api/users/me");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.user?.role === "admin") {
+            setIsAdmin(true);
+          } else {
+            setIsAdmin(false);
+            setAuthError("Admin access required to view this page");
+          }
+        } else if (res.status === 401) {
+          router.push("/login");
+        } else {
+          setIsAdmin(false);
+          setAuthError("Failed to verify permissions");
+        }
+      } catch (error) {
+        setIsAdmin(false);
+        setAuthError("Failed to verify permissions");
+      }
+    };
+    checkAuth();
+  }, [router]);
 
   const runPortScan = async () => {
     if (!portTarget) {
@@ -319,6 +350,27 @@ export default function SecurityToolsPage() {
       default: return "text-gray-500";
     }
   };
+
+  if (isAdmin === null) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <ShieldAlert className="h-16 w-16 text-destructive" />
+        <h2 className="text-2xl font-bold">Access Denied</h2>
+        <p className="text-muted-foreground">{authError || "Admin access required to view this page"}</p>
+        <Button variant="outline" onClick={() => router.push("/dashboard")}>
+          Return to Dashboard
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 p-4 md:p-6">

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySession } from "@/lib/session";
 import { cookies } from "next/headers";
+import { userService } from "@/lib/services/user-service";
 import {
   listVMs,
   startVM,
@@ -18,17 +19,38 @@ interface VMControlRequest {
   action: VMAction;
 }
 
-async function checkAuth(): Promise<boolean> {
+async function checkAdminAuth(): Promise<{ authorized: boolean; isAdmin: boolean }> {
   const cookieStore = await cookies();
   const session = cookieStore.get("session");
-  if (!session?.value) return false;
-  const user = await verifySession(session.value);
-  return !!user;
+  if (!session?.value) return { authorized: false, isAdmin: false };
+  
+  const sessionData = await verifySession(session.value);
+  if (!sessionData) return { authorized: false, isAdmin: false };
+  
+  if (sessionData.userId) {
+    const user = await userService.getUserById(sessionData.userId);
+    if (!user || !user.isActive) return { authorized: false, isAdmin: false };
+    return { authorized: true, isAdmin: user.role === "admin" };
+  }
+  
+  const user = await userService.getUserByUsername(sessionData.username);
+  if (!user || !user.isActive) {
+    if (sessionData.username === process.env.ADMIN_USERNAME) {
+      return { authorized: true, isAdmin: true };
+    }
+    return { authorized: false, isAdmin: false };
+  }
+  
+  return { authorized: true, isAdmin: user.role === "admin" };
 }
 
 export async function GET(request: NextRequest) {
-  if (!(await checkAuth())) {
+  const auth = await checkAdminAuth();
+  if (!auth.authorized) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!auth.isAdmin) {
+    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
   try {
@@ -55,8 +77,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!(await checkAuth())) {
+  const auth = await checkAdminAuth();
+  if (!auth.authorized) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!auth.isAdmin) {
+    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
   try {

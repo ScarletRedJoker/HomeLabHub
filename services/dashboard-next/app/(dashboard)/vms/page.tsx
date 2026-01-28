@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,7 @@ import {
   WifiOff,
   Settings,
   Zap,
+  ShieldAlert,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -49,13 +51,42 @@ interface VMListResponse {
 }
 
 export default function VMManagementPage() {
+  const router = useRouter();
   const [vms, setVms] = useState<VMInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; vmName: string; action: string } | null>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch("/api/users/me");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.user?.role === "admin") {
+            setIsAdmin(true);
+          } else {
+            setIsAdmin(false);
+            setAuthError("Admin access required to view this page");
+          }
+        } else if (res.status === 401) {
+          router.push("/login");
+        } else {
+          setIsAdmin(false);
+          setAuthError("Failed to verify permissions");
+        }
+      } catch (error) {
+        setIsAdmin(false);
+        setAuthError("Failed to verify permissions");
+      }
+    };
+    checkAuth();
+  }, [router]);
 
   const fetchVMs = useCallback(async () => {
     try {
@@ -202,6 +233,27 @@ export default function VMManagementPage() {
   const runningCount = vms.filter(vm => vm.status === 'running').length;
   const stoppedCount = vms.filter(vm => vm.status === 'stopped').length;
   const otherCount = vms.filter(vm => !['running', 'stopped'].includes(vm.status)).length;
+
+  if (isAdmin === null) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <ShieldAlert className="h-16 w-16 text-destructive" />
+        <h2 className="text-2xl font-bold">Access Denied</h2>
+        <p className="text-muted-foreground">{authError || "Admin access required to view this page"}</p>
+        <Button variant="outline" onClick={() => router.push("/dashboard")}>
+          Return to Dashboard
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 p-4 md:p-6">

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySession } from "@/lib/session";
 import { cookies } from "next/headers";
+import { userService } from "@/lib/services/user-service";
 import https from "https";
 
 interface DomainConfig {
@@ -29,11 +30,29 @@ const CONFIGURED_DOMAINS: DomainConfig[] = [
   { domain: "webmail.evindrake.net", service: "Webmail", backend: "localhost:8025" },
 ];
 
-async function checkAuth() {
+async function checkAdminAuth(): Promise<{ authorized: boolean; isAdmin: boolean }> {
   const cookieStore = await cookies();
   const session = cookieStore.get("session");
-  if (!session?.value) return null;
-  return await verifySession(session.value);
+  if (!session?.value) return { authorized: false, isAdmin: false };
+  
+  const sessionData = await verifySession(session.value);
+  if (!sessionData) return { authorized: false, isAdmin: false };
+  
+  if (sessionData.userId) {
+    const user = await userService.getUserById(sessionData.userId);
+    if (!user || !user.isActive) return { authorized: false, isAdmin: false };
+    return { authorized: true, isAdmin: user.role === "admin" };
+  }
+  
+  const user = await userService.getUserByUsername(sessionData.username);
+  if (!user || !user.isActive) {
+    if (sessionData.username === process.env.ADMIN_USERNAME) {
+      return { authorized: true, isAdmin: true };
+    }
+    return { authorized: false, isAdmin: false };
+  }
+  
+  return { authorized: true, isAdmin: user.role === "admin" };
 }
 
 async function resolveDNS(hostname: string): Promise<{ resolved: boolean; ip: string | null }> {
@@ -144,9 +163,12 @@ async function verifyDomain(config: DomainConfig) {
 }
 
 export async function GET(request: NextRequest) {
-  const user = await checkAuth();
-  if (!user) {
+  const auth = await checkAdminAuth();
+  if (!auth.authorized) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!auth.isAdmin) {
+    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
   return NextResponse.json({
@@ -156,9 +178,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const user = await checkAuth();
-  if (!user) {
+  const auth = await checkAdminAuth();
+  if (!auth.authorized) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!auth.isAdmin) {
+    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
   try {

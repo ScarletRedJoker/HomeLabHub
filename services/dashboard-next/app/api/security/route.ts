@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySession } from "@/lib/session";
 import { cookies } from "next/headers";
+import { userService } from "@/lib/services/user-service";
 import * as dns from "dns";
 import * as net from "net";
 import * as https from "https";
@@ -16,11 +17,29 @@ const dnsResolveTxt = promisify(dns.resolveTxt);
 const dnsResolveNs = promisify(dns.resolveNs);
 const dnsResolveCname = promisify(dns.resolveCname);
 
-async function checkAuth() {
+async function checkAdminAuth(): Promise<{ authorized: boolean; isAdmin: boolean }> {
   const cookieStore = await cookies();
   const session = cookieStore.get("session");
-  if (!session?.value) return null;
-  return await verifySession(session.value);
+  if (!session?.value) return { authorized: false, isAdmin: false };
+  
+  const sessionData = await verifySession(session.value);
+  if (!sessionData) return { authorized: false, isAdmin: false };
+  
+  if (sessionData.userId) {
+    const user = await userService.getUserById(sessionData.userId);
+    if (!user || !user.isActive) return { authorized: false, isAdmin: false };
+    return { authorized: true, isAdmin: user.role === "admin" };
+  }
+  
+  const user = await userService.getUserByUsername(sessionData.username);
+  if (!user || !user.isActive) {
+    if (sessionData.username === process.env.ADMIN_USERNAME) {
+      return { authorized: true, isAdmin: true };
+    }
+    return { authorized: false, isAdmin: false };
+  }
+  
+  return { authorized: true, isAdmin: user.role === "admin" };
 }
 
 async function scanPort(host: string, port: number, timeout = 3000): Promise<{ port: number; open: boolean; service?: string }> {
@@ -312,9 +331,12 @@ async function checkVulnerabilities(url: string): Promise<any> {
 }
 
 export async function GET(request: NextRequest) {
-  const user = await checkAuth();
-  if (!user) {
+  const auth = await checkAdminAuth();
+  if (!auth.authorized) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!auth.isAdmin) {
+    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
   return NextResponse.json({
@@ -331,9 +353,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const user = await checkAuth();
-  if (!user) {
+  const auth = await checkAdminAuth();
+  if (!auth.authorized) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!auth.isAdmin) {
+    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
   try {

@@ -1,17 +1,78 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySession } from "@/lib/session";
 import { cookies } from "next/headers";
+import { userService } from "@/lib/services/user-service";
 
 const WINDOWS_VM_IP = process.env.WINDOWS_VM_IP || "100.118.44.102";
 const NEBULA_AGENT_PORT = process.env.NEBULA_AGENT_PORT || "3847";
 const WINDOWS_USER = process.env.WINDOWS_VM_SSH_USER || process.env.WINDOWS_USER || "Evin";
 
-async function checkAuth() {
+const ALLOWED_BASE_PATHS = [
+  `C:\\Users\\${WINDOWS_USER}`,
+  `C:\\Users\\${WINDOWS_USER}\\Documents`,
+  `C:\\Users\\${WINDOWS_USER}\\Downloads`,
+  `C:\\Users\\${WINDOWS_USER}\\Desktop`,
+  `C:\\Users\\${WINDOWS_USER}\\Pictures`,
+  `C:\\Users\\${WINDOWS_USER}\\Videos`,
+  `C:\\Users\\${WINDOWS_USER}\\Music`,
+  `D:\\Projects`,
+  `D:\\Data`,
+];
+
+async function checkAdminAuth(): Promise<{ authorized: boolean; isAdmin: boolean }> {
   const cookieStore = await cookies();
   const session = cookieStore.get("session");
-  if (!session?.value) return false;
-  const user = await verifySession(session.value);
-  return !!user;
+  if (!session?.value) return { authorized: false, isAdmin: false };
+  
+  const sessionData = await verifySession(session.value);
+  if (!sessionData) return { authorized: false, isAdmin: false };
+  
+  if (sessionData.userId) {
+    const user = await userService.getUserById(sessionData.userId);
+    if (!user || !user.isActive) return { authorized: false, isAdmin: false };
+    return { authorized: true, isAdmin: user.role === "admin" };
+  }
+  
+  const user = await userService.getUserByUsername(sessionData.username);
+  if (!user || !user.isActive) {
+    if (sessionData.username === process.env.ADMIN_USERNAME) {
+      return { authorized: true, isAdmin: true };
+    }
+    return { authorized: false, isAdmin: false };
+  }
+  
+  return { authorized: true, isAdmin: user.role === "admin" };
+}
+
+function isPathAllowed(path: string): boolean {
+  const normalizedPath = path.replace(/\//g, "\\").toLowerCase();
+  
+  const dangerousPaths = [
+    "c:\\windows",
+    "c:\\program files",
+    "c:\\program files (x86)",
+    "c:\\programdata",
+    "c:\\$recycle.bin",
+    "c:\\system volume information",
+  ];
+  
+  for (const dangerous of dangerousPaths) {
+    if (normalizedPath.startsWith(dangerous)) {
+      return false;
+    }
+  }
+  
+  for (const allowedBase of ALLOWED_BASE_PATHS) {
+    if (normalizedPath.startsWith(allowedBase.toLowerCase())) {
+      return true;
+    }
+  }
+  
+  if (normalizedPath.startsWith(`c:\\users\\${WINDOWS_USER.toLowerCase()}`)) {
+    return true;
+  }
+  
+  return false;
 }
 
 async function executeNebulaAgent(command: string): Promise<{ success: boolean; output: string; error?: string }> {
@@ -119,14 +180,25 @@ function formatFileSize(bytes: number): string {
 }
 
 export async function GET(request: NextRequest) {
-  if (!(await checkAuth())) {
+  const auth = await checkAdminAuth();
+  if (!auth.authorized) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!auth.isAdmin) {
+    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
   const path = request.nextUrl.searchParams.get("path") || `C:\\Users\\${WINDOWS_USER}`;
   const action = request.nextUrl.searchParams.get("action") || "list";
 
   const normalizedPath = normalizeWindowsPath(path);
+
+  if (!isPathAllowed(normalizedPath)) {
+    return NextResponse.json({ 
+      error: "Access denied", 
+      details: "Path is outside allowed directories. Access is restricted to user directories only." 
+    }, { status: 403 });
+  }
 
   try {
     if (action === "list") {
@@ -245,8 +317,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!(await checkAuth())) {
+  const auth = await checkAdminAuth();
+  if (!auth.authorized) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!auth.isAdmin) {
+    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
   try {
@@ -259,6 +335,13 @@ export async function POST(request: NextRequest) {
     }
 
     const normalizedPath = normalizeWindowsPath(path);
+
+    if (!isPathAllowed(normalizedPath)) {
+      return NextResponse.json({ 
+        error: "Access denied", 
+        details: "Path is outside allowed directories. Access is restricted to user directories only." 
+      }, { status: 403 });
+    }
 
     if (action === "mkdir") {
       const name = formData.get("name") as string;
